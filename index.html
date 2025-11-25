@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     <title>小手机</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -78,21 +79,59 @@
             margin-bottom: 40px;
         }
         
+             .app-icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .app-icon {
             width: 65px;
             height: 65px;
             border-radius: 18px;
-            background: rgba(255,255,255,0.15);
+          
             backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.2);
+         
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin: 0 auto;
+            overflow: hidden;
         }
+        
+        .app-icon:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.25);
+        }
+        
+        .app-icon:active {
+            transform: scale(0.95);
+        }
+        
+        .app-emoji {
+            font-size: 24px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .app-emoji img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .app-name {
+            font-size: 10px;
+            text-align: center;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
         
         .app-icon:hover {
             transform: scale(1.05);
@@ -260,15 +299,15 @@
             display: none;
         }
         
-        .url-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
+      .url-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;  /* ← 改成16px */
+    outline: none;
+    transition: border-color 0.3s;
+}
         
         .url-input:focus {
             border-color: #667eea;
@@ -1011,11 +1050,32 @@
 }
 
 .chat-detail-title {
-    flex: 1;
     font-size: 16px;
     font-weight: 600;
     color: #333;
-    margin-left: 10px;
+    line-height: 1.2;
+}
+
+.character-status {
+   font-size: 12px;  /* 先设置一个基准大小 */
+    transform: scale(0.9); /* 强制缩小到 85% (约等于 10px) */
+    transform-origin: left top; /* ❗️关键：固定左上角缩放，防止缩放后文字跑偏 */
+    color: #999;
+    font-style: italic;
+    text-align: left;
+    padding: 0;
+    margin: 0;
+    margin-top: 3px;
+    background: transparent;
+    line-height: 1.2;
+}
+
+
+.chat-name .status-tag {
+    font-size: 11px;
+    color: #667eea;
+    font-weight: normal;
+    margin-left: 6px;
 }
 
 /* 消息容器 */
@@ -1086,15 +1146,16 @@
     padding: 10px 12px;
     border: 1px solid #e0e0e0;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 16px;  /* ← 改成16px */
     resize: none;
     max-height: 72px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     outline: none;
     transition: border-color 0.3s;
-    overflow: hidden;  /* 改成hidden */
+    overflow: hidden;
     overflow-wrap: break-word;
 }
+
 /* 隐藏textarea的所有箭头和滚动条按钮 */
 .chat-input::-webkit-scrollbar {
     width: 0px;
@@ -1459,6 +1520,36 @@
     background: #5a6fd8;
 }
 
+.app-icon-editor {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.app-icon-editor:hover {
+    transform: scale(1.05);
+}
+
+.app-icon-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.app-icon-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
 
       
     </style>
@@ -1473,40 +1564,57 @@
                 <div class="signature" id="mainSignature">今天也要开心呀～</div>
             </div>
             
-            <div class="apps-grid">
-                <div class="app-icon" onclick="openApp('world')">
-                    <div class="app-emoji">🌍</div>
+               <div class="apps-grid">
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('world')">
+                        <div class="app-emoji" id="icon-world">🌍</div>
+                    </div>
                     <div class="app-name">世界书</div>
                 </div>
-                <div class="app-icon" onclick="openApp('chat')">
-                    <div class="app-emoji">💬</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('chat')">
+                        <div class="app-emoji" id="icon-chat">💬</div>
+                    </div>
                     <div class="app-name">聊天</div>
                 </div>
-                <div class="app-icon" onclick="openApp('wallpaper')">
-                    <div class="app-emoji">🎨</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('wallpaper')">
+                        <div class="app-emoji" id="icon-wallpaper">🎨</div>
+                    </div>
                     <div class="app-name">壁纸</div>
                 </div>
-                <div class="app-icon" onclick="openApp('api')">
-                    <div class="app-emoji">⚙️</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('api')">
+                        <div class="app-emoji" id="icon-api">⚙️</div>
+                    </div>
                     <div class="app-name">API设置</div>
                 </div>
-                <div class="app-icon" onclick="openApp('placeholder1')">
-                    <div class="app-emoji">📱</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('placeholder1')">
+                        <div class="app-emoji" id="icon-placeholder1">📱</div>
+                    </div>
                     <div class="app-name">应用1</div>
                 </div>
-                <div class="app-icon" onclick="openApp('placeholder2')">
-                    <div class="app-emoji">🎵</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('placeholder2')">
+                        <div class="app-emoji" id="icon-placeholder2">🎵</div>
+                    </div>
                     <div class="app-name">应用2</div>
                 </div>
-                <div class="app-icon" onclick="openApp('placeholder3')">
-                    <div class="app-emoji">📷</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('placeholder3')">
+                        <div class="app-emoji" id="icon-placeholder3">📷</div>
+                    </div>
                     <div class="app-name">应用3</div>
                 </div>
-                <div class="app-icon" onclick="openApp('placeholder4')">
-                    <div class="app-emoji">🎮</div>
+                <div class="app-icon-wrapper">
+                    <div class="app-icon" onclick="openApp('placeholder4')">
+                        <div class="app-emoji" id="icon-placeholder4">🎮</div>
+                    </div>
                     <div class="app-name">应用4</div>
                 </div>
             </div>
+
             
             <div class="bottom-space"></div>
         </div>
@@ -1549,7 +1657,48 @@
                         <button class="save-btn" onclick="saveWallpaper()">保存壁纸</button>
                     </div>
                 </div>
-            </div>
+            
+               <div class="section-title" style="margin-top: 40px;">更换app图标</div>
+                <div style="text-align: center; color: #666; font-size: 13px; margin-bottom: 20px;">
+                    点击图标进行修改
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 280px; margin: 0 auto;">
+                    <div class="app-icon-editor" onclick="openIconEditor('world')">
+                        <div class="app-icon-preview" id="preview-world">🌍</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">世界书</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('chat')">
+                        <div class="app-icon-preview" id="preview-chat">💬</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">聊天</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('wallpaper')">
+                        <div class="app-icon-preview" id="preview-wallpaper">🎨</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">壁纸</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('api')">
+                        <div class="app-icon-preview" id="preview-api">⚙️</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">API设置</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('placeholder1')">
+                        <div class="app-icon-preview" id="preview-placeholder1">📱</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用1</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('placeholder2')">
+                        <div class="app-icon-preview" id="preview-placeholder2">🎵</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用2</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('placeholder3')">
+                        <div class="app-icon-preview" id="preview-placeholder3">📷</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用3</div>
+                    </div>
+                    <div class="app-icon-editor" onclick="openIconEditor('placeholder4')">
+                        <div class="app-icon-preview" id="preview-placeholder4">🎮</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用4</div>
+                    </div>
+                </div>
+</div>
+                       
         </div>
       <!-- 世界书页面 -->
 <div class="worldbook-screen" id="worldbookScreen">
@@ -1660,14 +1809,19 @@
 </div>
 <!-- 聊天详情页面 -->
 <div class="chat-detail-screen" id="chatDetailScreen">
-    <div class="chat-detail-header">
-        <button class="back-btn" onclick="backToChatList()">←</button>
-       <div class="chat-detail-title" id="chatDetailTitle">张三</div>
-      <button class="back-btn" onclick="openCharacterInfo()" style="margin-left: auto;">⋮</button>
-
-
+ <div class="chat-detail-header">
+    <button class="back-btn" onclick="backToChatList()">←</button>
+    <div style="flex: 1; display: flex; flex-direction: column; margin-left: 10px;">
+        <div class="chat-detail-title" id="chatDetailTitle">张三</div>
+        <div class="character-status" id="characterStatus" style="display: none;"></div>
     </div>
-    
+    <button class="back-btn" onclick="openCharacterInfo()">⋮</button>
+</div>
+
+
+     
+   
+
     <div class="messages-container" id="messagesContainer">
         <button class="load-more-btn" id="loadMoreBtn" style="display: none;" onclick="loadMoreMessages()">
             点击查看历史消息
@@ -1781,7 +1935,23 @@
                 <label class="form-label">个性签名</label>
                 <input type="text" id="signatureInput" class="form-input" placeholder="输入个性签名">
             </div>
+                                <div class="form-group">
+                <label class="form-label">字体颜色</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="color" id="textColorInput" class="form-input" value="#ffffff" style="flex: 1;">
+                    <div id="textColorPreview" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff;"></div>
+                </div>
+            </div>
             
+            <div class="form-group">
+                <label class="form-label">App图标字体颜色</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="color" id="appTextColorInput" class="form-input" value="#ffffff" style="flex: 1;">
+                    <div id="appTextColorPreview" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff;"></div>
+                </div>
+            </div>
+
+
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeModal()">取消</button>
                 <button class="btn btn-save" onclick="saveUserInfo()">保存</button>
@@ -1923,6 +2093,40 @@
         </div>
     </div>
 </div>
+<!-- 图标编辑弹窗 -->
+<div class="modal-overlay" id="iconEditorModal" onclick="closeIconEditor(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">更换图标</div>
+        
+        <div class="form-group">
+            <label class="form-label">当前图标预览</label>
+            <div class="app-icon-preview" id="currentIconPreview" style="width: 80px; height: 80px; font-size: 36px;">🌍</div>
+        </div>
+        
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchIconTab('local')">本地相册</button>
+            <button class="tab-btn" onclick="switchIconTab('url')">网址链接</button>
+            <button class="tab-btn" onclick="resetToDefaultIcon()">恢复默认</button>
+        </div>
+        
+        <div class="tab-content active" id="iconLocalTab" style="margin-top: 15px;">
+            <div class="file-input-area" onclick="document.getElementById('iconFile').click()">
+                <div>📁 点击选择图片</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">支持 JPG、PNG 格式</div>
+                <input type="file" id="iconFile" accept="image/*" style="display: none;">
+            </div>
+        </div>
+        
+        <div class="tab-content" id="iconUrlTab" style="margin-top: 15px;">
+            <input type="url" class="url-input" id="iconUrl" placeholder="输入图片网址...">
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeIconEditor()">取消</button>
+            <button class="btn btn-save" onclick="saveAppIcon()">保存</button>
+        </div>
+    </div>
+</div>
 
 
     <script>
@@ -1931,7 +2135,7 @@
         let currentWallpaper = null;
         
         function initDB() {
-           const request = indexedDB.open('phoneData', 6);
+           const request = indexedDB.open('phoneData', 7);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -1942,6 +2146,7 @@
               loadWorldbooks();
               loadApiConfig();
 loadApiSchemes();
+              loadAppIcons();
               
             };
             
@@ -1973,7 +2178,10 @@ if (!db.objectStoreNames.contains('messages')) {
 }
               if (!db.objectStoreNames.contains('characterInfo')) {
     db.createObjectStore('characterInfo', { keyPath: 'id' });
+}if (!db.objectStoreNames.contains('appIcons')) {
+    db.createObjectStore('appIcons', { keyPath: 'id' });
 }
+
 
             };
         }
@@ -2130,48 +2338,86 @@ function loadFromDB(storeName, callback) {
             document.getElementById('editModal').style.display = 'none';
         }
         
-        function loadCurrentInfo() {
-            document.getElementById('userIdInput').value = document.getElementById('mainUserId').textContent;
-            document.getElementById('signatureInput').value = document.getElementById('mainSignature').textContent;
+   function loadCurrentInfo() {
+    document.getElementById('userIdInput').value = document.getElementById('mainUserId').textContent;
+    document.getElementById('signatureInput').value = document.getElementById('mainSignature').textContent;
+    
+    // 加载当前颜色
+    loadFromDB('userInfo', (data) => {
+        if (data) {
+            const textColor = data.textColor || '#ffffff';
+            const appTextColor = data.appTextColor || '#ffffff';
+            
+            document.getElementById('textColorInput').value = textColor;
+            document.getElementById('appTextColorInput').value = appTextColor;
+            
+            // 同步预览框颜色
+            document.getElementById('textColorPreview').style.background = textColor;
+            document.getElementById('appTextColorPreview').style.background = appTextColor;
         }
+    });
+}
+
+
         
-        function saveUserInfo() {
-            const userId = document.getElementById('userIdInput').value || '我的小手机';
-            const signature = document.getElementById('signatureInput').value || '今天也要开心呀～';
-            const avatarFile = document.getElementById('avatarInput').files[0];
-            
-            if (avatarFile) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const avatarData = e.target.result;
-                    updateUI(userId, signature, avatarData);
-                    saveToDB('userInfo', { userId, signature, avatar: avatarData });
-                };
-                reader.readAsDataURL(avatarFile);
-            } else {
-                updateUI(userId, signature);
-                saveToDB('userInfo', { userId, signature });
-            }
-            
+ function saveUserInfo() {
+    const userId = document.getElementById('userIdInput').value || '我的小手机';
+    const signature = document.getElementById('signatureInput').value || '今天也要开心呀～';
+    const textColor = document.getElementById('textColorInput').value;
+    const appTextColor = document.getElementById('appTextColorInput').value;
+    const avatarFile = document.getElementById('avatarInput').files[0];
+    
+    if (avatarFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const avatarData = e.target.result;
+            updateUI(userId, signature, avatarData, textColor, appTextColor);
+            saveToDB('userInfo', { userId, signature, avatar: avatarData, textColor, appTextColor });
             closeModal();
-        }
+        };
+        reader.readAsDataURL(avatarFile);
+    } else {
+        // 没有新头像，保留原有头像
+        loadFromDB('userInfo', (data) => {
+            const existingAvatar = data ? data.avatar : null;
+            updateUI(userId, signature, existingAvatar, textColor, appTextColor);
+            saveToDB('userInfo', { userId, signature, avatar: existingAvatar, textColor, appTextColor });
+            closeModal();
+        });
+    }
+}
+
         
-        function updateUI(userId, signature, avatar) {
-            document.getElementById('mainUserId').textContent = userId;
-            document.getElementById('mainSignature').textContent = signature;
-            
-            if (avatar) {
-                document.getElementById('mainAvatar').innerHTML = `<img src="${avatar}" alt="头像">`;
-            }
+    function updateUI(userId, signature, avatar, textColor, appTextColor) {
+    document.getElementById('mainUserId').textContent = userId;
+    document.getElementById('mainSignature').textContent = signature;
+    
+    if (avatar) {
+        document.getElementById('mainAvatar').innerHTML = `<img src="${avatar}" alt="头像">`;
+    }
+    
+    // 应用字体颜色
+    if (textColor) {
+        document.getElementById('mainUserId').style.color = textColor;
+        document.getElementById('mainSignature').style.color = textColor;
+    }
+    
+    // 应用App图标字体颜色
+    if (appTextColor) {
+        document.querySelectorAll('.app-name').forEach(el => {
+            el.style.color = appTextColor;
+        });
+    }
+}
+
+     function loadUserInfo() {
+    loadFromDB('userInfo', (data) => {
+        if (data) {
+            updateUI(data.userId, data.signature, data.avatar, data.textColor, data.appTextColor);
         }
-        
-        function loadUserInfo() {
-            loadFromDB('userInfo', (data) => {
-                if (data) {
-                    updateUI(data.userId, data.signature, data.avatar);
-                }
-            });
-        }
+    });
+}
+
         
         // 头像预览
         document.getElementById('avatarInput').addEventListener('change', function(e) {
@@ -2633,6 +2879,21 @@ window.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+      // 颜色选择器实时预览
+    const textColorInput = document.getElementById('textColorInput');
+    const appTextColorInput = document.getElementById('appTextColorInput');
+    
+    if (textColorInput) {
+        textColorInput.addEventListener('input', function(e) {
+            document.getElementById('textColorPreview').style.background = e.target.value;
+        });
+    }
+    
+    if (appTextColorInput) {
+        appTextColorInput.addEventListener('input', function(e) {
+            document.getElementById('appTextColorPreview').style.background = e.target.value;
+        });
+    }
 });
 // 聊天功能相关变量
 let chats = [];
@@ -2701,10 +2962,12 @@ function renderChatList() {
                 </div>
                 <div class="chat-info">
                     <div class="chat-top">
-                        <div class="chat-name" data-chat-id="${chat.id}" data-original-name="${chat.name}">
-                            ${chat.name}
-                            ${chat.isPinned ? '<span class="pin-badge">📌</span>' : ''}
-                        </div>
+                      <div class="chat-name" data-chat-id="${chat.id}" data-original-name="${chat.name}">
+    ${chat.name}
+    <span class="status-tag" id="status-tag-${chat.id}"></span>
+    ${chat.isPinned ? '<span class="pin-badge">📌</span>' : ''}
+</div>
+
                         <div class="chat-time">${formatChatListTime(chat.lastMessageTime || chat.createTime)}</div>
                     </div>
                     <div class="chat-bottom">
@@ -2727,7 +2990,8 @@ function renderChatList() {
     // 然后异步更新备注（不阻塞主进程）
     filtered.forEach(chat => {
         updateChatDisplayName(chat.id);
-        addSwipeEvent(chat.id);
+    updateChatStatusDisplay(chat.id);
+    addSwipeEvent(chat.id);
     });
 }
 
@@ -2738,12 +3002,18 @@ function updateChatDisplayName(chatId) {
         const displayName = (charData.remark && charData.remark.trim()) ? charData.remark : null;
         
         if (displayName) {
-            // 只在有备注时更新DOM
             const nameElement = document.querySelector(`.chat-name[data-chat-id="${chatId}"]`);
             if (nameElement) {
                 const originalName = nameElement.dataset.originalName;
                 const pinBadge = nameElement.querySelector('.pin-badge');
+                const statusTag = nameElement.querySelector('.status-tag');
+                
                 nameElement.textContent = displayName;
+                
+                if (statusTag) {
+                    nameElement.appendChild(statusTag);
+                }
+                
                 if (pinBadge) {
                     nameElement.appendChild(pinBadge);
                 }
@@ -2751,6 +3021,38 @@ function updateChatDisplayName(chatId) {
         }
     });
 }
+
+function updateChatStatusDisplay(chatId) {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[chatId] ? data[chatId] : {};
+        const status = charData.currentStatus || '在线-刚刚上线';  // ← 给默认值
+        
+        const statusTag = document.getElementById(`status-tag-${chatId}`);
+        if (statusTag && status) {  // ← 删除了额外的判断
+            const mainStatus = status.split('-')[0].trim();
+            statusTag.textContent = `「${mainStatus}」`;
+        } else if (statusTag) {
+            statusTag.textContent = '';
+        }
+    });
+}
+
+
+// 更新详情页状态显示
+function updateDetailPageStatus(chatId) {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[chatId] ? data[chatId] : {};
+        const status = charData.currentStatus || '在线-刚刚上线';
+        
+        const statusElement = document.getElementById('characterStatus');
+        if (statusElement) {
+            statusElement.textContent = status;
+            statusElement.style.display = 'block';
+    
+        }
+    });
+}
+
 // 新增函数：更新详情页标题
 function updateDetailPageTitle(chatId, originalName) {
     loadFromDB('characterInfo', (data) => {
@@ -2788,7 +3090,9 @@ function openChatDetail(chatId) {
     
     // 设置标题 - 动态获取备注
 updateDetailPageTitle(chatId, chat.name);
-    
+    // 显示角色状态
+updateDetailPageStatus(chatId);
+
     // 隐藏聊天列表，显示详情页
     document.getElementById('chatScreen').style.display = 'none';
     document.getElementById('chatDetailScreen').style.display = 'flex';
@@ -3538,6 +3842,21 @@ ${characterInfo.personality || '一个友好、真诚的角色。'}
 【时间信息】
 今天是：${dateStr}
 ${getBirthdayPrompt(characterInfo.birthday)}
+【状态系统】
+你有一个当前状态，格式为"主要状态-详细描述"（如：在线-正在煮面，想等会吃什么）。
+当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
+
+你可以根据对话内容和你的心情决定是否更新状态：
+- 如果对话让你的心情/行为有明显变化，可以更新状态
+- 如果只是普通聊天，可以保持当前状态，但不允许长时间不更换。
+- 状态要简短（15字以内）、生动、符合人设
+- 状态格式：主要状态（2-4字）-详细描述（10字左右）
+- 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼
+
+在回复的最开头表明状态（必须）：
+- 更新状态：[状态]新状态文本|||[消息]你的聊天内容
+- 保持状态：[状态]保持|||[消息]你的聊天内容
+
 
 【重要回复要求】
 1. 严格按照人设中的性格、语气、说话方式回复
@@ -3585,17 +3904,49 @@ ${getBirthdayPrompt(characterInfo.birthday)}
         }
         
         const data = await response.json();
-        let aiReply = data.choices[0].message.content.trim();
+     let aiReply = data.choices[0].message.content.trim();
+        
+        // 解析状态和消息
+        let newStatus = null;
+        let messageContent = aiReply;
+        
+        // 检查是否包含状态标记
+        const statusMatch = aiReply.match(/\[状态\](.*?)\|\|\|\[消息\](.*)/s);
+        if (statusMatch) {
+            const statusText = statusMatch[1].trim();
+            messageContent = statusMatch[2].trim();
+            
+            // 判断是否需要更新状态
+            if (statusText !== '保持' && statusText.length > 0) {
+                newStatus = statusText;
+            }
+        }
+        
+        // 如果检测到新状态，保存到数据库
+        if (newStatus) {
+            loadFromDB('characterInfo', (data) => {
+                const allCharData = data || {};
+                const charData = allCharData[currentChatId] || {};
+                charData.currentStatus = newStatus;
+                charData.statusUpdateTime = getCurrentTime();
+                allCharData[currentChatId] = charData;
+                saveToDB('characterInfo', allCharData);
+                
+                // 更新显示
+                updateDetailPageStatus(currentChatId);
+                updateChatStatusDisplay(currentChatId);
+            });
+        }
         
         // 解析分条消息
         let messageList = [];
         
         // 优先按 ||| 拆分
-        if (aiReply.includes('|||')) {
-            messageList = aiReply.split('|||').map(msg => msg.trim()).filter(msg => msg.length > 0);
+        if (messageContent.includes('|||')) {
+            messageList = messageContent.split('|||').map(msg => msg.trim()).filter(msg => msg.length > 0);
         } else {
             // 兜底方案：按句号、问号、感叹号拆分
-            messageList = aiReply.split(/[。！？！\n]+/).map(msg => msg.trim()).filter(msg => msg.length > 0);
+            messageList = messageContent.split(/[。！？！\n]+/).map(msg => msg.trim()).filter(msg => msg.length > 0);
         }
         
         // 确保消息数量在6-12条之间
@@ -3619,6 +3970,7 @@ ${getBirthdayPrompt(characterInfo.birthday)}
         if (messageList.length > targetCount) {
             messageList = messageList.slice(0, targetCount);
         }
+
         
         // 延迟发送每条消息
         for (let i = 0; i < messageList.length; i++) {
@@ -4004,7 +4356,11 @@ if (chat.avatarImage) {
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[chatId] ? data[chatId] : {};
         characterInfoData = charData;
-        
+            // 如果没有状态，设置默认状态
+    if (!charData.currentStatus) {
+        charData.currentStatus = '在线-刚刚上线';
+    }
+
         // 填充表单
        document.getElementById('charRemark').value = charData.remark || '';
 
@@ -4182,6 +4538,171 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('editAvatarPreview').innerHTML = `<img src="${e.target.result}" alt="预览">`;
                 };
                 reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+// 图标编辑相关变量
+let currentEditingIcon = null;
+let appIcons = {
+    world: null,
+    chat: null,
+    wallpaper: null,
+    api: null,
+    placeholder1: null,
+    placeholder2: null,
+    placeholder3: null,
+    placeholder4: null
+};
+
+const defaultIcons = {
+    world: '🌍',
+    chat: '💬',
+    wallpaper: '🎨',
+    api: '⚙️',
+    placeholder1: '📱',
+    placeholder2: '🎵',
+    placeholder3: '📷',
+    placeholder4: '🎮'
+};
+
+// 加载所有图标
+function loadAppIcons() {
+    loadFromDB('appIcons', (data) => {
+        if (data && data.icons) {
+            appIcons = { ...appIcons, ...data.icons };
+        }
+        updateAllIcons();
+    });
+}
+
+// 更新所有图标显示
+function updateAllIcons() {
+    // 更新主屏幕的图标
+    Object.keys(appIcons).forEach(key => {
+        const iconData = appIcons[key];
+        const mainIcon = document.getElementById(`icon-${key}`);
+        const previewIcon = document.getElementById(`preview-${key}`);
+        
+        if (iconData) {
+            // 使用自定义图标
+            if (mainIcon) {
+                mainIcon.innerHTML = `<img src="${iconData}">`;
+            }
+            if (previewIcon) {
+                previewIcon.innerHTML = `<img src="${iconData}">`;
+            }
+        } else {
+            // 使用默认emoji
+            if (mainIcon) {
+                mainIcon.textContent = defaultIcons[key];
+            }
+            if (previewIcon) {
+                previewIcon.textContent = defaultIcons[key];
+            }
+        }
+    });
+}
+
+
+// 打开图标编辑器
+function openIconEditor(iconKey) {
+    currentEditingIcon = iconKey;
+    const currentIcon = appIcons[iconKey] || defaultIcons[iconKey];
+    
+    const preview = document.getElementById('currentIconPreview');
+    if (appIcons[iconKey]) {
+        preview.innerHTML = `<img src="${currentIcon}">`;
+    } else {
+        preview.textContent = currentIcon;
+    }
+    
+    // 清空输入
+    document.getElementById('iconFile').value = '';
+    document.getElementById('iconUrl').value = '';
+    
+    // 显示弹窗
+    document.getElementById('iconEditorModal').style.display = 'flex';
+}
+
+// 关闭图标编辑器
+function closeIconEditor(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('iconEditorModal').style.display = 'none';
+    currentEditingIcon = null;
+}
+
+// 切换图标标签
+function switchIconTab(tab) {
+    document.querySelectorAll('#iconEditorModal .tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    document.querySelectorAll('#iconEditorModal .tab-content').forEach(content => content.classList.remove('active'));
+    if (tab === 'local') {
+        document.getElementById('iconLocalTab').classList.add('active');
+    } else if (tab === 'url') {
+        document.getElementById('iconUrlTab').classList.add('active');
+    }
+}
+
+// 恢复默认图标
+function resetToDefaultIcon() {
+    if (!currentEditingIcon) return;
+    
+    appIcons[currentEditingIcon] = null;
+    saveToDB('appIcons', { id: 1, icons: appIcons });
+    updateAllIcons();
+    closeIconEditor();
+}
+
+// 保存图标
+function saveAppIcon() {
+    if (!currentEditingIcon) return;
+    
+    const fileInput = document.getElementById('iconFile');
+    const urlInput = document.getElementById('iconUrl');
+    
+    if (fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            appIcons[currentEditingIcon] = e.target.result;
+            saveToDB('appIcons', { id: 1, icons: appIcons });
+            updateAllIcons();
+            closeIconEditor();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else if (urlInput.value) {
+        appIcons[currentEditingIcon] = urlInput.value;
+        saveToDB('appIcons', { id: 1, icons: appIcons });
+        updateAllIcons();
+        closeIconEditor();
+    } else {
+        alert('请选择图片或输入网址');
+    }
+}
+
+// 图标文件预览
+document.addEventListener('DOMContentLoaded', function() {
+    const iconFileInput = document.getElementById('iconFile');
+    if (iconFileInput) {
+        iconFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('currentIconPreview').innerHTML = `<img src="${e.target.result}">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    const iconUrlInput = document.getElementById('iconUrl');
+    if (iconUrlInput) {
+        iconUrlInput.addEventListener('input', function(e) {
+            const url = e.target.value;
+            if (url) {
+                document.getElementById('currentIconPreview').innerHTML = `<img src="${url}" onerror="this.style.display='none'">`;
             }
         });
     }
