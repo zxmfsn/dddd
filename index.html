@@ -86,21 +86,16 @@
             gap: 8px;
         }
         
-        .app-icon {
+             .app-icon {
             width: 65px;
             height: 65px;
             border-radius: 18px;
-          
-            backdrop-filter: blur(15px);
-         
-            display: flex;
-            align-items: center;
-            justify-content: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease;
             overflow: hidden;
         }
-        
+
+
         .app-icon:hover {
             transform: scale(1.05);
             background: rgba(255,255,255,0.25);
@@ -380,6 +375,7 @@
         
         .form-input {
             width: 100%;
+          max-width: 100%;
             padding: 12px;
             border: 2px solid #e1e5e9;
             border-radius: 10px;
@@ -1551,6 +1547,7 @@
     object-fit: contain;
 }
 
+
       
     </style>
 </head>
@@ -2373,7 +2370,13 @@ function loadFromDB(storeName, callback) {
             const avatarData = e.target.result;
             updateUI(userId, signature, avatarData, textColor, appTextColor);
             saveToDB('userInfo', { userId, signature, avatar: avatarData, textColor, appTextColor });
-            closeModal();
+            // 触发全局头像更新事件
+window.dispatchEvent(new StorageEvent('storage', {
+    key: 'userAvatar',
+    newValue: avatarData
+}));
+
+          closeModal();
         };
         reader.readAsDataURL(avatarFile);
     } else {
@@ -2418,7 +2421,13 @@ function loadFromDB(storeName, callback) {
     });
 }
 
-        
+       // 监听用户头像更新事件
+window.addEventListener('storage', function(e) {
+    if (e.key === 'userAvatar' || !e.key) {
+        loadUserInfo();
+    }
+});
+ 
         // 头像预览
         document.getElementById('avatarInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -3145,6 +3154,7 @@ const newChat = {
     type: 'single',
     name: name,
     avatar: '👤',
+   avatarImage: null,
     lastMessage: '',
     time: '刚刚',
     lastMessageTime: currentTime,
@@ -3152,8 +3162,17 @@ const newChat = {
     isPinned: false,
     members: [],
     isPeek: false,
-    createTime: currentTime
+    createTime: currentTime,
+  
 };
+    // 同步用户头像到新创建的单聊
+    loadFromDB('userInfo', (userData) => {
+        if (userData && userData.avatar) {
+            newChat.avatarImage = userData.avatar;
+            saveToDB('chats', { list: chats });
+            renderChatList();
+        }
+    });
 
     // 添加到列表
     chats.push(newChat);
@@ -3181,15 +3200,23 @@ function openMemberSelector(type) {
         return;
     }
     
-    // 渲染成员列表
-    const membersList = document.getElementById('membersList');
- membersList.innerHTML = singleChats.map(chat => `
-    <div class="member-item" onclick="toggleMemberSelection('${chat.name}', ${chat.id})">
-        <input type="checkbox" class="member-checkbox" id="member-${chat.id}" onclick="event.stopPropagation(); toggleMemberSelection('${chat.name}', ${chat.id})">
-            <div class="member-avatar">${chat.avatar}</div>
+   // 渲染成员列表
+const membersList = document.getElementById('membersList');
+membersList.innerHTML = singleChats.map(chat => {
+    // 优先使用avatarImage，如果没有则用emoji
+    const avatarHtml = chat.avatarImage 
+        ? `<img src="${chat.avatarImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+        : chat.avatar;
+    
+    return `
+        <div class="member-item" onclick="toggleMemberSelection('${chat.name}', ${chat.id})">
+            <input type="checkbox" class="member-checkbox" id="member-${chat.id}" onclick="event.stopPropagation(); toggleMemberSelection('${chat.name}', ${chat.id})">
+            <div class="member-avatar">${avatarHtml}</div>
             <div class="member-name">${chat.name}</div>
         </div>
-    `).join('');
+    `;
+}).join('');
+
     
     // 更新已选数量
     document.getElementById('selectedCount').textContent = '0';
@@ -4481,6 +4508,13 @@ function saveBasicInfo() {
         chat.name = newName;
         if (avatarData) {
             chat.avatarImage = avatarData;
+        } else {
+            // 如果没有选择新头像，尝试从用户信息加载
+            loadFromDB('userInfo', (userData) => {
+                if (userData && userData.avatar) {
+                    chat.avatarImage = userData.avatar;
+                }
+            });
         }
         
         // 保存聊天列表
@@ -4499,10 +4533,10 @@ function saveBasicInfo() {
                 renderChatList();
             }
             
-           // 刷新聊天详情页标题 - 优先显示备注
-if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-    updateDetailPageTitle(currentChatId, newName);
-}
+            // 刷新聊天详情页标题 - 优先显示备注
+            if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+                updateDetailPageTitle(currentChatId, newName);
+            }
             
             // 刷新角色信息页显示
             loadCharacterInfo(currentChatId);
@@ -4525,6 +4559,7 @@ if (document.getElementById('chatDetailScreen').style.display === 'flex') {
         processAvatar(null);
     }
 }
+
 
 // 头像预览功能
 document.addEventListener('DOMContentLoaded', () => {
@@ -4575,27 +4610,26 @@ function loadAppIcons() {
         updateAllIcons();
     });
 }
-
 // 更新所有图标显示
 function updateAllIcons() {
     // 更新主屏幕的图标
     Object.keys(appIcons).forEach(key => {
         const iconData = appIcons[key];
-        const mainIcon = document.getElementById(`icon-${key}`);
+        const mainIconContainer = document.getElementById(`icon-${key}`);
         const previewIcon = document.getElementById(`preview-${key}`);
         
         if (iconData) {
             // 使用自定义图标
-            if (mainIcon) {
-                mainIcon.innerHTML = `<img src="${iconData}">`;
+            if (mainIconContainer) {
+                mainIconContainer.innerHTML = `<img src="${iconData}" style="width: 100%; height: 100%; object-fit: cover; display: block;">`;
             }
             if (previewIcon) {
                 previewIcon.innerHTML = `<img src="${iconData}">`;
             }
         } else {
             // 使用默认emoji
-            if (mainIcon) {
-                mainIcon.textContent = defaultIcons[key];
+            if (mainIconContainer) {
+                mainIconContainer.textContent = defaultIcons[key];
             }
             if (previewIcon) {
                 previewIcon.textContent = defaultIcons[key];
@@ -4603,6 +4637,10 @@ function updateAllIcons() {
         }
     });
 }
+
+
+
+
 
 
 // 打开图标编辑器
