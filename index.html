@@ -1481,6 +1481,15 @@
     padding: 20px;
 }
 
+/* 防止日期选择器超出容器 */
+.character-edit-form input[type="date"] {
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+
 .gender-options {
     display: flex;
     gap: 15px;
