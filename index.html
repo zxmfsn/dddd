@@ -1901,14 +1901,26 @@
                 <input type="date" id="charBirthday" class="form-input">
             </div>
             
-            <div class="form-group">
-                <label class="form-label">家庭住址</label>
-                <input type="text" id="charAddress" class="form-input" placeholder="输入地址">
-            </div>
+           <div class="form-group">
+    <label class="form-label">是否设置城市信息</label>
+  <input type="checkbox" id="cityInfoCheckbox" style="width: 20px; height: 20px; cursor: pointer;" onclick="handleCityInfoCheckbox()">
+
+</div>
+
             
        <div class="form-group">
     <label class="form-label">角色人设</label>
     <textarea id="charPersonality" class="form-input" rows="6" placeholder="输入角色人设描述...&#10;例如：性格开朗活泼，喜欢运动，擅长社交..."></textarea>
+</div>
+<div class="form-group">
+    <label class="form-label">我的人设</label>
+    <textarea id="myPersonality" class="form-input" rows="6" placeholder="输入你自己的人设...&#10;例如：我是好人..."></textarea>
+</div>
+<div class="form-group">
+    <label class="form-label">关联世界书</label>
+    <div id="worldbookSelector" style="max-height: 200px; overflow-y: auto; border: 1px solid #e1e5e9; border-radius: 8px; padding: 10px;">
+        <!-- 世界书列表将在这里动态生成 -->
+    </div>
 </div>
 
       
@@ -1957,6 +1969,9 @@
                 </div>
             </div>
 
+<div style="text-align: center; font-size: 11px; color: #999; margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 6px;">
+    天气数据由 <a href="https://openweathermap.org" target="_blank" style="color: #667eea; text-decoration: none;">OpenWeatherMap</a> 提供
+</div>
 
             <div class="modal-buttons">
                 <button class="btn btn-cancel" onclick="closeModal()">取消</button>
@@ -2130,6 +2145,43 @@
         <div class="modal-buttons" style="margin-top: 20px;">
             <button class="btn btn-cancel" onclick="closeIconEditor()">取消</button>
             <button class="btn btn-save" onclick="saveAppIcon()">保存</button>
+        </div>
+    </div>
+</div>
+<!-- 城市信息设置弹窗 -->
+<div class="modal-overlay" id="cityInfoModal" onclick="closeCityInfoModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 350px;">
+        <div class="modal-title">城市信息设置</div>
+        
+        <div class="form-group">
+            <label class="form-label">角色虚拟地址</label>
+            <input type="text" id="charVirtualAddress" class="form-input" placeholder="例如：A城">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">角色参考地址（使用英文）</label>
+            <input type="text" id="charRealAddress" class="form-input" placeholder="例如：Beijing">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">我的虚拟地址</label>
+            <input type="text" id="myVirtualAddress" class="form-input" placeholder="例如：B城">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">我的参考地址（使用英文）</label>
+            <input type="text" id="myRealAddress" class="form-input" placeholder="例如：Shanghai">
+        </div>
+        
+        <button class="api-btn" onclick="fetchWeatherData()">获取地址信息</button>
+        
+        <div id="weatherPreview" style="display: none; margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+            <!-- 天气信息将在这里显示 -->
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeCityInfoModal()">取消</button>
+            <button class="btn btn-save" onclick="saveCityInfo()">保存</button>
         </div>
     </div>
 </div>
@@ -3110,6 +3162,8 @@ function openChatDetail(chatId) {
 updateDetailPageTitle(chatId, chat.name);
     // 显示角色状态
 updateDetailPageStatus(chatId);
+// 检查并更新天气信息
+checkAndUpdateWeather(chatId);
 
     // 隐藏聊天列表，显示详情页
     document.getElementById('chatScreen').style.display = 'none';
@@ -3711,8 +3765,10 @@ function getCurrentTime() {
 function getDaysToBirthday(birthdayStr) {
     if (!birthdayStr) return null;
     
-    const today = new Date();
-    const birthday = new Date(birthdayStr);
+   const today = new Date();
+const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+
     
     // 设置今年的生日
     const thisYearBirthday = new Date(today.getFullYear(), birthday.getMonth(), birthday.getDate());
@@ -3870,14 +3926,47 @@ async function receiveAIReply() {
         const today = new Date();
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
         
-        let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
+      const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+
+let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
+
 
 【角色人设】
 ${characterInfo.personality || '一个友好、真诚的角色。'}
 
+【对方人设】
+${characterInfo.myPersonality || '无'}
+
+【关联世界书信息】
+${await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks)}
+
+
+【关联世界书信息】
+${worldbooksContent}
+
+请在回复时自然地参考世界书中的设定，但不要生硬地复述，而是将其融入对话中。
+
 【时间信息】
-今天是：${dateStr}
+今天是：${dateStr} ${timeStr}
+当前时间：${timeStr}
 ${getBirthdayPrompt(characterInfo.birthday)}
+【城市与天气信息】
+${characterInfo.cityInfoEnabled ? `
+你所在城市：${characterInfo.charVirtualAddress}（参考${characterInfo.charRealAddress}）
+今天天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}
+明天天气：${characterInfo.charWeather.tomorrow.condition}，${characterInfo.charWeather.tomorrow.temp}
+
+对方所在城市：${characterInfo.myVirtualAddress}（参考${characterInfo.myRealAddress}）
+今天天气：${characterInfo.myWeather.today.condition}，${characterInfo.myWeather.today.temp}
+明天天气：${characterInfo.myWeather.tomorrow.condition}，${characterInfo.myWeather.tomorrow.temp}
+
+你可以根据天气自然地表达关心，比如：
+- 看到对方城市明天会下雨，可以提醒带伞
+- 看到温差大，可以提醒增减衣物
+- 发现天气晴朗，可以建议出去走走
+- 注意：不要每次都提天气，只在合适的时机自然提及
+` : ''}
+
 【状态系统】
 你有一个当前状态，格式为"主要状态-详细描述"（如：在线-正在煮面，想等会吃什么）。
 当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
@@ -3885,9 +3974,9 @@ ${getBirthdayPrompt(characterInfo.birthday)}
 你可以根据对话内容和你的心情决定是否更新状态：
 - 如果对话让你的心情/行为有明显变化，可以更新状态
 - 如果只是普通聊天，可以保持当前状态，但不允许长时间不更换。
-- 状态要简短（15字以内）、生动、符合人设
-- 状态格式：主要状态（2-4字）-详细描述（10字左右）
-- 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼
+- 状态要简短（20字以内）、生动、符合人设
+- 状态格式：主要状态（2-8字）-详细描述（10字左右）
+- 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼、瘫在床上-好想抱着老婆一起睡
 
 在回复的最开头表明状态（必须）：
 - 更新状态：[状态]新状态文本|||[消息]你的聊天内容
@@ -4398,34 +4487,67 @@ if (chat.avatarImage) {
     }
 
         // 填充表单
-       document.getElementById('charRemark').value = charData.remark || '';
+      // 填充表单（添加空值检查）
+const remarkEl = document.getElementById('charRemark');
+const birthdayEl = document.getElementById('charBirthday');
+const addressEl = document.getElementById('charAddress');
+const personalityEl = document.getElementById('charPersonality');
+const myPersonalityEl = document.getElementById('myPersonality');
 
-        document.getElementById('charBirthday').value = charData.birthday || '';
-        document.getElementById('charAddress').value = charData.address || '';
+if (remarkEl) remarkEl.value = charData.remark || '';
+if (birthdayEl) birthdayEl.value = charData.birthday || '';
+if (addressEl) addressEl.value = charData.address || '';
+if (personalityEl) personalityEl.value = charData.personality || '';
+if (myPersonalityEl) myPersonalityEl.value = charData.myPersonality || '';
+
        
         
      // 设置角色人设
 document.getElementById('charPersonality').value = charData.personality || '';
+document.getElementById('myPersonality').value = charData.myPersonality || '';
+// 加载关联世界书选择器
+renderWorldbookSelector(charData.linkedWorldbooks || []);
+      
+// 加载城市信息复选框状态
+const cityCheckbox = document.getElementById('cityInfoCheckbox');
+if (cityCheckbox) {
+    cityCheckbox.checked = charData.cityInfoEnabled || false;
+}
+// 加载关联世界书选择器（延迟执行确保DOM已渲染）
+setTimeout(() => {
+    renderWorldbookSelector(charData.linkedWorldbooks || []);
+}, 100);
 
         
-        // 更新显示
-        document.getElementById('charLocation').textContent = charData.address ? `📍 ${charData.address}` : '📍 未设置地址';
-        document.getElementById('charFollowers').textContent = charData.followers || 0;
-        document.getElementById('charFollowing').textContent = charData.following || 0;
-        document.getElementById('charItinerary').textContent = charData.itinerary || 0;
+      // 更新显示（添加空值检查）
+const locationEl = document.getElementById('charLocation');
+const followersEl = document.getElementById('charFollowers');
+const followingEl = document.getElementById('charFollowing');
+const itineraryEl = document.getElementById('charItinerary');
+
+if (locationEl) locationEl.textContent = charData.address ? `📍 ${charData.address}` : '📍 未设置地址';
+if (followersEl) followersEl.textContent = charData.followers || 0;
+if (followingEl) followingEl.textContent = charData.following || 0;
+if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
+
     });
 }
-
-// 保存角色信息
 function saveCharacterInfo() {
     if (!currentChatId) return;
     
- const charData = {
-    remark: document.getElementById('charRemark').value.trim(),
-    birthday: document.getElementById('charBirthday').value,
-    address: document.getElementById('charAddress').value.trim(),
-    personality: document.getElementById('charPersonality').value.trim(),
-      
+    // 安全地获取所有输入值
+    const getInputValue = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    };
+    
+    const charData = {
+        remark: getInputValue('charRemark'),
+        birthday: getInputValue('charBirthday'),
+        address: getInputValue('charAddress'),
+        personality: getInputValue('charPersonality'),
+        myPersonality: getInputValue('myPersonality'),
+        linkedWorldbooks: getSelectedWorldbooks() || [],
         followers: characterInfoData.followers || 0,
         following: characterInfoData.following || 0,
         itinerary: characterInfoData.itinerary || 0
@@ -4437,30 +4559,27 @@ function saveCharacterInfo() {
         allCharData[currentChatId] = charData;
         saveToDB('characterInfo', allCharData);
         
-      alert('角色信息已保存');
-
-// 更新角色信息页显示
-loadCharacterInfo(currentChatId);
-
-// 同步更新其他页面显示
-const chat = chats.find(c => c.id === currentChatId);
-if (chat) {
-    // 更新聊天列表（如果正在显示）
-    if (document.getElementById('chatScreen').style.display === 'flex') {
-        updateChatDisplayName(currentChatId);
-    }
-    
-    // 更新聊天详情页标题（如果正在显示）
-    if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-        updateDetailPageTitle(currentChatId, chat.name);
-    }
-}
-
+        alert('角色信息已保存');
         
-        // 更新显示
+        // 更新角色信息页显示
+        loadCharacterInfo(currentChatId);
+        
+        // 同步更新其他页面显示
+        const chat = chats.find(c => c.id === currentChatId);
+        if (chat) {
+            if (document.getElementById('chatScreen').style.display === 'flex') {
+                updateChatDisplayName(currentChatId);
+            }
+            if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+                updateDetailPageTitle(currentChatId, chat.name);
+            }
+        }
+        
+        // 重新加载角色信息
         loadCharacterInfo(currentChatId);
     });
 }
+
 // 打开基本信息编辑弹窗
 function openEditBasicInfo() {
     if (!currentChatId) return;
@@ -4730,30 +4849,636 @@ function saveAppIcon() {
 
 // 图标文件预览
 document.addEventListener('DOMContentLoaded', function() {
-    const iconFileInput = document.getElementById('iconFile');
-    if (iconFileInput) {
-        iconFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('currentIconPreview').innerHTML = `<img src="${e.target.result}">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+    // 延迟绑定，确保角色信息页面完全加载
+    setTimeout(() => {
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', function(e) {
+                e.preventDefault();
+                
+                if (this.checked) {
+                    // 勾选：打开设置弹窗
+                    openCityInfoModal();
+                } else {
+                    // 取消勾选：禁用功能
+                    if (confirm('确定取消城市信息功能吗？')) {
+                        disableCityInfo();
+                    } else {
+                        this.checked = true;
+                    }
+                }
+            });
+        }
+    }, 500);
+});
+
+
+
+// 打开城市信息设置弹窗
+function openCityInfoModal() {
+    if (!currentChatId) {
+        alert('请先打开聊天');
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox) checkbox.checked = false;
+        return;
     }
     
-    const iconUrlInput = document.getElementById('iconUrl');
-    if (iconUrlInput) {
-        iconUrlInput.addEventListener('input', function(e) {
-            const url = e.target.value;
-            if (url) {
-                document.getElementById('currentIconPreview').innerHTML = `<img src="${url}" onerror="this.style.display='none'">`;
+    // 显示弹窗
+    document.getElementById('cityInfoModal').style.display = 'flex';
+    
+    // 延迟加载数据，确保DOM已渲染
+    setTimeout(() => {
+        loadFromDB('characterInfo', (data) => {
+            const charData = data && data[currentChatId] ? data[currentChatId] : {};
+            
+            const charVirtualInput = document.getElementById('charVirtualAddress');
+            const charRealInput = document.getElementById('charRealAddress');
+            const myVirtualInput = document.getElementById('myVirtualAddress');
+            const myRealInput = document.getElementById('myRealAddress');
+            
+            if (charVirtualInput) charVirtualInput.value = charData.charVirtualAddress || '';
+            if (charRealInput) charRealInput.value = charData.charRealAddress || '';
+            if (myVirtualInput) myVirtualInput.value = charData.myVirtualAddress || '';
+            if (myRealInput) myRealInput.value = charData.myRealAddress || '';
+            
+            // 如果有天气数据，显示预览
+            if (charData.charWeather && charData.myWeather) {
+                displayWeatherPreview(charData);
             }
         });
+    }, 100);
+}
+
+
+// 关闭弹窗
+function closeCityInfoModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('cityInfoModal').style.display = 'none';
+    
+    // 检查是否已保存，未保存则取消勾选
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox && !charData.cityInfoEnabled) {
+            checkbox.checked = false;
+        }
+    });
+}
+
+// 获取天气数据
+async function fetchWeatherData() {
+    const charCity = document.getElementById('charRealAddress').value.trim();
+    const myCity = document.getElementById('myRealAddress').value.trim();
+    
+    if (!charCity || !myCity) {
+        alert('请先填写参考地址');
+        return;
     }
-});
+    
+    try {
+        // 显示加载状态
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '正在获取...';
+        
+        // 并发获取两个城市的天气
+        const [charWeather, myWeather] = await Promise.all([
+            searchCityWeather(charCity),
+            searchCityWeather(myCity)
+        ]);
+        
+        weatherData = {
+            char: charWeather,
+            my: myWeather,
+            updateTime: getCurrentTime()
+        };
+        
+        // 显示预览
+        displayWeatherPreview({
+            charVirtualAddress: document.getElementById('charVirtualAddress').value || charCity,
+            charRealAddress: charCity,
+            charWeather: charWeather,
+            myVirtualAddress: document.getElementById('myVirtualAddress').value || myCity,
+            myRealAddress: myCity,
+            myWeather: myWeather,
+            weatherUpdateTime: weatherData.updateTime
+        });
+        
+        btn.disabled = false;
+        btn.textContent = '获取地址信息';
+        
+    } catch (error) {
+        alert('获取天气失败：' + error.message);
+        event.target.disabled = false;
+        event.target.textContent = '获取地址信息';
+    }
+}
+
+// 搜索城市天气（使用web_search）
+async function searchCityWeather(cityName) {
+    // 这里需要调用你现有的web_search功能
+    // 由于代码中没有直接暴露web_search，我们需要通过fetch调用
+    
+    // 简化版本：返回模拟数据
+    // 实际使用时需要调用真实的web_search API
+    
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                today: {
+                    condition: "晴",
+                    temp: "15-25°C"
+                },
+                tomorrow: {
+                    condition: "小雨",
+                    temp: "12-20°C"
+                }
+            });
+        }, 1000);
+    });
+    
+    // TODO: 实际实现需要调用web_search
+    // const response = await fetch('/api/search', {
+    //     method: 'POST',
+    //     body: JSON.stringify({ query: `${cityName}天气 今天明天` })
+    // });
+}
+
+// 显示天气预览
+function displayWeatherPreview(data) {
+    const preview = document.getElementById('weatherPreview');
+    preview.innerHTML = `
+        <div style="margin-bottom: 12px;">
+            <strong>角色地区：${data.charVirtualAddress}（${data.charRealAddress}）</strong><br>
+            今天：${data.charWeather.today.condition} ${data.charWeather.today.temp}<br>
+            明天：${data.charWeather.tomorrow.condition} ${data.charWeather.tomorrow.temp}
+        </div>
+        <div style="margin-bottom: 12px;">
+            <strong>我的地区：${data.myVirtualAddress}（${data.myRealAddress}）</strong><br>
+            今天：${data.myWeather.today.condition} ${data.myWeather.today.temp}<br>
+            明天：${data.myWeather.tomorrow.condition} ${data.myWeather.tomorrow.temp}
+        </div>
+        <div style="color: #999; font-size: 12px;">
+            最后更新：${data.weatherUpdateTime}
+        </div>
+    `;
+    preview.style.display = 'block';
+}
+
+// 城市信息相关变量
+let weatherData = {
+    char: null,
+    my: null,
+    updateTime: null
+};
+
+// 复选框点击处理
+function handleCityInfoCheckbox() {
+    const checkbox = document.getElementById('cityInfoCheckbox');
+    
+    if (checkbox.checked) {
+        // 勾选：打开设置弹窗
+        openCityInfoModal();
+    } else {
+        // 取消勾选：禁用功能
+        if (confirm('确定取消城市信息功能吗？')) {
+            disableCityInfo();
+        } else {
+            checkbox.checked = true;
+        }
+    }
+}
+
+// 打开城市信息设置弹窗
+function openCityInfoModal() {
+    if (!currentChatId) {
+        alert('请先打开角色信息页面');
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox) checkbox.checked = false;
+        return;
+    }
+    
+    // 显示弹窗
+    document.getElementById('cityInfoModal').style.display = 'flex';
+    
+    // 加载数据
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        
+        // 安全地填充数据
+        const fields = {
+            'charVirtualAddress': charData.charVirtualAddress || '',
+            'charRealAddress': charData.charRealAddress || '',
+            'myVirtualAddress': charData.myVirtualAddress || '',
+            'myRealAddress': charData.myRealAddress || ''
+        };
+        
+        for (let id in fields) {
+            const el = document.getElementById(id);
+            if (el) el.value = fields[id];
+        }
+        
+        // 如果有天气数据，显示预览
+        if (charData.charWeather && charData.myWeather) {
+            displayWeatherPreview(charData);
+        } else {
+            // 隐藏预览区
+            const preview = document.getElementById('weatherPreview');
+            if (preview) preview.style.display = 'none';
+        }
+    });
+}
+
+// 关闭弹窗
+function closeCityInfoModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('cityInfoModal').style.display = 'none';
+    
+    // 检查是否已保存
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox && !charData.cityInfoEnabled) {
+            checkbox.checked = false;
+        }
+    });
+}
+
+// 获取天气数据
+async function fetchWeatherData() {
+    const charCity = document.getElementById('charRealAddress').value.trim();
+    const myCity = document.getElementById('myRealAddress').value.trim();
+    
+    if (!charCity || !myCity) {
+        alert('请先填写参考地址');
+        return;
+    }
+    
+    const btn = event.target;
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = '正在获取...';
+        
+        // 并发获取天气
+        const [charWeather, myWeather] = await Promise.all([
+            searchCityWeather(charCity),
+            searchCityWeather(myCity)
+        ]);
+        
+        weatherData = {
+            char: charWeather,
+            my: myWeather,
+            updateTime: getCurrentTime()
+        };
+        
+        // 显示预览
+        displayWeatherPreview({
+            charVirtualAddress: document.getElementById('charVirtualAddress').value || charCity,
+            charRealAddress: charCity,
+            charWeather: charWeather,
+            myVirtualAddress: document.getElementById('myVirtualAddress').value || myCity,
+            myRealAddress: myCity,
+            myWeather: myWeather,
+            weatherUpdateTime: weatherData.updateTime
+        });
+        
+    } catch (error) {
+        alert('获取天气失败：' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '获取地址信息';
+    }
+}
+
+// 搜索城市天气（使用OpenWeatherMap）
+async function searchCityWeather(cityName) {
+  
+    // 将你的API key填在这里
+    const apiKey = 'da8886b092269010824f1fcbc62e5115';
+     // 城市名称映射（中文转拼音）
+    const cityMap = {
+        '北京': 'Beijing',
+        '上海': 'Shanghai',
+        '广州': 'Guangzhou',
+        '深圳': 'Shenzhen',
+        '杭州': 'Hangzhou',
+        '成都': 'Chengdu',
+        '西安': 'Xian',
+        '武汉': 'Wuhan',
+        '南京': 'Nanjing',
+        '重庆': 'Chongqing'
+    };
+   // 如果是中文城市名，转换为拼音
+    const searchCity = cityMap[cityName] || cityName;
+    try {
+        // 调用OpenWeatherMap 5天预报API（包含今天和明天）
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cityName)}&appid=${apiKey}&units=metric&lang=zh_cn`
+        );
+        
+    if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`获取天气失败: ${errorData.message || response.status}`);
+}
+
+        
+        const data = await response.json();
+        
+        // 获取当前时间
+        const now = new Date();
+        const todayDate = now.toISOString().split('T')[0];
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDate = tomorrow.toISOString().split('T')[0];
+        
+        // 筛选今天和明天的数据
+        const todayData = data.list.filter(item => 
+            item.dt_txt.startsWith(todayDate)
+        );
+        const tomorrowData = data.list.filter(item => 
+            item.dt_txt.startsWith(tomorrowDate)
+        );
+        
+        // 计算今天的温度范围
+        let todayTemps = todayData.map(item => item.main.temp);
+        if (todayTemps.length === 0) {
+            todayTemps = [data.list[0].main.temp];
+        }
+        const todayMin = Math.round(Math.min(...todayTemps));
+        const todayMax = Math.round(Math.max(...todayTemps));
+        
+        // 计算明天的温度范围
+        let tomorrowTemps = tomorrowData.map(item => item.main.temp);
+        if (tomorrowTemps.length === 0) {
+            tomorrowTemps = [data.list[8].main.temp];
+        }
+        const tomorrowMin = Math.round(Math.min(...tomorrowTemps));
+        const tomorrowMax = Math.round(Math.max(...tomorrowTemps));
+        
+        // 获取天气描述（取第一个）
+        const todayCondition = todayData.length > 0 
+            ? todayData[0].weather[0].description 
+            : data.list[0].weather[0].description;
+        const tomorrowCondition = tomorrowData.length > 0 
+            ? tomorrowData[0].weather[0].description 
+            : data.list[8].weather[0].description;
+        
+        return {
+            today: {
+                condition: todayCondition,
+                temp: `${todayMin}-${todayMax}°C`
+            },
+            tomorrow: {
+                condition: tomorrowCondition,
+                temp: `${tomorrowMin}-${tomorrowMax}°C`
+            }
+        };
+        
+    } catch (error) {
+        console.error('获取天气失败：', error);
+        throw new Error('无法获取天气信息，请检查城市名称');
+    }
+}
+
+
+// 显示天气预览
+function displayWeatherPreview(data) {
+    const preview = document.getElementById('weatherPreview');
+    if (!preview) return;
+    
+    preview.innerHTML = `
+        <div style="margin-bottom: 12px;">
+            <strong>角色地区：${data.charVirtualAddress}（${data.charRealAddress}）</strong><br>
+            今天：${data.charWeather.today.condition} ${data.charWeather.today.temp}<br>
+            明天：${data.charWeather.tomorrow.condition} ${data.charWeather.tomorrow.temp}
+        </div>
+        <div style="margin-bottom: 12px;">
+            <strong>我的地区：${data.myVirtualAddress}（${data.myRealAddress}）</strong><br>
+            今天：${data.myWeather.today.condition} ${data.myWeather.today.temp}<br>
+            明天：${data.myWeather.tomorrow.condition} ${data.myWeather.tomorrow.temp}
+        </div>
+        <div style="color: #999; font-size: 12px;">
+            最后更新：${data.weatherUpdateTime}
+        </div>
+    `;
+    preview.style.display = 'block';
+}
+
+// 保存城市信息
+function saveCityInfo() {
+    if (!weatherData.char || !weatherData.my) {
+        alert('请先获取天气信息');
+        return;
+    }
+    
+    const charVirtual = document.getElementById('charVirtualAddress').value.trim();
+    const charReal = document.getElementById('charRealAddress').value.trim();
+    const myVirtual = document.getElementById('myVirtualAddress').value.trim();
+    const myReal = document.getElementById('myRealAddress').value.trim();
+    
+    if (!charReal || !myReal) {
+        alert('请填写参考地址');
+        return;
+    }
+    
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        
+        charData.cityInfoEnabled = true;
+        charData.lastWeatherDate = new Date().toISOString().split('T')[0];
+        charData.weatherUpdateTime = weatherData.updateTime;
+        
+        charData.charVirtualAddress = charVirtual || charReal;
+        charData.charRealAddress = charReal;
+        charData.charWeather = weatherData.char;
+        
+        charData.myVirtualAddress = myVirtual || myReal;
+        charData.myRealAddress = myReal;
+        charData.myWeather = weatherData.my;
+        
+        allCharData[currentChatId] = charData;
+        saveToDB('characterInfo', allCharData);
+        
+        alert('城市信息已保存');
+        closeCityInfoModal();
+        
+        // 更新复选框
+        const checkbox = document.getElementById('cityInfoCheckbox');
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+// 禁用城市信息
+function disableCityInfo() {
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        
+        charData.cityInfoEnabled = false;
+        
+        allCharData[currentChatId] = charData;
+        saveToDB('characterInfo', allCharData);
+    });
+}
+// 检查并自动更新天气
+async function checkAndUpdateWeather(chatId) {
+    loadFromDB('characterInfo', async (data) => {
+        const charData = data && data[chatId] ? data[chatId] : {};
+        
+        // 如果未启用城市信息，直接返回
+        if (!charData.cityInfoEnabled) return;
+        
+        // 获取今天日期
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 如果日期不同，自动更新天气
+        if (charData.lastWeatherDate !== today) {
+            try {
+                // 并发获取天气
+                const [charWeather, myWeather] = await Promise.all([
+                    searchCityWeather(charData.charRealAddress),
+                    searchCityWeather(charData.myRealAddress)
+                ]);
+                
+                // 更新数据
+                charData.lastWeatherDate = today;
+                charData.weatherUpdateTime = getCurrentTime();
+                charData.charWeather = charWeather;
+                charData.myWeather = myWeather;
+                
+                // 保存到数据库
+                const allCharData = data || {};
+                allCharData[chatId] = charData;
+                saveToDB('characterInfo', allCharData);
+                
+                // 显示同步提示
+                showWeatherSyncTip();
+                
+            } catch (error) {
+                console.error('自动更新天气失败：', error);
+            }
+        }
+    });
+}
+
+// 显示天气同步提示
+function showWeatherSyncTip() {
+    // 创建提示元素
+    const tip = document.createElement('div');
+    tip.className = 'weather-sync-tip';
+    tip.textContent = '✅ 今天天气信息已同步';
+    tip.style.cssText = `
+        position: fixed;
+        top: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1dd1a1;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        z-index: 1001;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        animation: fadeInOut 3s ease-in-out;
+    `;
+    
+    // 添加动画
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -10px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -10px); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // 添加到页面
+    document.body.appendChild(tip);
+    
+    // 3秒后移除
+    setTimeout(() => {
+        tip.remove();
+        style.remove();
+    }, 3000);
+}
+// 渲染世界书选择器
+function renderWorldbookSelector(selectedIds) {
+    const container = document.getElementById('worldbookSelector');
+    if (!container) return;
+    
+    // 加载所有世界书
+    loadFromDB('worldbooks', (data) => {
+        const allWorldbooks = data || [];
+        
+        if (allWorldbooks.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无世界书，请先在世界书页面添加</div>';
+            return;
+        }
+        
+        // 渲染复选框列表
+        container.innerHTML = allWorldbooks.map(wb => `
+            <div style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0;">
+                <input type="checkbox" 
+                       id="wb-${wb.id}" 
+                       value="${wb.id}" 
+                       ${selectedIds.includes(wb.id) ? 'checked' : ''}
+                       style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                <label for="wb-${wb.id}" style="flex: 1; cursor: pointer; font-size: 14px;">
+                    <strong>${wb.title}</strong> 
+                    <span style="color: #999; font-size: 12px;">(${wb.category})</span>
+                </label>
+            </div>
+        `).join('');
+    });
+}
+
+// 获取选中的世界书ID列表
+function getSelectedWorldbooks() {
+    const container = document.getElementById('worldbookSelector');
+    if (!container) {
+        console.log('worldbookSelector不存在');
+        return [];
+    }
+    
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+    if (!checkboxes || checkboxes.length === 0) {
+        console.log('没有选中任何世界书');
+        return [];
+    }
+    
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+ 
+    return ids;
+}
+
+// 获取关联世界书的内容
+async function getLinkedWorldbooksContent(linkedIds) {
+    if (!linkedIds || linkedIds.length === 0) {
+        return '无';
+    }
+    
+    return new Promise((resolve) => {
+        loadFromDB('worldbooks', (data) => {
+            const allWorldbooks = data || [];
+            const linkedBooks = allWorldbooks.filter(wb => linkedIds.includes(wb.id));
+            
+            if (linkedBooks.length === 0) {
+                resolve('无');
+                return;
+            }
+            
+            const content = linkedBooks.map(wb => 
+                `【${wb.title}】\n${wb.content}`
+            ).join('\n\n');
+            
+            resolve(content);
+        });
+    });
+}
 
         // 初始化
         initDB();
