@@ -1555,6 +1555,238 @@
     height: 100%;
     object-fit: contain;
 }
+/* 日记页面样式 */
+.diary-screen {
+    height: 100vh;
+    background: #f5f5f5;
+    display: none;
+    flex-direction: column;
+}
+
+/* 召唤卡片 */
+.summon-card {
+    margin: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    text-align: center;
+    color: white;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.summon-card:active {
+    transform: scale(0.98);
+}
+
+.summon-text {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* 星星特效容器 */
+.stars-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.star {
+    position: absolute;
+    font-size: 20px;
+    animation: starTwinkle 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes starTwinkle {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(180deg);
+    }
+}
+
+/* 写日记状态卡片 */
+.writing-diary-card {
+    margin: 20px;
+    padding: 30px 20px;
+    background: white;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.writing-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.writing-text {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.pen-animation {
+    font-size: 24px;
+    animation: penWrite 1.5s ease-in-out infinite;
+}
+
+@keyframes penWrite {
+    0%, 100% { transform: translateY(0) rotate(-10deg); }
+    50% { transform: translateY(-5px) rotate(10deg); }
+}
+
+/* 日记列表容器 */
+.diary-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0 20px;
+}
+
+/* 日记卡片 */
+.diary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 15px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.diary-card:active {
+    transform: scale(0.98);
+}
+
+.diary-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.diary-time {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.diary-preview {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.diary-tags {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.diary-tag {
+    background: #f0f0ff;
+    color: #667eea;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+/* 日记详情页 */
+.diary-detail-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+}
+
+.diary-detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.diary-detail-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.diary-meta {
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 20px;
+}
+
+.diary-section {
+    margin-bottom: 25px;
+}
+
+.diary-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.diary-section-content {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.8;
+}
+
+.diary-section-content li {
+    margin-bottom: 8px;
+}
+
+.diary-reflection {
+    font-size: 14px;
+    color: #666;
+    line-height: 2;
+    text-indent: 2em;
+    white-space: pre-wrap;
+}
+
+.strikethrough {
+    text-decoration: line-through;
+    text-decoration-color: #666;
+    text-decoration-thickness: 1.5px;
+    opacity: 0.6;
+}
+
+.checkbox-done {
+    color: #1dd1a1;
+}
+
+.checkbox-undone {
+    color: #ddd;
+}
 
 
       
@@ -1873,10 +2105,11 @@
     <div class="character-location" id="charLocation" onclick="openEditBasicInfo()">📍 未设置地址</div>
     
     <div class="character-stats">
-        <div class="stat-item">
-            <div class="stat-number" id="charFollowers">0</div>
-            <div class="stat-label">关注者</div>
-        </div>
+    <div class="stat-item" onclick="openDiaryList()" style="cursor: pointer;">
+    <div class="stat-number" id="charFollowers">0</div>
+    <div class="stat-label">日记</div>
+</div>
+
         <div class="stat-item">
             <div class="stat-number" id="charFollowing">0</div>
             <div class="stat-label">关注中</div>
@@ -1901,11 +2134,13 @@
                 <input type="date" id="charBirthday" class="form-input">
             </div>
             
-           <div class="form-group">
-    <label class="form-label">是否设置城市信息</label>
-  <input type="checkbox" id="cityInfoCheckbox" style="width: 20px; height: 20px; cursor: pointer;" onclick="handleCityInfoCheckbox()">
-
+    <div class="form-group">
+    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>是否设置城市信息</span>
+        <input type="checkbox" id="cityInfoCheckbox" style="width: 20px; height: 20px; cursor: pointer; margin: 0;" onclick="handleCityInfoCheckbox()">
+    </label>
 </div>
+
 
             
        <div class="form-group">
@@ -1922,10 +2157,91 @@
         <!-- 世界书列表将在这里动态生成 -->
     </div>
 </div>
+<div class="form-group">
+    <label class="form-label">上下文参考</label>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <input 
+            type="range" 
+            id="contextRoundsSlider" 
+            min="0" 
+            max="300" 
+            value="30" 
+            style="flex: 1; cursor: pointer;"
+        >
+        <input 
+            type="number" 
+            id="contextRoundsInput" 
+            min="0" 
+            max="300" 
+            value="30" 
+            style="width: 80px; padding: 8px; border: 2px solid #e1e5e9; border-radius: 8px; text-align: center; font-size: 16px;"
+        >
+        <span style="color: #666; font-size: 14px; white-space: nowrap;">轮</span>
+    </div>
+    <div style="font-size: 12px; color: #999; margin-top: 5px;">
+        1轮 = 你发1次 + AI回1次，当前可记忆最近 <span id="contextMessagesCount">60</span> 条消息
+    </div>
+</div>
+<div class="form-group">
+    <label class="form-label">导出聊天记录</label>
+    <button class="api-btn" onclick="exportChatHistory()">导出为TXT文件</button>
+    <div style="font-size: 12px; color: #999; margin-top: 5px;">
+        导出与该角色的所有文本聊天记录
+    </div>
+</div>
+<div class="form-group">
+    <label class="form-label">清除聊天记录</label>
+    <button class="api-btn" onclick="clearChatHistory()" style="background: #ff4757;">清除所有记录</button>
+    <div style="font-size: 12px; color: #ff4757; margin-top: 5px;">
+         此操作将永久删除与该角色的所有聊天记录，无法恢复
+    </div>
+</div>
+
 
       
             <button class="save-character-btn" onclick="saveCharacterInfo()">保存角色信息</button>
         </div>
+    </div>
+</div>
+<!-- 日记列表页面 -->
+<div class="diary-screen" id="diaryScreen">
+    <div class="chat-detail-header">
+        <button class="back-btn" onclick="backToCharacterInfo()">←</button>
+        <div class="chat-detail-title" id="diaryOwnerName">日记</div>
+        <button class="back-btn" style="opacity: 0; pointer-events: none;">⋮</button>
+    </div>
+    
+    <!-- 召唤卡片 -->
+    <div class="summon-card" id="summonCard" onclick="summonDiary()">
+        <div class="summon-text">💌 快来喊TA写日记吧~</div>
+        <div class="stars-container" id="starsContainer"></div>
+    </div>
+    
+    <!-- 写日记状态 -->
+    <div class="writing-diary-card" id="writingCard" style="display: none;">
+        <div class="writing-avatar" id="writingAvatar">👤</div>
+        <div class="writing-text">
+            <span id="writerName">张三</span>正在写日记...
+        </div>
+        <div class="pen-animation">✍️</div>
+    </div>
+    
+    <!-- 日记列表 -->
+    <div class="diary-list-container" id="diaryListContainer">
+        <!-- 日记卡片将在这里动态生成 -->
+    </div>
+</div>
+
+<!-- 日记详情页 -->
+<div class="diary-detail-screen" id="diaryDetailScreen">
+    <div class="chat-detail-header">
+        <button class="back-btn" onclick="backToDiaryList()">←</button>
+        <div class="chat-detail-title">日记详情</div>
+        <button class="back-btn" onclick="deleteDiary()" style="color: #ff4757;">删除</button>
+    </div>
+    
+    <div class="diary-detail-content" id="diaryDetailContent">
+        <!-- 日记详细内容将在这里渲染 -->
     </div>
 </div>
 
@@ -2150,36 +2466,39 @@
 </div>
 <!-- 城市信息设置弹窗 -->
 <div class="modal-overlay" id="cityInfoModal" onclick="closeCityInfoModal(event)">
-    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 350px;">
-        <div class="modal-title">城市信息设置</div>
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 350px; max-height: 85vh; display: flex; flex-direction: column; padding: 20px;">
         
-        <div class="form-group">
-            <label class="form-label">角色虚拟地址</label>
-            <input type="text" id="charVirtualAddress" class="form-input" placeholder="例如：A城">
+        <div class="modal-title" style="margin-bottom: 15px; flex-shrink: 0;">城市信息设置</div>
+        
+        <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-bottom: 15px;">
+            
+            <div class="form-group">
+                <label class="form-label">角色虚拟地址</label>
+                <input type="text" id="charVirtualAddress" class="form-input" placeholder="例如：A城">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">角色参考地址（使用英文）</label>
+                <input type="text" id="charRealAddress" class="form-input" placeholder="例如：Beijing">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">我的虚拟地址</label>
+                <input type="text" id="myVirtualAddress" class="form-input" placeholder="例如：B城">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">我的参考地址（使用英文）</label>
+                <input type="text" id="myRealAddress" class="form-input" placeholder="例如：Shanghai">
+            </div>
+            
+            <button class="api-btn" onclick="fetchWeatherData()">获取地址信息</button>
+            
+            <div id="weatherPreview" style="display: none; margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+                </div>
         </div>
-        
-        <div class="form-group">
-            <label class="form-label">角色参考地址（使用英文）</label>
-            <input type="text" id="charRealAddress" class="form-input" placeholder="例如：Beijing">
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">我的虚拟地址</label>
-            <input type="text" id="myVirtualAddress" class="form-input" placeholder="例如：B城">
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">我的参考地址（使用英文）</label>
-            <input type="text" id="myRealAddress" class="form-input" placeholder="例如：Shanghai">
-        </div>
-        
-        <button class="api-btn" onclick="fetchWeatherData()">获取地址信息</button>
-        
-        <div id="weatherPreview" style="display: none; margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; font-size: 13px; line-height: 1.8;">
-            <!-- 天气信息将在这里显示 -->
-        </div>
-        
-        <div class="modal-buttons" style="margin-top: 20px;">
+
+        <div class="modal-buttons" style="margin-top: 0; flex-shrink: 0;">
             <button class="btn btn-cancel" onclick="closeCityInfoModal()">取消</button>
             <button class="btn btn-save" onclick="saveCityInfo()">保存</button>
         </div>
@@ -2191,9 +2510,12 @@
         // IndexedDB 操作
         let db;
         let currentWallpaper = null;
-        
+        // 日记功能相关变量
+let diaries = [];
+let currentViewingDiaryId = null;
+
         function initDB() {
-           const request = indexedDB.open('phoneData', 7);
+           const request = indexedDB.open('phoneData', 8);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -2238,7 +2560,10 @@ if (!db.objectStoreNames.contains('messages')) {
     db.createObjectStore('characterInfo', { keyPath: 'id' });
 }if (!db.objectStoreNames.contains('appIcons')) {
     db.createObjectStore('appIcons', { keyPath: 'id' });
+}if (!db.objectStoreNames.contains('diaries')) {
+    db.createObjectStore('diaries', { keyPath: 'id', autoIncrement: true });
 }
+
 
 
             };
@@ -2964,6 +3289,34 @@ window.addEventListener('DOMContentLoaded', function() {
             document.getElementById('appTextColorPreview').style.background = e.target.value;
         });
     }
+      // 绑定上下文参考的滑动条和输入框事件
+    setTimeout(() => {
+        const slider = document.getElementById('contextRoundsSlider');
+        const input = document.getElementById('contextRoundsInput');
+        
+        if (slider) {
+            slider.addEventListener('input', function() {
+                syncContextRounds('slider');
+            });
+        }
+        
+        if (input) {
+            input.addEventListener('input', function() {
+                syncContextRounds('input');
+            });
+            
+            // 防止输入非法值
+            input.addEventListener('blur', function() {
+                let value = parseInt(this.value) || 0;
+                if (value < 0) value = 0;
+                if (value > 300) value = 300;
+                this.value = value;
+                slider.value = value;
+                syncContextRounds('slider');
+            });
+        }
+    }, 600);
+
 });
 // 聊天功能相关变量
 let chats = [];
@@ -3922,24 +4275,23 @@ async function receiveAIReply() {
             });
         });
         
-        // 构建系统提示词
+       // 构建系统提示词
         const today = new Date();
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
         
-      const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+        // ▼▼▼ ✨ 补上这一行，定义 timeStr ✨ ▼▼▼
+        const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+        // ▲▲▲ 补全结束 ▲▲▲
 
-let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
+        const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
 
+        let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
 
 【角色人设】
 ${characterInfo.personality || '一个友好、真诚的角色。'}
 
 【对方人设】
 ${characterInfo.myPersonality || '无'}
-
-【关联世界书信息】
-${await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks)}
-
 
 【关联世界书信息】
 ${worldbooksContent}
@@ -3978,9 +4330,21 @@ ${characterInfo.cityInfoEnabled ? `
 - 状态格式：主要状态（2-8字）-详细描述（10字左右）
 - 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼、瘫在床上-好想抱着老婆一起睡
 
-在回复的最开头表明状态（必须）：
-- 更新状态：[状态]新状态文本|||[消息]你的聊天内容
-- 保持状态：[状态]保持|||[消息]你的聊天内容
+【状态更新格式-严格遵守】
+你必须在回复的最开头按以下格式表明状态：
+
+更新状态时：
+[状态]在线-正在煮面|||[消息]你的第一条消息|||你的第二条消息|||...
+
+保持状态时：
+[状态]保持|||[消息]你的第一条消息|||你的第二条消息|||...
+
+注意事项：
+1. [状态] 和 [消息] 必须在最前面，不能出现在其他位置
+2. 状态文本不能包含 ||| 符号
+3. 状态文本必须简短（20字以内）
+4. 如果不确定是否要更新状态，就写"保持"
+
 
 
 【重要回复要求】
@@ -3993,11 +4357,16 @@ ${characterInfo.cityInfoEnabled ? `
 
 请开始对话。`;
         
-        // 获取最近30条消息
-        const recentMessages = allMessages.slice(-30).map(msg => ({
-            role: msg.senderId === 'me' ? 'user' : 'assistant',
-            content: msg.content
-        }));
+       // 获取上下文参考设置（默认30轮）
+const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
+const contextCount = contextRounds * 2; // 1轮=用户1条+AI1条=2条消息
+
+// 获取指定轮数的消息
+const recentMessages = allMessages.slice(-contextCount).map(msg => ({
+    role: msg.senderId === 'me' ? 'user' : 'assistant',
+    content: msg.content
+}));
+
         
         // 构建完整消息列表
         const messages = [
@@ -4031,21 +4400,28 @@ ${characterInfo.cityInfoEnabled ? `
         const data = await response.json();
      let aiReply = data.choices[0].message.content.trim();
         
-        // 解析状态和消息
-        let newStatus = null;
-        let messageContent = aiReply;
-        
-        // 检查是否包含状态标记
-        const statusMatch = aiReply.match(/\[状态\](.*?)\|\|\|\[消息\](.*)/s);
-        if (statusMatch) {
-            const statusText = statusMatch[1].trim();
-            messageContent = statusMatch[2].trim();
-            
-            // 判断是否需要更新状态
-            if (statusText !== '保持' && statusText.length > 0) {
-                newStatus = statusText;
-            }
-        }
+      // 解析状态和消息
+let newStatus = null;
+let messageContent = aiReply;
+
+// 检查是否包含状态标记（更严格的匹配）
+const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
+if (statusMatch) {
+    const statusText = statusMatch[1].trim();
+    messageContent = statusMatch[2].trim();
+    
+    // 判断是否需要更新状态（排除"保持"关键词）
+    if (statusText !== '保持' && statusText.length > 0 && statusText.length < 30) {
+        newStatus = statusText;
+    }
+} else {
+    // 如果格式不对，尝试清理可能的错误标记
+    messageContent = aiReply
+        .replace(/^\[状态\].*?\|\|\|/g, '')  // 移除开头的状态标记
+        .replace(/\[消息\]/g, '')           // 移除消息标记
+        .trim();
+}
+
         
         // 如果检测到新状态，保存到数据库
         if (newStatus) {
@@ -4494,14 +4870,23 @@ const addressEl = document.getElementById('charAddress');
 const personalityEl = document.getElementById('charPersonality');
 const myPersonalityEl = document.getElementById('myPersonality');
 
-if (remarkEl) remarkEl.value = charData.remark || '';
+if (remarkEl) remarkEl.value = charData.remark || '';      
 if (birthdayEl) birthdayEl.value = charData.birthday || '';
 if (addressEl) addressEl.value = charData.address || '';
 if (personalityEl) personalityEl.value = charData.personality || '';
 if (myPersonalityEl) myPersonalityEl.value = charData.myPersonality || '';
 
        
-        
+  // 加载上下文参考设置
+const contextRounds = charData.contextRounds !== undefined ? charData.contextRounds : 30;
+const sliderEl = document.getElementById('contextRoundsSlider');
+const inputEl = document.getElementById('contextRoundsInput');
+const countEl = document.getElementById('contextMessagesCount');
+
+if (sliderEl) sliderEl.value = contextRounds;
+if (inputEl) inputEl.value = contextRounds;
+if (countEl) countEl.textContent = contextRounds * 2;
+      
      // 设置角色人设
 document.getElementById('charPersonality').value = charData.personality || '';
 document.getElementById('myPersonality').value = charData.myPersonality || '';
@@ -4509,10 +4894,13 @@ document.getElementById('myPersonality').value = charData.myPersonality || '';
 renderWorldbookSelector(charData.linkedWorldbooks || []);
       
 // 加载城市信息复选框状态
-const cityCheckbox = document.getElementById('cityInfoCheckbox');
-if (cityCheckbox) {
-    cityCheckbox.checked = charData.cityInfoEnabled || false;
-}
+
+        const cityCheckbox = document.getElementById('cityInfoCheckbox');
+        if (cityCheckbox) {
+            // 强制转换为布尔值，防止 undefined 导致错误
+            cityCheckbox.checked = charData.cityInfoEnabled === true;
+        }
+     
 // 加载关联世界书选择器（延迟执行确保DOM已渲染）
 setTimeout(() => {
     renderWorldbookSelector(charData.linkedWorldbooks || []);
@@ -4531,53 +4919,89 @@ if (followingEl) followingEl.textContent = charData.following || 0;
 if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
 
     });
+  // 更新日记数量
+updateDiaryCount();
 }
+      // 同步上下文参考的滑动条和输入框
+function syncContextRounds(source) {
+    const slider = document.getElementById('contextRoundsSlider');
+    const input = document.getElementById('contextRoundsInput');
+    const countDisplay = document.getElementById('contextMessagesCount');
+    
+    if (!slider || !input || !countDisplay) return;
+    
+    if (source === 'slider') {
+        input.value = slider.value;
+    } else if (source === 'input') {
+        let value = parseInt(input.value) || 0;
+        // 限制范围
+        if (value < 0) value = 0;
+        if (value > 300) value = 300;
+        input.value = value;
+        slider.value = value;
+    }
+    
+    // 更新消息数量显示
+    const rounds = parseInt(slider.value);
+    countDisplay.textContent = rounds * 2;
+}
+
 function saveCharacterInfo() {
     if (!currentChatId) return;
     
-    // 安全地获取所有输入值
+    // 1. 获取页面上的输入值
     const getInputValue = (id) => {
         const el = document.getElementById(id);
         return el ? el.value.trim() : '';
     };
     
-    const charData = {
-        remark: getInputValue('charRemark'),
-        birthday: getInputValue('charBirthday'),
-        address: getInputValue('charAddress'),
-        personality: getInputValue('charPersonality'),
-        myPersonality: getInputValue('myPersonality'),
-        linkedWorldbooks: getSelectedWorldbooks() || [],
-        followers: characterInfoData.followers || 0,
-        following: characterInfoData.following || 0,
-        itinerary: characterInfoData.itinerary || 0
-    };
-    
-    // 保存到数据库
+    // ▼▼▼ 核心修复：先从数据库“取经”，再保存，防止覆盖 ▼▼▼
     loadFromDB('characterInfo', (data) => {
         const allCharData = data || {};
-        allCharData[currentChatId] = charData;
+        
+        // 2. 获取数据库里该角色【最新】的数据 (这里面包含你刚才保存的城市、天气信息)
+        const latestDbData = allCharData[currentChatId] || {};
+        
+        // 3. 智能合并：以数据库最新数据为底版，覆盖当前表单修改的数据
+        const finalCharData = {
+            ...latestDbData, // ✨ 关键！继承数据库里的所有隐形数据(城市、天气、开关等)
+            
+            // 更新本次在表单里修改的字段
+            remark: getInputValue('charRemark'),
+            birthday: getInputValue('charBirthday'),
+            address: getInputValue('charAddress'),
+            personality: getInputValue('charPersonality'),
+            myPersonality: getInputValue('myPersonality'),
+            linkedWorldbooks: getSelectedWorldbooks() || [],
+           contextRounds: parseInt(document.getElementById('contextRoundsInput').value) || 30,
+        };
+        
+        // 4. 将合并后的完美数据存回数据库
+        allCharData[currentChatId] = finalCharData;
         saveToDB('characterInfo', allCharData);
+        
+        // 5. 更新全局变量，确保内存也是最新的
+        characterInfoData = finalCharData;
         
         alert('角色信息已保存');
         
-        // 更新角色信息页显示
+        // 6. 刷新界面显示
         loadCharacterInfo(currentChatId);
         
-        // 同步更新其他页面显示
+        // 同步更新其他页面(如列表页)的显示
         const chat = chats.find(c => c.id === currentChatId);
         if (chat) {
+            // 如果在列表页
             if (document.getElementById('chatScreen').style.display === 'flex') {
                 updateChatDisplayName(currentChatId);
             }
+            // 如果在详情页
             if (document.getElementById('chatDetailScreen').style.display === 'flex') {
                 updateDetailPageTitle(currentChatId, chat.name);
             }
         }
-        
-        // 重新加载角色信息
-        loadCharacterInfo(currentChatId);
     });
+    // ▲▲▲ 修复结束 ▲▲▲
 }
 
 // 打开基本信息编辑弹窗
@@ -4849,181 +5273,28 @@ function saveAppIcon() {
 
 // 图标文件预览
 document.addEventListener('DOMContentLoaded', function() {
-    // 延迟绑定，确保角色信息页面完全加载
     setTimeout(() => {
         const checkbox = document.getElementById('cityInfoCheckbox');
         if (checkbox) {
-            checkbox.addEventListener('change', function(e) {
-                e.preventDefault();
-                
+            // 先移除旧的监听器（如果有的话，防止重复），这里直接覆盖 onclick
+            checkbox.onclick = function(e) {
+                // 不阻止默认行为，让勾选框先变色，体验更好
                 if (this.checked) {
-                    // 勾选：打开设置弹窗
-                    openCityInfoModal();
+                    openCityInfoModal(); // 开启 -> 弹窗
                 } else {
-                    // 取消勾选：禁用功能
                     if (confirm('确定取消城市信息功能吗？')) {
-                        disableCityInfo();
+                        disableCityInfo(); // 关闭 -> 清除数据
                     } else {
-                        this.checked = true;
+                        this.checked = true; // 后悔了 -> 恢复勾选
                     }
                 }
-            });
+            };
         }
     }, 500);
 });
 
 
 
-// 打开城市信息设置弹窗
-function openCityInfoModal() {
-    if (!currentChatId) {
-        alert('请先打开聊天');
-        const checkbox = document.getElementById('cityInfoCheckbox');
-        if (checkbox) checkbox.checked = false;
-        return;
-    }
-    
-    // 显示弹窗
-    document.getElementById('cityInfoModal').style.display = 'flex';
-    
-    // 延迟加载数据，确保DOM已渲染
-    setTimeout(() => {
-        loadFromDB('characterInfo', (data) => {
-            const charData = data && data[currentChatId] ? data[currentChatId] : {};
-            
-            const charVirtualInput = document.getElementById('charVirtualAddress');
-            const charRealInput = document.getElementById('charRealAddress');
-            const myVirtualInput = document.getElementById('myVirtualAddress');
-            const myRealInput = document.getElementById('myRealAddress');
-            
-            if (charVirtualInput) charVirtualInput.value = charData.charVirtualAddress || '';
-            if (charRealInput) charRealInput.value = charData.charRealAddress || '';
-            if (myVirtualInput) myVirtualInput.value = charData.myVirtualAddress || '';
-            if (myRealInput) myRealInput.value = charData.myRealAddress || '';
-            
-            // 如果有天气数据，显示预览
-            if (charData.charWeather && charData.myWeather) {
-                displayWeatherPreview(charData);
-            }
-        });
-    }, 100);
-}
-
-
-// 关闭弹窗
-function closeCityInfoModal(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('cityInfoModal').style.display = 'none';
-    
-    // 检查是否已保存，未保存则取消勾选
-    loadFromDB('characterInfo', (data) => {
-        const charData = data && data[currentChatId] ? data[currentChatId] : {};
-        const checkbox = document.getElementById('cityInfoCheckbox');
-        if (checkbox && !charData.cityInfoEnabled) {
-            checkbox.checked = false;
-        }
-    });
-}
-
-// 获取天气数据
-async function fetchWeatherData() {
-    const charCity = document.getElementById('charRealAddress').value.trim();
-    const myCity = document.getElementById('myRealAddress').value.trim();
-    
-    if (!charCity || !myCity) {
-        alert('请先填写参考地址');
-        return;
-    }
-    
-    try {
-        // 显示加载状态
-        const btn = event.target;
-        btn.disabled = true;
-        btn.textContent = '正在获取...';
-        
-        // 并发获取两个城市的天气
-        const [charWeather, myWeather] = await Promise.all([
-            searchCityWeather(charCity),
-            searchCityWeather(myCity)
-        ]);
-        
-        weatherData = {
-            char: charWeather,
-            my: myWeather,
-            updateTime: getCurrentTime()
-        };
-        
-        // 显示预览
-        displayWeatherPreview({
-            charVirtualAddress: document.getElementById('charVirtualAddress').value || charCity,
-            charRealAddress: charCity,
-            charWeather: charWeather,
-            myVirtualAddress: document.getElementById('myVirtualAddress').value || myCity,
-            myRealAddress: myCity,
-            myWeather: myWeather,
-            weatherUpdateTime: weatherData.updateTime
-        });
-        
-        btn.disabled = false;
-        btn.textContent = '获取地址信息';
-        
-    } catch (error) {
-        alert('获取天气失败：' + error.message);
-        event.target.disabled = false;
-        event.target.textContent = '获取地址信息';
-    }
-}
-
-// 搜索城市天气（使用web_search）
-async function searchCityWeather(cityName) {
-    // 这里需要调用你现有的web_search功能
-    // 由于代码中没有直接暴露web_search，我们需要通过fetch调用
-    
-    // 简化版本：返回模拟数据
-    // 实际使用时需要调用真实的web_search API
-    
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({
-                today: {
-                    condition: "晴",
-                    temp: "15-25°C"
-                },
-                tomorrow: {
-                    condition: "小雨",
-                    temp: "12-20°C"
-                }
-            });
-        }, 1000);
-    });
-    
-    // TODO: 实际实现需要调用web_search
-    // const response = await fetch('/api/search', {
-    //     method: 'POST',
-    //     body: JSON.stringify({ query: `${cityName}天气 今天明天` })
-    // });
-}
-
-// 显示天气预览
-function displayWeatherPreview(data) {
-    const preview = document.getElementById('weatherPreview');
-    preview.innerHTML = `
-        <div style="margin-bottom: 12px;">
-            <strong>角色地区：${data.charVirtualAddress}（${data.charRealAddress}）</strong><br>
-            今天：${data.charWeather.today.condition} ${data.charWeather.today.temp}<br>
-            明天：${data.charWeather.tomorrow.condition} ${data.charWeather.tomorrow.temp}
-        </div>
-        <div style="margin-bottom: 12px;">
-            <strong>我的地区：${data.myVirtualAddress}（${data.myRealAddress}）</strong><br>
-            今天：${data.myWeather.today.condition} ${data.myWeather.today.temp}<br>
-            明天：${data.myWeather.tomorrow.condition} ${data.myWeather.tomorrow.temp}
-        </div>
-        <div style="color: #999; font-size: 12px;">
-            最后更新：${data.weatherUpdateTime}
-        </div>
-    `;
-    preview.style.display = 'block';
-}
 
 // 城市信息相关变量
 let weatherData = {
@@ -5058,14 +5329,21 @@ function openCityInfoModal() {
         return;
     }
     
-    // 显示弹窗
-    document.getElementById('cityInfoModal').style.display = 'flex';
-    
-    // 加载数据
-    loadFromDB('characterInfo', (data) => {
+    loadFromDB('characterInfo', function(data) {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
         
-        // 安全地填充数据
+        if (charData.charWeather && charData.myWeather) {
+            weatherData = {
+                char: charData.charWeather,
+                my: charData.myWeather,
+                updateTime: charData.weatherUpdateTime || getCurrentTime()
+            };
+        } else {
+            weatherData = { char: null, my: null, updateTime: null };
+        }
+        
+        document.getElementById('cityInfoModal').style.display = 'flex';
+        
         const fields = {
             'charVirtualAddress': charData.charVirtualAddress || '',
             'charRealAddress': charData.charRealAddress || '',
@@ -5078,16 +5356,18 @@ function openCityInfoModal() {
             if (el) el.value = fields[id];
         }
         
-        // 如果有天气数据，显示预览
         if (charData.charWeather && charData.myWeather) {
             displayWeatherPreview(charData);
         } else {
-            // 隐藏预览区
             const preview = document.getElementById('weatherPreview');
             if (preview) preview.style.display = 'none';
         }
     });
 }
+
+
+
+
 
 // 关闭弹窗
 function closeCityInfoModal(event) {
@@ -5267,11 +5547,6 @@ function displayWeatherPreview(data) {
 
 // 保存城市信息
 function saveCityInfo() {
-    if (!weatherData.char || !weatherData.my) {
-        alert('请先获取天气信息');
-        return;
-    }
-    
     const charVirtual = document.getElementById('charVirtualAddress').value.trim();
     const charReal = document.getElementById('charRealAddress').value.trim();
     const myVirtual = document.getElementById('myVirtualAddress').value.trim();
@@ -5282,33 +5557,56 @@ function saveCityInfo() {
         return;
     }
     
-    loadFromDB('characterInfo', (data) => {
-        const allCharData = data || {};
-        const charData = allCharData[currentChatId] || {};
-        
-        charData.cityInfoEnabled = true;
-        charData.lastWeatherDate = new Date().toISOString().split('T')[0];
-        charData.weatherUpdateTime = weatherData.updateTime;
-        
-        charData.charVirtualAddress = charVirtual || charReal;
-        charData.charRealAddress = charReal;
-        charData.charWeather = weatherData.char;
-        
-        charData.myVirtualAddress = myVirtual || myReal;
-        charData.myRealAddress = myReal;
-        charData.myWeather = weatherData.my;
-        
-        allCharData[currentChatId] = charData;
-        saveToDB('characterInfo', allCharData);
-        
-        alert('城市信息已保存');
-        closeCityInfoModal();
-        
-        // 更新复选框
-        const checkbox = document.getElementById('cityInfoCheckbox');
-        if (checkbox) checkbox.checked = true;
-    });
+    function performSave() {
+        loadFromDB('characterInfo', function(data) {
+            const allCharData = data || {};
+            const charData = allCharData[currentChatId] || {};
+            
+            charData.cityInfoEnabled = true;
+            charData.lastWeatherDate = new Date().toISOString().split('T')[0];
+            charData.weatherUpdateTime = weatherData.updateTime;
+            
+            charData.charVirtualAddress = charVirtual || charReal;
+            charData.charRealAddress = charReal;
+            charData.charWeather = weatherData.char;
+            
+            charData.myVirtualAddress = myVirtual || myReal;
+            charData.myRealAddress = myReal;
+            charData.myWeather = weatherData.my;
+            
+            allCharData[currentChatId] = charData;
+            saveToDB('characterInfo', allCharData);
+            
+            alert('城市信息已保存');
+            closeCityInfoModal();
+            
+            const checkbox = document.getElementById('cityInfoCheckbox');
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+    
+    if (!weatherData.char || !weatherData.my) {
+        loadFromDB('characterInfo', function(data) {
+            const charData = data && data[currentChatId] ? data[currentChatId] : {};
+            
+            if (charData.charWeather && charData.myWeather) {
+                weatherData = {
+                    char: charData.charWeather,
+                    my: charData.myWeather,
+                    updateTime: charData.weatherUpdateTime || getCurrentTime()
+                };
+                performSave();
+            } else {
+                alert('请先获取天气信息');
+            }
+        });
+        return;
+    }
+    
+    performSave();
 }
+
+
 
 // 禁用城市信息
 function disableCityInfo() {
@@ -5477,6 +5775,585 @@ async function getLinkedWorldbooksContent(linkedIds) {
             
             resolve(content);
         });
+    });
+}
+// 导出聊天记录
+function exportChatHistory() {
+    if (!currentChatId) {
+        alert('请先打开角色信息页面');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    // 获取当前角色的所有消息
+    loadFromDB('messages', (data) => {
+        const allData = data && data.list ? data.list : [];
+        const chatMessages = allData.filter(m => m.chatId === currentChatId);
+        
+        if (chatMessages.length === 0) {
+            alert('暂无聊天记录');
+            return;
+        }
+        
+        // 按时间正序排序
+        chatMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+        
+        // 构建导出内容
+        const now = new Date();
+        const exportTime = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        let content = `=== 与${chat.name}的聊天记录 ===\n`;
+        content += `导出时间：${exportTime}\n\n`;
+        
+        // 遍历消息
+        chatMessages.forEach(msg => {
+            const timeStr = msg.time || '';
+            const sender = msg.senderId === 'me' ? '我' : chat.name;
+            
+            // 如果是撤回消息
+            if (msg.isRevoked) {
+                content += `[${timeStr}] ${sender}: ${msg.content} [已撤回]\n`;
+            } else {
+                content += `[${timeStr}] ${sender}: ${msg.content}\n`;
+            }
+        });
+        
+        // 创建并下载文件
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `聊天记录_${chat.name}_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.txt`;
+        a.click();
+        
+        // 释放URL对象
+        URL.revokeObjectURL(url);
+        
+        alert('聊天记录已导出');
+    });
+}
+// 清除聊天记录
+function clearChatHistory() {
+    if (!currentChatId) {
+        alert('请先打开角色信息页面');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    // 二次确认
+    if (!confirm(`确定要清除与"${chat.name}"的所有聊天记录吗？\n此操作无法撤销！`)) {
+        return;
+    }
+    
+    // 再次确认（双重保险）
+    if (!confirm('最后确认：真的要删除吗？删除后无法恢复！')) {
+        return;
+    }
+    
+    // 从数据库删除当前角色的所有消息
+    loadFromDB('messages', (data) => {
+        const allData = data && data.list ? data.list : [];
+        
+        // 过滤掉当前角色的消息
+        const remainingMessages = allData.filter(m => m.chatId !== currentChatId);
+        
+        // 保存到数据库
+        const transaction = db.transaction(['messages'], 'readwrite');
+        const objectStore = transaction.objectStore('messages');
+        objectStore.put({ id: 1, list: remainingMessages });
+        
+        // 清空内存中的消息
+        allMessages = [];
+        visibleMessagesCount = 30;
+        
+        // 更新聊天列表的最后一条消息
+        chat.lastMessage = '';
+        chat.lastMessageTime = getCurrentTime();
+        chat.time = '刚刚';
+        saveToDB('chats', { list: chats });
+        
+        alert('聊天记录已清除');
+        
+        // 如果当前在聊天详情页，刷新显示
+        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+            renderMessages();
+        }
+    });
+}
+// ============ 日记功能 ============
+
+// 打开日记列表
+function openDiaryList() {
+    if (!currentChatId) return;
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    // 隐藏角色信息页，显示日记页
+    document.getElementById('characterInfoScreen').style.display = 'none';
+    document.getElementById('diaryScreen').style.display = 'flex';
+    
+    // 设置标题
+    document.getElementById('diaryOwnerName').textContent = `${chat.name}的日记`;
+    
+    // 设置写日记的头像和名字
+    const writingAvatar = document.getElementById('writingAvatar');
+    if (chat.avatarImage) {
+        writingAvatar.innerHTML = `<img src="${chat.avatarImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    } else {
+        writingAvatar.textContent = chat.avatar;
+    }
+    document.getElementById('writerName').textContent = chat.name;
+    
+    // 加载日记列表
+    loadDiaries();
+}
+
+// 返回角色信息页
+function backToCharacterInfo() {
+    document.getElementById('diaryScreen').style.display = 'none';
+    document.getElementById('characterInfoScreen').style.display = 'flex';
+}
+
+// 加载日记列表
+function loadDiaries() {
+    loadFromDB('diaries', (data) => {
+        const allDiaries = data && data.list ? data.list : [];
+        // 筛选当前角色的日记
+        diaries = allDiaries.filter(d => d.chatId === currentChatId);
+        // 按时间倒序排列（最新的在前）
+        diaries.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+        renderDiaryList();
+    });
+}
+
+// 渲染日记列表
+function renderDiaryList() {
+    const container = document.getElementById('diaryListContainer');
+    
+    if (diaries.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #999; margin-top: 50px;">还没有日记哦~</div>';
+        return;
+    }
+    
+    container.innerHTML = diaries.map(diary => `
+        <div class="diary-card" onclick="openDiaryDetail(${diary.id})">
+            <div class="diary-title">${diary.title}</div>
+            <div class="diary-time">${formatDiaryTime(diary.createTime)}</div>
+            <div class="diary-preview">${getPreviewText(diary)}</div>
+            <div class="diary-tags">
+                ${diary.tags.map(tag => `<span class="diary-tag">#${tag}</span>`).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 格式化日记时间
+function formatDiaryTime(timeStr) {
+    const time = new Date(timeStr);
+    return `${time.getFullYear()}年${time.getMonth() + 1}月${time.getDate()}日 ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+}
+
+// 获取预览文本
+function getPreviewText(diary) {
+    let preview = '';
+    if (diary.sections && diary.sections.length > 0) {
+        const firstSection = diary.sections[0];
+        if (firstSection.items && firstSection.items.length > 0) {
+            preview = firstSection.items[0].text || '';
+        } else if (firstSection.content) {
+            preview = firstSection.content;
+        }
+    }
+    return preview.substring(0, 100) + (preview.length > 100 ? '...' : '');
+}
+
+// 召唤日记（点击召唤卡片）
+function summonDiary() {
+    // 触发星星特效
+    triggerStarsEffect();
+    
+    // 隐藏召唤卡片，显示写日记状态
+    document.getElementById('summonCard').style.display = 'none';
+    document.getElementById('writingCard').style.display = 'block';
+    
+    // 调用AI生成日记
+    setTimeout(() => {
+        generateDiary();
+    }, 300);
+}
+
+// 星星特效
+function triggerStarsEffect() {
+    const container = document.getElementById('starsContainer');
+    const emojis = ['✨', '⭐', '🌟', '💫', '⚡'];
+    
+    // 生成5个星星
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            
+            // 随机方向
+            const angle = Math.random() * 90 - 45;
+            const distance = 50 + Math.random() * 30;
+            const tx = Math.cos(angle * Math.PI / 180) * distance;
+            const ty = Math.sin(angle * Math.PI / 180) * distance;
+            
+            star.style.setProperty('--tx', tx + 'px');
+            star.style.setProperty('--ty', ty + 'px');
+            
+            container.appendChild(star);
+            
+            // 动画结束后移除
+            setTimeout(() => star.remove(), 600);
+        }, i * 100);
+    }
+}
+
+// AI生成日记
+async function generateDiary() {
+    if (!currentChatId) return;
+    
+    // 检查API配置
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置');
+        document.getElementById('writingCard').style.display = 'none';
+        document.getElementById('summonCard').style.display = 'block';
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    
+    // 构建天气信息
+    let weatherInfo = '';
+    if (characterInfo.cityInfoEnabled && characterInfo.charWeather) {
+        weatherInfo = `当前天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}`;
+    }
+    
+    const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇真实的个人日记。
+
+【必须包含】
+- 日记标题（简短有趣，10字以内）
+- 今日天气（${weatherInfo || '根据心情虚构天气'}）
+- 今日心情（用emoji + 简短描述）
+
+【动态板块】从以下选择4个（正好4个）：
+1. 今日开心的事情
+2. 烦恼清单
+3. 恋爱日记
+4. 备忘录
+5. 记仇本
+6. TodoList
+7. 精神状态
+8. 反思复盘
+
+【今日感悟】（固定在最后，必须写）
+- 不低于300字
+- 需要分成3-4段，每段少于120字
+- 每段开头空两格（首行缩进）
+- 段落之间用空行分隔
+- 像真人一样深入思考和总结
+
+【写作风格】
+- 自然真实，可以有错别字、语气词
+- 可以划掉内容重写：用 ~~删除内容~~ 新内容
+- TodoList用 [x] 已完成，[ ] 未完成
+- 加入emoji表达情绪
+- 符合你的人设：${characterInfo.personality || '一个真实的人'}
+
+【严格格式】
+标题: xxx
+今日天气: xxx
+今日心情: xxx
+
+[板块1名称]
+1. xxx
+2. ~~xxx~~ xxx
+3. xxx
+
+[板块2名称]
+• [x] xxx
+• [ ] xxx
+
+[板块3名称]
+xxx...
+
+[板块4名称]
+xxx...
+
+[今日感悟]
+  第一段内容...（不低于80字）
+
+  第二段内容...（不低于80字）
+
+  第三段内容...（不低于80字）
+
+标签: #标签1 #标签2 #标签3
+
+请开始写日记。`;
+
+    try {
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: diaryPrompt }],
+                temperature: 0.9
+            })
+        });
+        
+        if (!response.ok) throw new Error('生成失败');
+        
+        const data = await response.json();
+        const diaryContent = data.choices[0].message.content.trim();
+        
+        // 解析并保存日记
+        parseDiaryContent(diaryContent);
+        
+        // 隐藏写日记状态，显示召唤卡片
+        document.getElementById('writingCard').style.display = 'none';
+        document.getElementById('summonCard').style.display = 'block';
+        
+        // 刷新日记列表
+        loadDiaries();
+        
+    } catch (error) {
+        alert('生成日记失败：' + error.message);
+        document.getElementById('writingCard').style.display = 'none';
+        document.getElementById('summonCard').style.display = 'block';
+    }
+}
+
+// 解析日记内容
+function parseDiaryContent(content) {
+    const lines = content.split('\n');
+    const diary = {
+        chatId: currentChatId,
+        createTime: getCurrentTime(),
+        title: '',
+        weather: '',
+        mood: '',
+        sections: [],
+        reflection: '',
+        tags: []
+    };
+    
+    let currentSection = null;
+    let reflectionLines = [];
+    let inReflection = false;
+    
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        
+        // 解析标题
+        if (line.startsWith('标题:') || line.startsWith('标题：')) {
+            diary.title = line.replace(/标题[:：]\s*/, '');
+        }
+        // 解析天气
+        else if (line.startsWith('今日天气:') || line.startsWith('今日天气：')) {
+            diary.weather = line.replace(/今日天气[:：]\s*/, '');
+        }
+        // 解析心情
+        else if (line.startsWith('今日心情:') || line.startsWith('今日心情：')) {
+            diary.mood = line.replace(/今日心情[:：]\s*/, '');
+        }
+        // 解析标签
+        else if (line.startsWith('标签:') || line.startsWith('标签：')) {
+            const tagsStr = line.replace(/标签[:：]\s*/, '');
+            diary.tags = tagsStr.split(/\s+/).map(tag => tag.replace('#', '')).filter(t => t);
+        }
+        // 解析今日感悟
+        else if (line.startsWith('[今日感悟]')) {
+            inReflection = true;
+            if (currentSection) {
+                diary.sections.push(currentSection);
+                currentSection = null;
+            }
+        }
+        // 如果在今日感悟中
+        else if (inReflection) {
+            reflectionLines.push(line);
+        }
+        // 解析板块标题
+        else if (line.startsWith('[') && line.endsWith(']')) {
+            if (currentSection) {
+                diary.sections.push(currentSection);
+            }
+            currentSection = {
+                title: line.replace(/[\[\]]/g, ''),
+                items: []
+            };
+        }
+        // 解析板块内容
+        else if (currentSection) {
+            currentSection.items.push({ text: line });
+        }
+    }
+    
+    // 保存最后一个板块
+    if (currentSection) {
+        diary.sections.push(currentSection);
+    }
+    
+    // 处理今日感悟
+    diary.reflection = reflectionLines.join('\n');
+    
+    // 保存到数据库
+    saveDiaryToDB(diary);
+}
+
+// 保存日记到数据库
+function saveDiaryToDB(diary) {
+    loadFromDB('diaries', (data) => {
+        const allDiaries = data && data.list ? data.list : [];
+        
+        // 生成ID
+        const newId = allDiaries.length > 0 ? Math.max(...allDiaries.map(d => d.id || 0)) + 1 : 1;
+        diary.id = newId;
+        
+        allDiaries.push(diary);
+        
+        const transaction = db.transaction(['diaries'], 'readwrite');
+        const objectStore = transaction.objectStore('diaries');
+        objectStore.put({ id: 1, list: allDiaries });
+        
+        // 更新日记数量显示
+        updateDiaryCount();
+    });
+}
+
+// 打开日记详情
+function openDiaryDetail(diaryId) {
+    currentViewingDiaryId = diaryId;
+    const diary = diaries.find(d => d.id === diaryId);
+    if (!diary) return;
+    
+    // 隐藏列表，显示详情
+    document.getElementById('diaryScreen').style.display = 'none';
+    document.getElementById('diaryDetailScreen').style.display = 'flex';
+    
+    // 渲染详情
+    renderDiaryDetail(diary);
+}
+
+// 渲染日记详情
+function renderDiaryDetail(diary) {
+    const container = document.getElementById('diaryDetailContent');
+    
+    let html = `
+        <div class="diary-detail-title">${diary.title}</div>
+        <div class="diary-meta">
+            ${formatDiaryTime(diary.createTime)}<br>
+            ${diary.weather} | ${diary.mood}
+        </div>
+    `;
+    
+    // 渲染动态板块
+    diary.sections.forEach(section => {
+        html += `
+            <div class="diary-section">
+                <div class="diary-section-title">${section.title}</div>
+                <div class="diary-section-content">
+                    ${section.items.map(item => {
+                        let text = item.text;
+                        // 处理删除线
+                        text = text.replace(/~~(.+?)~~/g, '<span class="strikethrough">$1</span>');
+                        // 处理复选框
+                        text = text.replace(/\[x\]/gi, '<span class="checkbox-done">☑</span>');
+                        text = text.replace(/\[ \]/g, '<span class="checkbox-undone">☐</span>');
+                        return `<li>${text}</li>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    });
+    
+    // 渲染今日感悟
+    if (diary.reflection) {
+        html += `
+            <div class="diary-section">
+                <div class="diary-section-title">今日感悟</div>
+                <div class="diary-reflection">${diary.reflection}</div>
+            </div>
+        `;
+    }
+    
+    // 渲染标签
+    if (diary.tags && diary.tags.length > 0) {
+        html += `
+            <div class="diary-tags">
+                ${diary.tags.map(tag => `<span class="diary-tag">#${tag}</span>`).join('')}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// 返回日记列表
+function backToDiaryList() {
+    document.getElementById('diaryDetailScreen').style.display = 'none';
+    document.getElementById('diaryScreen').style.display = 'flex';
+    currentViewingDiaryId = null;
+}
+
+// 删除日记
+function deleteDiary() {
+    if (!currentViewingDiaryId) return;
+    
+    loadFromDB('diaries', (data) => {
+        let allDiaries = data && data.list ? data.list : [];
+        allDiaries = allDiaries.filter(d => d.id !== currentViewingDiaryId);
+        
+        const transaction = db.transaction(['diaries'], 'readwrite');
+        const objectStore = transaction.objectStore('diaries');
+        objectStore.put({ id: 1, list: allDiaries });
+        
+        // 返回列表页
+        backToDiaryList();
+        loadDiaries();
+        
+        // 更新日记数量
+        updateDiaryCount();
+    });
+}
+
+// 更新日记数量显示
+function updateDiaryCount() {
+    if (!currentChatId) return;
+    
+    loadFromDB('diaries', (data) => {
+        const allDiaries = data && data.list ? data.list : [];
+        const count = allDiaries.filter(d => d.chatId === currentChatId).length;
+        
+        const countEl = document.getElementById('charFollowers');
+        if (countEl) {
+            countEl.textContent = count;
+        }
     });
 }
 
