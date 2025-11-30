@@ -1046,11 +1046,15 @@
 }
 
 .chat-detail-title {
+    flex: 1;
     font-size: 16px;
     font-weight: 600;
     color: #333;
     line-height: 1.2;
+    text-align:left;
+    margin: 0 px;
 }
+
 
 .character-status {
    font-size: 12px;  /* 先设置一个基准大小 */
@@ -1715,77 +1719,290 @@
     font-size: 12px;
 }
 
-/* 日记详情页 */
+/* 日记详情页整体 */
 .diary-detail-screen {
     height: 100vh;
-    background: white;
+    background: #f5f5f5;
     display: none;
     flex-direction: column;
 }
-
+/* 日记详情内容容器 */
 .diary-detail-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 10px;
+    background: #f5f5f5;
 }
 
+/* 日记标题 */
 .diary-detail-title {
     font-size: 20px;
     font-weight: 600;
-    color: #333;
+    color: #5d4037;
     text-align: center;
-    margin-bottom: 20px;
-}
+    margin-bottom: 10px;
+    padding-bottom: 10px;
 
+}
+/* 元信息 */
 .diary-meta {
     text-align: center;
-    font-size: 13px;
-    color: #999;
-    margin-bottom: 20px;
-}
-
-.diary-section {
+    font-size: 12px;
+    color: #8d6e63;
     margin-bottom: 25px;
 }
-
+/* 日记板块 */
+.diary-section {
+    margin-bottom: 25px;
+    margin-left: 30px;
+}
+/* 板块标题（带圆点） */
 .diary-section-title {
     font-size: 15px;
     font-weight: 600;
-    color: #667eea;
-    margin-bottom: 10px;
+    color: #6d4c41;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
 }
-
+.diary-section-title:before {
+    content: '●';
+    color: #d4a574;
+    font-size: 12px;
+    margin-right: 8px;
+}
+/* 板块内容 */
 .diary-section-content {
     font-size: 14px;
-    color: #666;
+    color: #5d4037;
     line-height: 1.8;
+    padding-left: 5px;
+    word-wrap: break-word;
+    word-break: break-all;
 }
 
 .diary-section-content li {
     margin-bottom: 8px;
+    list-style: none;
+    word-wrap: break-word;
+    word-break: break-all;
 }
 
-.diary-reflection {
-    font-size: 14px;
-    color: #666;
-    line-height: 2;
-    text-indent: 2em;
-    white-space: pre-wrap;
+/* 今日感悟 */
+
+.diary-tags {
+    margin-top: 12px;
+   margin-left: 30px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
+.diary-tag {
+    background: #f0f0ff;
+    color: #667eea;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+
+/* 删除线效果 */
 .strikethrough {
     text-decoration: line-through;
-    text-decoration-color: #666;
-    text-decoration-thickness: 1.5px;
+    text-decoration-color: #8d6e63;
     opacity: 0.6;
 }
-
+/* 复选框样式 */
 .checkbox-done {
-    color: #1dd1a1;
+    color: #81c784;
+}
+.checkbox-undone {
+    color: #ccc;
 }
 
-.checkbox-undone {
-    color: #ddd;
+/* 表情包按钮 */
+.emoji-btn-wrapper {
+    padding: 8px 15px ;
+    background: white;
+}
+
+.emoji-btn {
+    width: 25px;
+    height: 25px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-btn:active {
+    transform: scale(0.9);
+}
+
+.emoji-btn:hover {
+    background: #ebebeb;
+}
+
+/* 表情包面板 */
+.emoji-panel {
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    max-width: 375px;
+    margin: 0 auto;
+    height: 40vh;
+    background: white;
+    border-top: 1px solid #eee;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+/* 顶部操作栏 */
+.emoji-panel-header {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.emoji-header-btn {
+    padding: 8px 16px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.emoji-header-btn:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* 搜索框 */
+.emoji-search-box {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.emoji-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+}
+
+/* 分类标签栏 */
+.emoji-category-bar {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.emoji-category-tag {
+    display: inline-block;
+    padding: 6px 14px;
+    margin-right: 8px;
+    background: #f0f0f0;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.emoji-category-tag.active {
+    background: #667eea;
+    color: white;
+}
+
+/* 表情包网格 */
+.emoji-grid-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.emoji-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.emoji-item:hover {
+    transform: scale(1.1);
+}
+
+.emoji-item-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.emoji-item-text {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 删除模式 */
+.emoji-item.delete-mode {
+    position: relative;
+}
+
+.emoji-item.delete-mode .emoji-delete-icon {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 图片消息样式 */
+.message-image {
+    width: 95px;  /* 固定宽度 */
+    height: 95px;  /* 固定高度 */
+    object-fit: cover;  /* 裁剪填充，保持比例 */
+    border-radius: 8px;
+    cursor: pointer;
+    display: block;
 }
 
 
@@ -2083,6 +2300,38 @@
         <button class="btn-multi-delete" onclick="deleteSelectedMessages()">删除</button>
     </div>
 </div>
+<!-- 表情包按钮 -->
+<div class="emoji-btn-wrapper">
+    <button class="emoji-btn" onclick="toggleEmojiPanel()">😊</button>
+</div>
+
+<!-- 表情包面板 -->
+<div class="emoji-panel" id="emojiPanel" style="display: none;">
+    <!-- 顶部操作栏 -->
+    <div class="emoji-panel-header">
+        <button class="emoji-header-btn" onclick="openEmojiUpload()">上传</button>
+        <button class="emoji-header-btn" onclick="openEmojiCategoryManager()">分类管理</button>
+        <button class="emoji-header-btn" onclick="toggleEmojiDeleteMode()">删除模式</button>
+    </div>
+    
+    <!-- 搜索框 -->
+    <div class="emoji-search-box">
+        <input type="text" class="emoji-search-input" id="emojiSearchInput" placeholder="🔍 搜索表情包..." oninput="searchEmojis()">
+    </div>
+    
+    <!-- 分类标签栏 -->
+    <div class="emoji-category-bar" id="emojiCategoryBar">
+        <span class="emoji-category-tag active" data-category="all" onclick="switchEmojiCategory('all')">全部</span>
+        <!-- 其他分类将动态生成 -->
+    </div>
+    
+    <!-- 表情包网格 -->
+    <div class="emoji-grid-container">
+        <div class="emoji-grid" id="emojiGrid">
+            <!-- 表情包将动态生成 -->
+        </div>
+    </div>
+</div>
 
     <div class="chat-input-bar">
         <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
@@ -2134,12 +2383,22 @@
                 <input type="date" id="charBirthday" class="form-input">
             </div>
             
-    <div class="form-group">
+<div class="form-group">
     <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>是否设置城市信息</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span>是否设置城市信息</span>
+            <span 
+                id="viewWeatherBtn" 
+                style="display: none; font-size: 11px; color: #667eea; cursor: pointer; font-weight: normal;" 
+                onclick="viewCurrentWeather(event)">
+                「查看」
+            </span>
+        </div>
         <input type="checkbox" id="cityInfoCheckbox" style="width: 20px; height: 20px; cursor: pointer; margin: 0;" onclick="handleCityInfoCheckbox()">
     </label>
 </div>
+
+
 
 
             
@@ -2237,8 +2496,10 @@
     <div class="chat-detail-header">
         <button class="back-btn" onclick="backToDiaryList()">←</button>
         <div class="chat-detail-title">日记详情</div>
-        <button class="back-btn" onclick="deleteDiary()" style="color: #ff4757;">删除</button>
+        <button class="back-btn" onclick="deleteDiaryWithConfirm()" style="color: #ff4757;">删除</button>
     </div>
+
+
     
     <div class="diary-detail-content" id="diaryDetailContent">
         <!-- 日记详细内容将在这里渲染 -->
@@ -2504,6 +2765,58 @@
         </div>
     </div>
 </div>
+<!-- 表情包上传弹窗 -->
+<div class="modal-overlay" id="emojiUploadModal" onclick="closeEmojiUploadModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">批量上传表情包</div>
+        
+        <div class="form-group">
+            <label class="form-label">选择分类</label>
+            <select id="emojiUploadCategory" class="form-input">
+                <!-- 分类将动态生成 -->
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">批量输入（支持多种格式）</label>
+            <textarea id="emojiUploadText" class="form-input" rows="8" placeholder="支持以下格式（每行一个）：&#10;哈哈https://example.com/1.jpg&#10;笑哭,https://example.com/2.jpg&#10;爱心 https://example.com/3.jpg&#10;点赞：https://example.com/4.jpg"></textarea>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                支持格式：文本链接 | 文本,链接 | 文本 链接 | 文本：链接
+            </div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeEmojiUploadModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmEmojiUpload()">确定上传</button>
+        </div>
+    </div>
+</div>
+
+<!-- 分类管理弹窗 -->
+<div class="modal-overlay" id="emojiCategoryModal" onclick="closeEmojiCategoryModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">分类管理</div>
+        
+        <div class="form-group">
+            <label class="form-label">添加新分类</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="newEmojiCategoryName" class="form-input" placeholder="输入分类名称" style="flex: 1;">
+                <button class="btn btn-save" onclick="addEmojiCategory()" style="flex: none; padding: 12px 16px;">添加</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">现有分类</label>
+            <div id="emojiCategoryList" style="max-height: 200px; overflow-y: auto;">
+                <!-- 分类列表将动态生成 -->
+            </div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeEmojiCategoryModal()">关闭</button>
+        </div>
+    </div>
+</div>
 
 
     <script>
@@ -2515,7 +2828,7 @@ let diaries = [];
 let currentViewingDiaryId = null;
 
         function initDB() {
-           const request = indexedDB.open('phoneData', 8);
+           const request = indexedDB.open('phoneData', 9);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -2562,7 +2875,13 @@ if (!db.objectStoreNames.contains('messages')) {
     db.createObjectStore('appIcons', { keyPath: 'id' });
 }if (!db.objectStoreNames.contains('diaries')) {
     db.createObjectStore('diaries', { keyPath: 'id', autoIncrement: true });
+}if (!db.objectStoreNames.contains('emojis')) {
+    db.createObjectStore('emojis', { keyPath: 'id', autoIncrement: true });
 }
+if (!db.objectStoreNames.contains('emojiCategories')) {
+    db.createObjectStore('emojiCategories', { keyPath: 'id' });
+}
+
 
 
 
@@ -4031,8 +4350,12 @@ function renderMessages() {
             `;
         }
         
-        messageContent += msg.content;
-        
+      if (msg.type === 'image') {
+    messageContent += `<img src="${msg.content}" class="message-image" alt="${msg.altText || '图片'}" onclick="viewImage('${msg.content}')">`;
+} else {
+    messageContent += msg.content;
+}
+
         return `
             <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                 ${checkbox}
@@ -4118,15 +4441,16 @@ function getCurrentTime() {
 function getDaysToBirthday(birthdayStr) {
     if (!birthdayStr) return null;
     
-   const today = new Date();
-const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
-const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
-
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 重置到0点
+    
+    const birthday = new Date(birthdayStr);
     
     // 设置今年的生日
     const thisYearBirthday = new Date(today.getFullYear(), birthday.getMonth(), birthday.getDate());
+    thisYearBirthday.setHours(0, 0, 0, 0);
     
-    // 如果今年生日已过，计算明年的
+    // 如果今年生日已过,计算明年的
     if (thisYearBirthday < today) {
         thisYearBirthday.setFullYear(today.getFullYear() + 1);
     }
@@ -4137,6 +4461,7 @@ const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.get
     
     return diffDays;
 }
+
 
 // 生成生日提示文本
 function getBirthdayPrompt(birthdayStr) {
@@ -4284,6 +4609,12 @@ async function receiveAIReply() {
         // ▲▲▲ 补全结束 ▲▲▲
 
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+// 获取表情库
+const emojiList = await new Promise(resolve => {
+    loadFromDB('emojis', (data) => {
+        resolve(data && data.list ? data.list : []);
+    });
+});
 
         let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
 
@@ -4319,6 +4650,9 @@ ${characterInfo.cityInfoEnabled ? `
 - 注意：不要每次都提天气，只在合适的时机自然提及
 ` : ''}
 
+
+
+
 【状态系统】
 你有一个当前状态，格式为"主要状态-详细描述"（如：在线-正在煮面，想等会吃什么）。
 当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
@@ -4349,23 +4683,55 @@ ${characterInfo.cityInfoEnabled ? `
 
 【重要回复要求】
 1. 严格按照人设中的性格、语气、说话方式回复
-2. 你的回复必须像真实的软件对话聊天，分成6-12条独立消息，必须灵活，有梗，生动，尊重女性。
-3. 每条消息是完整的一句话，用"|||"符号分隔
+2. 你的回复必须像真实的软件对话聊天，分成6-12条独立消息，必须灵活,有梗,生动,尊重女性。
+3. 每条消息是完整的一句话,用"|||"符号分隔
 4. 例如：早上好啊|||今天天气真不错|||你吃早饭了吗
-5. 确保每条消息简短自然，不要太长
-6. 可以和活人一样打错别字，或者多打标点符号
-
+5. 确保每条消息简短自然,不要太长
+6. 可以和活人一样打错别字,或者多打标点符号`;
+// 拼接表情包功能说明
+let emojiPrompt = '';
+if (emojiList.length > 0) {
+    const emojiNames = emojiList.map(e => e.text).join('、');
+    emojiPrompt = `
+【表情包功能】
+你可以发送表情包来增强表达。当前可用表情：${emojiNames}（共${emojiList.length}个）
+使用方法：
+- 格式：[搜表情:关键词]
+- 示例：[搜表情:笑]|||今天真开心！|||[搜表情:爱心]
+重要规则：
+1. 表情包是独立消息,不和文字混在一起
+2. 可以连发多个表情包
+3. 表情可以在任何位置（开头、中间、结尾）
+4. 关键词支持模糊匹配（如"笑"能匹配到"大笑""笑哭"等）
+5. 根据你的性格和心情决定发不发表情,不要刻意控制频率
+6. 只使用列表中的表情,不要编造
 请开始对话。`;
+} else {
+    emojiPrompt = `
+【表情包功能】当前表情库为空,暂时无法发送表情。
+请开始对话。`;
+}
+systemPrompt += emojiPrompt;
         
        // 获取上下文参考设置（默认30轮）
 const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
 const contextCount = contextRounds * 2; // 1轮=用户1条+AI1条=2条消息
 
 // 获取指定轮数的消息
-const recentMessages = allMessages.slice(-contextCount).map(msg => ({
-    role: msg.senderId === 'me' ? 'user' : 'assistant',
-    content: msg.content
-}));
+const recentMessages = allMessages.slice(-contextCount).map(msg => {
+    let content = msg.content;
+    
+    // 如果是图片消息，用文字描述代替
+    if (msg.type === 'image') {
+        content = `[表情包：${msg.altText || '图片'}]`;
+    }
+    
+    return {
+        role: msg.senderId === 'me' ? 'user' : 'assistant',
+        content: content
+    };
+});
+
 
         
         // 构建完整消息列表
@@ -4399,11 +4765,18 @@ const recentMessages = allMessages.slice(-contextCount).map(msg => ({
         
         const data = await response.json();
      let aiReply = data.choices[0].message.content.trim();
-        
-      // 解析状态和消息
+        // 加载表情库
+await new Promise(resolve => {
+    loadFromDB('emojis', (data) => {
+        emojis = data && data.list ? data.list : [];
+      
+        resolve();
+    });
+});
+
+  // 解析状态和消息
 let newStatus = null;
 let messageContent = aiReply;
-
 // 检查是否包含状态标记（更严格的匹配）
 const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
 if (statusMatch) {
@@ -4418,10 +4791,48 @@ if (statusMatch) {
     // 如果格式不对，尝试清理可能的错误标记
     messageContent = aiReply
         .replace(/^\[状态\].*?\|\|\|/g, '')  // 移除开头的状态标记
-        .replace(/\[消息\]/g, '')           // 移除消息标记
+        .replace(/\[状态\]/g, '')            // 移除所有状态标记
+        .replace(/\[消息\]/g, '')            // 移除所有消息标记
         .trim();
 }
-
+// 先加载表情库
+await new Promise(resolve => {
+    loadFromDB('emojis', (data) => {
+        emojis = data && data.list ? data.list : [];
+        resolve();
+    });
+});
+// 解析表情包标记
+const emojiRegex = /\[搜表情:(.*?)\]/g;
+let processedContent = messageContent;
+const emojiMatches = [];
+let emojiMatch;
+while ((emojiMatch = emojiRegex.exec(messageContent)) !== null) {
+    const keyword = emojiMatch[1].trim();
+    const foundEmoji = searchEmojiByKeyword(keyword);
+    
+    if (foundEmoji) {
+        emojiMatches.push({
+            original: emojiMatch[0],
+            emoji: foundEmoji,
+            index: emojiMatch.index
+        });
+    } else {
+        console.log('未找到表情:', keyword);
+        processedContent = processedContent.replace(emojiMatch[0], '');
+    }
+}
+if (emojiMatches.length > 0) {
+    emojiMatches.reverse().forEach(item => {
+        processedContent = processedContent.replace(item.original, `|||[EMOJI:${item.emoji.id}]|||`);
+    });
+}
+messageContent = processedContent;
+// 最后再次清理可能残留的标记
+messageContent = messageContent
+    .replace(/\[状态\]/g, '')
+    .replace(/\[消息\]/g, '')
+    .trim();
         
         // 如果检测到新状态，保存到数据库
         if (newStatus) {
@@ -4432,7 +4843,10 @@ if (statusMatch) {
                 charData.statusUpdateTime = getCurrentTime();
                 allCharData[currentChatId] = charData;
                 saveToDB('characterInfo', allCharData);
-                
+                // 禁用后隐藏查看按钮
+const viewBtn = document.getElementById('viewWeatherBtn');
+if (viewBtn) viewBtn.style.display = 'none';
+
                 // 更新显示
                 updateDetailPageStatus(currentChatId);
                 updateChatStatusDisplay(currentChatId);
@@ -4473,29 +4887,54 @@ if (statusMatch) {
         }
 
         
-        // 延迟发送每条消息
-        for (let i = 0; i < messageList.length; i++) {
-            // 等待0.8秒
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-            const aiMessage = {
+     // 延迟发送每条消息
+for (let i = 0; i < messageList.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const msgText = messageList[i];
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    // 检查是否为表情包标记
+    const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
+    
+    if (emojiMatch) {
+        // 发送表情包消息
+        const emojiId = parseInt(emojiMatch[1]);
+        const emoji = emojis.find(e => e.id === emojiId);
+        
+        if (emoji) {
+            const emojiMessage = {
                 id: newId,
                 chatId: currentChatId,
-                type: 'text',
-                content: messageList[i],
+                type: 'image',
+                content: emoji.url,
+                altText: emoji.text,
                 senderId: chat.name,
                 time: getCurrentTime(),
                 isRevoked: false
             };
-            
-            allMessages.push(aiMessage);
-            
-            // 实时渲染新消息
-            visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-            renderMessages();
-            scrollToBottom();
+            allMessages.push(emojiMessage);
         }
+    } else if (msgText.length > 0) {
+        // 发送文本消息
+        const textMessage = {
+            id: newId,
+            chatId: currentChatId,
+            type: 'text',
+            content: msgText,
+            senderId: chat.name,
+            time: getCurrentTime(),
+            isRevoked: false
+        };
+        allMessages.push(textMessage);
+    }
+    
+    // 实时渲染
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+}
+
         
         // 保存消息
         saveMessages();
@@ -4900,7 +5339,12 @@ renderWorldbookSelector(charData.linkedWorldbooks || []);
             // 强制转换为布尔值，防止 undefined 导致错误
             cityCheckbox.checked = charData.cityInfoEnabled === true;
         }
-     
+     // 控制查看按钮的显示
+const viewBtn = document.getElementById('viewWeatherBtn');
+if (viewBtn) {
+    viewBtn.style.display = charData.cityInfoEnabled ? 'block' : 'none';
+}
+
 // 加载关联世界书选择器（延迟执行确保DOM已渲染）
 setTimeout(() => {
     renderWorldbookSelector(charData.linkedWorldbooks || []);
@@ -5579,7 +6023,10 @@ function saveCityInfo() {
             
             alert('城市信息已保存');
             closeCityInfoModal();
-            
+            // 保存后显示查看按钮
+const viewBtn = document.getElementById('viewWeatherBtn');
+if (viewBtn) viewBtn.style.display = 'block';
+
             const checkbox = document.getElementById('cityInfoCheckbox');
             if (checkbox) checkbox.checked = true;
         });
@@ -5620,6 +6067,37 @@ function disableCityInfo() {
         saveToDB('characterInfo', allCharData);
     });
 }
+      // 查看当前天气
+function viewCurrentWeather(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        
+        if (!charData.cityInfoEnabled || !charData.charWeather || !charData.myWeather) {
+            alert('暂无天气数据，请先设置城市信息');
+            return;
+        }
+        
+        const weatherInfo = `
+【${charData.charVirtualAddress}（${charData.charRealAddress}）】
+今天：${charData.charWeather.today.condition} ${charData.charWeather.today.temp}
+明天：${charData.charWeather.tomorrow.condition} ${charData.charWeather.tomorrow.temp}
+
+【${charData.myVirtualAddress}（${charData.myRealAddress}）】
+今天：${charData.myWeather.today.condition} ${charData.myWeather.today.temp}
+明天：${charData.myWeather.tomorrow.condition} ${charData.myWeather.tomorrow.temp}
+
+最后更新：${charData.weatherUpdateTime || '未知'}
+        `.trim();
+        
+        alert(weatherInfo);
+    });
+}
+
 // 检查并自动更新天气
 async function checkAndUpdateWeather(chatId) {
     loadFromDB('characterInfo', async (data) => {
@@ -6044,16 +6522,45 @@ async function generateDiary() {
     if (characterInfo.cityInfoEnabled && characterInfo.charWeather) {
         weatherInfo = `当前天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}`;
     }
-    
-    const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇真实的个人日记。
+    // 获取最近30轮的聊天记忆
+const recentMessages = await new Promise(resolve => {
+    loadFromDB('messages', (data) => {
+        const allData = data && data.list ? data.list : [];
+        const chatMessages = allData.filter(m => m.chatId === currentChatId);
+        // 获取最近60条消息（30轮 = 用户30条 + AI30条）
+        const recent = chatMessages.slice(-60);
+        
+        // 格式化为对话记录
+        const formatted = recent.map(msg => {
+            const sender = msg.senderId === 'me' ? '对方' : '我';
+            return `${sender}：${msg.content}`;
+        }).join('\n');
+        
+        resolve(formatted || '暂无聊天记录');
+    });
+});
+
+   const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇真实的个人日记。
+
+【角色人设】
+${characterInfo.personality || '一个真实的人'}
+
+【对方人设】
+${characterInfo.myPersonality || '无'}
+
+【最近30轮聊天记忆】
+${recentMessages}
+
+请根据以上信息，结合最近的聊天内容，写出符合你性格和经历的真实日记。
 
 【必须包含】
-- 日记标题（简短有趣，10字以内）
+
+- 日记标题（简短有趣，15字以内）
 - 今日天气（${weatherInfo || '根据心情虚构天气'}）
 - 今日心情（用emoji + 简短描述）
 
-【动态板块】从以下选择4个（正好4个）：
-1. 今日开心的事情
+【动态板块】从以下选择4个（正好4个，不要重复）：
+1. 开心小事
 2. 烦恼清单
 3. 恋爱日记
 4. 备忘录
@@ -6061,13 +6568,29 @@ async function generateDiary() {
 6. TodoList
 7. 精神状态
 8. 反思复盘
+9.今日OOTD
 
 【今日感悟】（固定在最后，必须写）
-- 不低于300字
-- 需要分成3-4段，每段少于120字
+- 总字数不低于300字
+- 必须分成3-4段，每段之间用空行分隔
 - 每段开头空两格（首行缩进）
-- 段落之间用空行分隔
+
+⚠️ 严格字数要求（非常重要）：
+• 每段字数：60-100字（禁止超过100字）
+• 如果一段写超过100字，立即结束这段，开始新段落
+• 每段只讲一个小观点，不要贪多
+
+【每段字数检查清单】
+✓ 第1段：60-100字 ✓
+✓ 第2段：60-100字 ✓
+✓ 第3段：60-100字 ✓
+✓ 第4段：60-100字 ✓（可选）
+
+写作风格：
 - 像真人一样深入思考和总结
+- 每段集中讲一个小感悟
+- 宁可多分几段，也不要一段写太长
+
 
 【写作风格】
 - 自然真实，可以有错别字、语气词
@@ -6097,13 +6620,23 @@ xxx...
 xxx...
 
 [今日感悟]
-  第一段内容...（不低于80字）
+  第一段内容...
 
-  第二段内容...（不低于80字）
+  第二段内容...
 
-  第三段内容...（不低于80字）
-
+  第三段内容...
+  
 标签: #标签1 #标签2 #标签3
+
+【最后警告】
+如果今日感悟的任何一段超过100字，你将违反规则。
+请在写每段时，数着字数写，写到80-90字时就立即换段。
+
+每段结构：
+1. 开头（10-20字）
+2. 展开（40-60字）
+3. 收尾（10-20字）
+总计：60-100字
 
 请开始写日记。`;
 
@@ -6127,18 +6660,22 @@ xxx...
         
         if (!response.ok) throw new Error('生成失败');
         
-        const data = await response.json();
-        const diaryContent = data.choices[0].message.content.trim();
-        
-        // 解析并保存日记
-        parseDiaryContent(diaryContent);
-        
-        // 隐藏写日记状态，显示召唤卡片
-        document.getElementById('writingCard').style.display = 'none';
-        document.getElementById('summonCard').style.display = 'block';
-        
-        // 刷新日记列表
-        loadDiaries();
+      const data = await response.json();
+const diaryContent = data.choices[0].message.content.trim();
+
+// 解析并保存日记
+await parseDiaryContent(diaryContent);
+
+// 等待保存完成后再刷新
+await new Promise(resolve => setTimeout(resolve, 500));
+
+// 隐藏写日记状态，显示召唤卡片
+document.getElementById('writingCard').style.display = 'none';
+document.getElementById('summonCard').style.display = 'block';
+
+// 刷新日记列表
+loadDiaries();
+
         
     } catch (error) {
         alert('生成日记失败：' + error.message);
@@ -6148,7 +6685,7 @@ xxx...
 }
 
 // 解析日记内容
-function parseDiaryContent(content) {
+async function parseDiaryContent(content) {
     const lines = content.split('\n');
     const diary = {
         chatId: currentChatId,
@@ -6222,8 +6759,8 @@ function parseDiaryContent(content) {
     // 处理今日感悟
     diary.reflection = reflectionLines.join('\n');
     
-    // 保存到数据库
-    saveDiaryToDB(diary);
+// 保存到数据库并等待完成
+await saveDiaryToDBAsync(diary);
 }
 
 // 保存日记到数据库
@@ -6245,6 +6782,30 @@ function saveDiaryToDB(diary) {
         updateDiaryCount();
     });
 }
+// 异步保存日记
+function saveDiaryToDBAsync(diary) {
+    return new Promise((resolve) => {
+        loadFromDB('diaries', (data) => {
+            const allDiaries = data && data.list ? data.list : [];
+            
+            // 生成ID
+            const newId = allDiaries.length > 0 ? Math.max(...allDiaries.map(d => d.id || 0)) + 1 : 1;
+            diary.id = newId;
+            
+            allDiaries.push(diary);
+            
+            const transaction = db.transaction(['diaries'], 'readwrite');
+            const objectStore = transaction.objectStore('diaries');
+            const request = objectStore.put({ id: 1, list: allDiaries });
+            
+            request.onsuccess = () => {
+                // 更新日记数量显示
+                updateDiaryCount();
+                resolve();
+            };
+        });
+    });
+}
 
 // 打开日记详情
 function openDiaryDetail(diaryId) {
@@ -6260,16 +6821,16 @@ function openDiaryDetail(diaryId) {
     renderDiaryDetail(diary);
 }
 
-// 渲染日记详情
 function renderDiaryDetail(diary) {
     const container = document.getElementById('diaryDetailContent');
     
     let html = `
-        <div class="diary-detail-title">${diary.title}</div>
-        <div class="diary-meta">
-            ${formatDiaryTime(diary.createTime)}<br>
-            ${diary.weather} | ${diary.mood}
-        </div>
+        <div class="diary-paper">
+            <div class="diary-detail-title">${diary.title}</div>
+            <div class="diary-meta">
+                ${formatDiaryTime(diary.createTime)}<br>
+                ${diary.weather} | ${diary.mood}
+            </div>
     `;
     
     // 渲染动态板块
@@ -6280,9 +6841,7 @@ function renderDiaryDetail(diary) {
                 <div class="diary-section-content">
                     ${section.items.map(item => {
                         let text = item.text;
-                        // 处理删除线
                         text = text.replace(/~~(.+?)~~/g, '<span class="strikethrough">$1</span>');
-                        // 处理复选框
                         text = text.replace(/\[x\]/gi, '<span class="checkbox-done">☑</span>');
                         text = text.replace(/\[ \]/g, '<span class="checkbox-undone">☐</span>');
                         return `<li>${text}</li>`;
@@ -6292,15 +6851,26 @@ function renderDiaryDetail(diary) {
         `;
     });
     
-    // 渲染今日感悟
-    if (diary.reflection) {
-        html += `
-            <div class="diary-section">
-                <div class="diary-section-title">今日感悟</div>
-                <div class="diary-reflection">${diary.reflection}</div>
+// 渲染今日感悟
+if (diary.reflection) {
+    // 处理每段的首行缩进
+    const paragraphs = diary.reflection.split('\n\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+        .map(p => `<p style="text-indent: 2em; margin: 0 0 10px 0;">${p}</p>`)
+        .join('');
+    
+    html += `
+        <div class="diary-section">
+            <div class="diary-section-title">今日感悟</div>
+            <div class="diary-section-content">
+                <div style="line-height: 2;">${paragraphs}</div>
             </div>
-        `;
-    }
+        </div>
+    `;
+}
+
+
     
     // 渲染标签
     if (diary.tags && diary.tags.length > 0) {
@@ -6311,8 +6881,11 @@ function renderDiaryDetail(diary) {
         `;
     }
     
+    html += '</div>'; // 关闭 diary-paper
+    
     container.innerHTML = html;
 }
+
 
 // 返回日记列表
 function backToDiaryList() {
@@ -6356,6 +6929,408 @@ function updateDiaryCount() {
         }
     });
 }
+// ============ 表情包功能 ============
+let emojis = [];
+let emojiCategories = ['常用', '搞笑', '可爱'];
+let currentEmojiCategory = 'all';
+let isEmojiDeleteMode = false;
+
+// 切换表情包面板
+function toggleEmojiPanel() {
+    const panel = document.getElementById('emojiPanel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+        loadEmojis();
+        // 添加全局点击监听
+        setTimeout(() => {
+            document.addEventListener('click', closeEmojiPanelOnClickOutside);
+        }, 100);
+    } else {
+        panel.style.display = 'none';
+        isEmojiDeleteMode = false;
+        document.removeEventListener('click', closeEmojiPanelOnClickOutside);
+    }
+}
+
+// 点击外部关闭面板
+function closeEmojiPanelOnClickOutside(event) {
+    const panel = document.getElementById('emojiPanel');
+    const btn = document.querySelector('.emoji-btn');
+    
+    // 如果点击的不是面板内部和按钮本身，就关闭
+    if (!panel.contains(event.target) && !btn.contains(event.target)) {
+        panel.style.display = 'none';
+        isEmojiDeleteMode = false;
+        document.removeEventListener('click', closeEmojiPanelOnClickOutside);
+    }
+}
+
+
+// 加载表情包数据
+function loadEmojis() {
+    loadFromDB('emojis', (data) => {
+        emojis = data && data.list ? data.list : [];
+       updateEmojiTags();
+        renderEmojiCategories();
+        renderEmojis();
+    });
+    
+    loadFromDB('emojiCategories', (data) => {
+        emojiCategories = data && data.list ? data.list : ['常用', '搞笑', '可爱'];
+        renderEmojiCategories();
+    });
+}
+// 自动为旧数据生成标签（只需运行一次）
+function updateEmojiTags() {
+    let needUpdate = false;
+    
+    emojis.forEach(emoji => {
+        if (!emoji.emotionTags) {
+            emoji.emotionTags = generateEmotionTags(emoji.text);
+            needUpdate = true;
+        }
+    });
+    
+    if (needUpdate) {
+        saveToDB('emojis', { id: 1, list: emojis });
+    }
+}
+
+// 渲染分类标签
+function renderEmojiCategories() {
+    const bar = document.getElementById('emojiCategoryBar');
+    bar.innerHTML = '<span class="emoji-category-tag active" data-category="all" onclick="switchEmojiCategory(\'all\')">全部</span>';
+    
+    emojiCategories.forEach(cat => {
+        bar.innerHTML += `<span class="emoji-category-tag" data-category="${cat}" onclick="switchEmojiCategory('${cat}')">${cat}</span>`;
+    });
+}
+
+// 切换分类
+function switchEmojiCategory(category) {
+    currentEmojiCategory = category;
+    document.querySelectorAll('.emoji-category-tag').forEach(tag => tag.classList.remove('active'));
+    document.querySelector(`[data-category="${category}"]`).classList.add('active');
+    renderEmojis();
+}
+
+// 渲染表情包
+function renderEmojis() {
+    const grid = document.getElementById('emojiGrid');
+    let filtered = currentEmojiCategory === 'all' 
+        ? emojis 
+        : emojis.filter(e => e.category === currentEmojiCategory);
+    
+    // 搜索过滤
+    const searchText = document.getElementById('emojiSearchInput').value.trim().toLowerCase();
+    if (searchText) {
+        filtered = filtered.filter(e => e.text.toLowerCase().includes(searchText));
+    }
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div style="text-align: center; color: #999; padding: 30px; grid-column: 1/-1;">暂无表情包</div>';
+        return;
+    }
+    
+    grid.innerHTML = filtered.map(emoji => `
+        <div class="emoji-item ${isEmojiDeleteMode ? 'delete-mode' : ''}" onclick="${isEmojiDeleteMode ? `deleteEmoji(${emoji.id})` : `sendEmoji(${emoji.id})`}">
+            <img src="${emoji.url}" class="emoji-item-img" alt="${emoji.text}">
+            <div class="emoji-item-text">${emoji.text}</div>
+            ${isEmojiDeleteMode ? '<div class="emoji-delete-icon">×</div>' : ''}
+        </div>
+    `).join('');
+}
+
+// 搜索表情包
+function searchEmojis() {
+    renderEmojis();
+}
+
+// 发送表情包
+function sendEmoji(emojiId) {
+    const emoji = emojis.find(e => e.id === emojiId);
+    if (!emoji) return;
+    
+    // 生成新消息ID
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'image',
+        content: emoji.url,
+        altText: emoji.text,
+        senderId: 'me',
+        time: getCurrentTime(),
+        isRevoked: false
+    };
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    updateChatLastMessage(currentChatId, '[图片]');
+    
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+    
+    // 关闭面板
+    toggleEmojiPanel();
+}
+
+// 切换删除模式
+function toggleEmojiDeleteMode() {
+    isEmojiDeleteMode = !isEmojiDeleteMode;
+    renderEmojis();
+}
+
+// 删除表情包
+function deleteEmoji(emojiId) {
+    if (!confirm('确定删除这个表情包吗？')) return;
+    
+    emojis = emojis.filter(e => e.id !== emojiId);
+    saveToDB('emojis', { id: 1, list: emojis });
+    renderEmojis();
+}
+
+// 打开上传弹窗
+function openEmojiUpload() {
+    const select = document.getElementById('emojiUploadCategory');
+    select.innerHTML = emojiCategories.map(cat => 
+        `<option value="${cat}">${cat}</option>`
+    ).join('');
+    
+    document.getElementById('emojiUploadText').value = '';
+    document.getElementById('emojiUploadModal').style.display = 'flex';
+}
+
+// 关闭上传弹窗
+function closeEmojiUploadModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('emojiUploadModal').style.display = 'none';
+}
+
+// 确认上传
+function confirmEmojiUpload() {
+    const category = document.getElementById('emojiUploadCategory').value;
+    const text = document.getElementById('emojiUploadText').value.trim();
+    
+    if (!text) {
+        alert('请输入表情包信息');
+        return;
+    }
+    
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+    let successCount = 0;
+    
+    lines.forEach(line => {
+        // 尝试多种格式解析
+        let match = null;
+        
+        // 格式1: 文本链接 (直接连着)
+        match = line.match(/^(.+?)(https?:\/\/.+)$/);
+        if (!match) {
+            // 格式2: 文本,链接
+            match = line.match(/^(.+?),\s*(https?:\/\/.+)$/);
+        }
+        if (!match) {
+            // 格式3: 文本 链接 (空格)
+            match = line.match(/^(.+?)\s+(https?:\/\/.+)$/);
+        }
+        if (!match) {
+            // 格式4: 文本：链接
+            match = line.match(/^(.+?)[:：]\s*(https?:\/\/.+)$/);
+        }
+        
+        if (match) {
+            const newId = emojis.length > 0 ? Math.max(...emojis.map(e => e.id || 0)) + 1 : 1;
+        const text = match[1].trim();
+// 自动生成情绪标签
+const emotionTags = generateEmotionTags(text);
+
+emojis.push({
+    id: newId,
+    text: text,
+    url: match[2].trim(),
+    category: category,
+    emotionTags: emotionTags,
+    createTime: getCurrentTime()
+});
+
+            successCount++;
+        }
+    });
+    
+    if (successCount > 0) {
+        saveToDB('emojis', { id: 1, list: emojis });
+        alert(`成功上传 ${successCount} 个表情包`);
+        closeEmojiUploadModal();
+        renderEmojis();
+    } else {
+        alert('没有识别到有效的表情包格式');
+    }
+}
+
+// 打开分类管理
+function openEmojiCategoryManager() {
+    renderEmojiCategoryList();
+    document.getElementById('emojiCategoryModal').style.display = 'flex';
+}
+
+// 关闭分类管理
+function closeEmojiCategoryModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('emojiCategoryModal').style.display = 'none';
+}
+
+// 渲染分类列表
+function renderEmojiCategoryList() {
+    const container = document.getElementById('emojiCategoryList');
+    container.innerHTML = emojiCategories.map(cat => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
+            <span>${cat}</span>
+            <button class="action-btn btn-delete" onclick="deleteEmojiCategory('${cat}')">删除</button>
+        </div>
+    `).join('');
+}
+
+// 添加分类
+function addEmojiCategory() {
+    const name = document.getElementById('newEmojiCategoryName').value.trim();
+    if (!name) {
+        alert('请输入分类名称');
+        return;
+    }
+    if (emojiCategories.includes(name)) {
+        alert('分类已存在');
+        return;
+    }
+    
+    emojiCategories.push(name);
+    saveToDB('emojiCategories', { id: 1, list: emojiCategories });
+    renderEmojiCategories();
+    renderEmojiCategoryList();
+    document.getElementById('newEmojiCategoryName').value = '';
+}
+
+// 删除分类
+function deleteEmojiCategory(categoryName) {
+    if (confirm(`确定删除分类"${categoryName}"吗？\n该分类下的表情包将移动到"常用"分类。`)) {
+        emojis.forEach(emoji => {
+            if (emoji.category === categoryName) {
+                emoji.category = '常用';
+            }
+        });
+        
+        emojiCategories = emojiCategories.filter(cat => cat !== categoryName);
+        
+        saveToDB('emojiCategories', { id: 1, list: emojiCategories });
+        saveToDB('emojis', { id: 1, list: emojis });
+        
+        renderEmojiCategories();
+        renderEmojiCategoryList();
+        renderEmojis();
+        
+        if (currentEmojiCategory === categoryName) {
+            currentEmojiCategory = 'all';
+        }
+    }
+}
+      // 自动生成情绪标签
+function generateEmotionTags(text) {
+    const tags = [];
+    text = text.toLowerCase();
+    
+    // 情绪词库映射
+    const emotionMap = {
+        // 开心类
+        '开心': ['笑', '哈', '嘿', '乐', '喜', '欢'],
+        '快乐': ['笑', '哈', '嘿', '乐', '喜', '欢'],
+        
+        // 难过类
+        '难过': ['哭', '泪', '伤心', '委屈', '难受'],
+        '悲伤': ['哭', '泪', '伤心', '委屈', '难受'],
+        
+        // 生气类
+        '生气': ['怒', '火', '气', '愤怒', '不爽'],
+        
+        // 惊讶类
+        '惊讶': ['震惊', '吓', '哇', '天'],
+        
+        // 喜爱类
+        '喜欢': ['爱', '心', '❤', '喜欢'],
+        
+        // 认可类
+        '赞': ['棒', '好', '行', '👍', '牛'],
+        
+        // 疑惑类
+        '疑惑': ['？', '迷', '懵', '啥'],
+        
+        // 尴尬类
+        '尴尬': ['汗', '囧', '无语'],
+        
+        // 卖萌类
+        '可爱': ['萌', 'cute', '小', '猫', '兔']
+    };
+    
+    // 检查文本包含哪些情绪
+    for (let emotion in emotionMap) {
+        for (let keyword of emotionMap[emotion]) {
+            if (text.includes(keyword)) {
+                if (!tags.includes(emotion)) {
+                    tags.push(emotion);
+                }
+            }
+        }
+    }
+    
+    return tags;
+}
+
+// 智能搜索表情包（支持多维度匹配）
+function searchEmojiByKeyword(keyword) {
+    if (!keyword || emojis.length === 0) return null;
+    
+    keyword = keyword.trim().toLowerCase();
+    
+    // 第一优先级：精确匹配文字描述
+    let match = emojis.find(e => e.text.toLowerCase() === keyword);
+    if (match) return match;
+    
+    // 第二优先级：文字描述包含关键词
+    match = emojis.find(e => e.text.toLowerCase().includes(keyword));
+    if (match) return match;
+    
+    // 第三优先级：关键词包含文字描述
+    match = emojis.find(e => keyword.includes(e.text.toLowerCase()));
+    if (match) return match;
+    
+    // 第四优先级：情绪标签匹配（★核心功能）
+    const keywordTags = generateEmotionTags(keyword);
+    if (keywordTags.length > 0) {
+        // 找到标签最匹配的表情
+        let bestMatch = null;
+        let maxMatches = 0;
+        
+        for (let emoji of emojis) {
+            if (!emoji.emotionTags) continue;
+            
+            // 计算匹配的标签数量
+            const matchCount = emoji.emotionTags.filter(tag => 
+                keywordTags.includes(tag)
+            ).length;
+            
+            if (matchCount > maxMatches) {
+                maxMatches = matchCount;
+                bestMatch = emoji;
+            }
+        }
+        
+        if (bestMatch) return bestMatch;
+    }
+    
+    return null;
+}
+
 
         // 初始化
         initDB();
