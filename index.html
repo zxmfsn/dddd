@@ -1823,8 +1823,10 @@
 
 /* 表情包按钮 */
 .emoji-btn-wrapper {
-    padding: 8px 15px ;
+    padding: 3px 15px 2px;
     background: white;
+    display: flex;  /* ← 添加这行 */
+    align-items: center;  /* ← 添加这行 */
 }
 
 .emoji-btn {
@@ -1846,6 +1848,20 @@
 
 .emoji-btn:hover {
     background: #ebebeb;
+}
+.retry-btn {
+    margin-left: 10px;
+    opacity: 0.6;
+    transition: all 0.3s;
+}
+
+.retry-btn:hover {
+    opacity: 1;
+}
+
+.retry-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 /* 表情包面板 */
@@ -2303,6 +2319,7 @@
 <!-- 表情包按钮 -->
 <div class="emoji-btn-wrapper">
     <button class="emoji-btn" onclick="toggleEmojiPanel()">😊</button>
+   <button class="emoji-btn retry-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">↩️</button>
 </div>
 
 <!-- 表情包面板 -->
@@ -4375,6 +4392,30 @@ function renderMessages() {
             });
         });
     }
+  // 控制撤回按钮状态
+function updateRetryButtonState() {
+    const retryBtn = document.getElementById('retryBtn');
+    if (!retryBtn) return;
+    
+    if (allMessages.length === 0) {
+        retryBtn.disabled = true;
+        retryBtn.style.opacity = '0.3';
+        return;
+    }
+    
+    // 检查最后一条消息是否为AI发送
+    const lastMessage = allMessages[allMessages.length - 1];
+    if (lastMessage && lastMessage.senderId !== 'me') {
+        retryBtn.disabled = false;
+        retryBtn.style.opacity = '0.6';
+    } else {
+        retryBtn.disabled = true;
+        retryBtn.style.opacity = '0.3';
+    }
+}
+// 在 renderMessages() 函数的结尾添加
+updateRetryButtonState();
+
 }
 
 
@@ -4617,7 +4658,7 @@ const emojiList = await new Promise(resolve => {
 });
 
         let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
-
+特别警告：如果你要发送表情包，格式必须是[搜表情:关键词]，不能是[表情包:xx]！
 【角色人设】
 ${characterInfo.personality || '一个友好、真诚的角色。'}
 
@@ -4661,7 +4702,7 @@ ${characterInfo.cityInfoEnabled ? `
 - 如果对话让你的心情/行为有明显变化，可以更新状态
 - 如果只是普通聊天，可以保持当前状态，但不允许长时间不更换。
 - 状态要简短（20字以内）、生动、符合人设
-- 状态格式：主要状态（2-8字）-详细描述（10字左右）
+- 状态格式：主要状态（2-6字）-详细描述（10字左右）
 - 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼、瘫在床上-好想抱着老婆一起睡
 
 【状态更新格式-严格遵守】
@@ -4693,35 +4734,33 @@ let emojiPrompt = '';
 if (emojiList.length > 0) {
     const emojiNames = emojiList.map(e => e.text).join('、');
     emojiPrompt = `
-【表情包功能 - 严格格式要求】
-你可以发送表情包。当前可用：${emojiNames}（共${emojiList.length}个）
-
-⚠️ 必须严格遵守格式（非常重要）：
-✓ 正确格式：[搜表情:笑]
-✗ 错误格式：[表情包:笑] / 搜表情:笑 / [搜表情笑]
-
-发送规则：
-1. 表情包必须独立成一条消息，用|||分隔
-2. 方括号、冒号、关键词缺一不可
-3. 示例：今天好开心|||[搜表情:笑]|||你呢
-
-格式检查清单：
-□ 有左方括号 [
-□ 有"搜表情"三个字
-□ 有冒号 :
-□ 有关键词
-□ 有右方括号 ]
-
-如果格式错误，表情包将无法显示！
-
-
-重要规则：
-1. 表情包是独立消息,不和文字混在一起
-2. 可以连发多个表情包
-3. 表情可以在任何位置（开头、中间、结尾）
-4. 关键词支持模糊匹配（如"笑"能匹配到"大笑""笑哭"等）
-5. 根据你的性格和心情决定发不发表情,不要刻意控制频率
-6. 只使用列表中的表情,不要编造
+【表情包功能 - 格式规范（必须严格遵守）】
+当前可用表情：${emojiNames}（共${emojiList.length}个）
+⚠️ 唯一正确格式（其他格式都是错误的）：
+✓ [搜表情:关键词]
+❌ 错误示例（禁止使用）：
+✗ [表情包:笑]  ← 错误！不是"表情包"
+✗ [表情包：笑]  ← 错误！不是"表情包"
+✗ 【表情包:笑】  ← 错误！不是方括号
+✗ 搜表情:笑  ← 错误！缺少方括号
+✗ [搜表情笑]  ← 错误！缺少冒号
+✓ 正确示例：
+- 今天好开心|||[搜表情:笑]
+- [搜表情:爱心]|||我也很喜欢你
+- 真的吗|||[搜表情:惊讶]|||太棒了
+关键规则：
+1. 必须是"搜表情"，不能是"表情包"或其他词
+2. 必须用英文方括号[]，不能用中文【】
+3. 必须用英文冒号:，不能用中文冒号：
+4. 表情包独立成一条消息，用|||分隔
+5. 关键词支持模糊匹配（如"笑"能匹配"大笑""笑哭"）
+格式检查：
+每次发表情包前，检查是否符合：[搜表情:xxx]
+- 左方括号 [ ✓
+- 搜表情三个字 ✓
+- 英文冒号 : ✓
+- 关键词 ✓
+- 右方括号 ] ✓
 请开始对话。`;
 } else {
     emojiPrompt = `
@@ -4956,7 +4995,7 @@ for (let i = 0; i < messageList.length; i++) {
         // 保存消息
         saveMessages();
         
-     // 更新聊天列表（只显示最后一条）
+   // 更新聊天列表（只显示最后一条）
 const lastMsg = messageList[messageList.length - 1];
 const lastMsgMatch = lastMsg.match(/\[EMOJI:(\d+)\]/);
 const displayText = lastMsgMatch ? '【图片】' : lastMsg;
@@ -5259,7 +5298,10 @@ function quoteSelectedMessage() {
     // 显示引用框
     const quoteBox = document.getElementById('quoteBox');
     document.getElementById('quoteAuthor').textContent = `引用：${message.senderId === 'me' ? '我' : message.senderId}`;
-    document.getElementById('quoteContent').textContent = `${formatMessageTime(message.time)} ${message.content}`;
+   // ▼▼▼ 修改这里：如果是图片消息，显示【图片】▼▼▼
+    const displayContent = message.type === 'image' ? '【图片】' : message.content;
+    document.getElementById('quoteContent').textContent = `${formatMessageTime(message.time)} ${displayContent}`;
+    // ▲▲▲ 修改结束 ▲▲▲
     quoteBox.style.display = 'block';
     
     // 关闭菜单
@@ -7085,7 +7127,28 @@ function sendEmoji(emojiId) {
         time: getCurrentTime(),
         isRevoked: false
     };
-      // ▼▼▼ 新增：如果有引用消息，添加引用信息 ▼▼▼
+    
+    allMessages.push(newMessage);
+    saveMessages();
+  // 发送表情包
+function sendEmoji(emojiId) {
+    const emoji = emojis.find(e => e.id === emojiId);
+    if (!emoji) return;
+    
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'image',
+        content: emoji.url,
+        altText: emoji.text,
+        senderId: 'me',
+        time: getCurrentTime(),
+        isRevoked: false
+    };
+    
+    // ▼▼▼ 新增：如果有引用消息，添加引用信息 ▼▼▼
     if (quotedMessage) {
         newMessage.quotedMessageId = quotedMessage.id;
         newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
@@ -7094,9 +7157,18 @@ function sendEmoji(emojiId) {
         cancelQuote();
     }
     // ▲▲▲ 新增结束 ▲▲▲
+    
     allMessages.push(newMessage);
     saveMessages();
-   updateChatLastMessage(currentChatId, '【图片】');
+    updateChatLastMessage(currentChatId, '【图片】');  // ← 改成【图片】
+    
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+    toggleEmojiPanel();
+}
+
+    updateChatLastMessage(currentChatId, '[图片]');
     
     visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
     renderMessages();
@@ -7360,8 +7432,68 @@ function searchEmojiByKeyword(keyword) {
     return null;
 }
 
+// 撤回AI最新回复并重新生成
+async function retryAIReply() {
+    if (!currentChatId || allMessages.length === 0) return;
+    
+    // 找到最后一条消息的时间
+    const lastMessage = allMessages[allMessages.length - 1];
+    if (lastMessage.senderId === 'me') {
+        alert('最后一条是你的消息，没有AI回复可以撤回');
+        return;
+    }
+    
+    const lastTime = lastMessage.time;
+    
+    // 找到所有与最后一条消息时间相近的AI消息（同一轮回复）
+    const messagesToRemove = [];
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+        const msg = allMessages[i];
+        
+        // 如果遇到用户消息，停止
+        if (msg.senderId === 'me') break;
+        
+        // 收集AI的消息（时间差在10秒内视为同一轮）
+        const timeDiff = Math.abs(new Date(msg.time) - new Date(lastTime));
+        if (timeDiff < 10000) {
+            messagesToRemove.push(msg.id);
+        } else {
+            break;
+        }
+    }
+    
+    if (messagesToRemove.length === 0) {
+        alert('没有找到可撤回的AI回复');
+        return;
+    }
+    
+    // 确认撤回
+    if (!confirm(`确定撤回AI最新的${messagesToRemove.length}条回复并重新生成吗？`)) {
+        return;
+    }
+    
+    // 删除这些消息
+    allMessages = allMessages.filter(m => !messagesToRemove.includes(m.id));
+    
+    // 保存到数据库
+    saveMessages();
+    
+    // 更新显示数量
+    if (visibleMessagesCount > allMessages.length) {
+        visibleMessagesCount = allMessages.length;
+    }
+    
+    // 重新渲染
+    renderMessages();
+    
+    // 等待一下再重新生成
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // 调用AI重新回复
+    receiveAIReply();
+}
 
-        // 初始化
+        // 初始化，
         initDB();
     </script>
 </body>
