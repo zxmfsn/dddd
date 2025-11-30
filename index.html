@@ -1856,7 +1856,7 @@
     right: 0;
     max-width: 375px;
     margin: 0 auto;
-    height: 40vh;
+    height: 60vh;
     background: white;
     border-top: 1px solid #eee;
     border-radius: 16px 16px 0 0;
@@ -4693,11 +4693,28 @@ let emojiPrompt = '';
 if (emojiList.length > 0) {
     const emojiNames = emojiList.map(e => e.text).join('、');
     emojiPrompt = `
-【表情包功能】
-你可以发送表情包来增强表达。当前可用表情：${emojiNames}（共${emojiList.length}个）
-使用方法：
-- 格式：[搜表情:关键词]
-- 示例：[搜表情:笑]|||今天真开心！|||[搜表情:爱心]
+【表情包功能 - 严格格式要求】
+你可以发送表情包。当前可用：${emojiNames}（共${emojiList.length}个）
+
+⚠️ 必须严格遵守格式（非常重要）：
+✓ 正确格式：[搜表情:笑]
+✗ 错误格式：[表情包:笑] / 搜表情:笑 / [搜表情笑]
+
+发送规则：
+1. 表情包必须独立成一条消息，用|||分隔
+2. 方括号、冒号、关键词缺一不可
+3. 示例：今天好开心|||[搜表情:笑]|||你呢
+
+格式检查清单：
+□ 有左方括号 [
+□ 有"搜表情"三个字
+□ 有冒号 :
+□ 有关键词
+□ 有右方括号 ]
+
+如果格式错误，表情包将无法显示！
+
+
 重要规则：
 1. 表情包是独立消息,不和文字混在一起
 2. 可以连发多个表情包
@@ -4939,8 +4956,12 @@ for (let i = 0; i < messageList.length; i++) {
         // 保存消息
         saveMessages();
         
-        // 更新聊天列表（只显示最后一条）
-        updateChatLastMessage(currentChatId, messageList[messageList.length - 1]);
+     // 更新聊天列表（只显示最后一条）
+const lastMsg = messageList[messageList.length - 1];
+const lastMsgMatch = lastMsg.match(/\[EMOJI:(\d+)\]/);
+const displayText = lastMsgMatch ? '【图片】' : lastMsg;
+updateChatLastMessage(currentChatId, displayText);
+
         
     } catch (error) {
         alert(`接收失败：${error.message}`);
@@ -7064,10 +7085,18 @@ function sendEmoji(emojiId) {
         time: getCurrentTime(),
         isRevoked: false
     };
-    
+      // ▼▼▼ 新增：如果有引用消息，添加引用信息 ▼▼▼
+    if (quotedMessage) {
+        newMessage.quotedMessageId = quotedMessage.id;
+        newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
+        newMessage.quotedContent = quotedMessage.content;
+        newMessage.quotedTime = formatMessageTime(quotedMessage.time);
+        cancelQuote();
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
     allMessages.push(newMessage);
     saveMessages();
-    updateChatLastMessage(currentChatId, '[图片]');
+   updateChatLastMessage(currentChatId, '【图片】');
     
     visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
     renderMessages();
