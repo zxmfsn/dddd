@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title>小手机</title>
+    <title>冻梨小手机</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -2015,6 +2015,13 @@
     display: flex;  /* ← 添加这行 */
     align-items: center;  /* ← 添加这行 */
 }
+.emoji-btn-wrapper {
+    padding: 3px 15px 2px;
+    background: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;  /* ← 图标间隔距离 */
+}
 
 .emoji-btn {
     width: 25px;
@@ -2298,6 +2305,109 @@ color: #333;
     0% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.2) rotate(5deg); opacity: 0.8; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+/* 语音消息气泡样式 */
+/* 语音消息气泡样式（微信风格） */
+.voice-bubble {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 80px;
+    max-width: 200px;
+    position: relative;
+}
+
+.message-item.me .voice-bubble {
+    background: #95ec69;
+    border-color: #95ec69;
+}
+
+.voice-bubble:active {
+    transform: scale(0.98);
+}
+
+/* 语音波纹图标（纯CSS） */
+.voice-wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.voice-wave span {
+    width: 3px;
+    background: #333;
+    border-radius: 2px;
+    animation: waveAnimation 1.2s ease-in-out infinite;
+}
+
+.voice-wave span:nth-child(1) {
+    height: 8px;
+    animation-delay: 0s;
+}
+
+.voice-wave span:nth-child(2) {
+    height: 12px;
+    animation-delay: 0.2s;
+}
+
+.voice-wave span:nth-child(3) {
+    height: 10px;
+    animation-delay: 0.4s;
+}
+
+@keyframes waveAnimation {
+    0%, 100% { transform: scaleY(1); opacity: 0.6; }
+    50% { transform: scaleY(1.5); opacity: 1; }
+}
+
+/* 语音时长 */
+.voice-duration {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    flex: 1;
+}
+
+
+/* 文字内容展开 */
+.voice-text-content {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    animation: fadeIn 0.2s ease;
+    word-break: break-all;
+}
+
+.message-item.me .voice-text-content {
+    border-top-color: rgba(0,0,0,0.15);
+}
+
+.voice-text-content.show {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 语音条容器 */
+.voice-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
       
@@ -2631,6 +2741,16 @@ color: #333;
         </svg>
     </button>
     <!-- ▲▲▲ 转账按钮结束 ▲▲▲ -->
+  <!-- 麦克风按钮 -->
+<button class="emoji-btn" onclick="openVoiceModal()" title="发送语音">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+    </svg>
+</button>
+
 </div>
 <!-- 表情包面板 -->
 <div class="emoji-panel" id="emojiPanel" style="display: none;">
@@ -3169,6 +3289,24 @@ color: #333;
         <div class="modal-buttons">
             <button class="btn btn-cancel" onclick="closeTransferModal()">取消</button>
             <button class="btn btn-save" onclick="confirmTransfer()">确认转账</button>
+        </div>
+    </div>
+</div>
+<!-- 语音消息弹窗 -->
+<div class="modal-overlay" id="voiceModal" onclick="closeVoiceModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 280px;">
+        <div class="modal-title">发送语音</div>
+        
+        <div class="form-group">
+            <textarea id="voiceTextInput" class="form-input" rows="4" placeholder="请输入要转成语音的内容..." maxlength="200" style="resize: none;"></textarea>
+            <div style="font-size: 12px; color: #999; margin-top: 5px; text-align: right;">
+                <span id="voiceCharCount">0</span>/200字
+            </div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeVoiceModal()">取消</button>
+            <button class="btn btn-save" onclick="sendVoiceMessage()">发送</button>
         </div>
     </div>
 </div>
@@ -4731,7 +4869,32 @@ function renderMessages() {
             return `<div class="system-message">${msg.content}</div>`;
         }
         // ▲▲▲ 系统消息结束 ▲▲▲
+       // ▼▼▼ 新增：语音消息渲染（微信风格，无图标） ▼▼▼
+        if (msg.type === 'voice') {
+            return `
+                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                    ${checkbox}
+                    <div class="voice-container">
+                        <div class="voice-bubble" onclick="toggleVoiceText(${msg.id})">
+                            <div class="voice-wave">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="voice-duration">${msg.voiceDuration}"</div>
+                         
+                        </div>
+                        <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}" style="max-width: 200px; background: ${isMe ? '#95ec69' : 'white'}; padding: 8px 12px; border-radius: 8px; ${isMe ? '' : 'border: 1px solid #e0e0e0;'}">
+                            ${msg.content}
+                        </div>
+                    </div>
+                    <div class="message-time">${formatMessageTime(msg.id)}</div>
+                </div>
+            `;
+        }
+        // ▲▲▲ 语音消息渲染结束 ▲▲▲
 
+      
         // 普通消息
         let messageContent = '';
         
@@ -5108,10 +5271,14 @@ ${characterInfo.cityInfoEnabled ? `
 4. 例如：早上好啊|||今天天气真不错|||你吃早饭了吗
 5. 确保每条消息简短自然,不要太长
 6. 可以和活人一样打错别字,或者多打标点符号
-7. 如果你想给对方转账，格式：[转账:金额:备注]
-   例如：谢谢你！|||[转账:52:买杯奶茶]|||记得去吃~
-   注意：根据你的人设和情况决定，不用每次都转
-8. 如果对方给你转账，你要领取就在回复里加：[领取转账]，如：谢谢！|||[领取转账]|||我收到了~`;
+7. 转账功能：
+   - 给对方转账：[转账:金额:备注]，如：谢谢！|||[转账:52:买奶茶]|||记得吃~
+   - 对方转账给你→必须回应！你要领取就在回复里加：[领取转账]，如：谢谢！|||[领取转账]|||我收到了~
+   - 根据你的人设性格决定：立即领、犹豫、拒绝等，但必须作出你的反应
+8. 语音消息功能：
+   - 对方发语音时你会看到：[语音消息] 内容，这表示对方发了语音条，请根据人设与上下文回复。
+   - 如果你也想发语音，使用格式：[发送语音:内容]，例如：[发送语音:晚安宝贝~]
+   - 语音内容要简短（20字以内），适合用语音表达的话`;
 // 拼接表情包功能说明
 let emojiPrompt = '';
 if (emojiList.length > 0) {
@@ -5146,7 +5313,25 @@ const recentMessages = allMessages.slice(-contextCount).map(msg => {
     if (msg.type === 'image') {
         content = `[表情包：${msg.altText || '图片'}]`;
     }
-    
+    // ▼▼▼ 新增：如果是转账消息，将其转换为文字描述传给AI ▼▼▼
+    else if (msg.type === 'transfer') {
+        const amount = msg.transferData.amount;
+        const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
+        const status = msg.transferData.status === 'sent' ? '（待领取）' : '（已领取）';
+        // 如果是我发的，告诉AI我转了多少钱；如果是对方发的，告诉AI它转了多少钱
+        if (msg.senderId === 'me') {
+            content = `[系统消息：我给你转账了 ¥${amount}${note}${status}，请根据你的人设决定是否领取（回复里带[领取转账]即可领取），并表达感谢或拒绝]`;
+        } else {
+            content = `[系统消息：你给我转账了 ¥${amount}${note}]`;
+        }
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
+      // ▼▼▼ 新增：如果是语音消息，转换格式传给AI ▼▼▼
+    else if (msg.type === 'voice') {
+        content = `[语音消息] ${msg.content}`;
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
+
     return {
         role: msg.senderId === 'me' ? 'user' : 'assistant',
         content: content
@@ -5160,7 +5345,16 @@ const recentMessages = allMessages.slice(-contextCount).map(msg => {
             { role: 'system', content: systemPrompt },
             ...recentMessages
         ];
-        
+        // ▼▼▼ 新增：如果没有用户消息，添加一条 ▼▼▼
+const hasUserMessage = recentMessages.some(m => m.role === 'user');
+if (!hasUserMessage) {
+    messages.push({
+        role: 'user',
+        content: '(刚刚发了转账)'
+    });
+}
+// ▲▲▲ 修复结束 ▲▲▲
+
         // 调用API
         const url = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions'
@@ -5185,6 +5379,18 @@ const recentMessages = allMessages.slice(-contextCount).map(msg => {
         }
         
         const data = await response.json();
+      // ▼▼▼ 修改：打印完整数据 ▼▼▼
+        console.log('API完整返回：', data);
+        
+        if (!data.choices || data.choices.length === 0) {
+            console.error('API返回数据异常：', data);
+            // 显示更详细的错误信息
+            if (data.error) {
+                throw new Error(`API错误：${data.error.message || JSON.stringify(data.error)}`);
+            }
+            throw new Error('API未返回有效回复，请查看控制台');
+        }
+        // ▲▲▲ 检查结束 ▲▲▲
      let aiReply = data.choices[0].message.content.trim();
         // 加载表情库
 await new Promise(resolve => {
@@ -5292,11 +5498,11 @@ if (viewBtn) viewBtn.style.display = 'none';
         if (recentTransfers.length > 0) {
             const last = recentTransfers[recentTransfers.length - 1];
             if (last.transferData.status === 'sent') {
-                systemPrompt += `\n\n【转账提醒】对方给你转账 ¥${last.transferData.amount}`;
+                systemPrompt += `\n\n对方给你转账 ¥${last.transferData.amount}`;
                 if (last.transferData.note) {
                     systemPrompt += `，备注：${last.transferData.note}`;
                 }
-                systemPrompt += `。要领取就回复里加[领取转账]`;
+                systemPrompt += `。一定要对转账做出回应！根据人设，拒绝就表达拒绝的意思，要领取就回复里加[领取转账]`;
             }
         }
         // ▲▲▲ 检测转账结束 ▲▲▲
@@ -5424,6 +5630,34 @@ for (let i = 0; i < messageList.length; i++) {
         continue; // 跳过这条，不再作为普通文本消息
     }
     // ▲▲▲ 检测转账结束 ▲▲▲
+      // ▼▼▼ 新增：检测AI发送的语音 ▼▼▼
+    const voiceMatch = msgText.match(/\[发送语音:(.*?)\]/);
+    if (voiceMatch) {
+        const voiceText = voiceMatch[1].trim();
+        const duration = calculateVoiceDuration(voiceText);
+        
+        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+        
+        const voiceMessage = {
+            id: newId,
+            chatId: currentChatId,
+            type: 'voice',
+            content: voiceText,
+            voiceDuration: duration,
+            senderId: chat.name,
+            time: getCurrentTime(),
+            isRevoked: false,
+            isExpanded: false
+        };
+        
+        allMessages.push(voiceMessage);
+        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+        renderMessages();
+        scrollToBottom();
+        continue;
+    }
+    // ▲▲▲ 检测AI语音结束 ▲▲▲
+
     const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
     
     // 检查是否为表情包标记
@@ -7483,6 +7717,37 @@ function deleteDiary() {
         updateDiaryCount();
     });
 }
+// 删除日记（带二次确认）
+function deleteDiaryWithConfirm() {
+    if (!currentViewingDiaryId) return;
+    
+    const diary = diaries.find(d => d.id === currentViewingDiaryId);
+    if (!diary) return;
+    
+    // 二次确认
+    if (!confirm(`确定要删除日记《${diary.title || '无题日记'}》吗？\n此操作无法撤销！`)) {
+        return;
+    }
+    
+    // 从数据库删除
+    loadFromDB('diaries', (data) => {
+        let allDiaries = data && data.list ? data.list : [];
+        allDiaries = allDiaries.filter(d => d.id !== currentViewingDiaryId);
+        
+        const transaction = db.transaction(['diaries'], 'readwrite');
+        const objectStore = transaction.objectStore('diaries');
+        objectStore.put({ id: 1, list: allDiaries });
+        
+        alert('日记已删除');
+        
+        // 返回列表页
+        backToDiaryList();
+        loadDiaries();
+        
+        // 更新日记数量
+        updateDiaryCount();
+    });
+}
 
 // 更新日记数量显示
 function updateDiaryCount() {
@@ -8232,6 +8497,109 @@ function receiveTransfer(messageId) {
         scrollToBottom();
     }, 500);
 }
+      // ============ 语音消息功能 ============
+// 打开语音弹窗
+function openVoiceModal() {
+    if (!currentChatId) {
+        alert('请先打开聊天');
+        return;
+    }
+    
+    document.getElementById('voiceTextInput').value = '';
+    document.getElementById('voiceCharCount').textContent = '0';
+    document.getElementById('voiceModal').style.display = 'flex';
+    
+    setTimeout(() => {
+        document.getElementById('voiceTextInput').focus();
+    }, 100);
+}
+
+// 关闭语音弹窗
+function closeVoiceModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('voiceModal').style.display = 'none';
+}
+
+// 计算语音时长（根据字数）
+function calculateVoiceDuration(text) {
+    const length = text.length;
+    if (length <= 5) return 2;
+    if (length <= 15) return Math.ceil(length / 3);
+    if (length <= 50) return Math.ceil(length / 4);
+    return Math.ceil(length / 5);
+}
+
+// 发送语音消息
+function sendVoiceMessage() {
+    const text = document.getElementById('voiceTextInput').value.trim();
+    
+    if (!text) {
+        alert('请输入内容');
+        return;
+    }
+    
+    const duration = calculateVoiceDuration(text);
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'voice',
+        content: text,
+        voiceDuration: duration,
+        senderId: 'me',
+        time: getCurrentTime(),
+        isRevoked: false,
+        isExpanded: false
+    };
+    
+    // 如果有引用消息
+    if (quotedMessage) {
+        newMessage.quotedMessageId = quotedMessage.id;
+        newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
+        newMessage.quotedContent = quotedMessage.content;
+        newMessage.quotedTime = formatMessageTime(quotedMessage.time);
+        cancelQuote();
+    }
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    updateChatLastMessage(currentChatId, '[语音]');
+    
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+    
+    closeVoiceModal();
+}
+
+// 切换语音文字显示
+function toggleVoiceText(messageId) {
+    const textDiv = document.getElementById(`voice-text-${messageId}`);
+    if (textDiv) {
+        textDiv.classList.toggle('show');
+        
+        // 更新消息的展开状态
+        const message = allMessages.find(m => m.id === messageId);
+        if (message) {
+            message.isExpanded = !message.isExpanded;
+        }
+    }
+}
+
+// 监听输入框字数
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const voiceInput = document.getElementById('voiceTextInput');
+        if (voiceInput) {
+            voiceInput.addEventListener('input', function() {
+                const count = this.value.length;
+                document.getElementById('voiceCharCount').textContent = count;
+            });
+        }
+    }, 500);
+});
+
         // 初始化，
         initDB();
     </script>
