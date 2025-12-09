@@ -1568,26 +1568,127 @@
 }
 
 /* 召唤卡片 */
+
 .summon-card {
     margin: 20px;
-    padding: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 16px;
+    padding: 35px 25px;
+    background: 
+        linear-gradient(135deg, 
+            #fff5f7 0%, 
+            #ffe4ec 50%, 
+            #ffd6e3 100%);
+    border-radius: 25px;
     text-align: center;
-    color: white;
     cursor: pointer;
     position: relative;
-    overflow: hidden;
-    transition: all 0.3s;
+    overflow: visible;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 
+        0 5px 20px rgba(255, 182, 193, 0.3),
+        inset 0 -2px 10px rgba(255, 255, 255, 0.5);
+    border: 3px dashed #ffb3d1;
+}
+
+/* 左上角小兔子 */
+.summon-card::before {
+    content: '🐰';
+    position: absolute;
+    top: -18px;
+    left: 15px;
+    font-size: 40px;
+    animation: rabbitJump 2s ease-in-out infinite;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.1));
+    z-index: 2;
+}
+
+/* 顶部中央信封 */
+.summon-card::after {
+    content: '💌';
+    position: absolute;
+    top: -15px;
+    right: 15px;
+    font-size: 38px;
+    animation: envelopeSway 2.5s ease-in-out infinite;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.1));
+}
+
+@keyframes rabbitJump {
+    0%, 100% { 
+        transform: translateY(0) rotate(-8deg); 
+    }
+    50% { 
+        transform: translateY(-12px) rotate(8deg); 
+    }
+}
+
+@keyframes envelopeSway {
+    0%, 100% { 
+        transform: translateY(0) rotate(3deg); 
+    }
+    50% { 
+        transform: translateY(-8px) rotate(-3deg); 
+    }
+}
+
+.summon-card:hover {
+    transform: scale(1.08) translateY(-5px);
+    box-shadow: 
+        0 10px 35px rgba(255, 105, 180, 0.4),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.6);
+    border-color: #ff69b4;
 }
 
 .summon-card:active {
-    transform: scale(0.98);
+    animation: cardBounce 0.5s ease;
+}
+
+@keyframes cardBounce {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(0.95) rotate(-3deg); }
+    50% { transform: scale(1.05); }
+    75% { transform: scale(0.98) rotate(3deg); }
 }
 
 .summon-text {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 17px;
+    font-weight: 600;
+    color: #ff1493;
+    text-shadow: 
+        0 2px 4px rgba(255,255,255,0.8),
+        0 0 15px rgba(255, 105, 180, 0.3);
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 底部小爪印 */
+.stars-container {
+    pointer-events: none;
+}
+
+.stars-container::before {
+    content: '🐾';
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    font-size: 22px;
+    opacity: 0.5;
+    animation: pawFade 2s ease-in-out infinite;
+}
+
+.stars-container::after {
+    content: '🐾';
+    position: absolute;
+    bottom: 5px;
+    right: 20px;
+    font-size: 22px;
+    opacity: 0.5;
+    animation: pawFade 2s ease-in-out infinite 1s;
+}
+
+@keyframes pawFade {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.7; }
 }
 
 /* 星星特效容器 */
@@ -1719,92 +1820,178 @@
     font-size: 12px;
 }
 
-/* 日记详情页整体 */
-.diary-detail-screen {
-    height: 100vh;
-    background: #f5f5f5;
-    display: none;
-    flex-direction: column;
-}
-/* 日记详情内容容器 */
-.diary-detail-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-    background: #f5f5f5;
-}
+/* ========== 日记详情页美化 ========== */
+        .diary-detail-screen {
+            height: 100vh;
+            background: #f0f2f5; /* 背景稍微深一点，突出纸张 */
+            display: none;
+            flex-direction: column;
+        }
 
-/* 日记标题 */
-.diary-detail-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #5d4037;
-    text-align: center;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
+        .diary-detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px; /* 给纸张留出边距 */
+        }
 
-}
-/* 元信息 */
-.diary-meta {
-    text-align: center;
-    font-size: 12px;
-    color: #8d6e63;
-    margin-bottom: 25px;
-}
-/* 日记板块 */
-.diary-section {
-    margin-bottom: 25px;
-    margin-left: 30px;
-}
-/* 板块标题（带圆点） */
-.diary-section-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #6d4c41;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-}
-.diary-section-title:before {
-    content: '●';
-    color: #d4a574;
-    font-size: 12px;
-    margin-right: 8px;
-}
-/* 板块内容 */
-.diary-section-content {
-    font-size: 14px;
-    color: #5d4037;
-    line-height: 1.8;
-    padding-left: 5px;
-    word-wrap: break-word;
-    word-break: break-all;
-}
+        /* 纸张容器 */
+        .diary-paper {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-height: 80vh; /* 保证纸张足够长 */
+            position: relative;
+            color: #4a4a4a;
+        }
 
-.diary-section-content li {
-    margin-bottom: 8px;
-    list-style: none;
-    word-wrap: break-word;
-    word-break: break-all;
-}
+        /* 顶部装饰条（可选，增加设计感） */
+        .diary-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            height: 6px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 0 0 6px 6px;
+        }
 
-/* 今日感悟 */
+        /* 日记标题 */
+        .diary-detail-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
 
-.diary-tags {
-    margin-top: 12px;
-   margin-left: 30px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
+        /* 元信息（日期、天气、心情） */
+        .diary-meta {
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #eee; /* 虚线分割 */
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
 
-.diary-tag {
-    background: #f0f0ff;
-    color: #667eea;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-}
+        .diary-meta-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 板块样式 */
+        .diary-section {
+            margin-bottom: 30px;
+        }
+
+        /* 板块标题 */
+        .diary-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea; /* 主题色 */
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #667eea; /* 左侧竖线装饰 */
+            display: flex;
+            align-items: center;
+        }
+
+        /* 板块内容列表 */
+        .diary-section-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #555;
+            padding-left: 5px;
+        }
+
+        .diary-section-content ul {
+            padding-left: 0; /* 去掉默认缩进 */
+            list-style: none;
+        }
+
+        .diary-section-content li {
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 20px; /* 给自定义圆点留位置 */
+        }
+
+        /* 自定义圆点 */
+        .diary-section-content li::before {
+            content: '•';
+            color: #ddd;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+/* ▼▼▼ 新增：如果是待办事项，去掉前面的圆点，并减少左边距 ▼▼▼ */
+        .diary-section-content li.is-todo::before {
+            display: none;
+        }
+        
+        .diary-section-content li.is-todo {
+            padding-left: 0; /* 不需要给圆点留位置了 */
+            list-style: none;
+        }
+      /* ▼▼▼ 新增：针对 OOTD 等不需要圆点的列表项 ▼▼▼ */
+        .diary-section-content li.no-dot::before {
+            display: none;
+        }
+        
+        .diary-section-content li.no-dot {
+            padding-left: 0;
+            list-style: none;
+        }
+        /* 特殊样式的列表项 */
+        .checkbox-done {
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .checkbox-undone {
+            color: #ccc;
+            margin-right: 5px;
+        }
+
+        .strikethrough {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* 感悟段落 */
+        .diary-reflection p {
+            text-indent: 2em;
+            margin-bottom: 15px;
+            text-align: justify; /* 两端对齐 */
+        }
+
+        /* 标签区域 */
+        .diary-tags {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #f5f5f5;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .diary-tag {
+            background: #f0f0ff;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
 
 
 /* 删除线效果 */
@@ -1848,20 +2035,6 @@
 
 .emoji-btn:hover {
     background: #ebebeb;
-}
-.retry-btn {
-    margin-left: 10px;
-    opacity: 0.6;
-    transition: all 0.3s;
-}
-
-.retry-btn:hover {
-    opacity: 1;
-}
-
-.retry-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
 }
 
 /* 表情包面板 */
@@ -1940,6 +2113,7 @@
     font-size: 13px;
     cursor: pointer;
     transition: all 0.3s;
+color: #333;
 }
 
 .emoji-category-tag.active {
@@ -2021,6 +2195,110 @@
     display: block;
 }
 
+/* 快捷金额按钮 */
+.quick-amount-btn {
+    flex: 1;
+    padding: 8px 10px;
+    background: #fff0f6;
+    border: 1px solid #ffb3d9;
+    border-radius: 8px;
+    color: #ff69b4;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-amount-btn:active {
+    background: #ff69b4;
+    color: white;
+    transform: scale(0.95);
+}
+
+/* 转账消息卡片 */
+.transfer-card {
+    max-width: 180px;
+    padding: 12px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: default;
+    transition: all 0.3s;
+}
+
+/* 用户发的转账（已发出） */
+.transfer-card.sent {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    border: 2px solid #d0d0d0;
+}
+
+/* AI发的转账（待领取） */
+.transfer-card.pending {
+    background: linear-gradient(135deg, #fff4e6 0%, #ffe0b2 100%);
+    border: 2px solid #ffb74d;
+    box-shadow: 0 3px 12px rgba(255, 152, 0, 0.3);
+    cursor: pointer;
+    animation: transferGlow 2s ease-in-out infinite;
+}
+
+@keyframes transferGlow {
+    0%, 100% { box-shadow: 0 3px 12px rgba(255, 152, 0, 0.3); }
+    50% { box-shadow: 0 3px 20px rgba(255, 152, 0, 0.5); }
+}
+
+.transfer-card.pending:hover {
+    transform: scale(1.05);
+}
+
+/* AI发的转账（已领取） */
+.transfer-card.received {
+    background: #f0f0f0;
+    border: 2px solid #ccc;
+    color: #999;
+}
+
+.transfer-icon {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.transfer-amount {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 5px 0;
+    color: #ff4757;
+}
+
+.transfer-card.received .transfer-amount {
+    color: #999;
+}
+
+.transfer-note {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+    word-break: break-word;
+}
+
+.transfer-card.received .transfer-note {
+    color: #aaa;
+}
+
+.transfer-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #999;
+}
+
+.transfer-card.pending .transfer-status {
+    color: #ff9800;
+    font-weight: 600;
+}
+/* 转账领取动画 */
+@keyframes transferReceive {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2) rotate(5deg); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
 
       
     </style>
@@ -2318,16 +2596,49 @@
 </div>
 <!-- 表情包按钮 -->
 <div class="emoji-btn-wrapper">
-    <button class="emoji-btn" onclick="toggleEmojiPanel()">😊</button>
-   <button class="emoji-btn retry-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">↩️</button>
-</div>
+    <button class="emoji-btn" onclick="toggleEmojiPanel()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+        </svg>
+    </button>
+    
+  <button class="emoji-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+    </svg>
+</button>
 
+ <!-- ▼▼▼ 新增：发送图片按钮 ▼▼▼ -->
+    <button class="emoji-btn" onclick="document.getElementById('imageInput').click()" title="发送图片">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+    </button>
+    <!-- 隐藏的文件选择器 -->
+    <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+    <!-- ▲▲▲ 新增结束 ▲▲▲ -->
+    <!-- ▼▼▼ 新增：转账按钮 ▼▼▼ -->
+    <button class="emoji-btn" onclick="openTransferModal()" title="转账">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+            <line x1="2" y1="10" x2="22" y2="10"></line>
+        </svg>
+    </button>
+    <!-- ▲▲▲ 转账按钮结束 ▲▲▲ -->
+</div>
 <!-- 表情包面板 -->
 <div class="emoji-panel" id="emojiPanel" style="display: none;">
     <!-- 顶部操作栏 -->
     <div class="emoji-panel-header">
         <button class="emoji-header-btn" onclick="openEmojiUpload()">上传</button>
         <button class="emoji-header-btn" onclick="openEmojiCategoryManager()">分类管理</button>
+<button class="emoji-header-btn" id="clearEmojiBtn" onclick="clearCurrentEmojis()" style="display: none; color: #ff4757; border-color: #ff4757;">清空当前</button>
         <button class="emoji-header-btn" onclick="toggleEmojiDeleteMode()">删除模式</button>
     </div>
     
@@ -2368,7 +2679,7 @@
 <div class="character-profile-section">
     <div class="character-avatar" id="charAvatar" onclick="openEditBasicInfo()">👤</div>
     <div class="character-name" id="charDisplayName" onclick="openEditBasicInfo()">角色名字</div>
-    <div class="character-location" id="charLocation" onclick="openEditBasicInfo()">📍 未设置地址</div>
+   
     
     <div class="character-stats">
     <div class="stat-item" onclick="openDiaryList()" style="cursor: pointer;">
@@ -2697,10 +3008,7 @@
             <input type="text" id="editCharName" class="form-input" placeholder="输入角色名字">
         </div>
         
-        <div class="form-group">
-            <label class="form-label">地址</label>
-            <input type="text" id="editCharAddress" class="form-input" placeholder="输入地址">
-        </div>
+     
         
         <div class="modal-buttons">
             <button class="btn btn-cancel" onclick="closeEditBasicInfo()">取消</button>
@@ -2831,6 +3139,36 @@
         
         <div class="modal-buttons">
             <button class="btn btn-cancel" onclick="closeEmojiCategoryModal()">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- 转账弹窗 -->
+<div class="modal-overlay" id="transferModal" onclick="closeTransferModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 280px;">
+        <div class="modal-title" id="transferModalTitle">转账给 张三</div>
+        
+        <div class="form-group">
+            <label class="form-label">金额</label>
+            <input type="number" id="transferAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" style="font-size: 20px; text-align: center; color: #ff4757;">
+        </div>
+        
+        <!-- 快捷金额 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+            <button class="quick-amount-btn" onclick="setQuickAmount(5.20)">¥5.20</button>
+            <button class="quick-amount-btn" onclick="setQuickAmount(52)">¥52</button>
+            <button class="quick-amount-btn" onclick="setQuickAmount(66)">¥66</button>
+            <button class="quick-amount-btn" onclick="setQuickAmount(88)">¥88</button>
+            <button class="quick-amount-btn" onclick="setQuickAmount(520)">¥520</button>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">备注（可选）</label>
+            <input type="text" id="transferNote" class="form-input" placeholder="说点什么..." maxlength="20">
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeTransferModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmTransfer()">确认转账</button>
         </div>
     </div>
 </div>
@@ -4352,7 +4690,48 @@ function renderMessages() {
                 </div>
             `;
         }
-        
+                // ▼▼▼ 新增：转账消息渲染 ▼▼▼
+        if (msg.type === 'transfer') {
+            const isSent = msg.senderId === 'me';
+            const data = msg.transferData;
+            
+            let statusClass = '';
+            if (isSent) {
+                statusClass = data.status === 'aiReceived' ? 'received' : 'sent';
+            } else {
+                statusClass = data.status;
+            }
+            
+            let statusText = '';
+            if (isSent && data.status === 'aiReceived') {
+                statusText = '✓ 已领取';
+            } else if (!isSent && data.status === 'pending') {
+                statusText = '点击领取';
+            } else if (!isSent && data.status === 'received') {
+                statusText = '✓ 已领取';
+            }
+            
+            const clickEvent = (!isSent && data.status === 'pending') ? `onclick="receiveTransfer(${msg.id})"` : '';
+            return `
+                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                    ${checkbox}
+                    <div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}>
+                        <div class="transfer-icon">🧧</div>
+                        <div class="transfer-amount">¥${data.amount.toFixed(2)}</div>
+                        ${data.note ? `<div class="transfer-note">${data.note}</div>` : ''}
+                        ${statusText ? `<div class="transfer-status">${statusText}</div>` : ''}
+                    </div>
+                    <div class="message-time">${formatMessageTime(msg.time)}</div>
+                </div>
+            `;
+        }
+        // ▲▲▲ 转账消息渲染结束 ▲▲▲
+        // ▼▼▼ 新增：系统消息渲染 ▼▼▼
+        if (msg.type === 'system') {
+            return `<div class="system-message">${msg.content}</div>`;
+        }
+        // ▲▲▲ 系统消息结束 ▲▲▲
+
         // 普通消息
         let messageContent = '';
         
@@ -4563,7 +4942,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 发送消息
+
 // 发送消息
 function sendMessage() {
     const input = document.getElementById('chatInput');
@@ -4728,40 +5107,26 @@ ${characterInfo.cityInfoEnabled ? `
 3. 每条消息是完整的一句话,用"|||"符号分隔
 4. 例如：早上好啊|||今天天气真不错|||你吃早饭了吗
 5. 确保每条消息简短自然,不要太长
-6. 可以和活人一样打错别字,或者多打标点符号`;
+6. 可以和活人一样打错别字,或者多打标点符号
+7. 如果你想给对方转账，格式：[转账:金额:备注]
+   例如：谢谢你！|||[转账:52:买杯奶茶]|||记得去吃~
+   注意：根据你的人设和情况决定，不用每次都转
+8. 如果对方给你转账，你要领取就在回复里加：[领取转账]，如：谢谢！|||[领取转账]|||我收到了~`;
 // 拼接表情包功能说明
 let emojiPrompt = '';
 if (emojiList.length > 0) {
     const emojiNames = emojiList.map(e => e.text).join('、');
-    emojiPrompt = `
-【表情包功能 - 格式规范（必须严格遵守）】
-当前可用表情：${emojiNames}（共${emojiList.length}个）
-⚠️ 唯一正确格式（其他格式都是错误的）：
-✓ [搜表情:关键词]
-❌ 错误示例（禁止使用）：
-✗ [表情包:笑]  ← 错误！不是"表情包"
-✗ [表情包：笑]  ← 错误！不是"表情包"
-✗ 【表情包:笑】  ← 错误！不是方括号
-✗ 搜表情:笑  ← 错误！缺少方括号
-✗ [搜表情笑]  ← 错误！缺少冒号
-✓ 正确示例：
-- 今天好开心|||[搜表情:笑]
-- [搜表情:爱心]|||我也很喜欢你
-- 真的吗|||[搜表情:惊讶]|||太棒了
-关键规则：
-1. 必须是"搜表情"，不能是"表情包"或其他词
-2. 必须用英文方括号[]，不能用中文【】
-3. 必须用英文冒号:，不能用中文冒号：
-4. 表情包独立成一条消息，用|||分隔
-5. 关键词支持模糊匹配（如"笑"能匹配"大笑""笑哭"）
-格式检查：
-每次发表情包前，检查是否符合：[搜表情:xxx]
-- 左方括号 [ ✓
-- 搜表情三个字 ✓
-- 英文冒号 : ✓
-- 关键词 ✓
-- 右方括号 ] ✓
-请开始对话。`;
+  emojiPrompt = `
+【表情包发送规则】
+当前可用表情关键词：${emojiNames}
+如果你想发送表情，请使用格式：[表情:关键词]
+例如：
+- 哈哈好开心|||[表情:大笑]
+- [表情:爱心]|||我也爱你
+规则：
+1. 表情包必须独立成一条消息，用|||分隔。
+2. 尽量使用列表中的关键词，如果没有，我会尝试模糊匹配。
+`;
 } else {
     emojiPrompt = `
 【表情包功能】当前表情库为空,暂时无法发送表情。
@@ -4859,8 +5224,20 @@ await new Promise(resolve => {
     });
 });
 // 解析表情包标记
-const emojiRegex = /\[搜表情:(.*?)\]/g;
+const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
 let processedContent = messageContent;
+// 预处理：把 (笑)、(开心) 这种括号动作，也尝试转换成表情包
+    processedContent = processedContent.replace(/[\(（](.*?)[\)）]/g, (match, text) => {
+        // 只有当括号里的字数少于4个字时才尝试匹配（避免误伤普通对话）
+        if (text.length <= 4) {
+            const found = searchEmojiByKeyword(text);
+            if (found) {
+                // 直接转换成系统内部识别的格式
+                return `|||[EMOJI:${found.id}]|||`; 
+            }
+        }
+        return match; // 如果没找到表情，就保持原样
+    });
 const emojiMatches = [];
 let emojiMatch;
 while ((emojiMatch = emojiRegex.exec(messageContent)) !== null) {
@@ -4908,7 +5285,48 @@ if (viewBtn) viewBtn.style.display = 'none';
                 updateChatStatusDisplay(currentChatId);
             });
         }
-        
+                  // ▼▼▼ 新增：检测用户最近的转账 ▼▼▼
+        const recentTransfers = allMessages.slice(-3).filter(m => 
+            m.type === 'transfer' && m.senderId === 'me'
+        );
+        if (recentTransfers.length > 0) {
+            const last = recentTransfers[recentTransfers.length - 1];
+            if (last.transferData.status === 'sent') {
+                systemPrompt += `\n\n【转账提醒】对方给你转账 ¥${last.transferData.amount}`;
+                if (last.transferData.note) {
+                    systemPrompt += `，备注：${last.transferData.note}`;
+                }
+                systemPrompt += `。要领取就回复里加[领取转账]`;
+            }
+        }
+        // ▲▲▲ 检测转账结束 ▲▲▲
+        // ▼▼▼ 提前检测并处理领取转账 ▼▼▼
+        if (messageContent.includes('[领取转账]')) {
+            const pendingTransfer = allMessages.slice().reverse().find(m => 
+                m.type === 'transfer' && 
+                m.senderId === 'me' && 
+                m.transferData.status === 'sent'
+            );
+            
+            if (pendingTransfer) {
+                pendingTransfer.transferData.status = 'aiReceived';
+                
+                const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+                allMessages.push({
+                    id: systemMsgId,
+                    chatId: currentChatId,
+                    type: 'system',
+                    content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
+                    time: getCurrentTime()
+                });
+            }
+            
+            // 移除标记
+            messageContent = messageContent.replace(/\[领取转账\]/g, '');
+        }
+        // ▲▲▲ 提前处理结束 ▲▲▲
+
+
         // 解析分条消息
         let messageList = [];
         
@@ -4948,6 +5366,64 @@ for (let i = 0; i < messageList.length; i++) {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     const msgText = messageList[i];
+   // ▼▼▼ 新增：检测转账标记 [转账:金额:备注] ▼▼▼
+    const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
+    if (transferMatch) {
+        const amount = parseFloat(transferMatch[1]);
+        const note = transferMatch[2] || '';
+       // ▼▼▼ 新增：检测领取转账标记 ▼▼▼
+    if (msgText.includes('[领取转账]')) {
+        const pendingTransfer = allMessages.slice().reverse().find(m => 
+            m.type === 'transfer' && 
+            m.senderId === 'me' && 
+            m.transferData.status === 'sent'
+        );
+        
+        if (pendingTransfer) {
+            pendingTransfer.transferData.status = 'aiReceived';
+            
+            const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+            allMessages.push({
+                id: systemMsgId,
+                chatId: currentChatId,
+                type: 'system',
+                content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
+                time: getCurrentTime()
+            });
+            
+            saveMessages();
+            renderMessages();
+        }
+        
+        const cleanText = msgText.replace('[领取转账]', '').trim();
+        if (cleanText.length === 0) {
+            continue;
+        }
+        messageList[i] = cleanText;
+    }
+    // ▲▲▲ 检测领取转账结束 ▲▲▲
+        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+        
+        const transferMessage = {
+            id: newId,
+            chatId: currentChatId,
+            type: 'transfer',
+            senderId: chat.name,
+            time: getCurrentTime(),
+            transferData: {
+                amount: amount,
+                note: note,
+                status: 'pending'
+            }
+        };
+        allMessages.push(transferMessage);
+        
+        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+        renderMessages();
+        scrollToBottom();
+        continue; // 跳过这条，不再作为普通文本消息
+    }
+    // ▲▲▲ 检测转账结束 ▲▲▲
     const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
     
     // 检查是否为表情包标记
@@ -5415,12 +5891,12 @@ setTimeout(() => {
 
         
       // 更新显示（添加空值检查）
-const locationEl = document.getElementById('charLocation');
+
 const followersEl = document.getElementById('charFollowers');
 const followingEl = document.getElementById('charFollowing');
 const itineraryEl = document.getElementById('charItinerary');
 
-if (locationEl) locationEl.textContent = charData.address ? `📍 ${charData.address}` : '📍 未设置地址';
+
 if (followersEl) followersEl.textContent = charData.followers || 0;
 if (followingEl) followingEl.textContent = charData.following || 0;
 if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
@@ -5532,7 +6008,7 @@ function openEditBasicInfo() {
         
         // 填充当前名字和地址
         document.getElementById('editCharName').value = chat.name || '';
-        document.getElementById('editCharAddress').value = charData.address || '';
+     
         
         // 显示弹窗
         document.getElementById('editBasicInfoModal').style.display = 'flex';
@@ -5550,7 +6026,7 @@ function saveBasicInfo() {
     if (!currentChatId) return;
     
     const newName = document.getElementById('editCharName').value.trim();
-    const newAddress = document.getElementById('editCharAddress').value.trim();
+ 
     const avatarFile = document.getElementById('editAvatarInput').files[0];
     
     if (!newName) {
@@ -5583,7 +6059,7 @@ function saveBasicInfo() {
         loadFromDB('characterInfo', (data) => {
             const allCharData = data || {};
             const charData = allCharData[currentChatId] || {};
-            charData.address = newAddress;
+         
             allCharData[currentChatId] = charData;
             saveToDB('characterInfo', allCharData);
             
@@ -6884,58 +7360,88 @@ function openDiaryDetail(diaryId) {
     renderDiaryDetail(diary);
 }
 
+// 渲染日记详情（修复感悟不分段版）
 function renderDiaryDetail(diary) {
     const container = document.getElementById('diaryDetailContent');
     
+    // 1. 顶部：标题和元信息
     let html = `
         <div class="diary-paper">
-            <div class="diary-detail-title">${diary.title}</div>
+            <div class="diary-detail-title">${diary.title || '无题日记'}</div>
+            
             <div class="diary-meta">
-                ${formatDiaryTime(diary.createTime)}<br>
-                ${diary.weather} | ${diary.mood}
+                <div class="diary-meta-row" style="color: #666; font-weight: 500;">
+                    ${formatDiaryTime(diary.createTime)}
+                </div>
+                <div class="diary-meta-row">
+                    <span>${diary.weather ? '🌤 ' + diary.weather : ''}</span>
+                    <span style="color: #ddd">|</span>
+                    <span>${diary.mood ? '✨ ' + diary.mood : ''}</span>
+                </div>
             </div>
     `;
     
-    // 渲染动态板块
-    diary.sections.forEach(section => {
+    // 2. 中间：动态板块
+    if (diary.sections && diary.sections.length > 0) {
+        diary.sections.forEach(section => {
+            // 判断 OOTD
+            const isOOTD = section.title && section.title.toUpperCase().includes('OOTD');
+            
+            html += `
+                <div class="diary-section">
+                    <div class="diary-section-title">${section.title}</div>
+                    <div class="diary-section-content">
+                        <ul>
+                            ${section.items.map(item => {
+                                let text = item.text;
+                                
+                                // 判断 TodoList
+                                const isTodo = /\[(x|X| )\]/.test(text);
+                                
+                                // 决定样式类
+                                let liClass = '';
+                                if (isTodo) {
+                                    liClass = 'class="is-todo"';
+                                } else if (isOOTD) {
+                                    liClass = 'class="no-dot"';
+                                }
+                                
+                                // 处理格式
+                                text = text.replace(/~~(.+?)~~/g, '<span class="strikethrough">$1</span>');
+                                text = text.replace(/\[x\]/gi, '<span class="checkbox-done">☑</span>');
+                                text = text.replace(/\[ \]/g, '<span class="checkbox-undone">☐</span>');
+                                
+                                return `<li ${liClass}>${text}</li>`;
+                            }).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    // 3. 底部：今日感悟
+    if (diary.reflection) {
+        // ▼▼▼ 核心修复：把 split('\n\n') 改成 split('\n') ▼▼▼
+        // 只要有换行，就分段，哪怕只有一个换行符
+        const paragraphs = diary.reflection.split('\n')
+            .map(p => p.trim())
+            .filter(p => p.length > 0) // 过滤掉纯空行
+            .map(p => `<p>${p}</p>`)   // 包裹在 P 标签里
+            .join('');
+        // ▲▲▲ 修改结束 ▲▲▲
+        
         html += `
             <div class="diary-section">
-                <div class="diary-section-title">${section.title}</div>
-                <div class="diary-section-content">
-                    ${section.items.map(item => {
-                        let text = item.text;
-                        text = text.replace(/~~(.+?)~~/g, '<span class="strikethrough">$1</span>');
-                        text = text.replace(/\[x\]/gi, '<span class="checkbox-done">☑</span>');
-                        text = text.replace(/\[ \]/g, '<span class="checkbox-undone">☐</span>');
-                        return `<li>${text}</li>`;
-                    }).join('')}
+                <div class="diary-section-title">📝 今日感悟</div>
+                <div class="diary-section-content diary-reflection">
+                    ${paragraphs}
                 </div>
             </div>
         `;
-    });
+    }
     
-// 渲染今日感悟
-if (diary.reflection) {
-    // 处理每段的首行缩进
-    const paragraphs = diary.reflection.split('\n\n')
-        .map(p => p.trim())
-        .filter(p => p.length > 0)
-        .map(p => `<p style="text-indent: 2em; margin: 0 0 10px 0;">${p}</p>`)
-        .join('');
-    
-    html += `
-        <div class="diary-section">
-            <div class="diary-section-title">今日感悟</div>
-            <div class="diary-section-content">
-                <div style="line-height: 2;">${paragraphs}</div>
-            </div>
-        </div>
-    `;
-}
-
-
-    
-    // 渲染标签
+    // 4. 尾部：标签
     if (diary.tags && diary.tags.length > 0) {
         html += `
             <div class="diary-tags">
@@ -7177,13 +7683,48 @@ function sendEmoji(emojiId) {
     // 关闭面板
     toggleEmojiPanel();
 }
-
 // 切换删除模式
 function toggleEmojiDeleteMode() {
     isEmojiDeleteMode = !isEmojiDeleteMode;
+    
+    // ▼▼▼ 新增：控制清空按钮的显示与隐藏 ▼▼▼
+    const clearBtn = document.getElementById('clearEmojiBtn');
+    if (clearBtn) {
+        // 如果开启了删除模式，显示按钮；否则隐藏
+        clearBtn.style.display = isEmojiDeleteMode ? 'block' : 'none';
+        
+        // 可选：为了更丝滑，可以加个简单的透明度动画（这里用简单的显示隐藏即可）
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
+
     renderEmojis();
 }
-
+// 清空当前显示的表情包
+function clearCurrentEmojis() {
+    // 1. 获取当前分类名称
+    const categoryName = currentEmojiCategory === 'all' ? '所有' : `“${currentEmojiCategory}”分类下的`;
+    
+    // 2. 二次确认（防止手滑）
+    if (!confirm(`高能预警！\n\n确定要一键清空【${categoryName}】表情包吗？\n此操作不可恢复！`)) {
+        return;
+    }
+    
+    // 3. 执行删除逻辑
+    if (currentEmojiCategory === 'all') {
+        // 如果当前在“全部”，则清空所有表情
+        emojis = [];
+    } else {
+        // 如果在特定分类，只过滤掉该分类的表情，保留其他分类的
+        emojis = emojis.filter(e => e.category !== currentEmojiCategory);
+    }
+    
+    // 4. 保存并刷新
+    saveToDB('emojis', { id: 1, list: emojis });
+    renderEmojis();
+    
+    // 5. 提示用户
+    // alert('已清空！'); // 觉得太打扰可以注释掉这行
+}
 // 删除表情包
 function deleteEmoji(emojiId) {
     if (!confirm('确定删除这个表情包吗？')) return;
@@ -7224,22 +7765,28 @@ function confirmEmojiUpload() {
     let successCount = 0;
     
     lines.forEach(line => {
-        // 尝试多种格式解析
+      // 尝试多种格式解析
         let match = null;
         
-        // 格式1: 文本链接 (直接连着)
-        match = line.match(/^(.+?)(https?:\/\/.+)$/);
+        // 【修改后】优先匹配带“分隔符”的格式，防止分隔符被当成文字吃掉
+        
+        // 优先级 1: 文本：链接 (支持中文/英文冒号)
+        match = line.match(/^(.+?)[:：]\s*(https?:\/\/.+)$/);
+        
         if (!match) {
-            // 格式2: 文本,链接
-            match = line.match(/^(.+?),\s*(https?:\/\/.+)$/);
+            // 优先级 2: 文本,链接 (支持中文/英文逗号)
+            match = line.match(/^(.+?)[,，]\s*(https?:\/\/.+)$/);
         }
+        
         if (!match) {
-            // 格式3: 文本 链接 (空格)
+            // 优先级 3: 文本 链接 (中间有空格)
             match = line.match(/^(.+?)\s+(https?:\/\/.+)$/);
         }
+        
         if (!match) {
-            // 格式4: 文本：链接
-            match = line.match(/^(.+?)[:：]\s*(https?:\/\/.+)$/);
+            // 优先级 4: 文本链接 (无分隔符，最后兜底)
+            // 只有前面都匹配不上，才认为它是直接连在一起的
+            match = line.match(/^(.+?)(https?:\/\/.+)$/);
         }
         
         if (match) {
@@ -7492,7 +8039,199 @@ async function retryAIReply() {
     // 调用AI重新回复
     receiveAIReply();
 }
+// ============ 图片上传功能 ============
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+        alert('请选择图片文件');
+        return;
+    }
+    
+    // 检查文件大小（限制5MB）
+    if (file.size > 5 * 1024 * 1024) {
+        alert('图片大小不能超过5MB');
+        return;
+    }
+    
+    // 读取图片
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageData = e.target.result;
+        
+        // 生成新消息ID
+        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+        
+        const newMessage = {
+            id: newId,
+            chatId: currentChatId,
+            type: 'image',
+            content: imageData,
+            altText: file.name,
+            senderId: 'me',
+            time: getCurrentTime(),
+            isRevoked: false
+        };
+        
+        // 如果有引用消息，添加引用信息
+        if (quotedMessage) {
+            newMessage.quotedMessageId = quotedMessage.id;
+            newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
+            newMessage.quotedContent = quotedMessage.content;
+            newMessage.quotedTime = formatMessageTime(quotedMessage.time);
+            cancelQuote();
+        }
+        
+        allMessages.push(newMessage);
+        saveMessages();
+        updateChatLastMessage(currentChatId, '【图片】');
+        
+        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+        renderMessages();
+        scrollToBottom();
+    };
+    
+    reader.readAsDataURL(file);
+    
+    // 清空input，允许重复选择同一文件
+    event.target.value = '';
+}
 
+// 查看大图
+function viewImage(url) {
+    // 创建遮罩层
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: zoom-out;
+    `;
+    
+    // 创建图片
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = `
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: 8px;
+    `;
+    
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+    
+    // 点击关闭
+    overlay.onclick = function() {
+        document.body.removeChild(overlay);
+    };
+}
+// ============ 转账功能 ============
+// 打开转账弹窗
+function openTransferModal() {
+    if (!currentChatId) {
+        alert('请先打开聊天');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    document.getElementById('transferModalTitle').textContent = `转账给 ${chat.name}`;
+    document.getElementById('transferAmount').value = '';
+    document.getElementById('transferNote').value = '';
+    document.getElementById('transferModal').style.display = 'flex';
+    
+    // 自动聚焦金额输入框
+    setTimeout(() => {
+        document.getElementById('transferAmount').focus();
+    }, 100);
+}
+// 关闭转账弹窗
+function closeTransferModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('transferModal').style.display = 'none';
+}
+// 设置快捷金额
+function setQuickAmount(amount) {
+    document.getElementById('transferAmount').value = amount.toFixed(2);
+}
+// 确认转账
+function confirmTransfer() {
+    const amount = parseFloat(document.getElementById('transferAmount').value);
+    const note = document.getElementById('transferNote').value.trim();
+    
+    if (!amount || amount <= 0) {
+        alert('请输入正确的金额');
+        return;
+    }
+    
+    // 生成新消息ID
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'transfer',
+        senderId: 'me',
+        time: getCurrentTime(),
+        transferData: {
+            amount: amount,
+            note: note,
+            status: 'sent'
+        }
+    };
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    updateChatLastMessage(currentChatId, `[转账] ¥${amount.toFixed(2)}`);
+    
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+    
+    closeTransferModal();
+}
+// 领取转账
+function receiveTransfer(messageId) {
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message || message.transferData.status !== 'pending') return;
+    
+    // 播放领取动画
+    const card = document.querySelector(`[data-transfer-id="${messageId}"]`);
+    if (card) {
+        card.style.animation = 'transferReceive 0.5s ease';
+    }
+    
+    setTimeout(() => {
+        // 更新状态为已领取
+        message.transferData.status = 'received';
+        saveMessages();
+        
+        // 添加系统消息
+        const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+        allMessages.push({
+            id: systemMsgId,
+            chatId: currentChatId,
+            type: 'system',
+            content: `你已领取 ¥${message.transferData.amount.toFixed(2)}`,
+            time: getCurrentTime()
+        });
+        
+        saveMessages();
+        renderMessages();
+        scrollToBottom();
+    }, 500);
+}
         // 初始化，
         initDB();
     </script>
