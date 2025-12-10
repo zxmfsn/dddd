@@ -1213,7 +1213,44 @@
     background: #ccc;
     cursor: not-allowed;
 }
+/* 新的图标按钮样式 */
+        .action-icon-btn {
+            background: transparent;
+            border: none;
+            width: 44px;       /* 按钮整体大小 */
+            height: 44px;
+            padding: 10px;     /* 内边距，控制图标显示大小 */
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+            border-radius: 50%; /* 圆形按钮 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 5px;  /* 按钮之间的间距 */
+        }
 
+        /* 鼠标悬停变色 */
+        .action-icon-btn:hover {
+            background: #f5f5f5;
+        }
+
+        /* 点击时的缩小效果 */
+        .action-icon-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* 图片样式 */
+        .action-icon-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0.7; /* 默认稍微淡一点，显高级 */
+            transition: opacity 0.3s;
+        }
+
+        .action-icon-btn:hover img {
+            opacity: 1;   /* 悬停时完全不透明 */
+        }
 /* 系统消息 */
 .system-message {
     text-align: center;
@@ -2410,7 +2447,211 @@ color: #333;
     gap: 4px;
 }
 
-      
+   /* ============ 通话页面样式 ============ */
+.call-screen {
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+}
+/* 顶部状态区 */
+.call-header {
+    padding: 30px 20px 15px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.call-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.call-status {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+}
+
+
+/* 对话区域容器 */
+.call-messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 15px 10px;
+}
+
+.call-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 动作描写框 */
+.call-action-desc {
+    background: rgba(0,0,0,0.4);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-style: italic;
+    color: #ddd;
+    font-size: 13px;
+    text-align: center;
+    margin: 10px auto;
+    max-width: 85%;
+    line-height: 1.5;
+    backdrop-filter: blur(5px);
+}
+
+/* AI消息气泡 */
+.call-message-ai {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 75%;
+    font-size: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 用户消息气泡 */
+.call-message-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 75%;
+    font-size: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 挂断按钮区域 */
+.call-hangup-section {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.hangup-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #ff4757;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,71,87,0.4);
+    transition: all 0.3s;
+}
+
+.hangup-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(255,71,87,0.6);
+}
+
+.hangup-btn:active {
+    transform: scale(0.95);
+}
+
+/* 输入栏 */
+.call-input-bar {
+    display: flex;
+    align-items: flex-end;
+    padding: 15px;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.call-input-bar .chat-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    font-size: 16px;
+    resize: none;
+    max-height: 72px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    outline: none;
+    background: rgba(255,255,255,0.9);
+    transition: border-color 0.3s;
+}
+
+.call-input-bar .chat-input:disabled {
+    background: rgba(255,255,255,0.5);
+    color: #999;
+    cursor: not-allowed;
+}
+
+.call-input-bar .chat-input:focus {
+    border-color: white;
+}
+ /* 通话设置按钮 */
+.call-settings-btn {
+    position: absolute;
+    top: 30px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s;
+  font-size: 18px;
+}
+
+.call-settings-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.call-settings-btn:active {
+    transform: scale(0.95);
+}
+/* 通话页面自定义样式变量 */
+.call-screen {
+    --call-ai-bubble-color: rgba(255,255,255,0.9);
+    --call-ai-text-color: #333;
+    --call-user-bubble-color: linear-gradient(135deg, #667eea, #764ba2);
+    --call-user-text-color: white;
+    --call-name-color: white;
+}
+
+/* 应用角色名颜色 */
+.call-name {
+    color: var(--call-name-color) !important;
+}
+
+/* 应用自定义颜色 */
+.call-message-ai {
+    background: var(--call-ai-bubble-color) !important;
+    color: var(--call-ai-text-color) !important;
+}
+
+.call-message-user {
+    background: var(--call-user-bubble-color) !important;
+    color: var(--call-user-text-color) !important;
+}
+  
     </style>
 </head>
 <body>
@@ -2750,7 +2991,13 @@ color: #333;
         <line x1="8" y1="23" x2="16" y2="23"></line>
     </svg>
 </button>
-
+<!-- ▼▼▼ 新增：电话图标按钮 ▼▼▼ -->
+<button class="emoji-btn" onclick="openCall()" title="视频通话">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+    </svg>
+</button>
+<!-- ▲▲▲ 新增结束 ▲▲▲ -->
 </div>
 <!-- 表情包面板 -->
 <div class="emoji-panel" id="emojiPanel" style="display: none;">
@@ -2783,7 +3030,13 @@ color: #333;
 
     <div class="chat-input-bar">
         <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
-        <button class="receive-btn" id="receiveBtn" onclick="receiveAIReply()">接收</button>
+      <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
+            <img src="https://img.heliar.top/file/1765364506053_feather.png" alt="发送">
+        </button>
+
+        <button class="action-icon-btn" id="receiveBtn" onclick="receiveAIReply()" title="接收回信">
+            <img src="https://img.heliar.top/file/1765364502822_mail.png" alt="接收">
+        </button>
     </div>
 </div>
 <!-- 角色信息页面 -->
@@ -3310,6 +3563,114 @@ color: #333;
         </div>
     </div>
 </div>
+<!-- 通话页面 -->
+<div class="call-screen" id="callScreen">
+    <!-- 顶部状态区 -->
+    <div class="call-header">
+        <div class="call-name" id="callCharacterName">张三</div>
+        <div class="call-status" id="callStatus">正在呼叫...</div>
+             <button class="call-settings-btn" onclick="openCallSettings()">⚙️</button>
+
+    </div>
+
+    
+    <!-- 对话区域 -->
+    <div class="call-messages-container" id="callMessagesContainer">
+        <div class="call-messages" id="callMessages">
+            <!-- 对话内容将动态生成 -->
+        </div>
+    </div>
+    
+    <!-- 挂断按钮 -->
+    <div class="call-hangup-section">
+        <button class="hangup-btn" onclick="hangupCall()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+        </button>
+    </div>
+    
+    <!-- 输入栏（复制聊天页的） -->
+    <div class="call-input-bar">
+        <textarea class="chat-input" id="callInput" placeholder="输入消息..." rows="1" disabled></textarea>
+        <button class="action-icon-btn" onclick="sendCallMessage()" id="callSendBtn">
+            <img src="https://img.heliar.top/file/1765364506053_feather.png" alt="发送">
+        </button>
+        <button class="action-icon-btn" onclick="receiveCallReply()" id="callReceiveBtn">
+            <img src="https://img.heliar.top/file/1765364502822_mail.png" alt="接收">
+        </button>
+    </div>
+
+<!-- 通话设置弹窗 -->
+<div class="modal-overlay" id="callSettingsModal" onclick="closeCallSettings(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 320px;">
+        <div class="modal-title">通话设置</div>
+        
+        <!-- 壁纸设置 -->
+        <div class="form-group">
+            <label class="form-label">通话壁纸</label>
+            <div class="file-input-area" onclick="document.getElementById('callWallpaperFile').click()">
+                <div>📁 点击选择图片</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">支持 JPG、PNG 格式</div>
+                <input type="file" id="callWallpaperFile" accept="image/*" style="display: none;">
+            </div>
+            <button class="api-btn" onclick="resetCallWallpaper()" style="margin-top: 10px; background: #999;">恢复默认渐变</button>
+        </div>
+        
+              <!-- AI消息气泡颜色 -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>AI消息气泡颜色</span>
+                <input type="color" id="callAiBubbleColor" value="#ffffff" style="display: none;">
+                <div id="callAiBubblePreview" onclick="document.getElementById('callAiBubbleColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
+            </label>
+        </div>
+        
+        <!-- AI消息字体颜色 -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>AI消息字体颜色</span>
+                <input type="color" id="callAiTextColor" value="#333333" style="display: none;">
+                <div id="callAiTextPreview" onclick="document.getElementById('callAiTextColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #333333; cursor: pointer;"></div>
+            </label>
+        </div>
+        
+        <!-- 用户消息气泡颜色 -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>我的消息气泡颜色</span>
+                <input type="color" id="callUserBubbleColor" value="#667eea" style="display: none;">
+                <div id="callUserBubblePreview" onclick="document.getElementById('callUserBubbleColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #667eea; cursor: pointer;"></div>
+            </label>
+        </div>
+        
+        <!-- 用户消息字体颜色 -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>我的消息字体颜色</span>
+                <input type="color" id="callUserTextColor" value="#ffffff" style="display: none;">
+                <div id="callUserTextPreview" onclick="document.getElementById('callUserTextColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
+            </label>
+        </div>
+        <!-- 角色名字体颜色 -->
+        <div class="form-group">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>角色名字体颜色</span>
+                <input type="color" id="callNameColor" value="#ffffff" style="display: none;">
+                <div id="callNamePreview" onclick="document.getElementById('callNameColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
+            </label>
+        </div>
+
+
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeCallSettings()">取消</button>
+            <button class="btn btn-save" onclick="saveCallSettings()">保存</button>
+        </div>
+    </div>
+</div>
+</div>
 
 
     <script>
@@ -3321,7 +3682,7 @@ let diaries = [];
 let currentViewingDiaryId = null;
 
         function initDB() {
-           const request = indexedDB.open('phoneData', 9);
+           const request = indexedDB.open('phoneData', 10);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -3373,6 +3734,9 @@ if (!db.objectStoreNames.contains('messages')) {
 }
 if (!db.objectStoreNames.contains('emojiCategories')) {
     db.createObjectStore('emojiCategories', { keyPath: 'id' });
+}
+if (!db.objectStoreNames.contains('callSettings')) {
+    db.createObjectStore('callSettings', { keyPath: 'id' });
 }
 
 
@@ -5105,7 +5469,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-
+// 通话输入框自动调整高度
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const callInput = document.getElementById('callInput');
+        if (callInput) {
+            callInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 72) + 'px';
+            });
+            
+            // 回车发送
+            callInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendCallMessage();
+                }
+            });
+        }
+    }, 500);
+});
 // 发送消息
 function sendMessage() {
     const input = document.getElementById('chatInput');
@@ -5379,8 +5762,7 @@ if (!hasUserMessage) {
         }
         
         const data = await response.json();
-      // ▼▼▼ 修改：打印完整数据 ▼▼▼
-        console.log('API完整返回：', data);
+    
         
         if (!data.choices || data.choices.length === 0) {
             console.error('API返回数据异常：', data);
@@ -7477,6 +7859,11 @@ async function parseDiaryContent(content) {
     
     for (let line of lines) {
         line = line.trim();
+      
+      // 修复日记为空的问题：去除 AI 可能生成的 Markdown 符号（如 **粗体** 或 ## 标题）
+        line = line.replace(/[\*\#]/g, '').trim();
+      //新增结束
+      
         if (!line) continue;
         
         // 解析标题
@@ -8599,9 +8986,566 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 500);
 });
+// ============ 通话功能相关变量 ============
+let isInCall = false;
+let callTimer = null;
+let callSeconds = 0;
+let callMessages = [];
+// 通话设置相关
+let callSettings = {
+    wallpaper: null,
+    aiBubbleColor: 'rgba(255,255,255,0.9)',
+    aiTextColor: '#333333',
+    userBubbleColor: '#667eea',
+    userTextColor: '#ffffff',
+    nameColor: '#ffffff'
+};
+
+      
+      // ============ 通话功能 ============
+
+// 打开通话页面
+function openCall() {
+    if (!currentChatId) {
+        alert('请先打开聊天');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    // 重置状态
+    isInCall = true;
+    callSeconds = 0;
+    callMessages = [];
+    
+    // 设置界面
+    document.getElementById('callCharacterName').textContent = chat.name;
+    document.getElementById('callStatus').textContent = '正在呼叫...';
+    
+
+    
+    // 清空对话区域
+    document.getElementById('callMessages').innerHTML = '';
+    
+    // 禁用输入栏
+    document.getElementById('callInput').disabled = true;
+    document.getElementById('callInput').value = '';
+    document.getElementById('callSendBtn').style.opacity = '0.5';
+    document.getElementById('callReceiveBtn').style.opacity = '0.5';
+    
+    // 隐藏聊天详情页，显示通话页
+    document.getElementById('chatDetailScreen').style.display = 'none';
+    document.getElementById('callScreen').style.display = 'flex';
+        // 加载并应用通话设置
+    loadFromDB('callSettings', (data) => {
+        if (data) {
+            callSettings = data;
+        }
+        applyCallSettings();
+    });
+    // 立即调用AI接听
+    setTimeout(() => {
+        callAIAnswer();
+    }, 100);
+}
+// AI接听电话
+async function callAIAnswer() {
+    // 检查API配置
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置');
+        hangupCall();
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    
+    const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+    
+    // 构建系统提示词（在原有基础上追加视频通话部分）
+    let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
+
+【角色人设】
+${characterInfo.personality || '一个友好、真诚的角色。'}
+
+【对方人设】
+${characterInfo.myPersonality || '无'}
+
+【关联世界书信息】
+${worldbooksContent}
+
+【时间信息】
+今天是：${dateStr} ${timeStr}
+当前时间：${timeStr}
+${getBirthdayPrompt(characterInfo.birthday)}
+
+【城市与天气信息】
+${characterInfo.cityInfoEnabled ? `
+你所在城市：${characterInfo.charVirtualAddress}（参考${characterInfo.charRealAddress}）
+今天天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}
+明天天气：${characterInfo.charWeather.tomorrow.condition}，${characterInfo.charWeather.tomorrow.temp}
+
+对方所在城市：${characterInfo.myVirtualAddress}（参考${characterInfo.myRealAddress}）
+今天天气：${characterInfo.myWeather.today.condition}，${characterInfo.myWeather.today.temp}
+明天天气：${characterInfo.myWeather.tomorrow.condition}，${characterInfo.myWeather.tomorrow.temp}
+` : ''}
+
+【视频通话模式 - 重要】
+现在用户给你拨打了视频电话，你正在接听。
+在你的视角里，这是视频通话，你能看到对方的样子。
+请用口语化、简短的方式回复，像真人打电话一样。
+必须遵从人设，禁止发送图片或者表情包或者语音条
+
+【回复格式 - 严格遵守】
+每次回复必须按以下格式：
+
+[动作]你的动作描述|||[消息]第一条消息|||第二条消息|||第三条消息
+
+例如：
+[动作]他躺在床上，看到视频中的你露出笑容|||[消息]宝贝！|||你刚才去哪儿了|||我好想你啊
+
+【动作描写要求】
+- 描述你在做什么、什么表情、什么语气
+- 20-40字，简短生动
+- 可以涉及：躺着/坐着、表情变化、周围环境等
+
+【消息要求】
+- 3-8条独立消息，用|||分隔
+- 每条10-30字
+- 口语化、自然、像真人打电话
+- 可以提到"看到你了"、"你穿得真好看"等视觉相关内容
+
+现在请接听电话并打招呼。`;
+    
+    try {
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: systemPrompt }],
+                temperature: 0.9
+            })
+        });
+        
+        if (!response.ok) throw new Error('接听失败');
+        
+        const data = await response.json();
+        const aiReply = data.choices[0].message.content.trim();
+        
+        // 接通成功，更新界面
+        callConnected();
+        
+        // 解析并显示AI回复
+        parseAndShowCallReply(aiReply);
+        
+    } catch (error) {
+        alert('通话失败：' + error.message);
+        hangupCall();
+    }
+}
+// 通话接通
+function callConnected() {
+    // 更新状态为计时
+    document.getElementById('callStatus').textContent = '00:00';
+    
+ 
+    
+    // 启用输入栏
+    document.getElementById('callInput').disabled = false;
+    document.getElementById('callSendBtn').style.opacity = '1';
+    document.getElementById('callReceiveBtn').style.opacity = '1';
+    
+    // 开始计时
+    callSeconds = 0;
+    callTimer = setInterval(() => {
+        callSeconds++;
+        const minutes = Math.floor(callSeconds / 60);
+        const seconds = callSeconds % 60;
+        document.getElementById('callStatus').textContent = 
+            `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }, 1000);
+}
+
+// 解析并显示AI回复
+function parseAndShowCallReply(aiReply) {
+    // 正则提取：[动作]xxx|||[消息]aaa|||bbb|||ccc
+    const actionMatch = aiReply.match(/\[动作\](.*?)\|\|\|\[消息\]/);
+    const messagesMatch = aiReply.match(/\[消息\]([\s\S]+)$/);
+    
+    let actionText = '';
+    let messages = [];
+    
+    if (actionMatch && messagesMatch) {
+        actionText = actionMatch[1].trim();
+        messages = messagesMatch[1].split('|||').map(m => m.trim()).filter(m => m.length > 0);
+    } else {
+        // 兜底：如果格式不对，尝试简单分割
+        const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
+        if (parts.length > 0) {
+            messages = parts;
+        } else {
+            messages = [aiReply];
+        }
+    }
+    
+    const container = document.getElementById('callMessages');
+    
+    // 显示动作描写
+    if (actionText) {
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'call-action-desc';
+        actionDiv.textContent = actionText;
+        container.appendChild(actionDiv);
+    }
+    
+    // 依次显示消息（间隔0.5秒）
+    messages.forEach((msg, index) => {
+        setTimeout(() => {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'call-message-ai';
+            msgDiv.textContent = msg;
+            container.appendChild(msgDiv);
+            
+            // 滚动到底部
+            document.getElementById('callMessagesContainer').scrollTop = 
+                document.getElementById('callMessagesContainer').scrollHeight;
+        }, index * 500);
+    });
+}
+// 用户发送消息
+function sendCallMessage() {
+    const input = document.getElementById('callInput');
+    const content = input.value.trim();
+    
+    if (!content) return;
+    
+    // 显示用户消息
+    const container = document.getElementById('callMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'call-message-user';
+    msgDiv.textContent = content;
+    container.appendChild(msgDiv);
+    
+    // 清空输入框
+    input.value = '';
+    input.style.height = 'auto';
+    
+    // 滚动到底部
+    document.getElementById('callMessagesContainer').scrollTop = 
+        document.getElementById('callMessagesContainer').scrollHeight;
+    
+    // 保存到临时消息数组
+    callMessages.push({
+        role: 'user',
+        content: content
+    });
+}
+
+// 接收AI回复
+async function receiveCallReply() {
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    
+    const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+    
+    let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
+
+【角色人设】
+${characterInfo.personality || '一个友好、真诚的角色。'}
+
+【对方人设】
+${characterInfo.myPersonality || '无'}
+
+【关联世界书信息】
+${worldbooksContent}
+
+【时间信息】
+今天是：${dateStr} ${timeStr}
+${getBirthdayPrompt(characterInfo.birthday)}
+
+【城市与天气信息】
+${characterInfo.cityInfoEnabled ? `
+你所在城市：${characterInfo.charVirtualAddress}
+今天天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}
+
+对方所在城市：${characterInfo.myVirtualAddress}
+今天天气：${characterInfo.myWeather.today.condition}，${characterInfo.myWeather.today.temp}
+` : ''}
+
+【视频通话模式】
+你正在和对方视频通话，你能看到对方。
+
+【回复格式 - 严格遵守】
+[动作]你的动作描述|||[消息]第一条|||第二条|||第三条
+
+【动作描写】20-40字
+【消息内容】3-8条，每条10-30字，用|||分隔`;
+    
+    const receiveBtn = document.getElementById('callReceiveBtn');
+    const callInput = document.getElementById('callInput');
+    
+    try {
+        receiveBtn.disabled = true;
+        callInput.disabled = true;
+        
+
+        // 获取聊天记录上下文
+        const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
+        const contextCount = contextRounds * 2;
+        const recentMessages = allMessages.slice(-contextCount).map(msg => {
+            let content = msg.content;
+            if (msg.type === 'image') {
+                content = `[图片：${msg.altText || '图片'}]`;
+            } else if (msg.type === 'transfer') {
+                const amount = msg.transferData.amount;
+                const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
+                if (msg.senderId === 'me') {
+                    content = `[系统消息：我给你转账了 ¥${amount}${note}]`;
+                } else {
+                    content = `[系统消息：你给我转账了 ¥${amount}${note}]`;
+                }
+            } else if (msg.type === 'voice') {
+                content = `[语音消息] ${msg.content}`;
+            }
+            return {
+                role: msg.senderId === 'me' ? 'user' : 'assistant',
+                content: content
+            };
+        });
+        
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...recentMessages,
+            ...callMessages
+        ];
+
+        
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: messages,
+                temperature: 0.9
+            })
+        });
+        
+        if (!response.ok) throw new Error('接收失败');
+        
+        const data = await response.json();
+        const aiReply = data.choices[0].message.content.trim();
+        
+        // 保存AI回复到临时数组
+        callMessages.push({
+            role: 'assistant',
+            content: aiReply
+        });
+        
+        // 解析并显示
+        parseAndShowCallReply(aiReply);
+        
+    } catch (error) {
+        alert('接收失败：' + error.message);
+    } finally {
+        receiveBtn.disabled = false;
+        callInput.disabled = false;
+    }
+}
+// 挂断电话
+function hangupCall() {
+    // 停止计时
+    if (callTimer) {
+        clearInterval(callTimer);
+        callTimer = null;
+    }
+    
+    // 记录通话时长
+    const minutes = Math.floor(callSeconds / 60);
+    const seconds = callSeconds % 60;
+    const duration = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    
+    // 隐藏通话页，显示聊天详情页
+    document.getElementById('callScreen').style.display = 'none';
+    document.getElementById('chatDetailScreen').style.display = 'flex';
+    
+    // 在聊天记录插入系统消息
+    if (callSeconds > 0) {
+        const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+        allMessages.push({
+            id: systemMsgId,
+            chatId: currentChatId,
+            type: 'system',
+            content: `[📞 视频通话时长 ${duration}]`,
+            time: getCurrentTime()
+        });
+        
+        saveMessages();
+        renderMessages();
+        scrollToBottom();
+    }
+    
+    // 重置状态
+    isInCall = false;
+    callSeconds = 0;
+    callMessages = [];
+}
+// 打开通话设置
+function openCallSettings() {
+    // 加载当前设置
+    loadFromDB('callSettings', (data) => {
+        if (data) {
+            callSettings = data;
+        }
+        
+            // 填充表单
+        document.getElementById('callAiBubbleColor').value = callSettings.aiBubbleColor.replace('rgba(255,255,255,0.9)', '#ffffff');
+        document.getElementById('callAiTextColor').value = callSettings.aiTextColor;
+        document.getElementById('callUserBubbleColor').value = callSettings.userBubbleColor;
+        document.getElementById('callUserTextColor').value = callSettings.userTextColor;
+        document.getElementById('callNameColor').value = callSettings.nameColor;
+        
+        // 更新预览
+        document.getElementById('callAiBubblePreview').style.background = callSettings.aiBubbleColor;
+        document.getElementById('callAiTextPreview').style.background = callSettings.aiTextColor;
+        document.getElementById('callUserBubblePreview').style.background = callSettings.userBubbleColor;
+        document.getElementById('callUserTextPreview').style.background = callSettings.userTextColor;
+        document.getElementById('callNamePreview').style.background = callSettings.nameColor;
+
+    });
+    
+    document.getElementById('callSettingsModal').style.display = 'flex';
+}
+
+// 关闭通话设置
+function closeCallSettings(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('callSettingsModal').style.display = 'none';
+}
+
+// 保存通话设置
+function saveCallSettings() {
+    callSettings.aiBubbleColor = document.getElementById('callAiBubbleColor').value;
+    callSettings.aiTextColor = document.getElementById('callAiTextColor').value;
+    callSettings.userBubbleColor = document.getElementById('callUserBubbleColor').value;
+    callSettings.userTextColor = document.getElementById('callUserTextColor').value;
+    callSettings.nameColor = document.getElementById('callNameColor').value;
+    
+    // 保存到数据库
+    saveToDB('callSettings', callSettings);
+    
+    // 立即应用样式
+    applyCallSettings();
+    
+    alert('设置已保存');
+    closeCallSettings();
+}
+
+// 应用通话设置
+function applyCallSettings() {
+    const callScreen = document.getElementById('callScreen');
+    
+    // 应用壁纸
+    if (callSettings.wallpaper) {
+        callScreen.style.background = `url(${callSettings.wallpaper}) center/cover no-repeat`;
+    } else {
+        callScreen.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+    
+    // 应用颜色
+    callScreen.style.setProperty('--call-ai-bubble-color', callSettings.aiBubbleColor);
+    callScreen.style.setProperty('--call-ai-text-color', callSettings.aiTextColor);
+    callScreen.style.setProperty('--call-user-bubble-color', callSettings.userBubbleColor);
+    callScreen.style.setProperty('--call-user-text-color', callSettings.userTextColor);
+  callScreen.style.setProperty('--call-name-color', callSettings.nameColor);
+}
+
+// 恢复默认壁纸
+function resetCallWallpaper() {
+    callSettings.wallpaper = null;
+    saveToDB('callSettings', callSettings);
+    applyCallSettings();
+    alert('已恢复默认渐变壁纸');
+}
+
+// 监听壁纸文件选择
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const callWallpaperFile = document.getElementById('callWallpaperFile');
+        if (callWallpaperFile) {
+            callWallpaperFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        callSettings.wallpaper = e.target.result;
+                        applyCallSettings();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // 颜色选择器实时预览
+        const colorInputs = [
+            { input: 'callAiBubbleColor', preview: 'callAiBubblePreview' },
+            { input: 'callAiTextColor', preview: 'callAiTextPreview' },
+            { input: 'callUserBubbleColor', preview: 'callUserBubblePreview' },
+            { input: 'callUserTextColor', preview: 'callUserTextPreview' },
+           { input: 'callNameColor', preview: 'callNamePreview' }
+        ];
+        
+        colorInputs.forEach(item => {
+            const input = document.getElementById(item.input);
+            const preview = document.getElementById(item.preview);
+            if (input && preview) {
+                input.addEventListener('input', function() {
+                    preview.style.background = this.value;
+                });
+            }
+        });
+    }, 500);
+});
 
         // 初始化，
         initDB();
+
     </script>
 </body>
 </html>
