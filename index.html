@@ -373,11 +373,7 @@
             color: #555;
         }
         /* 颜色选择器优化 */
-.color-picker-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+
 
 .color-preview {
     width: 40px;
@@ -387,17 +383,16 @@
     cursor: pointer;
     flex-shrink: 0;
     transition: transform 0.2s;
+    position: relative;
+    overflow: hidden;
 }
+
 
 .color-preview:active {
     transform: scale(0.95);
 }
 
-.color-input-hidden {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
+
 
         .form-input {
             width: 100%;
@@ -3198,19 +3193,35 @@ color: #333;
     </div>
 </div>
 <div class="form-group">
-    <label class="form-label">导出聊天记录</label>
-    <button class="api-btn" onclick="exportChatHistory()">导出为TXT文件</button>
-    <div style="font-size: 12px; color: #999; margin-top: 5px;">
-        导出与该角色的所有文本聊天记录
-    </div>
+    <label class="form-label" onclick="exportChatHistory()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f8f8; border-radius: 8px; margin-bottom: 0;">
+        <div>
+            <div style="font-size: 15px; font-weight: 600; color: #333; margin-bottom: 3px;">导出聊天记录</div>
+            <div style="font-size: 12px; color: #999;">导出与该角色的所有文本聊天记录</div>
+        </div>
+        <div style="font-size: 20px; color: #667eea;">→</div>
+    </label>
 </div>
 <div class="form-group">
-    <label class="form-label">清除聊天记录</label>
-    <button class="api-btn" onclick="clearChatHistory()" style="background: #ff4757;">清除所有记录</button>
-    <div style="font-size: 12px; color: #ff4757; margin-top: 5px;">
-         此操作将永久删除与该角色的所有聊天记录，无法恢复
-    </div>
+    <label class="form-label" onclick="document.getElementById('importChatFile').click()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f0f8ff; border-radius: 8px; margin-bottom: 0;">
+        <div>
+            <div style="font-size: 15px; font-weight: 600; color: #667eea; margin-bottom: 3px;">导入聊天记录</div>
+            <div style="font-size: 12px; color: #999;">导入之前导出的TXT聊天记录文件</div>
+        </div>
+        <div style="font-size: 20px; color: #667eea;">→</div>
+    </label>
+    <input type="file" id="importChatFile" accept=".txt" style="display: none;" onchange="importChatHistory(event)">
 </div>
+
+<div class="form-group">
+    <label class="form-label" onclick="clearChatHistory()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff5f5; border-radius: 8px; margin-bottom: 0;">
+        <div>
+            <div style="font-size: 15px; font-weight: 600; color: #ff4757; margin-bottom: 3px;">清除聊天记录</div>
+            <div style="font-size: 12px; color: #ff4757;">此操作将永久删除所有聊天记录，无法恢复</div>
+        </div>
+        <div style="font-size: 20px; color: #ff4757;">→</div>
+    </label>
+</div>
+
 
 
       
@@ -3674,64 +3685,46 @@ color: #333;
             <button class="api-btn" onclick="resetCallWallpaper()" style="margin-top: 10px; background: #999;">恢复默认渐变</button>
         </div>
         
-              <!-- AI消息气泡颜色 -->
-        <div class="form-group">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>AI消息气泡颜色</span>
-                <input type="color" id="callAiBubbleColor" value="#ffffff" style="display: none;">
-                <div id="callAiBubblePreview" onclick="document.getElementById('callAiBubbleColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
-            </label>
-        </div>
-        
-   <!-- AI消息气泡颜色 -->
+<!-- AI消息气泡 -->
 <div class="form-group">
     <label class="form-label">AI消息气泡</label>
-    <div class="color-picker-wrapper">
-        <input type="color" id="callAiBubbleColor" value="#ffffff" class="color-input-hidden">
-        <div id="callAiBubblePreview" class="color-preview" onclick="document.getElementById('callAiBubbleColor').click()" style="background: #ffffff;"></div>
-        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    <div id="callAiBubblePreview" class="color-preview" style="background: #ffffff;">
+        <input type="color" id="callAiBubbleColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
     </div>
 </div>
 
 <!-- AI消息字体颜色 -->
 <div class="form-group">
     <label class="form-label">AI消息字体</label>
-    <div class="color-picker-wrapper">
-        <input type="color" id="callAiTextColor" value="#333333" class="color-input-hidden">
-        <div id="callAiTextPreview" class="color-preview" onclick="document.getElementById('callAiTextColor').click()" style="background: #333333;"></div>
-        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    <div id="callAiTextPreview" class="color-preview" style="background: #333333;">
+        <input type="color" id="callAiTextColor" value="#333333" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
     </div>
 </div>
 
 <!-- 用户消息气泡颜色 -->
 <div class="form-group">
     <label class="form-label">我的消息气泡</label>
-    <div class="color-picker-wrapper">
-        <input type="color" id="callUserBubbleColor" value="#667eea" class="color-input-hidden">
-        <div id="callUserBubblePreview" class="color-preview" onclick="document.getElementById('callUserBubbleColor').click()" style="background: #667eea;"></div>
-        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    <div id="callUserBubblePreview" class="color-preview" style="background: #667eea;">
+        <input type="color" id="callUserBubbleColor" value="#667eea" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
     </div>
 </div>
 
 <!-- 用户消息字体颜色 -->
 <div class="form-group">
     <label class="form-label">我的消息字体</label>
-    <div class="color-picker-wrapper">
-        <input type="color" id="callUserTextColor" value="#ffffff" class="color-input-hidden">
-        <div id="callUserTextPreview" class="color-preview" onclick="document.getElementById('callUserTextColor').click()" style="background: #ffffff;"></div>
-        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    <div id="callUserTextPreview" class="color-preview" style="background: #ffffff;">
+        <input type="color" id="callUserTextColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
     </div>
 </div>
 
 <!-- 角色名字体颜色 -->
 <div class="form-group">
     <label class="form-label">角色名字体</label>
-    <div class="color-picker-wrapper">
-        <input type="color" id="callNameColor" value="#ffffff" class="color-input-hidden">
-        <div id="callNamePreview" class="color-preview" onclick="document.getElementById('callNameColor').click()" style="background: #ffffff;"></div>
-        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    <div id="callNamePreview" class="color-preview" style="background: #ffffff;">
+        <input type="color" id="callNameColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
     </div>
 </div>
+
 
 
 
@@ -5872,20 +5865,33 @@ await new Promise(resolve => {
     });
 });
 
-  // 解析状态和消息
+// 解析状态和消息
 let newStatus = null;
 let messageContent = aiReply;
-// 检查是否包含状态标记（更严格的匹配）
+
+// 检查是否包含状态标记
 const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
 if (statusMatch) {
     const statusText = statusMatch[1].trim();
     messageContent = statusMatch[2].trim();
     
-    // 判断是否需要更新状态（排除"保持"关键词）
-    if (statusText !== '保持' && statusText.length > 0 && statusText.length < 30) {
+    // ▼▼▼ 新增：状态验证和过滤 ▼▼▼
+    const invalidKeywords = ['保持', '更新', '不变', '无变化', '同上'];
+    const isInvalid = invalidKeywords.some(keyword => statusText === keyword || statusText.includes(keyword));
+    
+    // 只有符合格式且不是无效关键词才更新
+    if (!isInvalid && statusText.length > 0 && statusText.length < 30 && statusText.includes('-')) {
         newStatus = statusText;
+        console.log('✅ 状态已更新:', newStatus);
+    } else if (isInvalid) {
+        console.log('⏸️ 保持当前状态');
+    } else {
+        console.warn('⚠️ 状态格式错误，已忽略:', statusText);
     }
-} else {
+    // ▲▲▲ 验证结束 ▲▲▲
+}
+
+else {
     // 如果格式不对，尝试清理可能的错误标记
     messageContent = aiReply
         .replace(/^\[状态\].*?\|\|\|/g, '')  // 移除开头的状态标记
@@ -5945,6 +5951,12 @@ messageContent = messageContent
     .trim();
         
         // 如果检测到新状态，保存到数据库
+      // ▼▼▼ 新增：最终状态检查 ▼▼▼
+if (newStatus && !newStatus.includes('-')) {
+    console.error('❌ 状态格式错误，缺少"-"分隔符:', newStatus);
+    newStatus = null; // 放弃更新
+}
+// ▲▲▲ 检查结束 ▲▲▲
         if (newStatus) {
             loadFromDB('characterInfo', (data) => {
                 const allCharData = data || {};
@@ -6601,7 +6613,7 @@ if (viewBtn) {
 // 加载关联世界书选择器（延迟执行确保DOM已渲染）
 setTimeout(() => {
     renderWorldbookSelector(charData.linkedWorldbooks || []);
-}, 100);
+}, 500);
 
         
       // 更新显示（添加空值检查）
@@ -7449,19 +7461,28 @@ function renderWorldbookSelector(selectedIds) {
         }
         
         // 渲染复选框列表
-        container.innerHTML = allWorldbooks.map(wb => `
-            <div style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0;">
-                <input type="checkbox" 
-                       id="wb-${wb.id}" 
-                       value="${wb.id}" 
-                       ${selectedIds.includes(wb.id) ? 'checked' : ''}
-                       style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
-                <label for="wb-${wb.id}" style="flex: 1; cursor: pointer; font-size: 14px;">
-                    <strong>${wb.title}</strong> 
-                    <span style="color: #999; font-size: 12px;">(${wb.category})</span>
-                </label>
-            </div>
-        `).join('');
+      // 渲染复选框列表
+container.innerHTML = allWorldbooks.map(wb => {
+    const title = wb.title || '未命名世界书';
+    const category = wb.category || '默认分类';
+    const isChecked = selectedIds.includes(wb.id);
+    
+    return `
+        <div style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f0f0f0; background: ${isChecked ? '#f0f8ff' : 'white'};">
+            <input type="checkbox" 
+                   id="wb-${wb.id}" 
+                   value="${wb.id}" 
+                   ${isChecked ? 'checked' : ''}
+                   style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer; flex-shrink: 0;">
+            <label for="wb-${wb.id}" style="flex: 1; cursor: pointer; font-size: 15px; line-height: 1.5;">
+                <div style="font-weight: 600; color: #333; margin-bottom: 3px;">${title}</div>
+                <div style="font-size: 12px; color: #999;">分类：${category}</div>
+            </label>
+        </div>
+    `;
+}).join('');
+
+      console.log('✅ 世界书选择器已渲染，总数:', allWorldbooks.length, '已选中:', selectedIds);
     });
 }
 
@@ -7565,6 +7586,120 @@ function exportChatHistory() {
         alert('聊天记录已导出');
     });
 }
+      // 导入聊天记录
+function importChatHistory(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!currentChatId) {
+        alert('请先打开角色信息页面');
+        event.target.value = '';
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) {
+        event.target.value = '';
+        return;
+    }
+    
+    // 确认导入
+    if (!confirm(`确定要导入聊天记录吗？\n\n注意：\n1. 导入的消息会追加到现有记录后面\n2. 不会覆盖现有记录\n3. 导入后无法撤销`)) {
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        
+        try {
+            // 解析TXT文件
+            const lines = content.split('\n');
+            let importedCount = 0;
+            let currentTime = new Date();
+            
+            // 跳过前3行（标题、导出时间、空行）
+            for (let i = 3; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // 匹配格式：[时间] 发送者: 内容
+                const match = line.match(/^\[(.+?)\]\s+(.+?):\s+(.+)$/);
+                if (!match) continue;
+                
+                const timeStr = match[1];
+                const sender = match[2];
+                const messageContent = match[3];
+                
+                // 跳过已撤回的消息
+                if (messageContent.includes('[已撤回]')) continue;
+                
+                // 生成新消息ID
+                const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+                
+                // 判断发送者
+                const senderId = sender === '我' ? 'me' : chat.name;
+                
+                // 创建消息对象
+                const newMessage = {
+                    id: newId,
+                    chatId: currentChatId,
+                    type: 'text',
+                    content: messageContent,
+                    senderId: senderId,
+                    time: timeStr || getCurrentTime(),
+                    isRevoked: false
+                };
+                
+                allMessages.push(newMessage);
+                importedCount++;
+                
+                // 每隔100ms增加一点时间，避免时间戳完全相同
+                currentTime = new Date(currentTime.getTime() + 100);
+            }
+            
+            if (importedCount === 0) {
+                alert('未能识别到有效的聊天记录格式');
+                event.target.value = '';
+                return;
+            }
+            
+            // 保存到数据库
+            saveMessages();
+            
+            // 更新聊天列表
+            if (importedCount > 0) {
+                const lastMessage = allMessages[allMessages.length - 1];
+                updateChatLastMessage(currentChatId, lastMessage.content);
+            }
+            
+            alert(`成功导入 ${importedCount} 条聊天记录`);
+            
+            // 如果当前在聊天详情页，刷新显示
+            if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+                visibleMessagesCount = Math.min(visibleMessagesCount + importedCount, allMessages.length);
+                renderMessages();
+                scrollToBottom();
+            }
+            
+        } catch (error) {
+            console.error('导入失败：', error);
+            alert('导入失败：文件格式错误或内容无法解析');
+        }
+        
+        // 清空input，允许重复导入
+        event.target.value = '';
+    };
+    
+    reader.onerror = function() {
+        alert('文件读取失败，请重试');
+        event.target.value = '';
+    };
+    
+    reader.readAsText(file, 'UTF-8');
+}
+
 // 清除聊天记录
 function clearChatHistory() {
     if (!currentChatId) {
@@ -9646,15 +9781,19 @@ document.addEventListener('DOMContentLoaded', () => {
            { input: 'callNameColor', preview: 'callNamePreview' }
         ];
         
-        colorInputs.forEach(item => {
-            const input = document.getElementById(item.input);
-            const preview = document.getElementById(item.preview);
-            if (input && preview) {
-                input.addEventListener('input', function() {
-                    preview.style.background = this.value;
-                });
-            }
+colorInputs.forEach(item => {
+    const input = document.getElementById(item.input);
+    const preview = document.getElementById(item.preview);
+    if (input && preview) {
+        input.addEventListener('input', function() {
+            preview.style.background = this.value;
         });
+        input.addEventListener('change', function() {
+            preview.style.background = this.value;
+        });
+    }
+});
+
     }, 500);
 });
 
