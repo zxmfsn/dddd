@@ -372,7 +372,33 @@
             font-weight: 500;
             color: #555;
         }
-        
+        /* 颜色选择器优化 */
+.color-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid #e1e5e9;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.color-preview:active {
+    transform: scale(0.95);
+}
+
+.color-input-hidden {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
         .form-input {
             width: 100%;
           max-width: 100%;
@@ -2651,7 +2677,36 @@ color: #333;
     background: var(--call-user-bubble-color) !important;
     color: var(--call-user-text-color) !important;
 }
-  
+  /* 通话设置弹窗内的表单优化 */
+#callSettingsModal .form-group {
+    margin-bottom: 15px;
+}
+
+#callSettingsModal .form-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+#callSettingsModal .file-input-area {
+    padding: 15px;
+    font-size: 13px;
+}
+
+#callSettingsModal .api-btn {
+    padding: 10px;
+    font-size: 13px;
+}
+
+#callSettingsModal .modal-buttons {
+    margin-top: 15px;
+    gap: 10px;
+}
+
+#callSettingsModal .btn {
+    padding: 10px;
+    font-size: 14px;
+}
+
     </style>
 </head>
 <body>
@@ -3604,7 +3659,8 @@ color: #333;
 
 <!-- 通话设置弹窗 -->
 <div class="modal-overlay" id="callSettingsModal" onclick="closeCallSettings(event)">
-    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 320px;">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 280px; max-height: 80vh; overflow-y: auto; padding: 20px;">
+
         <div class="modal-title">通话设置</div>
         
         <!-- 壁纸设置 -->
@@ -3627,40 +3683,56 @@ color: #333;
             </label>
         </div>
         
-        <!-- AI消息字体颜色 -->
-        <div class="form-group">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>AI消息字体颜色</span>
-                <input type="color" id="callAiTextColor" value="#333333" style="display: none;">
-                <div id="callAiTextPreview" onclick="document.getElementById('callAiTextColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #333333; cursor: pointer;"></div>
-            </label>
-        </div>
-        
-        <!-- 用户消息气泡颜色 -->
-        <div class="form-group">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>我的消息气泡颜色</span>
-                <input type="color" id="callUserBubbleColor" value="#667eea" style="display: none;">
-                <div id="callUserBubblePreview" onclick="document.getElementById('callUserBubbleColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #667eea; cursor: pointer;"></div>
-            </label>
-        </div>
-        
-        <!-- 用户消息字体颜色 -->
-        <div class="form-group">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>我的消息字体颜色</span>
-                <input type="color" id="callUserTextColor" value="#ffffff" style="display: none;">
-                <div id="callUserTextPreview" onclick="document.getElementById('callUserTextColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
-            </label>
-        </div>
-        <!-- 角色名字体颜色 -->
-        <div class="form-group">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>角色名字体颜色</span>
-                <input type="color" id="callNameColor" value="#ffffff" style="display: none;">
-                <div id="callNamePreview" onclick="document.getElementById('callNameColor').click()" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff; cursor: pointer;"></div>
-            </label>
-        </div>
+   <!-- AI消息气泡颜色 -->
+<div class="form-group">
+    <label class="form-label">AI消息气泡</label>
+    <div class="color-picker-wrapper">
+        <input type="color" id="callAiBubbleColor" value="#ffffff" class="color-input-hidden">
+        <div id="callAiBubblePreview" class="color-preview" onclick="document.getElementById('callAiBubbleColor').click()" style="background: #ffffff;"></div>
+        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    </div>
+</div>
+
+<!-- AI消息字体颜色 -->
+<div class="form-group">
+    <label class="form-label">AI消息字体</label>
+    <div class="color-picker-wrapper">
+        <input type="color" id="callAiTextColor" value="#333333" class="color-input-hidden">
+        <div id="callAiTextPreview" class="color-preview" onclick="document.getElementById('callAiTextColor').click()" style="background: #333333;"></div>
+        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    </div>
+</div>
+
+<!-- 用户消息气泡颜色 -->
+<div class="form-group">
+    <label class="form-label">我的消息气泡</label>
+    <div class="color-picker-wrapper">
+        <input type="color" id="callUserBubbleColor" value="#667eea" class="color-input-hidden">
+        <div id="callUserBubblePreview" class="color-preview" onclick="document.getElementById('callUserBubbleColor').click()" style="background: #667eea;"></div>
+        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    </div>
+</div>
+
+<!-- 用户消息字体颜色 -->
+<div class="form-group">
+    <label class="form-label">我的消息字体</label>
+    <div class="color-picker-wrapper">
+        <input type="color" id="callUserTextColor" value="#ffffff" class="color-input-hidden">
+        <div id="callUserTextPreview" class="color-preview" onclick="document.getElementById('callUserTextColor').click()" style="background: #ffffff;"></div>
+        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    </div>
+</div>
+
+<!-- 角色名字体颜色 -->
+<div class="form-group">
+    <label class="form-label">角色名字体</label>
+    <div class="color-picker-wrapper">
+        <input type="color" id="callNameColor" value="#ffffff" class="color-input-hidden">
+        <div id="callNamePreview" class="color-preview" onclick="document.getElementById('callNameColor').click()" style="background: #ffffff;"></div>
+        <span style="font-size: 13px; color: #666;">点击色块选择颜色</span>
+    </div>
+</div>
+
 
 
         
@@ -5693,9 +5765,25 @@ const recentMessages = allMessages.slice(-contextCount).map(msg => {
     let content = msg.content;
     
     // 如果是图片消息，用文字描述代替
+ // 📷 修改开始：支持视觉模型识别图片
     if (msg.type === 'image') {
-        content = `[表情包：${msg.altText || '图片'}]`;
+        // 构建视觉模型需要的格式 (数组格式)
+        content = [
+            {
+                type: "text",
+                text: "请仔细观察这张图片，描述你看到的内容，并根据图片内容进行回复。"
+            },
+            {
+                type: "image_url",
+                image_url: {
+                    url: msg.content,
+                    detail: "high"
+                }
+            }
+        ];
     }
+    // 📷 修改结束
+
     // ▼▼▼ 新增：如果是转账消息，将其转换为文字描述传给AI ▼▼▼
     else if (msg.type === 'transfer') {
         const amount = msg.transferData.amount;
@@ -5750,7 +5838,8 @@ if (!hasUserMessage) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+               model: currentApiConfig.defaultModel,
+
                 messages: messages,
                 temperature: 0.9
             })
@@ -5953,7 +6042,16 @@ if (viewBtn) viewBtn.style.display = 'none';
 for (let i = 0; i < messageList.length; i++) {
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const msgText = messageList[i];
+    let msgText = messageList[i];
+  // ▼▼▼ 新增：自动修复常见格式错误 ▼▼▼
+  
+    msgText = msgText.replace(/^发送语音[:：](.+)$/, '[发送语音:$1]');
+
+    msgText = msgText.replace(/【发送语音[:：](.+?)】/g, '[发送语音:$1]');
+ 
+    msgText = msgText.replace(/\[发送语音：(.+?)\]/, '[发送语音:$1]');
+    // ▲▲▲ 自动修复结束 ▲▲▲
+  
    // ▼▼▼ 新增：检测转账标记 [转账:金额:备注] ▼▼▼
     const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
     if (transferMatch) {
@@ -6013,7 +6111,7 @@ for (let i = 0; i < messageList.length; i++) {
     }
     // ▲▲▲ 检测转账结束 ▲▲▲
       // ▼▼▼ 新增：检测AI发送的语音 ▼▼▼
-    const voiceMatch = msgText.match(/\[发送语音:(.*?)\]/);
+const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
     if (voiceMatch) {
         const voiceText = voiceMatch[1].trim();
         const duration = calculateVoiceDuration(voiceText);
@@ -9324,9 +9422,26 @@ ${characterInfo.cityInfoEnabled ? `
         const contextCount = contextRounds * 2;
         const recentMessages = allMessages.slice(-contextCount).map(msg => {
             let content = msg.content;
-            if (msg.type === 'image') {
-                content = `[图片：${msg.altText || '图片'}]`;
-            } else if (msg.type === 'transfer') {
+          // 📷 修改开始：支持视觉模型识别图片
+    if (msg.type === 'image') {
+        // 构建视觉模型需要的格式 (数组格式)
+        content = [
+            {
+                type: "text",
+                text: "请仔细观察这张图片，描述你看到的内容，并根据图片内容进行回复。"
+            },
+            {
+                type: "image_url",
+                image_url: {
+                    url: msg.content,
+                    detail: "high"
+                }
+            }
+        ];
+    }
+    // 📷 修改结束
+
+            else if (msg.type === 'transfer') {
                 const amount = msg.transferData.amount;
                 const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
                 if (msg.senderId === 'me') {
