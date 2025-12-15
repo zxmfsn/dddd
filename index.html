@@ -2701,7 +2701,683 @@ color: #333;
     padding: 10px;
     font-size: 14px;
 }
+/* ============ 购物功能样式 ============ *//* ============ 购物功能样式 ============ */
+.shopping-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+    position: fixed; /* 改成 fixed */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100; /* 提高层级 */
+    max-width: 375px; /* 保持手机宽度 */
+    margin: 0 auto;
+}
 
+
+.shopping-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.shopping-search-area {
+    padding: 20px;
+    background: #f8f8f8;
+}
+
+/* 搜索框容器：确保弹性布局 */
+.search-card {
+    background: white;
+    border-radius: 16px;
+    padding: 10px 12px; /* 稍微减小一点内边距 */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* 减小间距，给按钮留空间 */
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #f0f0f0;
+}
+
+/* 搜索按钮：防止变形 */
+.search-btn {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px; /* 左右间距改小一点点 */
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    
+    /* ★ 核心修改：防止按钮把布局撑坏 ★ */
+    flex-shrink: 0;       /* 无论空间多挤，按钮都不许缩小 */
+    white-space: nowrap;  /* 文字不许换行 */
+    min-width: 60px;      /* 保证最小宽度 */
+    display: flex;        /* 让内部文字/图标居中 */
+    justify-content: center;
+    align-items: center;
+}
+
+/* 加载时的旋转动画 (可选，会让等待过程很可爱) */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.search-btn.loading-mode {
+    border-color: #ff9f43;
+    color: #ff9f43;
+    background: #fff8f0;
+}
+
+.search-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    background: transparent;
+    padding: 0;
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.search-btn {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 8px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+
+.search-btn:hover {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.search-btn:active {
+    transform: translateY(0);
+    background: #f0f0f0;
+}
+
+
+
+.shopping-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px 80px;
+}
+
+/* 商品卡片样式 */
+.product-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+}
+
+
+.product-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+
+
+.product-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ff4757;
+    margin: 8px 0;
+}
+
+.product-description {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.product-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.product-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-edit {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.btn-edit:hover {
+    background: #e0e0e0;
+}
+
+.btn-delete {
+    background: #fff0f0;
+    color: #ff4757;
+}
+
+.btn-delete:hover {
+    background: #ffe0e0;
+}
+
+.btn-add-cart {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+.btn-add-cart:hover {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+}
+
+
+/* 购物车徽章 */
+.cart-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.shopping-cart-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+    position: fixed; /* 改成 fixed */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100; /* 提高层级 */
+    max-width: 375px; /* 保持手机宽度 */
+    margin: 0 auto;
+}
+
+
+.cart-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+}
+
+.cart-item {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+}
+
+.cart-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cart-item-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    flex: 1;
+}
+
+.cart-item-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.cart-item-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.quantity-btn:hover {
+    background: #f0f0f0;
+}
+
+.quantity-btn:active {
+    transform: scale(0.9);
+}
+
+.quantity-number {
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+}
+
+.cart-item-delete {
+    color: #ff4757;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+.cart-item-delete:hover {
+    text-decoration: underline;
+}
+
+.cart-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    background: white;
+}
+
+.cart-total {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+    text-align: right;
+}
+
+.cart-total span {
+    color: #ff4757;
+    font-size: 22px;
+}
+
+.btn-checkout {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-checkout:hover {
+    background: #5a6fd8;
+}
+
+.btn-checkout:active {
+    transform: scale(0.98);
+}
+
+/* 空状态样式 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+}
+
+.empty-state-text {
+    font-size: 15px;
+}
+/* ========== 购物/外卖切换按钮样式 ========== */
+.shopping-switch-container {
+    display: flex;
+    background: #f0f2f5;
+    padding: 3px;
+    border-radius: 16px;
+    border: 1px solid #e1e1e1;
+}
+
+.shopping-switch-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* 选中状态：百货（默认紫色） */
+.shopping-switch-btn.active {
+    background: #667eea;
+    color: white;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+}
+
+/* 选中状态：外卖（橙色，稍后我们在JS里动态添加这个类） */
+.shopping-switch-btn.active-food {
+    background: #ff9f43 !important; /* 强制橙色 */
+    color: white;
+    box-shadow: 0 2px 6px rgba(255, 159, 67, 0.4);
+}
+/* ========== 电商/外卖 进阶样式 ========== */
+
+/* 商品标题：淘宝风 (两行显示，多出省略) */
+.product-name.goods-title {
+    font-size: 15px;
+    font-weight: normal; /* 淘宝标题通常不加粗，但字多 */
+    line-height: 1.4;
+    color: #333;
+    margin-bottom: 8px;
+    
+    /* 限制显示两行 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 外卖标题：美团风 (加粗，单行或双行) */
+.product-name.food-title {
+    font-size: 16px;
+    font-weight: 700; /* 外卖强调菜名 */
+    color: #333;
+    margin-bottom: 6px;
+}
+
+/* 标签容器 */
+.product-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+/* 标签通用样式 */
+.product-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+/* 🛍️ 百货标签风格 (红/橙色系) */
+.tag-goods {
+    color: #ff5000; /* 淘宝红 */
+    background: #fff0e6;
+    border-color: #ffdec2;
+}
+/* 第一个标签通常突出一点，我们可以用CSS选择器让它变实心 (可选) */
+.tag-goods:first-child {
+    background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+    color: white;
+    border: none;
+    border-radius: 2px;
+}
+
+/* 🍱 外卖标签风格 (美团黄/灰) */
+.tag-food {
+    color: #666;
+    background: #f4f4f4; /* 灰色底 */
+}
+/* 外卖的评分标签 (通常是第一个) 高亮 */
+.tag-food:first-child {
+    color: #ff9900; /* 评分黄 */
+    background: #fff8e1;
+    font-weight: bold;
+}
+
+/* 底部价格和按钮行 */
+.product-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 5px;
+}
+
+.product-price {
+    color: #ff5000; /* 淘宝红价格 */
+    font-weight: 700;
+    font-size: 18px;
+}
+/* 外卖模式价格颜色可以稍微不同 */
+.food-title ~ .product-bottom-row .product-price {
+    color: #ff4a4a; 
+}
+
+/* 迷你购买按钮 */
+.btn-mini-add {
+    background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+/* 外卖模式按钮变黄 */
+.food-title ~ .product-bottom-row .btn-mini-add {
+    background: #ffd161; /* 美团黄 */
+    color: #333;
+    font-weight: 600;
+}
+
+.btn-text-only {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+   /* ========== 钱包页面样式 (支付宝风) ========== */
+.wallet-container {
+    flex: 1;
+    background: #fff; /* 整体白色背景 */
+    overflow-y: auto;
+    padding-bottom: 80px;
+}
+
+/* ========== 钱包卡片美化 (高级支付宝风) ========== */
+
+/* 1. 卡片主体：悬浮感 + 质感渐变 */
+.alipay-card {
+    /* 支付宝蓝渐变：从左上到右下 */
+    background: linear-gradient(135deg, #1677ff 0%, #0050b3 100%);
+    border-radius: 16px; /* 大圆角 */
+    margin: 20px 20px 0; /* 四周留白，让它浮起来 */
+    padding: 25px 24px;  /* 增加内边距 */
+    color: white;
+    
+    /* 高级投影：让卡片有立体感 */
+    box-shadow: 0 8px 20px rgba(22, 119, 255, 0.25);
+    
+    position: relative;
+    overflow: hidden; /* 用于裁剪装饰圆圈 */
+}
+
+/* 2. 增加一点微光装饰 (右上角的透明圆圈) */
+.alipay-card::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.balance-label {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.balance-amount {
+    font-size: 38px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    letter-spacing: 0.5px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; /* 确保数字字体好看 */
+}
+
+.wallet-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* 3. 按钮美化：半透明磨砂质感 */
+.wallet-act-btn {
+    background: rgba(255,255,255,0.15); /* 半透明白 */
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 8px 24px; /* 按钮宽一点 */
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(5px); /* 磨砂效果 */
+}
+
+.wallet-act-btn:hover {
+    background: rgba(255,255,255,0.25);
+    transform: translateY(-1px); /* 悬停微微上浮 */
+}
+
+.wallet-act-btn:active {
+    transform: scale(0.98);
+}
+
+/* 2. 功能区 (3个格子) */
+.wallet-grid {
+    display: flex;
+    padding: 20px 0;
+    border-bottom: 8px solid #f5f5f5; /* 用灰色分隔条隔开 */
+}
+
+.wallet-grid-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.wallet-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.wallet-text {
+    font-size: 13px;
+    color: #333;
+}
+
+/* 3. 账单列表 (极简白色) */
+.bill-section {
+    padding: 0 20px;
+}
+
+.bill-header {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.bill-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+.bill-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bill-title {
+    font-size: 15px;
+    color: #333;
+}
+
+.bill-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.bill-amount {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.amount-income { color: #ff4757; } /* 收入红色 */
+.amount-expense { color: #333; }   /* 支出黑色 */   
     </style>
 </head>
 <body>
@@ -2946,7 +3622,37 @@ color: #333;
     <div class="chat-list-container" id="chatListContainer">
         <!-- 聊天列表将在这里动态生成 -->
     </div>
-    
+    <div class="wallet-container" id="walletContainer" style="display: none;">
+    <div class="alipay-card">
+        <div class="balance-label">总资产(元)</div>
+        <div class="balance-amount" id="walletBalance">2,000.00</div>
+        <div class="wallet-actions">
+            <button class="wallet-act-btn" onclick="handleWalletAction('recharge')">充值</button>
+            <button class="wallet-act-btn" onclick="handleWalletAction('withdraw')">提现</button>
+        </div>
+    </div>
+
+    <div class="wallet-grid">
+        <div class="wallet-grid-item">
+            <div class="wallet-icon" style="background: #ff9800;">📝</div>
+            <div class="wallet-text">账单</div>
+        </div>
+        <div class="wallet-grid-item">
+            <div class="wallet-icon" style="background: #ff5252;">👨‍👩‍👧</div>
+            <div class="wallet-text">亲属卡</div>
+        </div>
+        <div class="wallet-grid-item">
+            <div class="wallet-icon" style="background: #2196f3;">📈</div>
+            <div class="wallet-text">理财</div>
+        </div>
+    </div>
+
+    <div class="bill-section">
+        <div class="bill-header">近期账单</div>
+        <div id="billList" class="bill-list">
+            </div>
+    </div>
+</div>
     <!-- 悬浮添加按钮 -->
  <button class="add-btn" onclick="openAddChatMenu()">+</button>
     
@@ -2954,7 +3660,7 @@ color: #333;
     <div class="chat-bottom-tabs">
         <button class="bottom-tab active" data-tab="single" onclick="switchChatTab('single')">💬</button>
         <button class="bottom-tab" data-tab="group" onclick="switchChatTab('group')">👥</button>
-        <button class="bottom-tab" data-tab="peek" onclick="switchChatTab('peek')">👀</button>
+      <button class="bottom-tab" data-tab="wallet" onclick="switchChatTab('wallet')">💰</button>
     </div>
 </div>
 <!-- 聊天详情页面 -->
@@ -3048,6 +3754,17 @@ color: #333;
     </svg>
 </button>
 <!-- ▲▲▲ 新增结束 ▲▲▲ -->
+<!-- ▼▼▼ 在电话按钮的后面添加购物按钮 ▼▼▼ -->
+<button class="emoji-btn" onclick="openShopping()" title="购物">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
+        <circle cx="9" cy="21" r="1"></circle>
+        <circle cx="20" cy="21" r="1"></circle>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+    </svg>
+</button>
+<!-- ▲▲▲ 购物按钮添加结束 ▲▲▲ -->
+
+  
 </div>
 <!-- 表情包面板 -->
 <div class="emoji-panel" id="emojiPanel" style="display: none;">
@@ -3736,6 +4453,92 @@ color: #333;
     </div>
 </div>
 </div>
+<!-- ============ 购物页面 ============ -->
+<div class="shopping-screen" id="shoppingScreen">
+    <!-- 顶部导航栏 -->
+<div class="shopping-header">
+    <button class="back-btn" onclick="backFromShopping()">←</button>
+    
+    <div class="header-title" style="margin: 0; display: flex; justify-content: center;">
+        <div class="shopping-switch-container">
+            <button class="shopping-switch-btn active" id="btn-goods" onclick="switchShoppingTab('goods')">百货</button>
+            <button class="shopping-switch-btn" id="btn-food" onclick="switchShoppingTab('food')">外卖</button>
+        </div>
+    </div>
+    
+    <button class="back-btn" onclick="openShoppingCart()" style="position: relative;">
+        🛒
+        <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
+    </button>
+</div>
+    
+ <!-- 搜索区域 -->
+<div class="shopping-search-area">
+    <div class="search-card">
+        <div class="search-icon">🔍</div>
+        <input type="text" id="shoppingSearchInput" class="search-input" placeholder="搜索你想要的商品...">
+        <button class="search-btn" onclick="generateProducts()">搜索</button>
+    </div>
+</div>
+
+
+    
+    <!-- 商品列表 -->
+    <div class="shopping-content" id="shoppingProductList">
+        <!-- 商品卡片将在这里动态生成 -->
+    </div>
+    
+    <!-- 添加商品按钮 -->
+    <button class="add-btn" onclick="openAddProduct()">+</button>
+</div>
+
+<!-- 购物车页面 -->
+<div class="shopping-cart-screen" id="shoppingCartScreen">
+    <div class="shopping-header">
+        <button class="back-btn" onclick="backToShopping()">←</button>
+        <div class="header-title">购物车</div>
+        <button class="back-btn" style="opacity: 0; pointer-events: none;">⋮</button>
+    </div>
+    
+    <div class="cart-content" id="cartContent">
+        <!-- 购物车商品将在这里动态生成 -->
+    </div>
+    
+    <div class="cart-footer" id="cartFooter">
+        <div class="cart-total">
+            合计: <span id="cartTotalPrice">¥0.00</span>
+        </div>
+        <button class="btn-checkout" onclick="checkout()">结算</button>
+    </div>
+</div>
+
+<!-- 添加/编辑商品弹窗 -->
+<div class="modal-overlay" id="productModal" onclick="closeProductModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title" id="productModalTitle">添加商品</div>
+        
+        <div class="form-group">
+            <label class="form-label">商品名称</label>
+            <input type="text" id="productName" class="form-input" placeholder="输入商品名称">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">商品价格</label>
+            <input type="number" id="productPrice" class="form-input" placeholder="0.00" step="0.01" min="0">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">商品描述（选填）</label>
+            <textarea id="productDescription" class="form-input" rows="3" placeholder="输入商品描述..."></textarea>
+        </div>
+        
+      
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeProductModal()">取消</button>
+            <button class="btn btn-save" onclick="saveProduct()">保存</button>
+        </div>
+    </div>
+</div>
 
 
     <script>
@@ -3747,7 +4550,7 @@ let diaries = [];
 let currentViewingDiaryId = null;
 
         function initDB() {
-           const request = indexedDB.open('phoneData', 10);
+           const request = indexedDB.open('phoneData', 12);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -3759,7 +4562,7 @@ let currentViewingDiaryId = null;
               loadApiConfig();
 loadApiSchemes();
               loadAppIcons();
-              
+              loadWalletData(); // 加载钱包
             };
             
             request.onupgradeneeded = (event) => {
@@ -3803,7 +4606,23 @@ if (!db.objectStoreNames.contains('emojiCategories')) {
 if (!db.objectStoreNames.contains('callSettings')) {
     db.createObjectStore('callSettings', { keyPath: 'id' });
 }
-
+if (!db.objectStoreNames.contains('callSettings')) {
+    db.createObjectStore('callSettings', { keyPath: 'id' });
+}
+// ▼▼▼ 在这里添加购物相关的表 ▼▼▼
+if (!db.objectStoreNames.contains('products')) {
+    db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+}
+if (!db.objectStoreNames.contains('shoppingCart')) {
+    db.createObjectStore('shoppingCart', { keyPath: 'id', autoIncrement: true });
+}
+if (!db.objectStoreNames.contains('shoppingCategories')) {
+    db.createObjectStore('shoppingCategories', { keyPath: 'id' });
+}
+// ▲▲▲ 添加结束 ▲▲▲
+if (!db.objectStoreNames.contains('wallet')) {
+    db.createObjectStore('wallet', { keyPath: 'id' });
+}
 
 
 
@@ -4561,6 +5380,11 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 // 聊天功能相关变量
 let chats = [];
+      // 钱包数据
+let walletData = {
+    balance: 2000.00,
+    bills: []
+};
 let currentChatTab = 'single'; // single, group, peek
 
 // 加载聊天列表
@@ -4578,16 +5402,45 @@ function loadChats() {
     });
 }
 
-// 切换聊天分组
+// 切换聊天/钱包 Tab
 function switchChatTab(tab) {
-    currentChatTab = tab;
-    
-    // 更新标签状态（改这里）
+    // 1. 更新底部按钮状态
     document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.bottom-tab[data-tab="${tab}"]`).classList.add('active');
     
-    // 重新渲染列表
-    renderChatList();
+    // 获取需要控制的元素
+    const chatList = document.getElementById('chatListContainer');
+    const walletContainer = document.getElementById('walletContainer');
+    const addBtn = document.querySelector('.chat-screen .add-btn');
+    const headerTitle = document.querySelector('.chat-screen .header-title');
+    const momentsCard = document.querySelector('.moments-card'); // ★ 找到朋友圈卡片
+    
+    // 2. 界面切换逻辑
+    if (tab === 'wallet') {
+        // === 进入钱包模式 ===
+        chatList.style.display = 'none';
+        walletContainer.style.display = 'block';
+        addBtn.style.display = 'none';      // 隐藏加号
+        momentsCard.style.display = 'none'; // ★ 隐藏朋友圈
+        
+        headerTitle.textContent = '我的钱包';
+        
+        // 刷新钱包数据
+        renderWallet();
+        
+    } else {
+        // === 进入聊天模式 (单聊/群聊/偷看) ===
+        chatList.style.display = 'block';
+        walletContainer.style.display = 'none';
+        addBtn.style.display = 'block';     // 显示加号
+        momentsCard.style.display = 'flex'; // ★ 显示朋友圈
+        
+        headerTitle.textContent = '聊天';
+        
+        // 恢复之前的逻辑
+        currentChatTab = tab;
+        renderChatList();
+    }
 }
 
 // 渲染聊天列表
@@ -5617,9 +6470,9 @@ async function receiveAIReply() {
     const receiveBtn = document.getElementById('receiveBtn');
     const chatInput = document.getElementById('chatInput');
     
-    try {
-        // 显示正在输入状态
-        titleElement.textContent = '正在输入中...';
+ try {
+        // 2. 锁定界面
+        titleElement.textContent = '正在思考...';
         receiveBtn.disabled = true;
         chatInput.disabled = true;
         
@@ -5641,11 +6494,15 @@ async function receiveAIReply() {
 
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
 // 获取表情库
-const emojiList = await new Promise(resolve => {
-    loadFromDB('emojis', (data) => {
-        resolve(data && data.list ? data.list : []);
-    });
-});
+const emojiList = await Promise.race([
+            new Promise(resolve => {
+                loadFromDB('emojis', (data) => {
+                    resolve(data && data.list ? data.list : []);
+                });
+            }),
+            new Promise(resolve => setTimeout(() => resolve([]), 1000)) // 1秒读不出来就跳过，防止卡死
+        ]);
+                 
 
         let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
 特别警告：如果你要发送表情包，格式必须是[搜表情:关键词]，不能是[表情包:xx]！
@@ -6079,6 +6936,9 @@ for (let i = 0; i < messageList.length; i++) {
         
         if (pendingTransfer) {
             pendingTransfer.transferData.status = 'aiReceived';
+          // 💰 钱包操作：真的加钱到余额里！
+                    const amount = pendingTransfer.transferData.amount;
+                    handleTransaction('income', amount, `收到转账-来自${chat.name}`);
             
             const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
             allMessages.push({
@@ -7505,27 +8365,46 @@ function getSelectedWorldbooks() {
     return ids;
 }
 
-// 获取关联世界书的内容
+// 获取关联世界书的内容（修复版）
 async function getLinkedWorldbooksContent(linkedIds) {
-    if (!linkedIds || linkedIds.length === 0) {
+    // 1. 基础检查
+    if (!linkedIds || !Array.isArray(linkedIds) || linkedIds.length === 0) {
         return '无';
     }
     
     return new Promise((resolve) => {
         loadFromDB('worldbooks', (data) => {
-            const allWorldbooks = data || [];
-            const linkedBooks = allWorldbooks.filter(wb => linkedIds.includes(wb.id));
-            
-            if (linkedBooks.length === 0) {
-                resolve('无');
-                return;
+            try {
+                // 2. 强制数据安全检查
+                // 无论数据库返回什么，我们都确保 allWorldbooks 是一个数组
+                let allWorldbooks = [];
+                if (Array.isArray(data)) {
+                    allWorldbooks = data;
+                } else if (data && Array.isArray(data.list)) {
+                    allWorldbooks = data.list;
+                }
+                
+                // 3. 安全过滤
+                // 增加 wb && wb.id 的判断，防止空数据导致报错
+                const linkedBooks = allWorldbooks.filter(wb => wb && linkedIds.includes(wb.id));
+                
+                if (linkedBooks.length === 0) {
+                    resolve('无');
+                    return;
+                }
+                
+                // 4. 生成内容
+                const content = linkedBooks.map(wb => 
+                    `【${wb.title || '无标题'}】\n${wb.content || ''}`
+                ).join('\n\n');
+                
+                resolve(content);
+                
+            } catch (error) {
+                // 5. 错误兜底：如果发生任何错误，打印日志并返回"无"，防止卡死
+                console.error("读取世界书出错:", error);
+                resolve('无'); 
             }
-            
-            const content = linkedBooks.map(wb => 
-                `【${wb.title}】\n${wb.content}`
-            ).join('\n\n');
-            
-            resolve(content);
         });
     });
 }
@@ -9059,7 +9938,15 @@ function confirmTransfer() {
         alert('请输入正确的金额');
         return;
     }
+    // ★★★ 新增：钱包扣款逻辑 ★★★
+    // 尝试扣款，如果返回 false (余额不足)，则直接终止
+    const chat = chats.find(c => c.id === currentChatId);
+    const title = `转账给-${chat ? chat.name : '好友'}`;
     
+    if (!handleTransaction('expense', amount, title)) {
+        return; // 余额不足，不发消息，直接退出
+    }
+    // ★★★ 结束 ★★★
     // 生成新消息ID
     const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
     
@@ -9090,6 +9977,7 @@ function confirmTransfer() {
 function receiveTransfer(messageId) {
     const message = allMessages.find(m => m.id === messageId);
     if (!message || message.transferData.status !== 'pending') return;
+
     
     // 播放领取动画
     const card = document.querySelector(`[data-transfer-id="${messageId}"]`);
@@ -9098,6 +9986,10 @@ function receiveTransfer(messageId) {
     }
     
     setTimeout(() => {
+      // ★★★ 新增：钱包入账逻辑 ★★★
+        const amount = message.transferData.amount;
+        handleTransaction('income', amount, '收到转账');
+        // ★★★ 结束 ★★★
         // 更新状态为已领取
         message.transferData.status = 'received';
         saveMessages();
@@ -9796,6 +10688,654 @@ colorInputs.forEach(item => {
 
     }, 500);
 });
+// ============ 购物功能 ============
+let products = [];
+      let currentShoppingType = 'goods'; 
+let shoppingCart = [];
+let editingProductId = null;
+
+// 切换 百货/外卖 模式
+function switchShoppingTab(type) {
+    currentShoppingType = type;
+    
+    // 1. 更新按钮样式
+    const btnGoods = document.getElementById('btn-goods');
+    const btnFood = document.getElementById('btn-food');
+    
+    if (type === 'goods') {
+        btnGoods.className = 'shopping-switch-btn active';
+        btnFood.className = 'shopping-switch-btn';
+        // 搜索框提示语
+        document.getElementById('shoppingSearchInput').placeholder = '搜索你想要的商品...';
+    } else {
+        btnGoods.className = 'shopping-switch-btn';
+        btnFood.className = 'shopping-switch-btn active-food'; // 用橙色样式
+        // 搜索框提示语
+        document.getElementById('shoppingSearchInput').placeholder = '想吃点什么？搜搜看...';
+    }
+    
+    // 2. 重新渲染列表（只显示当前类型的）
+    renderProducts();
+}
+
+// 打开购物页面
+function openShopping() {
+    // 隐藏所有其他页面
+    document.getElementById('mainScreen').style.display = 'none';
+    document.getElementById('wallpaperScreen').style.display = 'none';
+    document.getElementById('worldbookScreen').style.display = 'none';
+    document.getElementById('apiScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'none';
+    document.getElementById('chatDetailScreen').style.display = 'none';
+    document.getElementById('characterInfoScreen').style.display = 'none';
+    document.getElementById('diaryScreen').style.display = 'none';
+    document.getElementById('diaryDetailScreen').style.display = 'none';
+    document.getElementById('callScreen').style.display = 'none';
+    document.getElementById('shoppingCartScreen').style.display = 'none';
+    
+    // 显示购物页面
+    document.getElementById('shoppingScreen').style.display = 'flex';
+    
+    // 加载数据
+    loadProducts();
+    loadShoppingCart();
+    updateCartBadge();
+}
+
+
+// 返回上一页
+function backFromShopping() {
+    document.getElementById('shoppingScreen').style.display = 'none';
+    
+    // 判断从哪里来的，返回对应页面
+    if (currentChatId) {
+        document.getElementById('chatDetailScreen').style.display = 'flex';
+    } else {
+        document.getElementById('mainScreen').style.display = 'flex';
+    }
+}
+
+
+// 加载商品列表
+function loadProducts() {
+    loadFromDB('products', (data) => {
+        products = data && data.list ? data.list : [];
+        renderProducts();
+    });
+}
+
+
+// 渲染商品列表（修改版：支持分类过滤）
+function renderProducts() {
+    const container = document.getElementById('shoppingProductList');
+    
+    // ★ 核心修改：过滤数据
+    // 如果商品没有 type 属性（旧数据），默认算作 'goods'
+    const filteredProducts = products.filter(p => {
+        const pType = p.categoryType || 'goods'; 
+        return pType === currentShoppingType;
+    });
+    
+    if (filteredProducts.length === 0) {
+        const emptyText = currentShoppingType === 'goods' ? '暂无商品，试试搜索功能吧' : '肚子饿了吗？搜搜想吃啥';
+        const emptyIcon = currentShoppingType === 'goods' ? '🛍️' : '🍜';
+        
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">${emptyIcon}</div>
+                <div class="empty-state-text">${emptyText}</div>
+            </div>
+        `;
+        return;
+    }
+    
+   container.innerHTML = filteredProducts.map(product => {
+        // 1. 处理描述/标签
+        let tagsHtml = '';
+        if (product.description) {
+            // 如果描述里包含 "|", 说明是新版标签格式
+            if (product.description.includes('|')) {
+                const tags = product.description.split('|').map(t => t.trim());
+                tagsHtml = `<div class="product-tags-row">
+                    ${tags.map(tag => `<span class="product-tag tag-${currentShoppingType}">${tag}</span>`).join('')}
+                </div>`;
+            } else {
+                // 旧版普通描述，还是直接显示文字
+                tagsHtml = `<div class="product-description">${product.description}</div>`;
+            }
+        }
+
+        // 2. 渲染卡片
+        return `
+        <div class="product-card">
+            <div class="product-info-full">
+                <div class="product-name ${currentShoppingType === 'goods' ? 'goods-title' : 'food-title'}">
+                    ${product.name}
+                </div>
+                
+                ${tagsHtml}
+                
+                <div class="product-bottom-row">
+                    <div class="product-price">
+                        <span style="font-size: 12px">¥</span>${product.price.toFixed(2)}
+                    </div>
+                    <div class="product-actions-mini">
+                         <button class="btn-mini-add" onclick="addToCart(${product.id})">
+                           ${currentShoppingType === 'goods' ? '抢购' : '来一单'}
+                        </button>
+                        <button class="btn-text-only" onclick="deleteProduct(${product.id})" style="color:#ccc; font-size:12px; margin-left:5px;">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+
+
+// 打开添加商品弹窗
+function openAddProduct() {
+    editingProductId = null;
+    document.getElementById('productModalTitle').textContent = '添加商品';
+    document.getElementById('productName').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productDescription').value = '';
+    
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+
+// 关闭商品弹窗
+function closeProductModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('productModal').style.display = 'none';
+    editingProductId = null;
+}
+
+// 保存商品
+function saveProduct() {
+    const name = document.getElementById('productName').value.trim();
+    const price = parseFloat(document.getElementById('productPrice').value);
+    const description = document.getElementById('productDescription').value.trim();
+    
+    if (!name) {
+        alert('请输入商品名称');
+        return;
+    }
+    
+    if (!price || price <= 0) {
+        alert('请输入正确的价格');
+        return;
+    }
+    
+    if (editingProductId) {
+        // 编辑现有商品
+        const index = products.findIndex(p => p.id === editingProductId);
+        products[index] = {
+            ...products[index],
+            name,
+            price,
+            description
+        };
+    } else {
+        // 添加新商品
+        const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+        products.push({
+            id: newId,
+            name,
+            price,
+            description,
+            type: 'custom',
+          categoryType: currentShoppingType,
+            createTime: getCurrentTime()
+        });
+    }
+    
+    saveToDB('products', { id: 1, list: products });
+    renderProducts();
+    closeProductModal();
+}
+
+
+// 编辑商品
+function editProduct(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    editingProductId = productId;
+    document.getElementById('productModalTitle').textContent = '编辑商品';
+    document.getElementById('productName').value = product.name;
+    document.getElementById('productPrice').value = product.price;
+    document.getElementById('productDescription').value = product.description || '';
+    
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+
+// 删除商品
+function deleteProduct(productId) {
+    if (!confirm('确定删除这个商品吗？')) return;
+    
+    products = products.filter(p => p.id !== productId);
+    saveToDB('products', { id: 1, list: products });
+    renderProducts();
+}
+
+// 加载购物车
+function loadShoppingCart() {
+    loadFromDB('shoppingCart', (data) => {
+        shoppingCart = data && data.list ? data.list : [];
+        updateCartBadge();
+    });
+}
+
+// 更新购物车徽章
+function updateCartBadge() {
+    const badge = document.getElementById('cartBadge');
+    const totalItems = shoppingCart.reduce((sum, item) => sum + item.quantity, 0);
+    
+    if (totalItems > 0) {
+        badge.textContent = totalItems;
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// 添加到购物车
+function addToCart(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const existingItem = shoppingCart.find(item => item.productId === productId);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        const newId = shoppingCart.length > 0 ? Math.max(...shoppingCart.map(c => c.id)) + 1 : 1;
+        shoppingCart.push({
+            id: newId,
+            productId: productId,
+            quantity: 1,
+            addTime: getCurrentTime()
+        });
+    }
+    
+    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+    updateCartBadge();
+    
+    // 显示提示
+    alert('已加入购物车');
+}
+// 打开购物车
+function openShoppingCart() {
+    document.getElementById('shoppingScreen').style.display = 'none';
+    document.getElementById('shoppingCartScreen').style.display = 'flex';
+    renderShoppingCart();
+}
+
+// 返回购物页面
+function backToShopping() {
+    document.getElementById('shoppingCartScreen').style.display = 'none';
+    document.getElementById('shoppingScreen').style.display = 'flex';
+}
+
+// 渲染购物车
+function renderShoppingCart() {
+    const container = document.getElementById('cartContent');
+    
+    if (shoppingCart.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🛒</div>
+                <div class="empty-state-text">购物车是空的</div>
+            </div>
+        `;
+        document.getElementById('cartFooter').style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('cartFooter').style.display = 'block';
+    
+    container.innerHTML = shoppingCart.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return '';
+        
+        return `
+            <div class="cart-item">
+                <div class="cart-item-header">
+                    <div class="cart-item-name">${product.name}</div>
+                    <div class="cart-item-price">¥${product.price.toFixed(2)}</div>
+                </div>
+                <div class="cart-item-controls">
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)">-</button>
+                        <div class="quantity-number">${item.quantity}</div>
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)">+</button>
+                    </div>
+                    <div class="cart-item-delete" onclick="removeFromCart(${item.id})">删除</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // 计算总价
+    updateCartTotal();
+}
+
+// 更新购物车数量
+function updateCartQuantity(cartItemId, change) {
+    const item = shoppingCart.find(c => c.id === cartItemId);
+    if (!item) return;
+    
+    item.quantity += change;
+    
+    if (item.quantity <= 0) {
+        removeFromCart(cartItemId);
+        return;
+    }
+    
+    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+    renderShoppingCart();
+    updateCartBadge();
+}
+
+// 从购物车移除
+function removeFromCart(cartItemId) {
+    if (!confirm('确定从购物车移除吗？')) return;
+    
+    shoppingCart = shoppingCart.filter(c => c.id !== cartItemId);
+    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+    renderShoppingCart();
+    updateCartBadge();
+}
+
+// 更新购物车总价
+function updateCartTotal() {
+    let total = 0;
+    
+    shoppingCart.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+            total += product.price * item.quantity;
+        }
+    });
+    
+    document.getElementById('cartTotalPrice').textContent = `¥${total.toFixed(2)}`;
+}
+
+// 结算
+function checkout() {
+    if (shoppingCart.length === 0) {
+        alert('购物车是空的');
+        return;
+    }
+    
+    // 计算总价
+    let total = 0;
+    let itemsText = '';
+    
+    shoppingCart.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+            total += product.price * item.quantity;
+            itemsText += `${product.name} x${item.quantity}\n`;
+        }
+    });
+    
+    const confirmText = `确认购买以下商品？\n\n${itemsText}\n总计: ¥${total.toFixed(2)}`;
+    
+    if (!confirm(confirmText)) return;
+    
+    // 清空购物车
+    shoppingCart = [];
+    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+    
+    alert('购买成功！✅');
+    
+    // 返回购物页面
+    backToShopping();
+    updateCartBadge();
+}
+
+// AI生成商品
+async function generateProducts() {
+    const keyword = document.getElementById('shoppingSearchInput').value.trim();
+    
+    if (!keyword) {
+        alert('请输入商品关键词');
+        return;
+    }
+    
+    // 检查API配置
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置');
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.textContent;
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = '生成中...';
+        
+      let prompt = '';
+        
+      if (currentShoppingType === 'goods') {
+        
+            // 核心指令：堆砌关键词 + 营销标签
+            prompt = `你是一个电商文案专家。用户搜索关键词：${keyword}。
+            请生成3-5个相关商品，必须严格按照以下淘宝/拼多多风格生成：
+            
+            1. 【商品名称】：必须堆砌关键词！公式：[形容词/年份]+[核心词]+[材质/风格]+[修饰词]+[适用人群]。字数要在15-30字之间。
+               例如：“2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮”
+            
+            2. 【价格】：只输出数字。
+            
+            3. 【描述】：输出3-4个营销标签，用竖线"|"分隔。
+               包括：销量、包邮、发货地、退换货服务等。
+               例如：“🔥月销1万+ | ✅包邮 | 极速退款 | 广东发货”
+            
+            输出格式（严禁多余废话）：
+            商品名1|||价格1|||描述1|||商品名2|||价格2|||描述2...`;
+
+        } else {
+            // === 🍱 外卖模式：美团/饿了么风 ===
+            // 核心指令：套餐组合 + 数据背书
+            prompt = `你是一个外卖推荐系统。用户想吃：${keyword}。
+            请生成3-5个相关外卖菜品，严格按照以下美团/饿了么风格生成：
+            
+            1. 【商品名称】：必须是诱人的套餐名！公式：[招牌/推荐]+[主菜]+[配菜/饮料]+[口味形容]。
+               例如：“【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）”
+            
+            2. 【价格】：只输出数字。
+            
+            3. 【描述】：输出3-4个外卖数据标签，用竖线"|"分隔。
+               必须包括：评分、送达时间、月售、人均等。
+               例如：“⭐4.9分 | 🚀30分钟送达 | 月售9999+ | 0配送费”
+            
+            输出格式（严禁多余废话）：
+            菜品名1|||价格1|||描述1|||菜品名2|||价格2|||描述2...`;
+        }
+        
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) throw new Error('生成失败');
+        
+        const data = await response.json();
+        const aiReply = data.choices[0].message.content.trim();
+        
+        // 解析AI返回的商品信息
+        parseAndSaveProducts(aiReply, keyword);
+        
+        alert('商品生成成功！');
+        document.getElementById('shoppingSearchInput').value = '';
+        
+    } catch (error) {
+        alert('生成失败：' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+// 解析并保存AI生成的商品（修改版：搜索前自动清空旧数据）
+function parseAndSaveProducts(aiReply, keyword) {
+    // 1. 先清理旧数据：只保留"手动添加的" 或者 "其他分类的"
+    // 也就是说，把"当前分类下"且"是AI生成的"旧商品统统删掉
+    products = products.filter(p => {
+        // 如果是手动添加的 (type === 'custom') -> 保留
+        if (p.type === 'custom') return true;
+        
+        // 如果是其他分类的 (比如我在搜外卖，那百货的商品就别动) -> 保留
+        if (p.categoryType !== currentShoppingType) return true;
+        
+        // 剩下的就是：当前分类下的旧AI商品 -> 删除 (return false)
+        return false;
+    });
+
+    // 2. 解析新数据
+    const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
+    
+    // 每3个元素为一组（名称、价格、描述）
+    for (let i = 0; i < parts.length; i += 3) {
+        if (i + 2 >= parts.length) break;
+        
+        const name = parts[i];
+        // 价格处理：有些AI可能会带上¥符号，或者文字，我们尽量只提取数字
+        const priceStr = parts[i + 1].replace(/[^\d.]/g, ''); 
+        const price = parseFloat(priceStr);
+        const description = parts[i + 2];
+        
+        if (!name || !price || price <= 0) continue;
+        
+        const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+        
+        products.push({
+            id: newId,
+            name: name,
+            price: price,
+            description: description,
+            type: 'ai', // 标记为 AI 生成
+            categoryType: currentShoppingType, // 标记分类 (goods/food)
+            createTime: getCurrentTime()
+        });
+    }
+    
+    // 3. 保存到数据库
+    saveToDB('products', { id: 1, list: products });
+    
+    // 4. 刷新显示
+    loadProducts();
+}
+
+// ============ 钱包功能 ============
+
+// 加载钱包数据
+function loadWalletData() {
+    loadFromDB('wallet', (data) => {
+        if (data) {
+            walletData = data;
+        } else {
+            // 初始化默认数据
+            walletData = { id: 1, balance: 2000.00, bills: [] };
+            saveToDB('wallet', walletData);
+        }
+        renderWallet();
+    });
+}
+
+// 渲染钱包界面
+function renderWallet() {
+    // 1. 更新余额
+    document.getElementById('walletBalance').textContent = walletData.balance.toFixed(2);
+    
+    // 2. 更新账单列表 (只显示最近7条)
+    const listContainer = document.getElementById('billList');
+    const recentBills = walletData.bills.slice().reverse().slice(0, 7); // 倒序取前7
+    
+    if (recentBills.length === 0) {
+        listContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px; font-size:13px;">暂无账单</div>';
+        return;
+    }
+    
+    listContainer.innerHTML = recentBills.map(bill => `
+        <div class="bill-item">
+            <div class="bill-left">
+                <div class="bill-title">${bill.title}</div>
+                <div class="bill-time">${bill.time}</div>
+            </div>
+            <div class="bill-amount ${bill.type === 'income' ? 'amount-income' : 'amount-expense'}">
+                ${bill.type === 'income' ? '+' : '-'}${bill.amount.toFixed(2)}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 处理交易 (核心记账函数)
+function handleTransaction(type, amount, title) {
+    // 1. 计算余额
+    if (type === 'income') {
+        walletData.balance += amount;
+    } else {
+        if (walletData.balance < amount) {
+            alert('余额不足！');
+            return false; // 交易失败
+        }
+        walletData.balance -= amount;
+    }
+    
+    // 2. 记账
+    walletData.bills.push({
+        title: title,
+        amount: amount,
+        type: type, // 'income' 或 'expense'
+        time: getCurrentTime() // 复用之前的获取时间函数
+    });
+    
+    // 3. 保存并刷新
+    saveToDB('wallet', walletData);
+    renderWallet();
+    return true; // 交易成功
+}
+
+// 充值/提现按钮逻辑
+function handleWalletAction(action) {
+    const title = action === 'recharge' ? '充值' : '提现';
+    const amountStr = prompt(`请输入${title}金额：`);
+    if (!amountStr) return;
+    
+    const amount = parseFloat(amountStr);
+    if (!amount || amount <= 0) {
+        alert('金额不正确');
+        return;
+    }
+    
+    if (action === 'recharge') {
+        handleTransaction('income', amount, '余额充值');
+        alert('充值成功！');
+    } else {
+        if (handleTransaction('expense', amount, '余额提现')) {
+            alert('提现成功！');
+        }
+    }
+}
 
         // 初始化，
         initDB();
