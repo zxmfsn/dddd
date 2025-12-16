@@ -2762,6 +2762,22 @@ color: #333;
     justify-content: center;
     align-items: center;
 }
+/* 加载动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.search-btn.loading {
+    pointer-events: none; /* 加载时禁止点击 */
+}
+
+.search-btn.loading::before {
+    content: '⏳';
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    margin-right: 4px;
+}
 
 /* 加载时的旋转动画 (可选，会让等待过程很可爱) */
 @keyframes spin {
@@ -3022,11 +3038,233 @@ color: #333;
     text-decoration: underline;
 }
 
+/* ============ 购物车底部布局 ============ */
 .cart-footer {
     padding: 20px;
     border-top: 1px solid #eee;
     background: white;
 }
+/* 第一行：支付方式 + 总价 */
+.cart-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+/* 左侧：支付方式选择（横向紧凑） */
+/* 左侧：支付方式选择（强制横向） */
+.payment-options {
+    display: flex;
+    flex-direction: row !important;  /* 强制横向 */
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: center;
+}
+.payment-option {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;  /* 缩小内边距 */
+    background: white;
+    border: 1.5px solid #e0e0e0;  /* 边框变细 */
+    border-radius: 6px;  /* 圆角变小 */
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.payment-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.payment-option.selected {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+.payment-radio {
+    width: 14px;   /* 缩小单选按钮 */
+    height: 14px;
+    margin-right: 4px;  /* 减小间距 */
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.payment-label {
+    cursor: pointer;
+    font-size: 12px;  /* 缩小字体 */
+    color: #333;
+    font-weight: 500;
+}
+/* 右侧：总价 */
+.cart-total-inline {
+    font-size: 16px;  /* 稍微缩小 */
+    font-weight: 600;
+    color: #333;
+}
+.cart-total-inline span {
+    color: #ff4757;
+    font-size: 18px;  /* 稍微缩小 */
+}
+/* 第二行：结算按钮 */
+.btn-checkout {
+    width: 100%;
+    padding: 12px;  /* 稍微缩小 */
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;  /* 稍微缩小 */
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.btn-checkout:hover {
+    background: #5a6fd8;
+}
+.btn-checkout:active {
+    transform: scale(0.98);
+}
+.btn-checkout:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ============ 购物订单卡片样式（保持不变） ============ */
+.shopping-order-card {
+    max-width: 85%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 10px 0;
+}
+
+.shopping-order-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.order-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-icon {
+    font-size: 20px;
+}
+
+.order-type-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.order-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-status {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.order-status.status-paid {
+    color: #1dd1a1;
+}
+
+.order-status.status-pending {
+    color: #ff9f43;
+}
+
+.order-status.status-rejected {
+    color: #999;
+}
+
+.order-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.order-view-detail {
+    font-size: 12px;
+    color: #667eea;
+    text-align: center;
+    margin-top: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.order-view-detail:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+.order-detail {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    animation: fadeIn 0.3s ease;
+}
+
+.order-detail.show {
+    display: block;
+}
+
+.order-detail-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-number {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.order-items-list {
+    margin-bottom: 10px;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 10px 0;
+}
+
+.order-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
 
 .cart-total {
     font-size: 18px;
@@ -3378,6 +3616,239 @@ color: #333;
 
 .amount-income { color: #ff4757; } /* 收入红色 */
 .amount-expense { color: #333; }   /* 支出黑色 */   
+
+/* ============ 购物车支付方式选择样式 ============ */
+.cart-payment-section {
+    padding: 15px 20px;
+    background: #f8f8f8;
+    border-top: 1px solid #eee;
+}
+
+.payment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;
+    background: white;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    /* 确保没有 width: 100% 或 display: block */
+}
+
+
+.payment-radio {
+    width: 12px !important;
+    height: 12px !important;
+    margin-right: 3px !important;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.payment-label {
+    cursor: pointer;
+    font-size: 11px !important;  /* 超小字体 */
+    color: #333;
+    font-weight: 500;
+}
+
+
+.payment-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+.payment-option.selected {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.payment-radio {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.payment-label {
+    flex: 1;
+    cursor: pointer;
+}
+
+.payment-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 3px;
+}
+
+.payment-desc {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 结算按钮禁用状态 */
+.btn-checkout:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ============ 购物订单卡片样式 ============ */
+.shopping-order-card {
+    max-width: 85%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 10px 0;
+}
+
+.shopping-order-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.order-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-icon {
+    font-size: 20px;
+}
+
+.order-type-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.order-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-status {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.order-status.status-paid {
+    color: #1dd1a1;
+}
+
+.order-status.status-pending {
+    color: #ff9f43;
+}
+
+.order-status.status-rejected {
+    color: #999;
+}
+
+.order-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.order-view-detail {
+    font-size: 12px;
+    color: #667eea;
+    text-align: center;
+    margin-top: 5px;
+    cursor: pointer; /* 确保有这行 */
+    user-select: none; /* 防止文字被选中 */
+}
+.order-view-detail:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+/* 订单详情展开 */
+.order-detail {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    animation: fadeIn 0.3s ease;
+}
+
+.order-detail.show {
+    display: block;
+}
+
+.order-detail-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-number {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.order-items-list {
+    margin-bottom: 10px;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 10px 0;
+}
+
+.order-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-close-detail {
+    text-align: center;
+    font-size: 12px;
+    color: #667eea;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+      
     </style>
 </head>
 <body>
@@ -6146,6 +6617,164 @@ function renderMessages() {
             `;
         }
         // ▲▲▲ 转账消息渲染结束 ▲▲▲
+
+
+// ▼▼▼ 新增：购物订单消息渲染 ▼▼▼
+if (msg.type === 'shopping_order') {
+    const data = msg.orderData;
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = data.characterName || (chat ? chat.name : 'TA');
+    
+    let statusIcon = '';
+    let statusText = '';
+    let statusClass = '';
+    let orderIcon = '';
+    let orderTypeText = '';
+    let payer = '';
+    let receiver = '';
+    
+    // ========== 四种订单类型判断 ==========
+    
+    // 类型1：你给AI买礼物
+    if (data.orderType === 'buy_for_ta') {
+        orderIcon = '🎁';
+        orderTypeText = `我给你买了礼物`;
+        payer = '我';
+        receiver = characterName;
+        
+        if (data.status === 'paid') {
+            statusIcon = '✅';
+            statusText = '已支付';
+            statusClass = 'status-paid';
+        }
+    }
+    
+    // 类型2：你请AI代付
+    else if (data.orderType === 'ask_ta_pay') {
+        orderIcon = '💸';
+        orderTypeText = `我请你代付`;
+        payer = characterName;
+        receiver = '我';
+        
+        if (data.status === 'pending') {
+            statusIcon = '⏳';
+            statusText = '待支付';
+            statusClass = 'status-pending';
+        } else if (data.status === 'paid') {
+            statusIcon = '✅';
+            statusText = '已支付';
+            statusClass = 'status-paid';
+        } else if (data.status === 'rejected') {
+            statusIcon = '❌';
+            statusText = '已拒绝';
+            statusClass = 'status-rejected';
+        }
+    }
+    
+    // 类型3：AI给你买礼物（新增）
+    else if (data.orderType === 'ai_buy_for_user') {
+        orderIcon = '🎁';
+        orderTypeText = `${characterName}给你买了礼物`;
+        payer = characterName;
+        receiver = '我';
+        
+        statusIcon = '✅';
+        statusText = '已送达';
+        statusClass = 'status-paid';
+    }
+    
+    // 类型4：AI请你代付（新增）
+    else if (data.orderType === 'ai_ask_user_pay') {
+        orderIcon = '💸';
+        orderTypeText = `${characterName}请你代付`;
+        payer = '我';
+        receiver = characterName;
+        
+        if (data.status === 'pending') {
+            statusIcon = '⏳';
+            statusText = '待确认';
+            statusClass = 'status-pending';
+        } else if (data.status === 'paid') {
+            statusIcon = '✅';
+            statusText = '已支付';
+            statusClass = 'status-paid';
+        } else if (data.status === 'rejected') {
+            statusIcon = '❌';
+            statusText = '已拒绝';
+            statusClass = 'status-rejected';
+        }
+    }
+    
+    // 生成商品列表HTML
+    const itemsHtml = data.items.map(item => 
+        `<div class="order-item-row">
+            <span>${item.name} x${item.quantity}</span>
+            <span>¥${(item.price * item.quantity).toFixed(2)}</span>
+        </div>`
+    ).join('');
+    
+    // ========== 渲染订单卡片 ==========
+    return `
+        <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+            ${checkbox}
+            <div class="shopping-order-card">
+                <div class="order-card-header">
+                    <span class="order-icon">${orderIcon}</span>
+                    <span class="order-type-text">${orderTypeText}</span>
+                </div>
+                <div class="order-status-row">
+                    <span class="order-status ${statusClass}">${statusIcon} ${statusText}</span>
+                    <span class="order-amount">¥${data.totalPrice.toFixed(2)}</span>
+                </div>
+                
+                ${data.status === 'pending' && data.orderType === 'ai_ask_user_pay' ? `
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button class="action-btn btn-edit" onclick="confirmAIPayRequest(${msg.id})" style="flex: 1;">同意支付</button>
+                        <button class="action-btn btn-delete" onclick="rejectAIPayRequest(${msg.id})" style="flex: 1;">拒绝</button>
+                    </div>
+                ` : ''}
+                
+                <div class="order-view-detail" onclick="toggleOrderDetail(${msg.id})">
+                    ${data.isExpanded ? '收起详情' : '点击查看详情'}
+                </div>
+                
+                <div class="order-detail ${data.isExpanded ? 'show' : ''}" id="order-detail-${msg.id}">
+                    <div class="order-detail-title">📄 电子小票</div>
+                    <div class="order-number">订单号：${data.orderNumber}</div>
+                    
+                    <div class="order-items-list">
+                        ${itemsHtml}
+                    </div>
+                    
+                    <hr class="order-divider">
+                    
+                    <div class="order-total-row">
+                        <span>总计：</span>
+                        <span>¥${data.totalPrice.toFixed(2)}</span>
+                    </div>
+                    
+                    <div class="order-info-row">
+                        <span>付款方：</span>
+                        <span>${payer}</span>
+                    </div>
+                    
+                    <div class="order-info-row">
+                        <span>收货人：</span>
+                        <span>${receiver}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="message-time">${formatMessageTime(msg.time)}</div>
+        </div>
+    `;
+}
+// ▲▲▲ 购物订单消息渲染结束 ▲▲▲
+
+
+
+      
+
+    
         // ▼▼▼ 新增：系统消息渲染 ▼▼▼
         if (msg.type === 'system') {
             return `<div class="system-message">${msg.content}</div>`;
@@ -6549,6 +7178,13 @@ ${weatherInfoStr}
 2. 转账功能：[转账:金额:备注]
 3. 语音消息功能：[发送语音:内容]
 4. 如果你要领取对方的转账，请在回复中包含[领取转账]四个字。
+5.购物功能：你可以主动购物！有两种方式：
+方式1：给对方送礼物（你付钱，对方收货），格式：[购物:送礼:商品关键词]，例如：[购物:送礼:玫瑰花]
+方式2：请对方代付（对方付钱，你收货），格式：[购物:代付:商品关键词]，例如：[购物:代付:奶茶]
+- 根据聊天内容自然触发（比如对方说"好想吃草莓"，你可以回复"[购物:送礼:草莓]|||给你买了新鲜草莓！"）
+注意：1. 购物指令可以和普通消息混合，用|||分隔
+2. 一次只能购买一种商品
+3. 购物后AI会自动生成3-5个相关商品供系统选择
 
 【格式提醒】
 如果要更新状态，格式为：[状态]xxx|||[消息]第一条|||第二条
@@ -6607,6 +7243,54 @@ ${weatherInfoStr}
                     ];
                 }
             }
+
+// 在处理 voice、transfer 等类型后面添加：
+
+else if (msg.type === 'shopping_order') {
+    const data = msg.orderData;
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = data.characterName || (chat ? chat.name : '你');
+    
+    if (data.orderType === 'buy_for_ta') {
+        // 为TA购买
+        const itemsList = data.items.map(item => 
+            `${item.name} x${item.quantity}`
+        ).join(', ');
+        
+        content = `[系统通知] 用户刚刚给你买了礼物，订单详情：
+商品：${itemsList}
+总价：¥${data.totalPrice.toFixed(2)}
+付款方：用户
+收货人：你
+
+请对这份礼物做出真实的情感回应（惊喜、感动、开心等）。`;
+        
+    } else if (data.orderType === 'ask_ta_pay') {
+        // 请TA代付
+        const itemsList = data.items.map(item => 
+            `${item.name} x${item.quantity}`
+        ).join(', ');
+        
+        if (data.status === 'pending') {
+            content = `[系统通知] 用户请你代付购物订单，订单详情：
+商品：${itemsList}
+总价：¥${data.totalPrice.toFixed(2)}
+付款方：你（待确认）
+收货人：用户
+
+请根据你的人设、关联的世界书信息、以及你们的聊天历史，决定是否同意支付：
+- 如果同意，回复中包含 [同意代付] 四个字
+- 如果拒绝，回复中包含 [拒绝代付] 四个字
+
+请结合你的性格和当前关系做出真实的决定。`;
+        } else {
+            // 已支付或已拒绝，不需要特殊处理
+            content = `[系统消息] 用户请你代付的订单（¥${data.totalPrice.toFixed(2)}）状态：${data.status === 'paid' ? '已支付' : '已拒绝'}`;
+        }
+    }
+}
+
+      
             // ===================================
             else if (msg.type === 'transfer') {
                 const amount = msg.transferData.amount;
@@ -6670,7 +7354,14 @@ ${weatherInfoStr}
 
    // 10. 处理回复内容
 let aiReply = data.choices[0].message.content.trim();
-
+if (emojis.length > 0) {
+    // 建议顺手用我刚才给你的那个优化版replace写法，更稳
+    const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
+    aiReply = aiReply.replace(emojiRegex, (match, keyword) => {
+        const found = searchEmojiByKeyword(keyword);
+        return found ? `|||[EMOJI:${found.id}]|||` : '';
+    });
+}
 // ========== 第一步：宽容式提取状态（可选） ==========
 // 尝试匹配各种可能的状态格式
 const statusPatterns = [
@@ -6726,19 +7417,7 @@ let messageContent = aiReply
     
     .trim();
 
-// ========== 第三步：处理表情包（保持不变） ==========
-if (emojis.length > 0) {
-    const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
-    let match;
-    while ((match = emojiRegex.exec(messageContent)) !== null) {
-        const found = searchEmojiByKeyword(match[1]);
-        if (found) {
-            messageContent = messageContent.replace(match[0], `|||[EMOJI:${found.id}]|||`);
-        } else {
-            messageContent = messageContent.replace(match[0], '');
-        }
-    }
-}
+
 
 // ========== 第四步：智能分割消息 ==========
 let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
@@ -6825,6 +7504,44 @@ if (messageList.length === 1 && messageContent.length > 100) {
             const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
             const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
             const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
+          // ========== 新增：购物指令匹配 ==========
+const shoppingMatch = msgText.match(/\[购物:(送礼|代付):(.+?)\]/);
+
+if (shoppingMatch) {
+    const shoppingType = shoppingMatch[1]; // '送礼' 或 '代付'
+    const keyword = shoppingMatch[2].trim();
+    
+    // 清除购物指令，保留其他文字
+    msgText = msgText.replace(/\[购物:(送礼|代付):.+?\]/g, '').trim();
+    
+    // 如果清除后还有文字，先发送文字消息
+    if (msgText) {
+        const textMsgId = Date.now() + i;
+        allMessages.push({
+            id: textMsgId,
+            chatId: currentChatId,
+            type: 'text',
+            content: msgText,
+            senderId: chat.name,
+            time: getCurrentTime(),
+            isRevoked: false
+        });
+        saveMessages();
+        visibleMessagesCount = allMessages.length;
+        renderMessages();
+        scrollToBottom();
+        
+        // 等待一下再触发购物
+        await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    // 触发AI购物流程
+    await handleAIShopping(shoppingType, keyword);
+    
+    continue; // 跳过后续处理
+}
+// ========== 购物指令处理结束 ==========
+
 
             let newMessage = {
                 id: newId,
@@ -6864,6 +7581,56 @@ if (messageList.length === 1 && messageContent.length > 100) {
             scrollToBottom();
         }
 
+   // ========== 处理代付回复 ==========
+        // 检查AI回复中是否包含 [同意代付] 或 [拒绝代付]
+        if (aiReply.includes('[同意代付]') || aiReply.includes('[拒绝代付]')) {
+            // 找到最近的待支付订单
+            const pendingOrder = allMessages.slice().reverse().find(m => 
+                m.type === 'shopping_order' && 
+                m.orderData.orderType === 'ask_ta_pay' && 
+                m.orderData.status === 'pending'
+            );
+            
+            if (pendingOrder) {
+                const chat = chats.find(c => c.id === currentChatId);
+                const characterName = chat ? chat.name : 'TA';
+                
+                if (aiReply.includes('[同意代付]')) {
+                    // 同意代付
+                    pendingOrder.orderData.status = 'paid';
+                    
+                    // 插入系统消息
+                    const sysMsgId = Date.now() + 9999;
+                    allMessages.push({
+                        id: sysMsgId,
+                        chatId: currentChatId,
+                        type: 'system',
+                        content: `${characterName}已同意支付 ¥${pendingOrder.orderData.totalPrice.toFixed(2)}`,
+                        time: getCurrentTime()
+                    });
+                    
+                } else if (aiReply.includes('[拒绝代付]')) {
+                    // 拒绝代付
+                    pendingOrder.orderData.status = 'rejected';
+                    
+                    // 插入系统消息
+                    const sysMsgId = Date.now() + 9999;
+                    allMessages.push({
+                        id: sysMsgId,
+                        chatId: currentChatId,
+                        type: 'system',
+                        content: `${characterName}拒绝了代付请求`,
+                        time: getCurrentTime()
+                    });
+                }
+                
+                // 保存并刷新
+                saveMessages();
+                visibleMessagesCount = allMessages.length;
+                renderMessages();
+                scrollToBottom();
+            }
+        }
     } catch (error) {
         console.error(error);
         if (error.name === 'AbortError') {
@@ -8146,7 +8913,7 @@ container.innerHTML = allWorldbooks.map(wb => {
     `;
 }).join('');
 
-      console.log('✅ 世界书选择器已渲染，总数:', allWorldbooks.length, '已选中:', selectedIds);
+    
     });
 }
 
@@ -8154,13 +8921,13 @@ container.innerHTML = allWorldbooks.map(wb => {
 function getSelectedWorldbooks() {
     const container = document.getElementById('worldbookSelector');
     if (!container) {
-        console.log('worldbookSelector不存在');
+   
         return [];
     }
     
     const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
     if (!checkboxes || checkboxes.length === 0) {
-        console.log('没有选中任何世界书');
+    
         return [];
     }
     
@@ -8635,7 +9402,7 @@ const recentMessages = await new Promise(resolve => {
         // 展平成消息列表
         const recentMsgs = recentRounds.flat();
         
-        console.log(`✅ 提取了 ${recentRounds.length} 轮对话，共 ${recentMsgs.length} 条消息`);
+     
         
         // 格式化
         const formatted = recentMsgs
@@ -9648,16 +10415,16 @@ async function retryAIReply() {
     for (let i = allMessages.length - 1; i >= 0; i--) {
        const msg = allMessages[i];
     
-    console.log(`消息${i}:`, msg);
+
     
     // 如果是用户消息，停止
     if (msg.senderId === 'me') {
-        console.log('遇到用户消息，停止');
+     
         break;
     }
     
     // 否则就收集（不管是谁发的）
-    console.log(`收集消息${i}`);
+  
     messagesToRemove.push(msg.id);
     }
     
@@ -10913,7 +11680,83 @@ function renderShoppingCart() {
     
     // 计算总价
     updateCartTotal();
+    
+    // ★★★ 新增：渲染支付方式选择 ★★★
+    renderPaymentOptions();
 }
+// 当前选择的支付方式
+let selectedPaymentMethod = null;
+
+// 渲染支付方式选择
+function renderPaymentOptions() {
+    const footer = document.getElementById('cartFooter');
+    
+    // 清空footer内容
+    footer.innerHTML = '';
+    
+    // 获取当前角色名字
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = chat ? chat.name : 'TA';
+    
+    // 计算总价
+    let total = 0;
+    shoppingCart.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+            total += product.price * item.quantity;
+        }
+    });
+    
+    footer.innerHTML = `
+        <div class="cart-top-row">
+            <div class="payment-options">
+                <div class="payment-option ${selectedPaymentMethod === 'buy_for_ta' ? 'selected' : ''}" onclick="selectPaymentMethod('buy_for_ta')">
+                    <input type="radio" name="payment" class="payment-radio" ${selectedPaymentMethod === 'buy_for_ta' ? 'checked' : ''}>
+                    <div class="payment-label"> 为${characterName}购买</div>
+                </div>
+                
+                <div class="payment-option ${selectedPaymentMethod === 'ask_ta_pay' ? 'selected' : ''}" onclick="selectPaymentMethod('ask_ta_pay')">
+                    <input type="radio" name="payment" class="payment-radio" ${selectedPaymentMethod === 'ask_ta_pay' ? 'checked' : ''}>
+                    <div class="payment-label"> 请${characterName}代付</div>
+                </div>
+            </div>
+            
+            <div class="cart-total-inline">
+                合计: <span>¥${total.toFixed(2)}</span>
+            </div>
+        </div>
+        
+        <button class="btn-checkout" onclick="checkout()" ${selectedPaymentMethod ? '' : 'disabled'}>
+            结算
+        </button>
+    `;
+}
+
+// 选择支付方式
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    renderPaymentOptions();
+}
+
+
+// 选择支付方式
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    renderPaymentOptions();
+}
+
+// 更新结算按钮状态
+function updateCheckoutButton() {
+    const checkoutBtn = document.querySelector('.btn-checkout');
+    if (checkoutBtn) {
+        if (selectedPaymentMethod) {
+            checkoutBtn.disabled = false;
+        } else {
+            checkoutBtn.disabled = true;
+        }
+    }
+}
+
 
 // 更新购物车数量
 function updateCartQuantity(cartItemId, change) {
@@ -10957,39 +11800,165 @@ function updateCartTotal() {
 }
 
 // 结算
+// 结算
 function checkout() {
     if (shoppingCart.length === 0) {
         alert('购物车是空的');
         return;
     }
     
-    // 计算总价
+    if (!selectedPaymentMethod) {
+        alert('请选择支付方式');
+        return;
+    }
+    
+    // 计算总价和商品列表
     let total = 0;
     let itemsText = '';
+    const orderItems = [];
     
     shoppingCart.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (product) {
             total += product.price * item.quantity;
             itemsText += `${product.name} x${item.quantity}\n`;
+            orderItems.push({
+                name: product.name,
+                quantity: item.quantity,
+                price: product.price
+            });
         }
     });
     
-    const confirmText = `确认购买以下商品？\n\n${itemsText}\n总计: ¥${total.toFixed(2)}`;
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = chat ? chat.name : 'TA';
     
-    if (!confirm(confirmText)) return;
+    // 根据支付方式执行不同逻辑
+    if (selectedPaymentMethod === 'buy_for_ta') {
+        // ========== 为TA购买 ==========
+        // 检查余额
+        loadFromDB('wallet', (walletData) => {
+            if (!walletData || walletData.balance < total) {
+                const shortage = total - (walletData ? walletData.balance : 0);
+                alert(`余额不足！\n当前余额：¥${walletData ? walletData.balance.toFixed(2) : '0.00'}\n还需：¥${shortage.toFixed(2)}`);
+                return;
+            }
+            
+            // 确认弹窗
+            const confirmText = `确认为【${characterName}】购买？\n\n🎁 商品清单：\n${itemsText}\n💰 总计: ¥${total.toFixed(2)}\n当前余额: ¥${walletData.balance.toFixed(2)}\n支付后余额: ¥${(walletData.balance - total).toFixed(2)}\n\n📦 收货人：${characterName}`;
+            
+            if (!confirm(confirmText)) return;
+            
+            // 扣款
+            const title = `购物消费-为${characterName}购买`;
+            if (!handleTransaction('expense', total, title)) {
+                return;
+            }
+            
+            // 生成订单消息
+            createShoppingOrderMessage('buy_for_ta', 'paid', total, orderItems);
+            
+            // 清空购物车
+            shoppingCart = [];
+            selectedPaymentMethod = null;
+            saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+            
+            alert('购买成功！礼物已送出 🎁');
+            
+            // 返回聊天页面
+            backToShopping();
+            setTimeout(() => {
+                backFromShopping();
+            }, 100);
+            updateCartBadge();
+        });
+        
+    } else if (selectedPaymentMethod === 'ask_ta_pay') {
+        // ========== 请TA代付 ==========
+        const confirmText = `确认请【${characterName}】代付？\n\n🛍️ 商品清单：\n${itemsText}\n💸 代付金额：¥${total.toFixed(2)}\n\n📦 收货人：我\n\n⚠️ 对方需要同意后才会扣款`;
+        
+        if (!confirm(confirmText)) return;
+        
+        // 生成订单消息（待支付状态）
+        createShoppingOrderMessage('ask_ta_pay', 'pending', total, orderItems);
+        
+        // 清空购物车
+        shoppingCart = [];
+        selectedPaymentMethod = null;
+        saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+        
+        alert('代付请求已发送！');
+        
+        // 返回聊天页面
+        backToShopping();
+        setTimeout(() => {
+            backFromShopping();
+        }, 100);
+        updateCartBadge();
+    }
+}
+// 创建购物订单消息
+function createShoppingOrderMessage(orderType, status, totalPrice, items) {
+    if (!currentChatId) return;
     
-    // 清空购物车
-    shoppingCart = [];
-    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    const orderNumber = new Date().getTime().toString();
     
-    alert('购买成功！✅');
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = chat ? chat.name : 'TA';
     
-    // 返回购物页面
-    backToShopping();
-    updateCartBadge();
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'shopping_order',
+        senderId: 'me',
+        time: getCurrentTime(),
+        orderData: {
+            orderType: orderType,
+            status: status,
+            totalPrice: totalPrice,
+            items: items,
+            orderNumber: orderNumber,
+            characterName: characterName,
+            isExpanded: false
+        }
+    };
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    
+    // 更新聊天列表
+    const previewText = orderType === 'buy_for_ta' ? 
+        `[购物订单] 为${characterName}购买 ¥${totalPrice.toFixed(2)}` : 
+        `[购物订单] 请${characterName}代付 ¥${totalPrice.toFixed(2)}`;
+    updateChatLastMessage(currentChatId, previewText);
+    
+    // 如果在聊天详情页，刷新显示
+    if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+        renderMessages();
+        scrollToBottom();
+    }
 }
 
+  // 展开/收起订单详情
+function toggleOrderDetail(messageId) {
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message || message.type !== 'shopping_order') return;
+    
+    message.orderData.isExpanded = !message.orderData.isExpanded;
+    saveMessages();
+    
+    // 只更新这一条消息的显示
+    const detailDiv = document.getElementById(`order-detail-${messageId}`);
+    if (detailDiv) {
+        if (message.orderData.isExpanded) {
+            detailDiv.classList.add('show');
+        } else {
+            detailDiv.classList.remove('show');
+        }
+    }
+}
 // AI生成商品
 async function generateProducts() {
     const keyword = document.getElementById('shoppingSearchInput').value.trim();
@@ -11010,42 +11979,41 @@ async function generateProducts() {
     
     try {
         btn.disabled = true;
-        btn.textContent = '生成中...';
+        btn.classList.add('loading');
+        btn.textContent = '';
         
-      let prompt = '';
+        let prompt = '';
         
-      if (currentShoppingType === 'goods') {
-        
-            // 核心指令：堆砌关键词 + 营销标签
+        if (currentShoppingType === 'goods') {
+            // ★★★ 修改：3-5个 → 5-10个 ★★★
             prompt = `你是一个电商文案专家。用户搜索关键词：${keyword}。
-            请生成3-5个相关商品，必须严格按照以下淘宝/拼多多风格生成：
+            请生成5-10个相关商品，必须严格按照以下淘宝/拼多多风格生成：
             
             1. 【商品名称】：必须堆砌关键词！公式：[形容词/年份]+[核心词]+[材质/风格]+[修饰词]+[适用人群]。字数要在15-30字之间。
-               例如：“2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮”
+               例如："2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮"
             
             2. 【价格】：只输出数字。
             
             3. 【描述】：输出3-4个营销标签，用竖线"|"分隔。
                包括：销量、包邮、发货地、退换货服务等。
-               例如：“🔥月销1万+ | ✅包邮 | 极速退款 | 广东发货”
+               例如："🔥月销1万+ | ✅包邮 | 极速退款 | 广东发货"
             
             输出格式（严禁多余废话）：
             商品名1|||价格1|||描述1|||商品名2|||价格2|||描述2...`;
 
         } else {
-            // === 🍱 外卖模式：美团/饿了么风 ===
-            // 核心指令：套餐组合 + 数据背书
+            // ★★★ 修改：3-5个 → 5-10个 ★★★
             prompt = `你是一个外卖推荐系统。用户想吃：${keyword}。
-            请生成3-5个相关外卖菜品，严格按照以下美团/饿了么风格生成：
+            请生成5-10个相关外卖菜品，严格按照以下美团/饿了么风格生成：
             
             1. 【商品名称】：必须是诱人的套餐名！公式：[招牌/推荐]+[主菜]+[配菜/饮料]+[口味形容]。
-               例如：“【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）”
+               例如："【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）"
             
             2. 【价格】：只输出数字。
             
             3. 【描述】：输出3-4个外卖数据标签，用竖线"|"分隔。
                必须包括：评分、送达时间、月售、人均等。
-               例如：“⭐4.9分 | 🚀30分钟送达 | 月售9999+ | 0配送费”
+               例如："⭐4.9分 | 🚀30分钟送达 | 月售9999+ | 0配送费"
             
             输出格式（严禁多余废话）：
             菜品名1|||价格1|||描述1|||菜品名2|||价格2|||描述2...`;
@@ -11083,25 +12051,27 @@ async function generateProducts() {
         alert('生成失败：' + error.message);
     } finally {
         btn.disabled = false;
+        btn.classList.remove('loading');
         btn.textContent = originalText;
     }
 }
+
+      
 // 解析并保存AI生成的商品（修改版：搜索前自动清空旧数据）
 function parseAndSaveProducts(aiReply, keyword) {
-    // 1. 先清理旧数据：只保留"手动添加的" 或者 "其他分类的"
-    // 也就是说，把"当前分类下"且"是AI生成的"旧商品统统删掉
+    // ★★★ 核心修复：搜索前先清空当前分类下的旧AI商品 ★★★
     products = products.filter(p => {
-        // 如果是手动添加的 (type === 'custom') -> 保留
+        // 保留手动添加的商品
         if (p.type === 'custom') return true;
         
-        // 如果是其他分类的 (比如我在搜外卖，那百货的商品就别动) -> 保留
+        // 保留其他分类的商品（比如搜外卖时，保留百货商品）
         if (p.categoryType !== currentShoppingType) return true;
         
-        // 剩下的就是：当前分类下的旧AI商品 -> 删除 (return false)
+        // 删除当前分类下的旧AI商品
         return false;
     });
 
-    // 2. 解析新数据
+    // 解析新数据
     const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
     
     // 每3个元素为一组（名称、价格、描述）
@@ -11109,7 +12079,6 @@ function parseAndSaveProducts(aiReply, keyword) {
         if (i + 2 >= parts.length) break;
         
         const name = parts[i];
-        // 价格处理：有些AI可能会带上¥符号，或者文字，我们尽量只提取数字
         const priceStr = parts[i + 1].replace(/[^\d.]/g, ''); 
         const price = parseFloat(priceStr);
         const description = parts[i + 2];
@@ -11123,18 +12092,19 @@ function parseAndSaveProducts(aiReply, keyword) {
             name: name,
             price: price,
             description: description,
-            type: 'ai', // 标记为 AI 生成
-            categoryType: currentShoppingType, // 标记分类 (goods/food)
+            type: 'ai', // 标记为AI生成
+            categoryType: currentShoppingType, // 标记分类
             createTime: getCurrentTime()
         });
     }
     
-    // 3. 保存到数据库
+    // 保存到数据库
     saveToDB('products', { id: 1, list: products });
     
-    // 4. 刷新显示
+    // 刷新显示
     loadProducts();
 }
+
 
 // ============ 钱包功能 ============
 
@@ -11226,6 +12196,306 @@ function handleWalletAction(action) {
             alert('提现成功！');
         }
     }
+}
+// ============ AI购物功能 ============
+
+/**
+ * AI购物主流程
+ * @param {string} type - '送礼' 或 '代付'
+ * @param {string} keyword - 商品关键词
+ */
+async function handleAIShopping(type, keyword) {
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        console.error('API未配置，AI购物失败');
+        return;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    try {
+        // 1. 生成商品列表
+        const products = await generateShoppingProducts(keyword);
+        
+        if (!products || products.length === 0) {
+            console.error('商品生成失败');
+            return;
+        }
+        
+        // 2. 让AI选择商品
+        const selectedProduct = await aiSelectProduct(products, type, keyword);
+        
+        if (!selectedProduct) {
+            console.error('AI选择商品失败');
+            return;
+        }
+        
+        // 3. 创建订单消息
+        createAIShoppingOrder(type, selectedProduct, chat.name);
+        
+    } catch (error) {
+        console.error('AI购物失败：', error);
+    }
+}
+
+/**
+ * 生成商品列表（调用AI）
+ */
+async function generateShoppingProducts(keyword) {
+    const prompt = `用户想要：${keyword}。
+请生成3-5个相关商品，严格按照格式输出：
+
+商品名1|||价格1|||商品名2|||价格2|||商品名3|||价格3
+
+要求：
+1. 商品名简短（5-15字）
+2. 价格合理（10-500元）
+3. 只输出商品信息，不要多余废话
+
+示例输出：
+新鲜草莓500g|||29.9|||进口车厘子1斤|||89|||国产红富士苹果5斤|||39.9`;
+
+    const url = currentApiConfig.baseUrl.endsWith('/') 
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+        
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7
+        })
+    });
+    
+    if (!response.ok) throw new Error('商品生成失败');
+    
+    const data = await response.json();
+    const aiReply = data.choices[0].message.content.trim();
+    
+    // 解析商品
+    const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
+    const productList = [];
+    
+    for (let i = 0; i < parts.length; i += 2) {
+        if (i + 1 >= parts.length) break;
+        
+        const name = parts[i];
+        const priceStr = parts[i + 1].replace(/[^\d.]/g, '');
+        const price = parseFloat(priceStr);
+        
+        if (name && price > 0) {
+            productList.push({ name, price });
+        }
+    }
+    
+    return productList;
+}
+
+/**
+ * AI选择商品（根据人设和上下文）
+ */
+async function aiSelectProduct(products, type, keyword) {
+    const chat = chats.find(c => c.id === currentChatId);
+    
+    // 获取角色信息
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    // 获取世界书
+    const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+    
+    // 获取最近10轮对话
+    const recentMessages = allMessages.slice(-20).map(msg => {
+        const sender = msg.senderId === 'me' ? '对方' : '我';
+        return `${sender}：${msg.content}`;
+    }).join('\n');
+    
+    // 构建商品列表文本
+    const productListText = products.map((p, i) => 
+        `${i + 1}. ${p.name} - ¥${p.price.toFixed(2)}`
+    ).join('\n');
+    
+    const actionText = type === '送礼' ? '给对方送礼物' : '请对方代付（自己收货）';
+    
+    const prompt = `你是${chat.name}，现在要${actionText}。
+
+【你的人设】
+${characterInfo.personality || '一个真实的人'}
+
+【关联世界书】
+${worldbooksContent}
+
+【最近对话】
+${recentMessages}
+
+【可选商品】
+${productListText}
+
+【任务】
+根据你的人设、对话内容、以及${actionText}的场景，选择最合适的商品。
+
+只需输出商品编号（1-${products.length}），不要多余废话。`;
+
+    const url = currentApiConfig.baseUrl.endsWith('/') 
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+        
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.8
+        })
+    });
+    
+    if (!response.ok) throw new Error('选择失败');
+    
+    const data = await response.json();
+    const aiReply = data.choices[0].message.content.trim();
+    
+    // 提取数字
+    const match = aiReply.match(/\d+/);
+    if (match) {
+        const index = parseInt(match[0]) - 1;
+        if (index >= 0 && index < products.length) {
+            return products[index];
+        }
+    }
+    
+    // 兜底：返回第一个
+    return products[0];
+}
+
+/**
+ * 创建AI购物订单消息
+ */
+function createAIShoppingOrder(type, product, characterName) {
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    const orderNumber = new Date().getTime().toString();
+    
+    let orderType, status;
+    
+    if (type === '送礼') {
+        // AI给你送礼：AI付钱（自动扣款），你收货
+        orderType = 'ai_buy_for_user';
+        status = 'paid'; // 直接标记为已支付
+    } else {
+        // AI请你代付：你付钱（需确认），AI收货
+        orderType = 'ai_ask_user_pay';
+        status = 'pending'; // 待你确认
+    }
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'shopping_order',
+        senderId: characterName,
+        time: getCurrentTime(),
+        orderData: {
+            orderType: orderType,
+            status: status,
+            totalPrice: product.price,
+            items: [{
+                name: product.name,
+                quantity: 1,
+                price: product.price
+            }],
+            orderNumber: orderNumber,
+            characterName: characterName,
+            isExpanded: false
+        }
+    };
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    
+    // 更新聊天列表
+    const previewText = type === '送礼' ? 
+        `[购物订单] ${characterName}给你买了礼物 ¥${product.price.toFixed(2)}` : 
+        `[购物订单] ${characterName}请你代付 ¥${product.price.toFixed(2)}`;
+    updateChatLastMessage(currentChatId, previewText);
+    
+    // 刷新显示
+    visibleMessagesCount = allMessages.length;
+    renderMessages();
+    scrollToBottom();
+}
+// 确认AI的代付请求
+function confirmAIPayRequest(messageId) {
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message || message.orderData.orderType !== 'ai_ask_user_pay') return;
+    
+    const amount = message.orderData.totalPrice;
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = chat ? chat.name : 'TA';
+    
+    if (!confirm(`确认为【${characterName}】支付 ¥${amount.toFixed(2)} 吗？`)) return;
+    
+    // 扣款
+    const title = `购物消费-为${characterName}代付`;
+    if (!handleTransaction('expense', amount, title)) {
+        return; // 余额不足
+    }
+    
+    // 更新订单状态
+    message.orderData.status = 'paid';
+    saveMessages();
+    
+    // 插入系统消息
+    const sysMsgId = Date.now() + 999;
+    allMessages.push({
+        id: sysMsgId,
+        chatId: currentChatId,
+        type: 'system',
+        content: `你已为${characterName}支付 ¥${amount.toFixed(2)}`,
+        time: getCurrentTime()
+    });
+    
+    saveMessages();
+    renderMessages();
+    scrollToBottom();
+}
+
+// 拒绝AI的代付请求
+function rejectAIPayRequest(messageId) {
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message || message.orderData.orderType !== 'ai_ask_user_pay') return;
+    
+    if (!confirm('确定拒绝代付请求吗？')) return;
+    
+    // 更新订单状态
+    message.orderData.status = 'rejected';
+    saveMessages();
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    const characterName = chat ? chat.name : 'TA';
+    
+    // 插入系统消息
+    const sysMsgId = Date.now() + 999;
+    allMessages.push({
+        id: sysMsgId,
+        chatId: currentChatId,
+        type: 'system',
+        content: `你拒绝了${characterName}的代付请求`,
+        time: getCurrentTime()
+    });
+    
+    saveMessages();
+    renderMessages();
+    scrollToBottom();
 }
 
         // 初始化，
