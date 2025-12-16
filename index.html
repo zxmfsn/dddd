@@ -8593,19 +8593,66 @@ async function generateDiary() {
     if (characterInfo.cityInfoEnabled && characterInfo.charWeather) {
         weatherInfo = `当前天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}`;
     }
-    // 获取最近30轮的聊天记忆
+ 
+// 获取最近30轮的聊天记忆（智能版）
 const recentMessages = await new Promise(resolve => {
     loadFromDB('messages', (data) => {
         const allData = data && data.list ? data.list : [];
         const chatMessages = allData.filter(m => m.chatId === currentChatId);
-        // 获取最近60条消息（30轮 = 用户30条 + AI30条）
-        const recent = chatMessages.slice(-60);
         
-        // 格式化为对话记录
-        const formatted = recent.map(msg => {
-            const sender = msg.senderId === 'me' ? '对方' : '我';
-            return `${sender}：${msg.content}`;
-        }).join('\n');
+        // ========== 按轮次提取消息 ==========
+        const rounds = [];
+        let currentRound = [];
+        let lastSender = null;
+        
+        // 从后往前遍历
+        for (let i = chatMessages.length - 1; i >= 0; i--) {
+            const msg = chatMessages[i];
+            
+            // 如果发送者变了，说明换轮了
+            if (lastSender !== null && msg.senderId !== lastSender) {
+                if (currentRound.length > 0) {
+                    rounds.unshift(currentRound); // 插入到开头
+                    currentRound = [];
+                }
+            }
+            
+            currentRound.unshift(msg); // 插入到当前轮的开头
+            lastSender = msg.senderId;
+            
+            // 如果已经收集了30轮，停止
+            if (rounds.length >= 30) break;
+        }
+        
+        // 别忘了最后一轮
+        if (currentRound.length > 0 && rounds.length < 30) {
+            rounds.unshift(currentRound);
+        }
+        
+        // 取前30轮
+        const recentRounds = rounds.slice(-30);
+        
+        // 展平成消息列表
+        const recentMsgs = recentRounds.flat();
+        
+        console.log(`✅ 提取了 ${recentRounds.length} 轮对话，共 ${recentMsgs.length} 条消息`);
+        
+        // 格式化
+        const formatted = recentMsgs
+            .filter(msg => {
+                if (msg.type === 'image') return false;
+                if (msg.type === 'transfer') return false;
+                if (msg.type === 'voice') return false;
+                if (msg.type === 'system') return false;
+                if (msg.isRevoked) return false;
+                return true;
+            })
+            .map(msg => {
+                const sender = msg.senderId === 'me' ? '对方' : '我';
+                const content = msg.content.substring(0, 100);
+                return `${sender}：${content}`;
+            })
+            .join('\n');
         
         resolve(formatted || '暂无聊天记录');
     });
