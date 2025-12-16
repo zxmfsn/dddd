@@ -6424,7 +6424,8 @@ function sendMessage() {
         content: content,
         senderId: 'me',
         time: getCurrentTime(),
-        isRevoked: false
+        isRevoked: false,
+        isSticker: true
     };
     
     // 如果有引用消息
@@ -6457,372 +6458,62 @@ function sendMessage() {
     scrollToBottom();
 }
 
-
+// 修复后的接收消息函数
 async function receiveAIReply() {
-    // 检查API配置
-    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
-        alert('宝，请先在API设置中填写配置哦~');
-        return;
-    }
-    
-    const titleElement = document.getElementById('chatDetailTitle');
-    const originalTitle = titleElement.textContent;
-    const receiveBtn = document.getElementById('receiveBtn');
-    const chatInput = document.getElementById('chatInput');
-    
-    // 创建超时控制器（防止无限卡死）
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
-
-    try {
-        // 1. 锁定界面
-        titleElement.textContent = '正在思考...';
-        receiveBtn.disabled = true;
-        chatInput.disabled = true;
-        
-        // 获取角色信息
-        const chat = chats.find(c => c.id === currentChatId);
-        const characterInfo = await new Promise((resolve) => {
-            loadFromDB('characterInfo', (data) => {
-                resolve(data && data[currentChatId] ? data[currentChatId] : {});
-            });
-        });
-        
-        // 构建系统提示词
-        const today = new Date();
-        const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
-        const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
-        const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
-
-        // 获取表情库 (增加容错)
-        const emojiList = await new Promise(resolve => {
-            loadFromDB('emojis', (data) => {
-                resolve(data && data.list ? data.list : []);
-            });
-        }).catch(() => []); // 即使读取失败也返回空数组，防止卡死
-
-        // === 提示词构建 (保持你原有的优秀逻辑) ===
-        let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
-特别警告：如果你要发送表情包，格式必须是[搜表情:关键词]，不能是[表情包:xx]！
-【角色人设】
-${characterInfo.personality || '一个友好、真诚的角色。'}
-【对方人设】
-${characterInfo.myPersonality || '无'}
-【关联世界书信息】
-${worldbooksContent}
-【时间信息】
-今天是：${dateStr} ${timeStr}
-当前时间：${timeStr}
-${getBirthdayPrompt(characterInfo.birthday)}
-【城市与天气信息】
-${characterInfo.cityInfoEnabled ? `
-你所在城市：${characterInfo.charVirtualAddress}
-今天天气：${characterInfo.charWeather?.today?.condition || '未知'}
-对方所在城市：${characterInfo.myVirtualAddress}
-今天天气：${characterInfo.myWeather?.today?.condition || '未知'}
-` : ''}
-【状态系统】
-当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
-请在回复开头更新状态，格式：[状态]状态词-描述|||[消息]内容...
-【回复要求】
-1. 分成3-8条消息，用|||分隔。
-2. 像真人一样聊天，可以有错别字。
-3. 转账：[转账:金额:备注]
-4. 语音：[发送语音:内容]
-`;
-
-        // 表情包提示词
-        let emojiPrompt = '';
-        if (emojiList.length > 0) {
-            const emojiNames = emojiList.map(e => e.text).slice(0, 20).join('、'); // 只取前20个防止token溢出
-            emojiPrompt = `\n【表情包】可用关键词：${emojiNames}...\n想发表情请用格式：[表情:关键词]`;
-        } else {
-            emojiPrompt = `\n【表情包】库为空，请用纯文本聊天。`;
-        }
-        systemPrompt += emojiPrompt;
-
-        // === 历史消息构建 (修复图片导致卡死的问题) ===
-        const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
-        const contextCount = contextRounds * 2; 
-
-        const recentMessages = allMessages.slice(-contextCount).map(msg => {
-            let content = msg.content;
-            
-            // ★★★ 关键修复：图片转为文字描述 ★★★
-            // 防止因为模型不支持 Vision 功能导致 API 报错卡死
-            if (msg.type === 'image') {
-                content = `[图片: ${msg.altText || '用户发送了一张图片'}]`;
-            }
-            else if (msg.type === 'transfer') {
-                const amount = msg.transferData.amount;
-                const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
-                if (msg.senderId === 'me') {
-                    content = `[系统消息：我给你转账了 ¥${amount}${note}，请决定是否领取]`;
-                } else {
-                    content = `[系统消息：你给我转账了 ¥${amount}${note}]`;
-                }
-            }
-            else if (msg.type === 'voice') {
-                content = `[语音消息] ${msg.content}`;
-            }
-
-            return {
-                role: msg.senderId === 'me' ? 'user' : 'assistant',
-                content: content
-            };
-        });
-
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            ...recentMessages
-        ];
-
-        // 兜底：如果没有用户消息，补一条
-        const hasUserMessage = recentMessages.some(m => m.role === 'user');
-        if (!hasUserMessage) {
-            messages.push({ role: 'user', content: '(开启新对话)' });
-        }
-
-        // === API 地址智能修正 ===
-        let safeBaseUrl = currentApiConfig.baseUrl.replace(/\/+$/, ''); // 去掉末尾斜杠
-        // 如果用户没填完整路径，自动补全；如果填了就不动
-        if (!safeBaseUrl.includes('chat/completions')) {
-            safeBaseUrl += '/chat/completions';
-        }
-
-        // === 发起请求 ===
-        const response = await fetch(safeBaseUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel,
-                messages: messages,
-                temperature: 0.9,
-                max_tokens: 1000 // 限制回复长度防止卡死
-            }),
-            signal: controller.signal // 绑定超时控制器
-        });
-        
-        // 清除超时计时器
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API报错(${response.status}): ${errorText.substring(0, 100)}`);
-        }
-        
-        const data = await response.json();
-        if (!data.choices || data.choices.length === 0) {
-            throw new Error('API返回数据为空，请检查模型名称是否正确');
-        }
-
-        // === 处理回复 ===
-        let aiReply = data.choices[0].message.content.trim();
-        
-        // 更新表情库引用（确保最新）
-        let emojis = emojiList;
-
-        // 解析状态
-        let newStatus = null;
-        let messageContent = aiReply;
-        const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
-        
-        if (statusMatch) {
-            const statusText = statusMatch[1].trim();
-            messageContent = statusMatch[2].trim();
-            // 简单验证状态格式
-            if (statusText.length > 0 && statusText.length < 30 && !statusText.includes('保持')) {
-                newStatus = statusText;
-            }
-        } else {
-            // 清理可能残留的标记
-            messageContent = aiReply.replace(/^\[状态\].*?\|\|\|/g, '').replace(/\[状态\]/g, '').replace(/\[消息\]/g, '').trim();
-        }
-
-        // 解析表情包关键词 [表情:开心] -> [EMOJI:123]
-        const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
-        // 预处理：把 (笑) 这种括号动作也尝试转表情
-        messageContent = messageContent.replace(/[\(（](.*?)[\)）]/g, (match, text) => {
-             if (text.length <= 4) {
-                 const found = searchEmojiByKeyword(text);
-                 return found ? `|||[EMOJI:${found.id}]|||` : match;
-             }
-             return match;
-        });
-
-        let processedContent = messageContent;
-        let emojiMatch;
-        while ((emojiMatch = emojiRegex.exec(messageContent)) !== null) {
-            const keyword = emojiMatch[1].trim();
-            const foundEmoji = searchEmojiByKeyword(keyword);
-            if (foundEmoji) {
-                // 这里我们直接替换，不依赖后续位置计算，更稳定
-                processedContent = processedContent.replace(emojiMatch[0], `|||[EMOJI:${foundEmoji.id}]|||`);
-            } else {
-                processedContent = processedContent.replace(emojiMatch[0], ''); // 没找到就删掉标记，不显示乱码
-            }
-        }
-        messageContent = processedContent;
-
-        // 更新状态到数据库
-        if (newStatus) {
-            loadFromDB('characterInfo', (data) => {
-                const allCharData = data || {};
-                const charData = allCharData[currentChatId] || {};
-                charData.currentStatus = newStatus;
-                allCharData[currentChatId] = charData;
-                saveToDB('characterInfo', allCharData);
-                updateDetailPageStatus(currentChatId);
-            });
-        }
-
-        // 处理领取转账逻辑
-        if (messageContent.includes('[领取转账]')) {
-             const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
-             if (pendingTransfer) {
-                 pendingTransfer.transferData.status = 'aiReceived';
-                 handleTransaction('income', pendingTransfer.transferData.amount, `收到转账-来自${chat.name}`); // 钱包入账
-                 
-                 // 插入一条系统提示
-                 const sysId = allMessages.length + 1000;
-                 allMessages.push({
-                     id: sysId, chatId: currentChatId, type: 'system',
-                     content: `${chat.name}领取了你的转账`, time: getCurrentTime()
-                 });
-             }
-             messageContent = messageContent.replace(/\[领取转账\]/g, '');
-        }
-
-        // 拆分消息并显示
-        let messageList = messageContent.split('|||').map(msg => msg.trim()).filter(msg => msg.length > 0);
-        if (messageList.length < 1) messageList = [messageContent]; // 兜底
-
-        for (let i = 0; i < messageList.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 500)); // 随机延迟更真实
-            
-            let msgText = messageList[i];
-            const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-
-            // 1. 转账检测
-            const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
-            if (transferMatch) {
-                 allMessages.push({
-                    id: newId, chatId: currentChatId, type: 'transfer', senderId: chat.name, time: getCurrentTime(),
-                    transferData: { amount: parseFloat(transferMatch[1]), note: transferMatch[2]||'', status: 'pending' }
-                 });
-                 refreshUI(); continue;
-            }
-
-            // 2. 语音检测
-            const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
-            if (voiceMatch) {
-                allMessages.push({
-                    id: newId, chatId: currentChatId, type: 'voice', content: voiceMatch[1],
-                    voiceDuration: Math.ceil(voiceMatch[1].length/3), senderId: chat.name, time: getCurrentTime(), isExpanded: false
-                });
-                refreshUI(); continue;
-            }
-
-            // 3. 表情包检测
-            const emojiIdMatch = msgText.match(/\[EMOJI:(\d+)\]/);
-            if (emojiIdMatch) {
-                const eId = parseInt(emojiIdMatch[1]);
-                const emoji = emojis.find(e => e.id === eId);
-                if (emoji) {
-                    allMessages.push({
-                        id: newId, chatId: currentChatId, type: 'image', content: emoji.url, altText: emoji.text, senderId: chat.name, time: getCurrentTime()
-                    });
-                } else {
-                    // ★★★ 关键修复：如果找不到表情，转成文字显示，防止吞消息 ★★★
-                    allMessages.push({
-                        id: newId, chatId: currentChatId, type: 'text', content: '[表情丢失]', senderId: chat.name, time: getCurrentTime()
-                    });
-                }
-                refreshUI(); continue;
-            }
-
-            // 4. 普通文本
-            if (msgText) {
-                allMessages.push({
-                    id: newId, chatId: currentChatId, type: 'text', content: msgText, senderId: chat.name, time: getCurrentTime()
-                });
-                refreshUI();
-            }
-        }
-        
-        saveMessages();
-        updateChatLastMessage(currentChatId, messageList[messageList.length-1].includes('EMOJI') ? '【表情】' : messageList[messageList.length-1]);
-
-    } catch (error) {
-        console.error(error);
-        // 这里弹窗告诉你是哪一步出错了
-        if (error.name === 'AbortError') {
-            alert('请求超时啦！可能是网络不好，或者AI思考太久了。请检查网络或重试。');
-        } else {
-            alert(`出错了宝：${error.message}`);
-        }
-    } finally {
-        // 无论成功失败，必须解锁界面
-        titleElement.textContent = originalTitle;
-        receiveBtn.disabled = false;
-        chatInput.disabled = false;
-    }
-    
-    // 辅助函数：刷新界面
-    function refreshUI() {
-        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-        renderMessages();
-        scrollToBottom();
-    }
-}
-    // 检查API配置
+    // 1. 基础检查
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
         alert('请先在API设置中配置');
         return;
     }
-    
+
     const titleElement = document.getElementById('chatDetailTitle');
     const originalTitle = titleElement.textContent;
     const receiveBtn = document.getElementById('receiveBtn');
     const chatInput = document.getElementById('chatInput');
-    
- try {
+
+    try {
         // 2. 锁定界面
         titleElement.textContent = '正在思考...';
         receiveBtn.disabled = true;
         chatInput.disabled = true;
-        
-        // 获取角色信息
+        receiveBtn.style.opacity = '0.5';
+
+        // 3. 安全获取角色信息
         const chat = chats.find(c => c.id === currentChatId);
         const characterInfo = await new Promise((resolve) => {
             loadFromDB('characterInfo', (data) => {
                 resolve(data && data[currentChatId] ? data[currentChatId] : {});
             });
         });
-        
-       // 构建系统提示词
+
+        // 4. 构建时间字符串
         const today = new Date();
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
-        
-        // ▼▼▼ ✨ 补上这一行，定义 timeStr ✨ ▼▼▼
         const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
-        // ▲▲▲ 补全结束 ▲▲▲
 
-        const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
-// 获取表情库
-const emojiList = await Promise.race([
-            new Promise(resolve => {
-                loadFromDB('emojis', (data) => {
-                    resolve(data && data.list ? data.list : []);
-                });
-            }),
-            new Promise(resolve => setTimeout(() => resolve([]), 1000)) // 1秒读不出来就跳过，防止卡死
-        ]);
-                 
+        // 5. 安全获取世界书 (增加超时防止卡死)
+        const worldbooksPromise = getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('无'), 2000)); // 2秒读不出就跳过
+        const worldbooksContent = await Promise.race([worldbooksPromise, timeoutPromise]);
 
+        // 6. 安全构建天气信息 (防止因天气数据为空导致报错卡死)
+        let weatherInfoStr = '';
+        if (characterInfo.cityInfoEnabled && characterInfo.charWeather && characterInfo.charWeather.today) {
+            try {
+                weatherInfoStr = `
+你所在城市：${characterInfo.charVirtualAddress || '未知'}
+今天天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}
+明天天气：${characterInfo.charWeather.tomorrow.condition}，${characterInfo.charWeather.tomorrow.temp}
+
+对方所在城市：${characterInfo.myVirtualAddress || '未知'}
+今天天气：${characterInfo.myWeather ? characterInfo.myWeather.today.condition : '未知'}，${characterInfo.myWeather ? characterInfo.myWeather.today.temp : '未知'}
+`;
+            } catch (e) {
+                console.warn('天气数据解析异常，已忽略', e);
+            }
+        }
+
+        // 7. 构建系统提示词
         let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
 特别警告：如果你要发送表情包，格式必须是[搜表情:关键词]，不能是[表情包:xx]！
 【角色人设】
@@ -6840,166 +6531,79 @@ ${worldbooksContent}
 今天是：${dateStr} ${timeStr}
 当前时间：${timeStr}
 ${getBirthdayPrompt(characterInfo.birthday)}
+
 【城市与天气信息】
-${characterInfo.cityInfoEnabled ? `
-你所在城市：${characterInfo.charVirtualAddress}（参考${characterInfo.charRealAddress}）
-今天天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}
-明天天气：${characterInfo.charWeather.tomorrow.condition}，${characterInfo.charWeather.tomorrow.temp}
-
-对方所在城市：${characterInfo.myVirtualAddress}（参考${characterInfo.myRealAddress}）
-今天天气：${characterInfo.myWeather.today.condition}，${characterInfo.myWeather.today.temp}
-明天天气：${characterInfo.myWeather.tomorrow.condition}，${characterInfo.myWeather.tomorrow.temp}
-
-你可以根据天气自然地表达关心，比如：
-- 看到对方城市明天会下雨，可以提醒带伞
-- 看到温差大，可以提醒增减衣物
-- 发现天气晴朗，可以建议出去走走
-- 注意：不要每次都提天气，只在合适的时机自然提及
-` : ''}
-
-
-
+${weatherInfoStr}
 
 【状态系统】
-你有一个当前状态，格式为"主要状态-详细描述"（如：在线-正在煮面，想等会吃什么）。
+你有一个当前状态，格式为"主要状态-详细描述"。
 当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
-
-你可以根据对话内容和你的心情决定是否更新状态：
-- 如果对话让你的心情/行为有明显变化，可以更新状态
-- 如果只是普通聊天，可以保持当前状态，但不允许长时间不更换。
-- 状态要简短（20字以内）、生动、符合人设
-- 状态格式：主要状态（2-6字）-详细描述（10字左右）
-- 例如：思念-频繁看手机怎么没有消息、忙碌-正在工作但在摸鱼、瘫在床上-好想抱着老婆一起睡
-
-【状态更新格式-严格遵守】
 你必须在回复的最开头按以下格式表明状态：
-
-更新状态时：
-[状态]在线-正在煮面|||[消息]你的第一条消息|||你的第二条消息|||...
-
-保持状态时：
-[状态]保持|||[消息]你的第一条消息|||你的第二条消息|||...
-
-注意事项：
-1. [状态] 和 [消息] 必须在最前面，不能出现在其他位置
-2. 状态文本不能包含 ||| 符号
-3. 状态文本必须简短（20字以内）
-4. 如果不确定是否要更新状态，就写"保持"
-
-
+更新状态时：[状态]在线-正在煮面|||[消息]第一条消息...
+保持状态时：[状态]保持|||[消息]第一条消息...
 
 【重要回复要求】
-1. 严格按照人设中的性格、语气、说话方式回复
-2. 你的回复必须像真实的软件对话聊天，分成6-12条独立消息，必须灵活,有梗,生动,尊重女性。
-3. 每条消息是完整的一句话,用"|||"符号分隔
-4. 例如：早上好啊|||今天天气真不错|||你吃早饭了吗
-5. 确保每条消息简短自然,不要太长
-6. 可以和活人一样打错别字,或者多打标点符号
-7. 转账功能：
-   - 给对方转账：[转账:金额:备注]，如：谢谢！|||[转账:52:买奶茶]|||记得吃~
-   - 对方转账给你→必须回应！你要领取就在回复里加：[领取转账]，如：谢谢！|||[领取转账]|||我收到了~
-   - 根据你的人设性格决定：立即领、犹豫、拒绝等，但必须作出你的反应
-8. 语音消息功能：
-   - 对方发语音时你会看到：[语音消息] 内容，这表示对方发了语音条，请根据人设与上下文回复。
-   - 如果你也想发语音，使用格式：[发送语音:内容]，例如：[发送语音:晚安宝贝~]
-   - 语音内容要简短（20字以内），适合用语音表达的话`;
-// 拼接表情包功能说明
-let emojiPrompt = '';
-if (emojiList.length > 0) {
-    const emojiNames = emojiList.map(e => e.text).join('、');
-  emojiPrompt = `
-【表情包发送规则】
-当前可用表情关键词：${emojiNames}
-如果你想发送表情，请使用格式：[表情:关键词]
-例如：
-- 哈哈好开心|||[表情:大笑]
-- [表情:爱心]|||我也爱你
-规则：
-1. 表情包必须独立成一条消息，用|||分隔。
-2. 尽量使用列表中的关键词，如果没有，我会尝试模糊匹配。
+1. 你的回复必须分成6-12条独立消息，用"|||"符号分隔
+2. 转账功能：[转账:金额:备注]
+3. 语音消息功能：[发送语音:内容]
 `;
-} else {
-    emojiPrompt = `
-【表情包功能】当前表情库为空,暂时无法发送表情。
-请开始对话。`;
-}
-systemPrompt += emojiPrompt;
-        
-       // 获取上下文参考设置（默认30轮）
-const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
-const contextCount = contextRounds * 2; // 1轮=用户1条+AI1条=2条消息
 
-// 获取指定轮数的消息
-const recentMessages = allMessages.slice(-contextCount).map(msg => {
-    let content = msg.content;
-    
-    // 如果是图片消息，用文字描述代替
- // 📷 修改开始：支持视觉模型识别图片
-    if (msg.type === 'image') {
-        // 构建视觉模型需要的格式 (数组格式)
-        content = [
-            {
-                type: "text",
-                text: "请仔细观察这张图片，描述你看到的内容，并根据图片内容进行回复。"
-            },
-            {
-                type: "image_url",
-                image_url: {
-                    url: msg.content,
-                    detail: "high"
-                }
-            }
-        ];
-    }
-    // 📷 修改结束
+        // 加载表情库提示
+        const emojiList = await Promise.race([
+            new Promise(resolve => {
+                loadFromDB('emojis', (data) => {
+                    emojis = data && data.list ? data.list : []; // 更新全局emojis
+                    resolve(data && data.list ? data.list : []);
+                });
+            }),
+            new Promise(resolve => setTimeout(() => resolve([]), 1000))
+        ]);
 
-    // ▼▼▼ 新增：如果是转账消息，将其转换为文字描述传给AI ▼▼▼
-    else if (msg.type === 'transfer') {
-        const amount = msg.transferData.amount;
-        const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
-        const status = msg.transferData.status === 'sent' ? '（待领取）' : '（已领取）';
-        // 如果是我发的，告诉AI我转了多少钱；如果是对方发的，告诉AI它转了多少钱
-        if (msg.senderId === 'me') {
-            content = `[系统消息：我给你转账了 ¥${amount}${note}${status}，请根据你的人设决定是否领取（回复里带[领取转账]即可领取），并表达感谢或拒绝]`;
-        } else {
-            content = `[系统消息：你给我转账了 ¥${amount}${note}]`;
+        if (emojiList.length > 0) {
+            const emojiNames = emojiList.slice(0, 20).map(e => e.text).join('、'); // 只列出前20个防止Prompt太长
+            systemPrompt += `\n【表情包发送规则】\n当前可用表情关键词：${emojiNames}等。\n发送格式：[表情:关键词]`;
         }
-    }
-    // ▲▲▲ 新增结束 ▲▲▲
-      // ▼▼▼ 新增：如果是语音消息，转换格式传给AI ▼▼▼
-    else if (msg.type === 'voice') {
-        content = `[语音消息] ${msg.content}`;
-    }
-    // ▲▲▲ 新增结束 ▲▲▲
 
-    return {
-        role: msg.senderId === 'me' ? 'user' : 'assistant',
-        content: content
-    };
-});
-
-
+        // 8. 构建消息上下文 (默认30轮)
+        const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
+        const contextCount = contextRounds * 2;
         
-        // 构建完整消息列表
+        const recentMessages = allMessages.slice(-contextCount).map(msg => {
+            let content = msg.content;
+            if (msg.type === 'image') content = '[图片]'; // 简化图片处理，防止视觉模型报错
+            else if (msg.type === 'transfer') {
+                const amount = msg.transferData.amount;
+                content = msg.senderId === 'me' ? 
+                    `[系统消息：我给你转账了 ¥${amount}，请决定是否领取]` : 
+                    `[系统消息：你给我转账了 ¥${amount}]`;
+            }
+            else if (msg.type === 'voice') content = `[语音消息] ${msg.content}`;
+            
+            return {
+                role: msg.senderId === 'me' ? 'user' : 'assistant',
+                content: content
+            };
+        });
+
         const messages = [
             { role: 'system', content: systemPrompt },
             ...recentMessages
         ];
-        // ▼▼▼ 新增：如果没有用户消息，添加一条 ▼▼▼
-const hasUserMessage = recentMessages.some(m => m.role === 'user');
-if (!hasUserMessage) {
-    messages.push({
-        role: 'user',
-        content: '(刚刚发了转账)'
-    });
-}
-// ▲▲▲ 修复结束 ▲▲▲
 
-        // 调用API
+        // 补全用户消息防止报错
+        if (!recentMessages.some(m => m.role === 'user')) {
+            messages.push({ role: 'user', content: '(开启了对话)' });
+        }
+
+        // 9. 发起API请求 (关键：增加超时控制)
         const url = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions'
             : currentApiConfig.baseUrl + '/chat/completions';
-            
+
+        // 创建一个30秒超时的Fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -7007,393 +6611,156 @@ if (!hasUserMessage) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-               model: currentApiConfig.defaultModel,
-
+                model: currentApiConfig.defaultModel,
                 messages: messages,
-                temperature: 0.9
-            })
+                temperature: 0.9,
+                presence_penalty: 0.6 // 增加一点随机性
+            }),
+            signal: controller.signal
         });
-        
+
+        clearTimeout(timeoutId); // 清除超时定时器
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `API调用失败: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `API请求失败: ${response.status}`);
         }
-        
+
         const data = await response.json();
-    
-        
         if (!data.choices || data.choices.length === 0) {
-            console.error('API返回数据异常：', data);
-            // 显示更详细的错误信息
-            if (data.error) {
-                throw new Error(`API错误：${data.error.message || JSON.stringify(data.error)}`);
-            }
-            throw new Error('API未返回有效回复，请查看控制台');
+            throw new Error('API未返回有效内容');
         }
-        // ▲▲▲ 检查结束 ▲▲▲
-     let aiReply = data.choices[0].message.content.trim();
-        // 加载表情库
-await new Promise(resolve => {
-    loadFromDB('emojis', (data) => {
-        emojis = data && data.list ? data.list : [];
-      
-        resolve();
-    });
-});
 
-// 解析状态和消息
-let newStatus = null;
-let messageContent = aiReply;
-
-// 检查是否包含状态标记
-const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
-if (statusMatch) {
-    const statusText = statusMatch[1].trim();
-    messageContent = statusMatch[2].trim();
-    
-    // ▼▼▼ 新增：状态验证和过滤 ▼▼▼
-    const invalidKeywords = ['保持', '更新', '不变', '无变化', '同上'];
-    const isInvalid = invalidKeywords.some(keyword => statusText === keyword || statusText.includes(keyword));
-    
-    // 只有符合格式且不是无效关键词才更新
-    if (!isInvalid && statusText.length > 0 && statusText.length < 30 && statusText.includes('-')) {
-        newStatus = statusText;
-        console.log('✅ 状态已更新:', newStatus);
-    } else if (isInvalid) {
-        console.log('⏸️ 保持当前状态');
-    } else {
-        console.warn('⚠️ 状态格式错误，已忽略:', statusText);
-    }
-    // ▲▲▲ 验证结束 ▲▲▲
-}
-
-else {
-    // 如果格式不对，尝试清理可能的错误标记
-    messageContent = aiReply
-        .replace(/^\[状态\].*?\|\|\|/g, '')  // 移除开头的状态标记
-        .replace(/\[状态\]/g, '')            // 移除所有状态标记
-        .replace(/\[消息\]/g, '')            // 移除所有消息标记
-        .trim();
-}
-// 先加载表情库
-await new Promise(resolve => {
-    loadFromDB('emojis', (data) => {
-        emojis = data && data.list ? data.list : [];
-        resolve();
-    });
-});
-// 解析表情包标记
-const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
-let processedContent = messageContent;
-// 预处理：把 (笑)、(开心) 这种括号动作，也尝试转换成表情包
-    processedContent = processedContent.replace(/[\(（](.*?)[\)）]/g, (match, text) => {
-        // 只有当括号里的字数少于4个字时才尝试匹配（避免误伤普通对话）
-        if (text.length <= 4) {
-            const found = searchEmojiByKeyword(text);
-            if (found) {
-                // 直接转换成系统内部识别的格式
-                return `|||[EMOJI:${found.id}]|||`; 
-            }
-        }
-        return match; // 如果没找到表情，就保持原样
-    });
-const emojiMatches = [];
-let emojiMatch;
-while ((emojiMatch = emojiRegex.exec(messageContent)) !== null) {
-    const keyword = emojiMatch[1].trim();
-    const foundEmoji = searchEmojiByKeyword(keyword);
-    
-    if (foundEmoji) {
-        emojiMatches.push({
-            original: emojiMatch[0],
-            emoji: foundEmoji,
-            index: emojiMatch.index
-        });
-    } else {
-        console.log('未找到表情:', keyword);
-        processedContent = processedContent.replace(emojiMatch[0], '');
-    }
-}
-if (emojiMatches.length > 0) {
-    emojiMatches.reverse().forEach(item => {
-        processedContent = processedContent.replace(item.original, `|||[EMOJI:${item.emoji.id}]|||`);
-    });
-}
-messageContent = processedContent;
-// 最后再次清理可能残留的标记
-messageContent = messageContent
-    .replace(/\[状态\]/g, '')
-    .replace(/\[消息\]/g, '')
-    .trim();
+        // 10. 处理回复内容
+        let aiReply = data.choices[0].message.content.trim();
+        let messageContent = aiReply;
         
-        // 如果检测到新状态，保存到数据库
-      // ▼▼▼ 新增：最终状态检查 ▼▼▼
-if (newStatus && !newStatus.includes('-')) {
-    console.error('❌ 状态格式错误，缺少"-"分隔符:', newStatus);
-    newStatus = null; // 放弃更新
-}
-// ▲▲▲ 检查结束 ▲▲▲
-        if (newStatus) {
-            loadFromDB('characterInfo', (data) => {
-                const allCharData = data || {};
-                const charData = allCharData[currentChatId] || {};
-                charData.currentStatus = newStatus;
-                charData.statusUpdateTime = getCurrentTime();
-                allCharData[currentChatId] = charData;
-                saveToDB('characterInfo', allCharData);
-                // 禁用后隐藏查看按钮
-const viewBtn = document.getElementById('viewWeatherBtn');
-if (viewBtn) viewBtn.style.display = 'none';
-
-                // 更新显示
-                updateDetailPageStatus(currentChatId);
-                updateChatStatusDisplay(currentChatId);
-            });
-        }
-                  // ▼▼▼ 新增：检测用户最近的转账 ▼▼▼
-        const recentTransfers = allMessages.slice(-3).filter(m => 
-            m.type === 'transfer' && m.senderId === 'me'
-        );
-        if (recentTransfers.length > 0) {
-            const last = recentTransfers[recentTransfers.length - 1];
-            if (last.transferData.status === 'sent') {
-                systemPrompt += `\n\n对方给你转账 ¥${last.transferData.amount}`;
-                if (last.transferData.note) {
-                    systemPrompt += `，备注：${last.transferData.note}`;
-                }
-                systemPrompt += `。一定要对转账做出回应！根据人设，拒绝就表达拒绝的意思，要领取就回复里加[领取转账]`;
-            }
-        }
-        // ▲▲▲ 检测转账结束 ▲▲▲
-        // ▼▼▼ 提前检测并处理领取转账 ▼▼▼
-        if (messageContent.includes('[领取转账]')) {
-            const pendingTransfer = allMessages.slice().reverse().find(m => 
-                m.type === 'transfer' && 
-                m.senderId === 'me' && 
-                m.transferData.status === 'sent'
-            );
-            
-            if (pendingTransfer) {
-                pendingTransfer.transferData.status = 'aiReceived';
-                
-                const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-                allMessages.push({
-                    id: systemMsgId,
-                    chatId: currentChatId,
-                    type: 'system',
-                    content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
-                    time: getCurrentTime()
+        // 处理状态
+        const statusMatch = aiReply.match(/^\[状态\](.*?)\|\|\|\[消息\]([\s\S]+)$/);
+        if (statusMatch) {
+            const statusText = statusMatch[1].trim();
+            messageContent = statusMatch[2].trim();
+            const invalidKeywords = ['保持', '更新', '不变', '同上'];
+            if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 30) {
+                // 保存状态
+                loadFromDB('characterInfo', (dbData) => {
+                    const allData = dbData || {};
+                    if (!allData[currentChatId]) allData[currentChatId] = {};
+                    allData[currentChatId].currentStatus = statusText;
+                    allData[currentChatId].statusUpdateTime = getCurrentTime();
+                    saveToDB('characterInfo', allData);
+                    updateDetailPageStatus(currentChatId);
+                    updateChatStatusDisplay(currentChatId);
                 });
             }
-            
-            // 移除标记
-            messageContent = messageContent.replace(/\[领取转账\]/g, '');
-        }
-        // ▲▲▲ 提前处理结束 ▲▲▲
-
-
-        // 解析分条消息
-        let messageList = [];
-        
-        // 优先按 ||| 拆分
-        if (messageContent.includes('|||')) {
-            messageList = messageContent.split('|||').map(msg => msg.trim()).filter(msg => msg.length > 0);
         } else {
-            // 兜底方案：按句号、问号、感叹号拆分
-            messageList = messageContent.split(/[。！？！\n]+/).map(msg => msg.trim()).filter(msg => msg.length > 0);
+             // 清理残留标记
+             messageContent = messageContent.replace(/^\[状态\].*?\|\|\|/g, '').replace(/\[状态\]/g, '').replace(/\[消息\]/g, '').trim();
         }
-        
-        // 确保消息数量在6-12条之间
-        if (messageList.length < 6) {
-            // 如果太少，尝试进一步拆分
-            const expanded = [];
-            messageList.forEach(msg => {
-                if (msg.length > 20) {
-                    // 长句子按逗号再拆分
-                    const parts = msg.split(/[，,]+/).map(p => p.trim()).filter(p => p.length > 0);
-                    expanded.push(...parts);
+
+        // 处理表情包标记
+        if (emojis.length > 0) {
+            const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
+            let match;
+            while ((match = emojiRegex.exec(messageContent)) !== null) {
+                const found = searchEmojiByKeyword(match[1]);
+                if (found) {
+                    messageContent = messageContent.replace(match[0], `|||[EMOJI:${found.id}]|||`);
                 } else {
-                    expanded.push(msg);
+                    messageContent = messageContent.replace(match[0], ''); // 没找到就删掉
                 }
-            });
-            messageList = expanded;
-        }
-        
-        // 随机选取6-12条
-        const targetCount = Math.floor(Math.random() * 7) + 6; // 6-12
-        if (messageList.length > targetCount) {
-            messageList = messageList.slice(0, targetCount);
-        }
-
-        
-     // 延迟发送每条消息
-for (let i = 0; i < messageList.length; i++) {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    let msgText = messageList[i];
-  // ▼▼▼ 新增：自动修复常见格式错误 ▼▼▼
-  
-    msgText = msgText.replace(/^发送语音[:：](.+)$/, '[发送语音:$1]');
-
-    msgText = msgText.replace(/【发送语音[:：](.+?)】/g, '[发送语音:$1]');
- 
-    msgText = msgText.replace(/\[发送语音：(.+?)\]/, '[发送语音:$1]');
-    // ▲▲▲ 自动修复结束 ▲▲▲
-  
-   // ▼▼▼ 新增：检测转账标记 [转账:金额:备注] ▼▼▼
-    const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
-    if (transferMatch) {
-        const amount = parseFloat(transferMatch[1]);
-        const note = transferMatch[2] || '';
-       // ▼▼▼ 新增：检测领取转账标记 ▼▼▼
-    if (msgText.includes('[领取转账]')) {
-        const pendingTransfer = allMessages.slice().reverse().find(m => 
-            m.type === 'transfer' && 
-            m.senderId === 'me' && 
-            m.transferData.status === 'sent'
-        );
-        
-        if (pendingTransfer) {
-            pendingTransfer.transferData.status = 'aiReceived';
-          // 💰 钱包操作：真的加钱到余额里！
-                    const amount = pendingTransfer.transferData.amount;
-                    handleTransaction('income', amount, `收到转账-来自${chat.name}`);
-            
-            const systemMsgId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-            allMessages.push({
-                id: systemMsgId,
-                chatId: currentChatId,
-                type: 'system',
-                content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
-                time: getCurrentTime()
-            });
-            
-            saveMessages();
-            renderMessages();
-        }
-        
-        const cleanText = msgText.replace('[领取转账]', '').trim();
-        if (cleanText.length === 0) {
-            continue;
-        }
-        messageList[i] = cleanText;
-    }
-    // ▲▲▲ 检测领取转账结束 ▲▲▲
-        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-        
-        const transferMessage = {
-            id: newId,
-            chatId: currentChatId,
-            type: 'transfer',
-            senderId: chat.name,
-            time: getCurrentTime(),
-            transferData: {
-                amount: amount,
-                note: note,
-                status: 'pending'
             }
-        };
-        allMessages.push(transferMessage);
-        
-        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-        renderMessages();
-        scrollToBottom();
-        continue; // 跳过这条，不再作为普通文本消息
-    }
-    // ▲▲▲ 检测转账结束 ▲▲▲
-      // ▼▼▼ 新增：检测AI发送的语音 ▼▼▼
-const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
-    if (voiceMatch) {
-        const voiceText = voiceMatch[1].trim();
-        const duration = calculateVoiceDuration(voiceText);
-        
-        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-        
-        const voiceMessage = {
-            id: newId,
-            chatId: currentChatId,
-            type: 'voice',
-            content: voiceText,
-            voiceDuration: duration,
-            senderId: chat.name,
-            time: getCurrentTime(),
-            isRevoked: false,
-            isExpanded: false
-        };
-        
-        allMessages.push(voiceMessage);
-        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-        renderMessages();
-        scrollToBottom();
-        continue;
-    }
-    // ▲▲▲ 检测AI语音结束 ▲▲▲
+        }
 
-    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-    
-    // 检查是否为表情包标记
-    const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
-    
-    if (emojiMatch) {
-        // 发送表情包消息
-        const emojiId = parseInt(emojiMatch[1]);
-        const emoji = emojis.find(e => e.id === emojiId);
-        
-        if (emoji) {
-            const emojiMessage = {
+        // 拆分消息
+        let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
+        if (messageList.length < 2) {
+             // 兜底拆分
+             messageList = messageContent.split(/[。！？\n]+/).map(m => m.trim()).filter(m => m.length > 0);
+        }
+
+        // 11. 逐条发送消息
+        for (let i = 0; i < messageList.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500)); // 随机延迟更自然
+            
+            let msgText = messageList[i];
+            
+            // 转账处理
+            if (msgText.includes('[领取转账]')) {
+                 const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
+                 if (pendingTransfer) {
+                     pendingTransfer.transferData.status = 'aiReceived';
+                     handleTransaction('income', pendingTransfer.transferData.amount, `收到转账-来自${chat.name}`);
+                     allMessages.push({
+                        id: Date.now(), chatId: currentChatId, type: 'system',
+                        content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
+                        time: getCurrentTime()
+                     });
+                     saveMessages();
+                 }
+                 msgText = msgText.replace('[领取转账]', '').trim();
+                 if (!msgText) continue;
+            }
+
+            // 发送消息逻辑
+            const newId = Date.now() + i; // 确保ID唯一
+            
+            // 检查特殊类型
+            const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
+            const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
+            const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
+
+            let newMessage = {
                 id: newId,
                 chatId: currentChatId,
-                type: 'image',
-                content: emoji.url,
-                altText: emoji.text,
                 senderId: chat.name,
                 time: getCurrentTime(),
                 isRevoked: false
             };
-            allMessages.push(emojiMessage);
+
+            if (emojiMatch) {
+                const emoji = emojis.find(e => e.id == emojiMatch[1]);
+                if (emoji) {
+                    newMessage.type = 'image';
+                    newMessage.content = emoji.url;
+                } else continue;
+            } else if (transferMatch) {
+                newMessage.type = 'transfer';
+                newMessage.transferData = { amount: parseFloat(transferMatch[1]), note: transferMatch[2], status: 'pending' };
+            } else if (voiceMatch) {
+                newMessage.type = 'voice';
+                newMessage.content = voiceMatch[1];
+                newMessage.voiceDuration = calculateVoiceDuration(voiceMatch[1]);
+                newMessage.isExpanded = false;
+            } else {
+                newMessage.type = 'text';
+                newMessage.content = msgText;
+            }
+
+            allMessages.push(newMessage);
+            saveMessages();
+            updateChatLastMessage(currentChatId, newMessage.type === 'text' ? msgText : `[${newMessage.type}]`);
+            
+            visibleMessagesCount = allMessages.length; // 确保显示最新
+            renderMessages();
+            scrollToBottom();
         }
-    } else if (msgText.length > 0) {
-        // 发送文本消息
-        const textMessage = {
-            id: newId,
-            chatId: currentChatId,
-            type: 'text',
-            content: msgText,
-            senderId: chat.name,
-            time: getCurrentTime(),
-            isRevoked: false
-        };
-        allMessages.push(textMessage);
-    }
-    
-    // 实时渲染
-    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-    renderMessages();
-    scrollToBottom();
-}
 
-        
-        // 保存消息
-        saveMessages();
-        
-   // 更新聊天列表（只显示最后一条）
-const lastMsg = messageList[messageList.length - 1];
-const lastMsgMatch = lastMsg.match(/\[EMOJI:(\d+)\]/);
-const displayText = lastMsgMatch ? '【图片】' : lastMsg;
-updateChatLastMessage(currentChatId, displayText);
-
-        
     } catch (error) {
-        alert(`接收失败：${error.message}`);
+        console.error(error);
+        if (error.name === 'AbortError') {
+            alert('请求超时：AI思考时间过长，请检查网络或更换模型。');
+        } else {
+            alert(`发生错误：${error.message}`);
+        }
     } finally {
-        // 恢复状态
+        // 12. 无论成功失败，必须解锁界面
         titleElement.textContent = originalTitle;
         receiveBtn.disabled = false;
         chatInput.disabled = false;
+        receiveBtn.style.opacity = '1';
     }
-
-
-
+}
 // 保存消息到数据库
 function saveMessages() {
     loadFromDB('messages', (data) => {
