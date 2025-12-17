@@ -4464,53 +4464,57 @@ color: #333;
 
     </div>
 
-    <!-- 编辑弹窗 -->
-    <div class="modal-overlay" id="editModal" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-title">编辑个人信息</div>
-            
-            <div class="form-group">
-                <label class="form-label">头像</label>
-                <div class="avatar-preview" id="avatarPreview">👤</div>
-                <label for="avatarInput" class="file-button">选择头像</label>
-                <input type="file" id="avatarInput" class="file-input" accept="image/*">
+<!-- 编辑弹窗 -->
+<div class="modal-overlay" id="editModal" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-height: 80vh; overflow-y: auto; width: 90%; max-width: 320px; padding: 20px;">
+        <div class="modal-title" style="font-size: 17px; margin-bottom: 18px;">编辑个人信息</div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 13px;">头像</label>
+            <div class="avatar-preview" id="avatarPreview" style="width: 50px; height: 50px; margin: 8px auto;">👤</div>
+            <div style="text-align: center;">
+                <label for="avatarInput" class="file-button" style="padding: 6px 12px; font-size: 13px;">选择头像</label>
             </div>
-            
-            <div class="form-group">
-                <label class="form-label">ID名称</label>
-                <input type="text" id="userIdInput" class="form-input" placeholder="输入你的ID">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">个性签名</label>
-                <input type="text" id="signatureInput" class="form-input" placeholder="输入个性签名">
-            </div>
-                                <div class="form-group">
-                <label class="form-label">字体颜色</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="color" id="textColorInput" class="form-input" value="#ffffff" style="flex: 1;">
-                    <div id="textColorPreview" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff;"></div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">App图标字体颜色</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="color" id="appTextColorInput" class="form-input" value="#ffffff" style="flex: 1;">
-                    <div id="appTextColorPreview" style="width: 40px; height: 40px; border-radius: 8px; border: 2px solid #e1e5e9; background: #ffffff;"></div>
-                </div>
-            </div>
-
-<div style="text-align: center; font-size: 11px; color: #999; margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 6px;">
-    天气数据由 <a href="https://openweathermap.org" target="_blank" style="color: #667eea; text-decoration: none;">OpenWeatherMap</a> 提供
-</div>
-
-            <div class="modal-buttons">
-                <button class="btn btn-cancel" onclick="closeModal()">取消</button>
-                <button class="btn btn-save" onclick="saveUserInfo()">保存</button>
+            <input type="file" id="avatarInput" class="file-input" accept="image/*">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 13px;">ID名称</label>
+            <input type="text" id="userIdInput" class="form-input" placeholder="输入你的ID" style="padding: 10px; font-size: 16px;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 13px;">个性签名</label>
+            <input type="text" id="signatureInput" class="form-input" placeholder="输入个性签名" style="padding: 10px; font-size: 16px;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 13px;">字体颜色</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="textColorInput" class="form-input" value="#ffffff" style="flex: 1; height: 38px; padding: 2px;">
+                <div id="textColorPreview" style="width: 38px; height: 38px; border-radius: 6px; border: 2px solid #e1e5e9; background: #ffffff; flex-shrink: 0;"></div>
             </div>
         </div>
+        
+        <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-size: 13px;">App图标字体颜色</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="appTextColorInput" class="form-input" value="#ffffff" style="flex: 1; height: 38px; padding: 2px;">
+                <div id="appTextColorPreview" style="width: 38px; height: 38px; border-radius: 6px; border: 2px solid #e1e5e9; background: #ffffff; flex-shrink: 0;"></div>
+            </div>
+        </div>
+
+        <div style="text-align: center; font-size: 10px; color: #999; margin-top: 12px; padding: 8px; background: #f9f9f9; border-radius: 6px;">
+            天气数据由 <a href="https://openweathermap.org" target="_blank" style="color: #667eea; text-decoration: none;">OpenWeatherMap</a> 提供
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 16px; gap: 10px;">
+            <button class="btn btn-cancel" onclick="closeModal()" style="padding: 10px; font-size: 14px;">取消</button>
+            <button class="btn btn-save" onclick="saveUserInfo()" style="padding: 10px; font-size: 14px;">保存</button>
+        </div>
     </div>
+</div>
+
 <!-- 世界书编辑弹窗 -->
 <div class="modal-overlay" id="worldbookModal" onclick="closeWorldbookModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -6318,33 +6322,54 @@ let isSwiping = false;
 let currentSwipedId = null;
 
 // 添加滑动事件
+// 添加滑动事件
 function addSwipeEvent(chatId) {
     const wrapper = document.getElementById(`wrapper-${chatId}`);
     const chatItem = document.getElementById(`chat-${chatId}`);
     const actions = wrapper.querySelector('.chat-actions');
     if (!chatItem || !actions) return;
     
-    // 触摸事件（移动端）
+    // ========== 移动端触摸事件 ==========
+    let touchStartX = 0;
+    let touchCurrentX = 0;
+    let hasTouchMoved = false; // ★ 新增：标记是否真的移动过
+    
     chatItem.addEventListener('touchstart', (e) => {
-        swipeStartX = e.touches[0].clientX;
+        touchStartX = e.touches[0].clientX;
+        touchCurrentX = touchStartX; // ★ 修复：初始化为起始位置
+        hasTouchMoved = false; // ★ 重置移动标记
         isSwiping = true;
-    });
+    }, { passive: true });
     
     chatItem.addEventListener('touchmove', (e) => {
         if (!isSwiping) return;
-        swipeCurrentX = e.touches[0].clientX;
-        const diff = swipeStartX - swipeCurrentX;
+        touchCurrentX = e.touches[0].clientX;
+        const diff = touchStartX - touchCurrentX;
+        
+        // ★ 只有移动超过10px才算真正滑动
+        if (Math.abs(diff) > 10) {
+            hasTouchMoved = true;
+        }
         
         if (diff > 0 && diff < 160) {
             chatItem.style.transform = `translateX(-${diff}px)`;
             actions.style.transform = `translateX(${100 - (diff / 160) * 100}%)`;
         }
-    });
+    }, { passive: true });
     
     chatItem.addEventListener('touchend', () => {
         if (!isSwiping) return;
-        const diff = swipeStartX - swipeCurrentX;
         
+        const diff = touchStartX - touchCurrentX;
+        
+        // ★ 核心修复：如果没有真正移动过，视为点击
+        if (!hasTouchMoved) {
+            isSwiping = false;
+            openChatDetail(chatId); // 执行点击操作
+            return;
+        }
+        
+        // 真正滑动了，判断滑动距离
         if (diff > 50) {
             chatItem.style.transform = 'translateX(-160px)';
             actions.style.transform = 'translateX(0)';
@@ -6356,74 +6381,50 @@ function addSwipeEvent(chatId) {
         }
         
         isSwiping = false;
+        hasTouchMoved = false;
     });
     
-// 鼠标事件（桌面端）
-let mouseDownX = 0;
-let hasMoved = false;
-let actualSwipeDistance = 0;
+    // ========== 桌面端鼠标事件 ==========
+    let mouseDownX = 0;
+    let hasMoved = false;
+    let actualSwipeDistance = 0;
 
-chatItem.addEventListener('mousedown', (e) => {
-    mouseDownX = e.clientX;
-    swipeStartX = e.clientX;
-    hasMoved = false;
-    actualSwipeDistance = 0;
-    chatItem.style.cursor = 'grabbing';
-});
+    chatItem.addEventListener('mousedown', (e) => {
+        mouseDownX = e.clientX;
+        swipeStartX = e.clientX;
+        hasMoved = false;
+        actualSwipeDistance = 0;
+        chatItem.style.cursor = 'grabbing';
+    });
 
-chatItem.addEventListener('mousemove', (e) => {
-    // 如果鼠标没按下，直接返回
-    if (mouseDownX === 0) return;
-    
-    const diff = Math.abs(e.clientX - mouseDownX);
-    if (diff > 5) {
-        hasMoved = true;
-        isSwiping = true;
-    }
-    
-    if (!isSwiping) return;
-    
-    swipeCurrentX = e.clientX;
-    actualSwipeDistance = swipeStartX - swipeCurrentX;
-    
-    if (actualSwipeDistance > 0 && actualSwipeDistance < 160) {
-        chatItem.style.transform = `translateX(-${actualSwipeDistance}px)`;
-        actions.style.transform = `translateX(${100 - (actualSwipeDistance / 160) * 100}%)`;
-    }
-});
+    chatItem.addEventListener('mousemove', (e) => {
+        if (mouseDownX === 0) return;
+        
+        const diff = Math.abs(e.clientX - mouseDownX);
+        if (diff > 5) {
+            hasMoved = true;
+            isSwiping = true;
+        }
+        
+        if (!isSwiping) return;
+        
+        swipeCurrentX = e.clientX;
+        actualSwipeDistance = swipeStartX - swipeCurrentX;
+        
+        if (actualSwipeDistance > 0 && actualSwipeDistance < 160) {
+            chatItem.style.transform = `translateX(-${actualSwipeDistance}px)`;
+            actions.style.transform = `translateX(${100 - (actualSwipeDistance / 160) * 100}%)`;
+        }
+    });
 
-chatItem.addEventListener('mouseup', (e) => {
-    if (!hasMoved) {
-        // 没有移动，是点击事件
-        openChatDetail(chatId);
-        chatItem.style.cursor = 'pointer';
-        mouseDownX = 0;
-        return;
-    }
-    
-    // 有移动，判断最终滑动距离
-    if (actualSwipeDistance > 50) {
-        // 滑动超过50px，保持展开
-        chatItem.style.transform = 'translateX(-160px)';
-        actions.style.transform = 'translateX(0)';
-        closeOtherSwipes(chatId);
-        currentSwipedId = chatId;
-    } else {
-        // 滑动不足，收回
-        chatItem.style.transform = 'translateX(0)';
-        actions.style.transform = 'translateX(100%)';
-    }
-    
-    isSwiping = false;
-    hasMoved = false;
-    actualSwipeDistance = 0;
-    mouseDownX = 0;
-    chatItem.style.cursor = 'pointer';
-});
-
-chatItem.addEventListener('mouseleave', () => {
-    if (isSwiping) {
-        // 鼠标离开时，根据当前滑动距离决定
+    chatItem.addEventListener('mouseup', (e) => {
+        if (!hasMoved) {
+            openChatDetail(chatId);
+            chatItem.style.cursor = 'pointer';
+            mouseDownX = 0;
+            return;
+        }
+        
         if (actualSwipeDistance > 50) {
             chatItem.style.transform = 'translateX(-160px)';
             actions.style.transform = 'translateX(0)';
@@ -6433,17 +6434,33 @@ chatItem.addEventListener('mouseleave', () => {
             chatItem.style.transform = 'translateX(0)';
             actions.style.transform = 'translateX(100%)';
         }
+        
         isSwiping = false;
-    }
-    hasMoved = false;
-    actualSwipeDistance = 0;
-    mouseDownX = 0;
-    chatItem.style.cursor = 'pointer';
-});
+        hasMoved = false;
+        actualSwipeDistance = 0;
+        mouseDownX = 0;
+        chatItem.style.cursor = 'pointer';
+    });
 
-
+    chatItem.addEventListener('mouseleave', () => {
+        if (isSwiping) {
+            if (actualSwipeDistance > 50) {
+                chatItem.style.transform = 'translateX(-160px)';
+                actions.style.transform = 'translateX(0)';
+                closeOtherSwipes(chatId);
+                currentSwipedId = chatId;
+            } else {
+                chatItem.style.transform = 'translateX(0)';
+                actions.style.transform = 'translateX(100%)';
+            }
+            isSwiping = false;
+        }
+        hasMoved = false;
+        actualSwipeDistance = 0;
+        mouseDownX = 0;
+        chatItem.style.cursor = 'pointer';
+    });
 }
-
 
 
 // 关闭其他展开的滑动项
@@ -7173,18 +7190,24 @@ ${weatherInfoStr}
 更新状态时：[状态]在线-正在煮面|||[消息]第一条消息...
 保持状态时：[状态]保持|||[消息]第一条消息...
 
-【重要回复要求】
+【重要回复要求】你每次都需要根据人设，世界书，上下文聊天记录参考
 1. 你的回复必须分成6-12条独立消息，用"|||"符号分隔
 2. 转账功能：[转账:金额:备注]
 3. 语音消息功能：[发送语音:内容]
 4. 如果你要领取对方的转账，请在回复中包含[领取转账]四个字。
-5.购物功能：你可以主动购物！有两种方式：
-方式1：给对方送礼物（你付钱，对方收货），格式：[购物:送礼:商品关键词]，例如：[购物:送礼:玫瑰花]
-方式2：请对方代付（对方付钱，你收货），格式：[购物:代付:商品关键词]，例如：[购物:代付:奶茶]
-- 根据聊天内容自然触发（比如对方说"好想吃草莓"，你可以回复"[购物:送礼:草莓]|||给你买了新鲜草莓！"）
-注意：1. 购物指令可以和普通消息混合，用|||分隔
-2. 一次只能购买一种商品
-3. 购物后AI会自动生成3-5个相关商品供系统选择
+5. 购物功能（送礼与代付）：
+请根据对话语境，决定是送对方礼物，还是向对方求买单。
+请务必在回复末尾加上对应指令：
+A.【送礼物】（你想送给对方）：
+   指令格式：[购物:送礼:物品名称]
+   场景：对方想要某物，或者你想给惊喜。
+   示例：宝，给你买了花！|||[购物:送礼:红玫瑰]
+B.【求代付】（你想让对方给你买）：
+   指令格式：[购物:代付:物品名称]
+   场景：你表达想吃/想要某物，希望对方买给你。
+   示例：老公我好想吃那个蛋糕呀~|||[购物:代付:草莓蛋糕]
+
+
 
 【格式提醒】
 如果要更新状态，格式为：[状态]xxx|||[消息]第一条|||第二条
@@ -7317,6 +7340,7 @@ else if (msg.type === 'shopping_order') {
             messages.push({ role: 'user', content: '(开启了对话)' });
         }
 
+ 
         // 9. 发起API请求
         const url = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions'
@@ -7408,7 +7432,7 @@ let messageContent = aiReply
     .replace(/【消息】\s*[:：]?/g, '')
     
     // 移除其他可能的系统标记（但保留功能标记）
-    .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账)[^\]]*\]\s*[:：]?/g, '')
+   .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:)[^\]]*\]\s*[:：]?/g, '')
     
     // 清理多余的分隔符
     .replace(/^\|\|\|+/g, '')
@@ -7450,10 +7474,14 @@ if (messageList.length === 1 && messageContent.length > 100) {
 
 
         // 11. 逐条发送消息 (修复的重点部分)
-        for (let i = 0; i < messageList.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
-            
-            let msgText = messageList[i];
+      console.log('=== 开始处理消息列表 ===');
+console.log('消息数量：', messageList.length);
+console.log('消息内容：', messageList);
+for (let i = 0; i < messageList.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
+    
+    let msgText = messageList[i];
+    console.log(`处理第${i+1}条消息：`, msgText);
             
             // ============== 转账领取核心修复 ==============
             if (msgText.includes('[领取转账]')) {
@@ -7504,43 +7532,26 @@ if (messageList.length === 1 && messageContent.length > 100) {
             const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
             const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
             const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
-          // ========== 新增：购物指令匹配 ==========
-const shoppingMatch = msgText.match(/\[购物:(送礼|代付):(.+?)\]/);
 
+const shoppingMatch = msgText.match(/\[购物:(送礼|代付):([^\]]+)\]/);
 if (shoppingMatch) {
-    const shoppingType = shoppingMatch[1]; // '送礼' 或 '代付'
+    const shoppingType = shoppingMatch[1];
     const keyword = shoppingMatch[2].trim();
     
-    // 清除购物指令，保留其他文字
-    msgText = msgText.replace(/\[购物:(送礼|代付):.+?\]/g, '').trim();
+    // 1. 先把指令从文字里删掉，免得显示在气泡里
+    msgText = msgText.replace(/\[购物:(送礼|代付):[^\]]+\]/g, '').trim();
     
-    // 如果清除后还有文字，先发送文字消息
-    if (msgText) {
-        const textMsgId = Date.now() + i;
-        allMessages.push({
-            id: textMsgId,
-            chatId: currentChatId,
-            type: 'text',
-            content: msgText,
-            senderId: chat.name,
-            time: getCurrentTime(),
-            isRevoked: false
-        });
-        saveMessages();
-        visibleMessagesCount = allMessages.length;
-        renderMessages();
-        scrollToBottom();
-        
-        // 等待一下再触发购物
-        await new Promise(resolve => setTimeout(resolve, 800));
+    // 2. 无论还有没有剩余文字，都必须触发购物功能！
+    // 不用 await，让它在后台跑，免得卡住文字消息的发送
+    handleAIShopping(shoppingType, keyword);
+    
+    // 3. 如果文字被删光了（说明AI只发了指令），那就直接跳过本次循环，不发空泡泡
+    if (!msgText) {
+        continue;
     }
-    
-    // 触发AI购物流程
-    await handleAIShopping(shoppingType, keyword);
-    
-    continue; // 跳过后续处理
 }
-// ========== 购物指令处理结束 ==========
+
+
 
 
             let newMessage = {
@@ -9276,17 +9287,27 @@ function formatDiaryTime(timeStr) {
 
 // 获取预览文本
 function getPreviewText(diary) {
+    // 防御性编程
+    if (!diary || !diary.sections || !Array.isArray(diary.sections)) {
+        return '暂无内容';
+    }
+    
     let preview = '';
-    if (diary.sections && diary.sections.length > 0) {
+    if (diary.sections.length > 0) {
         const firstSection = diary.sections[0];
-        if (firstSection.items && firstSection.items.length > 0) {
+        if (firstSection && firstSection.items && firstSection.items.length > 0) {
             preview = firstSection.items[0].text || '';
-        } else if (firstSection.content) {
+        } else if (firstSection && firstSection.content) {
             preview = firstSection.content;
         }
     }
+    
+    // 确保返回值是字符串
+    preview = String(preview || '暂无内容');
     return preview.substring(0, 100) + (preview.length > 100 ? '...' : '');
 }
+
+
 
 // 召唤日记（点击召唤卡片）
 function summonDiary() {
@@ -9407,10 +9428,13 @@ const recentMessages = await new Promise(resolve => {
         // 格式化
         const formatted = recentMsgs
             .filter(msg => {
+             // ★★★ 核心修复：这里必须要把没有 content 的消息类型都过滤掉 ★★★
                 if (msg.type === 'image') return false;
                 if (msg.type === 'transfer') return false;
                 if (msg.type === 'voice') return false;
                 if (msg.type === 'system') return false;
+                if (msg.type === 'shopping_order') return false; // 🛍️ 新增：过滤购物订单
+                if (!msg.content) return false; // 🛡️ 兜底：如果没有内容，直接过滤
                 if (msg.isRevoked) return false;
                 return true;
             })
@@ -9539,7 +9563,7 @@ xxx...
             body: JSON.stringify({
                 model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
                 messages: [{ role: 'user', content: diaryPrompt }],
-                temperature: 0.9
+                temperature: 0.7
             })
         });
         
@@ -9569,9 +9593,17 @@ loadDiaries();
     }
 }
 
-// 解析日记内容
+// 解析日记内容（超级增强版）
 async function parseDiaryContent(content) {
-    const lines = content.split('\n');
+    // 1. 基础检查
+    if (!content || typeof content !== 'string') {
+        console.error('❌ 日记内容为空或格式错误');
+        alert('日记生成失败：内容格式错误');
+        return;
+    }
+
+    console.log('收到的日记内容：', content); // 调试用，方便看AI到底回了什么
+
     const diary = {
         chatId: currentChatId,
         createTime: getCurrentTime(),
@@ -9582,96 +9614,121 @@ async function parseDiaryContent(content) {
         reflection: '',
         tags: []
     };
-    
+
+    const lines = content.split('\n');
     let currentSection = null;
     let reflectionLines = [];
     let inReflection = false;
-    
+
+    // 正则表达式：匹配 [标题] 或 【标题】 或 ### 标题
+    const sectionRegex = /^[\d\.\s]*[\[【](.+?)[\]】][\s:：]*$/;
+
     for (let line of lines) {
-        line = line.trim();
-      
-      // 修复日记为空的问题：去除 AI 可能生成的 Markdown 符号（如 **粗体** 或 ## 标题）
-        line = line.replace(/[\*\#]/g, '').trim();
-      //新增结束
-      
-        if (!line) continue;
+        // 清理行首尾空格，去除 Markdown 加粗符号 (**), 去除 # 号
+        line = line.trim().replace(/\*\*/g, '').replace(/^#+\s*/, '');
         
-        // 解析标题
-        if (line.startsWith('标题:') || line.startsWith('标题：')) {
-            diary.title = line.replace(/标题[:：]\s*/, '');
+        if (!line) continue;
+
+        // --- 1. 解析基础信息 (支持中英文冒号，支持前面有奇怪的符号) ---
+        
+        // 匹配 标题: xxx
+        if (line.match(/^(标题|Title)[:：]\s*(.*)/i)) {
+            diary.title = RegExp.$2;
+            continue;
         }
-        // 解析天气
-        else if (line.startsWith('今日天气:') || line.startsWith('今日天气：')) {
-            diary.weather = line.replace(/今日天气[:：]\s*/, '');
+        // 匹配 天气: xxx
+        if (line.match(/^(今日天气|天气|Weather)[:：]\s*(.*)/i)) {
+            diary.weather = RegExp.$2;
+            continue;
         }
-        // 解析心情
-        else if (line.startsWith('今日心情:') || line.startsWith('今日心情：')) {
-            diary.mood = line.replace(/今日心情[:：]\s*/, '');
+        // 匹配 心情: xxx
+        if (line.match(/^(今日心情|心情|Mood)[:：]\s*(.*)/i)) {
+            diary.mood = RegExp.$2;
+            continue;
         }
-        // 解析标签
-        else if (line.startsWith('标签:') || line.startsWith('标签：')) {
-            const tagsStr = line.replace(/标签[:：]\s*/, '');
-            diary.tags = tagsStr.split(/\s+/).map(tag => tag.replace('#', '')).filter(t => t);
+        // 匹配 标签: xxx
+        if (line.match(/^(标签|Tags)[:：]\s*(.*)/i)) {
+            const tagsStr = RegExp.$2;
+            // 自动把 #号、空格、逗号都当作分隔符
+            diary.tags = tagsStr.split(/[\s,，#]+/).filter(t => t);
+            continue;
         }
-        // 解析今日感悟
-        else if (line.startsWith('[今日感悟]')) {
+
+        // --- 2. 解析 [今日感悟] ---
+        // 只要行里包含 "今日感悟" 且在括号里，就认为是感悟开始
+        if (line.match(/[\[【]今日感悟[\]】]/)) {
             inReflection = true;
+            // 如果之前有正在记录的板块，先保存
             if (currentSection) {
                 diary.sections.push(currentSection);
                 currentSection = null;
             }
+            continue; // 跳过这一行，下面开始记录感悟内容
         }
-        // 如果在今日感悟中
-        else if (inReflection) {
-            reflectionLines.push(line);
-        }
-        // 解析板块标题
-        else if (line.startsWith('[') && line.endsWith(']')) {
+
+        // --- 3. 解析普通板块 (如 [开心小事]) ---
+        const sectionMatch = line.match(sectionRegex);
+        if (sectionMatch && !inReflection) {
+            // 如果遇到了新板块，把旧板块保存
             if (currentSection) {
                 diary.sections.push(currentSection);
             }
+            // 开始新板块
             currentSection = {
-                title: line.replace(/[\[\]]/g, ''),
+                title: sectionMatch[1], // 获取括号里的文字
                 items: []
             };
+            continue;
         }
-        // 解析板块内容
-        else if (currentSection) {
+
+        // --- 4. 保存内容 ---
+        if (inReflection) {
+            // 如果在感悟区，所有内容都算感悟
+            reflectionLines.push(line);
+        } else if (currentSection) {
+            // 如果在普通板块区
             currentSection.items.push({ text: line });
         }
     }
-    
-    // 保存最后一个板块
+
+    // 循环结束后，别忘了保存最后一个板块
     if (currentSection) {
         diary.sections.push(currentSection);
     }
-    
-    // 处理今日感悟
+
+    // 处理感悟内容
     diary.reflection = reflectionLines.join('\n');
-    
-// 保存到数据库并等待完成
-await saveDiaryToDBAsync(diary);
+
+    // 兜底：如果AI没写标题，自动生成一个
+    if (!diary.title) diary.title = '无题日记 ' + diary.createTime.split(' ')[0];
+
+    // 保存到数据库
+    await saveDiaryToDBAsync(diary);
 }
 
-// 保存日记到数据库
 function saveDiaryToDB(diary) {
-    loadFromDB('diaries', (data) => {
-        const allDiaries = data && data.list ? data.list : [];
-        
-        // 生成ID
-        const newId = allDiaries.length > 0 ? Math.max(...allDiaries.map(d => d.id || 0)) + 1 : 1;
-        diary.id = newId;
-        
-        allDiaries.push(diary);
-        
-        const transaction = db.transaction(['diaries'], 'readwrite');
-        const objectStore = transaction.objectStore('diaries');
-        objectStore.put({ id: 1, list: allDiaries });
-        
-        // 更新日记数量显示
-        updateDiaryCount();
+    return new Promise((resolve) => {
+        loadFromDB('diaries', (data) => {
+            const allDiaries = data && data.list ? data.list : [];
+            
+            const newId = allDiaries.length > 0 ? Math.max(...allDiaries.map(d => d.id || 0)) + 1 : 1;
+            diary.id = newId;
+            
+            allDiaries.push(diary);
+            
+            const transaction = db.transaction(['diaries'], 'readwrite');
+            const objectStore = transaction.objectStore('diaries');
+            const request = objectStore.put({ id: 1, list: allDiaries });
+            
+            request.onsuccess = () => {
+                updateDiaryCount();
+                resolve();
+            };
+        });
     });
 }
+
+
 // 异步保存日记
 function saveDiaryToDBAsync(diary) {
     return new Promise((resolve) => {
@@ -11865,11 +11922,20 @@ function checkout() {
             
             alert('购买成功！礼物已送出 🎁');
             
-            // 返回聊天页面
-            backToShopping();
-            setTimeout(() => {
-                backFromShopping();
-            }, 100);
+        // 返回聊天页面并刷新
+backToShopping();
+setTimeout(() => {
+    backFromShopping();
+    // ★ 确保消息列表刷新
+    setTimeout(() => {
+        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+            visibleMessagesCount = allMessages.length;
+            renderMessages();
+            scrollToBottom();
+        }
+    }, 200);
+}, 100);
+
             updateCartBadge();
         });
         
@@ -11889,11 +11955,20 @@ function checkout() {
         
         alert('代付请求已发送！');
         
-        // 返回聊天页面
-        backToShopping();
-        setTimeout(() => {
-            backFromShopping();
-        }, 100);
+   // 返回聊天页面并刷新
+backToShopping();
+setTimeout(() => {
+    backFromShopping();
+    // ★ 确保消息列表刷新
+    setTimeout(() => {
+        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+            visibleMessagesCount = allMessages.length;
+            renderMessages();
+            scrollToBottom();
+        }
+    }, 200);
+}, 100);
+
         updateCartBadge();
     }
 }
@@ -11933,15 +12008,14 @@ function createShoppingOrderMessage(orderType, status, totalPrice, items) {
         `[购物订单] 请${characterName}代付 ¥${totalPrice.toFixed(2)}`;
     updateChatLastMessage(currentChatId, previewText);
     
-    // 如果在聊天详情页，刷新显示
-    if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-        renderMessages();
-        scrollToBottom();
-    }
+    // ★ 强制刷新消息列表
+    visibleMessagesCount = allMessages.length;
+    renderMessages();
+    scrollToBottom();
 }
 
-  // 展开/收起订单详情
+
+// 展开/收起订单详情
 function toggleOrderDetail(messageId) {
     const message = allMessages.find(m => m.id === messageId);
     if (!message || message.type !== 'shopping_order') return;
@@ -11949,16 +12023,10 @@ function toggleOrderDetail(messageId) {
     message.orderData.isExpanded = !message.orderData.isExpanded;
     saveMessages();
     
-    // 只更新这一条消息的显示
-    const detailDiv = document.getElementById(`order-detail-${messageId}`);
-    if (detailDiv) {
-        if (message.orderData.isExpanded) {
-            detailDiv.classList.add('show');
-        } else {
-            detailDiv.classList.remove('show');
-        }
-    }
+    // ★ 直接重新渲染整个消息列表，确保状态同步
+    renderMessages();
 }
+
 // AI生成商品
 async function generateProducts() {
     const keyword = document.getElementById('shoppingSearchInput').value.trim();
@@ -12197,205 +12265,143 @@ function handleWalletAction(action) {
         }
     }
 }
-// ============ AI购物功能 ============
-
 /**
- * AI购物主流程
- * @param {string} type - '送礼' 或 '代付'
- * @param {string} keyword - 商品关键词
+ * AI购物主流程（简化版）
  */
 async function handleAIShopping(type, keyword) {
+    console.log('========== handleAIShopping 开始 ==========');
+    console.log('类型：', type);
+    console.log('关键词：', keyword);
+    
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
-        console.error('API未配置，AI购物失败');
+        console.error('❌ API未配置');
+        return;
+    }
+    
+    if (!currentChatId) {
+        console.error('❌ currentChatId 不存在');
         return;
     }
     
     const chat = chats.find(c => c.id === currentChatId);
-    if (!chat) return;
+    if (!chat) {
+        console.error('❌ 找不到当前聊天');
+        return;
+    }
+    
+    console.log('当前聊天：', chat.name);
     
     try {
-        // 1. 生成商品列表
-        const products = await generateShoppingProducts(keyword);
+        // 直接生成商品
+        console.log('正在生成商品...');
+        const product = await generateSingleProduct(keyword);
         
-        if (!products || products.length === 0) {
-            console.error('商品生成失败');
+        console.log('生成的商品：', product);
+        
+        if (!product) {
+            console.log('商品生成失败，使用默认商品');
+            const fallbackProduct = {
+                name: keyword || '神秘礼物',
+                price: Math.floor(Math.random() * 80) + 20
+            };
+            console.log('默认商品：', fallbackProduct);
+            createAIShoppingOrder(type, fallbackProduct, chat.name);
             return;
         }
         
-        // 2. 让AI选择商品
-        const selectedProduct = await aiSelectProduct(products, type, keyword);
-        
-        if (!selectedProduct) {
-            console.error('AI选择商品失败');
-            return;
-        }
-        
-        // 3. 创建订单消息
-        createAIShoppingOrder(type, selectedProduct, chat.name);
+        // 创建订单
+        console.log('正在创建订单...');
+        createAIShoppingOrder(type, product, chat.name);
+        console.log('========== handleAIShopping 完成 ==========');
         
     } catch (error) {
-        console.error('AI购物失败：', error);
+        console.error('❌ handleAIShopping 出错：', error);
+        // 兜底
+        const fallbackProduct = {
+            name: keyword || '礼物',
+            price: Math.floor(Math.random() * 50) + 30
+        };
+        createAIShoppingOrder(type, fallbackProduct, chat.name);
     }
 }
 
+
 /**
- * 生成商品列表（调用AI）
+ * 生成单个商品
  */
-async function generateShoppingProducts(keyword) {
-    const prompt = `用户想要：${keyword}。
-请生成3-5个相关商品，严格按照格式输出：
-
-商品名1|||价格1|||商品名2|||价格2|||商品名3|||价格3
-
-要求：
-1. 商品名简短（5-15字）
-2. 价格合理（10-500元）
-3. 只输出商品信息，不要多余废话
-
-示例输出：
-新鲜草莓500g|||29.9|||进口车厘子1斤|||89|||国产红富士苹果5斤|||39.9`;
-
-    const url = currentApiConfig.baseUrl.endsWith('/') 
-        ? currentApiConfig.baseUrl + 'chat/completions'
-        : currentApiConfig.baseUrl + '/chat/completions';
-        
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7
-        })
-    });
+async function generateSingleProduct(keyword) {
+    console.log('========== generateSingleProduct 开始 ==========');
+    console.log('关键词：', keyword);
     
-    if (!response.ok) throw new Error('商品生成失败');
+    // 直接返回一个基于关键词的商品，不再调用API
+    // 这样更快更稳定
+    const priceMap = {
+        '草莓': 39.9,
+        '奶茶': 18,
+        '蛋糕': 68,
+        '花': 99,
+        '玫瑰': 99,
+        '巧克力': 58,
+        '零食': 29.9,
+        '水果': 49.9
+    };
     
-    const data = await response.json();
-    const aiReply = data.choices[0].message.content.trim();
-    
-    // 解析商品
-    const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
-    const productList = [];
-    
-    for (let i = 0; i < parts.length; i += 2) {
-        if (i + 1 >= parts.length) break;
-        
-        const name = parts[i];
-        const priceStr = parts[i + 1].replace(/[^\d.]/g, '');
-        const price = parseFloat(priceStr);
-        
-        if (name && price > 0) {
-            productList.push({ name, price });
+    // 查找匹配的价格
+    let price = 39.9; // 默认价格
+    for (let key in priceMap) {
+        if (keyword.includes(key)) {
+            price = priceMap[key];
+            break;
         }
     }
     
-    return productList;
-}
-
-/**
- * AI选择商品（根据人设和上下文）
- */
-async function aiSelectProduct(products, type, keyword) {
-    const chat = chats.find(c => c.id === currentChatId);
+    // 添加一些随机浮动
+    price = price + (Math.random() * 10 - 5);
+    price = Math.round(price * 100) / 100;
     
-    // 获取角色信息
-    const characterInfo = await new Promise(resolve => {
-        loadFromDB('characterInfo', data => {
-            resolve(data && data[currentChatId] ? data[currentChatId] : {});
-        });
-    });
+    const product = {
+        name: keyword,
+        price: price
+    };
     
-    // 获取世界书
-    const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+    console.log('生成的商品：', product);
+    console.log('========== generateSingleProduct 完成 ==========');
     
-    // 获取最近10轮对话
-    const recentMessages = allMessages.slice(-20).map(msg => {
-        const sender = msg.senderId === 'me' ? '对方' : '我';
-        return `${sender}：${msg.content}`;
-    }).join('\n');
-    
-    // 构建商品列表文本
-    const productListText = products.map((p, i) => 
-        `${i + 1}. ${p.name} - ¥${p.price.toFixed(2)}`
-    ).join('\n');
-    
-    const actionText = type === '送礼' ? '给对方送礼物' : '请对方代付（自己收货）';
-    
-    const prompt = `你是${chat.name}，现在要${actionText}。
-
-【你的人设】
-${characterInfo.personality || '一个真实的人'}
-
-【关联世界书】
-${worldbooksContent}
-
-【最近对话】
-${recentMessages}
-
-【可选商品】
-${productListText}
-
-【任务】
-根据你的人设、对话内容、以及${actionText}的场景，选择最合适的商品。
-
-只需输出商品编号（1-${products.length}），不要多余废话。`;
-
-    const url = currentApiConfig.baseUrl.endsWith('/') 
-        ? currentApiConfig.baseUrl + 'chat/completions'
-        : currentApiConfig.baseUrl + '/chat/completions';
-        
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.8
-        })
-    });
-    
-    if (!response.ok) throw new Error('选择失败');
-    
-    const data = await response.json();
-    const aiReply = data.choices[0].message.content.trim();
-    
-    // 提取数字
-    const match = aiReply.match(/\d+/);
-    if (match) {
-        const index = parseInt(match[0]) - 1;
-        if (index >= 0 && index < products.length) {
-            return products[index];
-        }
-    }
-    
-    // 兜底：返回第一个
-    return products[0];
+    return product;
 }
 
 /**
  * 创建AI购物订单消息
  */
 function createAIShoppingOrder(type, product, characterName) {
+    console.log('========== createAIShoppingOrder 开始 ==========');
+    console.log('类型：', type);
+    console.log('商品：', product);
+    console.log('角色名：', characterName);
+    console.log('当前chatId：', currentChatId);
+    console.log('当前消息数量：', allMessages.length);
+    
+    if (!currentChatId) {
+        console.error('❌ currentChatId 不存在，无法创建订单');
+        return;
+    }
+    
+    if (!product || !product.name || !product.price) {
+        console.error('❌ 商品信息不完整：', product);
+        return;
+    }
+    
     const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
     const orderNumber = new Date().getTime().toString();
     
     let orderType, status;
     
     if (type === '送礼') {
-        // AI给你送礼：AI付钱（自动扣款），你收货
         orderType = 'ai_buy_for_user';
-        status = 'paid'; // 直接标记为已支付
+        status = 'paid';
     } else {
-        // AI请你代付：你付钱（需确认），AI收货
         orderType = 'ai_ask_user_pay';
-        status = 'pending'; // 待你确认
+        status = 'pending';
     }
     
     const newMessage = {
@@ -12419,8 +12425,13 @@ function createAIShoppingOrder(type, product, characterName) {
         }
     };
     
+    console.log('新消息对象：', newMessage);
+    
     allMessages.push(newMessage);
+    console.log('消息已添加，当前消息数量：', allMessages.length);
+    
     saveMessages();
+    console.log('消息已保存');
     
     // 更新聊天列表
     const previewText = type === '送礼' ? 
@@ -12428,11 +12439,16 @@ function createAIShoppingOrder(type, product, characterName) {
         `[购物订单] ${characterName}请你代付 ¥${product.price.toFixed(2)}`;
     updateChatLastMessage(currentChatId, previewText);
     
-    // 刷新显示
+    // 强制刷新消息列表
     visibleMessagesCount = allMessages.length;
     renderMessages();
     scrollToBottom();
+    
+    console.log('========== createAIShoppingOrder 完成 ==========');
 }
+
+
+
 // 确认AI的代付请求
 function confirmAIPayRequest(messageId) {
     const message = allMessages.find(m => m.id === messageId);
@@ -12452,7 +12468,6 @@ function confirmAIPayRequest(messageId) {
     
     // 更新订单状态
     message.orderData.status = 'paid';
-    saveMessages();
     
     // 插入系统消息
     const sysMsgId = Date.now() + 999;
@@ -12464,10 +12479,13 @@ function confirmAIPayRequest(messageId) {
         time: getCurrentTime()
     });
     
+    // ★ 保存并刷新
     saveMessages();
+    visibleMessagesCount = allMessages.length;
     renderMessages();
     scrollToBottom();
 }
+
 
 // 拒绝AI的代付请求
 function rejectAIPayRequest(messageId) {
@@ -12478,7 +12496,6 @@ function rejectAIPayRequest(messageId) {
     
     // 更新订单状态
     message.orderData.status = 'rejected';
-    saveMessages();
     
     const chat = chats.find(c => c.id === currentChatId);
     const characterName = chat ? chat.name : 'TA';
@@ -12493,10 +12510,13 @@ function rejectAIPayRequest(messageId) {
         time: getCurrentTime()
     });
     
+    // ★ 保存并刷新
     saveMessages();
+    visibleMessagesCount = allMessages.length;
     renderMessages();
     scrollToBottom();
 }
+
 
         // 初始化，
         initDB();
