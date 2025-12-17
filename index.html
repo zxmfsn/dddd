@@ -736,17 +736,68 @@
 
 /* 朋友圈入口卡片 */
 .moments-card {
-    margin: 15px 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-    border-radius: 12px;
+    /* 位置调整 */
+    margin: 15px 20px 10px; /* 上下间距调小 */
+    padding: 12px 0;        /* 减小内边距，让它变矮 */
+    
+    /* 外观：纯白胶囊 */
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-radius: 32px !important; /* 保持跟下面列表一样的圆角 */
+    border: none !important;
+    
+    /* 阴影：非常淡，轻轻浮起 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(102, 126, 234, 0.2);
+    
+    /* 布局：强制居中 */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+/* 按下去稍微缩小，有反馈感 */
+.moments-card:active {
+    transform: scale(0.98);
+    background: #fcfcfc !important;
+}
+
+/* 内部容器：让图标和文字紧紧挨着 */
+.moments-content-center {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: all 0.3s;
+    gap: 8px; /* 图标和文字的间距 */
+}
+
+/* 图标微调 */
+.moments-icon {
+    background: transparent !important; /* 去掉灰色背景 */
+    width: auto !important;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+}
+
+.moments-icon svg {
+    width: 35x; /* 图标稍微小一点，精致 */
+    height: 18px;
+    stroke: #333;
+    opacity: 0.8;
+}
+
+/* 文字微调 */
+.moments-title {
+    font-size: 15px !important;
+    font-weight: 600 !important; /* 稍微加粗一点 */
+    color: #444;
+    letter-spacing: 1px; /* 字间距宽一点，显得高级 */
+    margin: 0 !important; /* 去掉默认边距 */
+}
+
+/* 原来的多余元素强制隐藏 (防止你HTML没删干净) */
+.moments-desc, .moments-arrow, .moments-left {
+    display: none !important;
 }
 
 .moments-card:hover {
@@ -796,17 +847,43 @@
 }
 /* 底部分组栏 */
 .chat-bottom-tabs {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-width: 375px;
-    margin: 0 auto;
+    /* 保持之前的绝对定位 */
+    position: absolute !important;
+    bottom: 30px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    
+    /* 宽度自适应，但加一点内边距 */
+    width: auto !important;
+    min-width: 260px; /* 稍微宽一点容纳4个图标 */
+    max-width: 90%;
+    
+    background: #ffffff !important;
+    border-radius: 100px !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08) !important;
+    border: none !important;
+    
+    padding: 10px 30px !important; /* 左右内边距 */
+    gap: 30px; /* 图标之间的间距 */
+    
     display: flex;
-    background: white;
-    border-top: 1px solid #eee;
-    padding: 10px 0;
-    z-index: 101;
+    justify-content: space-between; /* 均匀分布 */
+    z-index: 1000;
+}
+
+/* 图标大小统一调整 */
+.bottom-tab svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.8px;
+    transition: all 0.3s ease;
+}
+
+/* 选中状态 */
+.bottom-tab.active svg {
+    stroke-width: 2.2px;
+    stroke: #2c3e50;
+    transform: scale(1.15);
 }
 
 .bottom-tab {
@@ -3458,13 +3535,208 @@ color: #333;
     cursor: pointer;
     padding: 5px;
 }
-   /* ========== 钱包页面样式 (支付宝风) ========== */
+  /* ============ ❄️ 钱包页面：冬日纯白高定版 ❄️ ============ */
+
 .wallet-container {
     flex: 1;
-    background: #fff; /* 整体白色背景 */
+    background: transparent; /* 透出全局灰底 */
+    padding: 20px 20px 120px; /* 底部留空给导航栏 */
     overflow-y: auto;
-    padding-bottom: 80px;
 }
+
+/* 1. 资产大卡片：仿信用卡设计 */
+.wallet-card-ins {
+    background: #ffffff;
+    border-radius: 32px; /* 统一大圆角 */
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05); /* 极淡的高级投影 */
+    margin-bottom: 25px;
+    position: relative;
+    overflow: hidden;
+    color: #333;
+    
+    /* 加上一点点磨砂纹理（可选） */
+    border: 1px solid rgba(255,255,255,0.8);
+}
+
+/* 装饰性背景圆 */
+.wallet-card-ins::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #fff 100%);
+    border-radius: 50%;
+    opacity: 0.5;
+    z-index: 0;
+}
+
+.wallet-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+}
+
+.card-bank-name {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #999;
+    font-style: italic;
+}
+
+.wallet-balance-area {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 30px;
+}
+
+.balance-label {
+    font-size: 12px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.balance-amount {
+    font-size: 36px;
+    font-weight: 300; /* 极细字体，显得高级 */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #2c3e50;
+    letter-spacing: -1px;
+}
+
+.wallet-btn-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 15px;
+}
+
+.wallet-action-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 100px; /* 胶囊按钮 */
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* 黑色实心按钮 */
+.wallet-action-btn {
+    background: #2c3e50;
+    color: white;
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.2);
+}
+
+/* 白色描边按钮 */
+.wallet-action-btn.outline {
+    background: transparent;
+    border: 1px solid #e0e0e0;
+    color: #666;
+    box-shadow: none;
+}
+
+/* 2. 功能区：悬浮白条 */
+.wallet-functions-ins {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px;
+}
+
+.func-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.func-icon {
+    width: 48px;
+    height: 48px;
+    background: #fff;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    transition: transform 0.2s;
+}
+
+.func-icon svg {
+    stroke: #555;
+}
+
+.func-item:active .func-icon {
+    transform: scale(0.95);
+}
+
+.func-name {
+    font-size: 12px;
+    color: #666;
+}
+
+/* 3. 账单列表：一体式 */
+.bill-section-ins {
+    background: #fff;
+    border-radius: 32px;
+    padding: 25px;
+}
+
+.bill-header-ins {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 15px;
+    letter-spacing: 0.5px;
+}
+
+/* 每一行账单 */
+.bill-item {
+    padding: 15px 0;
+    border-bottom: 1px solid #f5f5f5; /* 极淡分割线 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bill-item:last-child {
+    border-bottom: none;
+}
+
+.bill-title {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 4px;
+}
+
+.bill-time {
+    font-size: 11px;
+    color: #aaa; /* 极淡灰 */
+}
+
+.bill-amount {
+    font-size: 15px;
+    font-weight: 600;
+    font-family: monospace; /* 等宽数字 */
+}
+
+/* 收入支出颜色微调：莫兰迪色系 */
+.amount-income { color: #8aa29e !important; } /* 莫兰迪绿 */
+.amount-expense { color: #333 !important; }   /* 深黑 */
 
 /* ========== 钱包卡片美化 (高级支付宝风) ========== */
 
@@ -3848,73 +4120,1218 @@ color: #333;
     cursor: pointer;
 }
 
+/* ============ ❄️ 纯白一体化风格 (Winter Style) ❄️ ============ */
+
+/* 1. 全局背景：浅灰白，衬托白色大卡片 */
+.chat-screen {
+    background: #f5f6f8 !important; /* 浅灰底色 */
+}
+
+/* 2. 朋友圈卡片：保持独立，悬浮感 */
+.moments-card {
+    margin: 20px 20px 15px; 
+    padding: 25px 20px;     
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-radius: 42px !important;
+    border: none !important;       
+    box-shadow: 0 8px 20px rgba(0,0,0,0.03) !important;
+    backdrop-filter: blur(10px);
+}
+
+/* 3. 聊天列表容器：大卡片的“外壳” */
+.chat-list-container {
+    /* 左右留白，形成卡片悬浮感 */
+    padding: 0 20px 120px !important; /* 底部多留点空间给悬浮栏 */
+}
+
+/* 4. 聊天条目：把它们“粘”在一起的核心代码 */
+.chat-item-wrapper {
+    margin-bottom: 0 !important; /* ★ 关键：去掉间距，让它们紧贴 */
+    border-radius: 0 !important; /* 先去掉所有圆角 */
+    box-shadow: none !important; /* 去掉单独阴影 */
+    background: transparent !important;
+    position: relative;
+}
+
+/* ★ 魔法：只给“第一个”和“最后一个”加圆角，看起来就像一张大卡片 */
+.chat-item-wrapper:first-child .chat-item {
+    border-top-left-radius: 35px !important;
+    border-top-right-radius: 35px !important;
+}
+.chat-item-wrapper:last-child .chat-item {
+    border-bottom-left-radius: 24px !important;
+    border-bottom-right-radius: 24px !important;
+    border-bottom: none !important; /* 最后一个不需要分割线 */
+}
+
+/* 聊天项内部样式 */
+.chat-item {
+    background: rgba(255, 255, 255, 0.9) !important; /* 统一的白色背景 */
+    padding: 18px 20px !important;
+    border-radius: 0 !important;    /* 默认直角 */
+    border: none !important;
+    /* ★ 增加分割线：除了最后一个，都有淡淡的底线 */
+    border-bottom: 1px solid rgba(0,0,0,0.03) !important; 
+    margin: 0 !important;
+    transition: background 0.2s;
+}
+
+
+
+/* 悬停/点击效果：变成稍微深一点的白 */
+.chat-item:active {
+    background: #f2f2f2 !important;
+}
+
+/* 头像：方圆形 */
+.chat-avatar {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 16px !important; 
+    margin-right: 15px !important;
+    background: #eee;
+}
+
+/* 名字和文字 */
+.chat-name {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #333;
+    margin-bottom: 4px !important;
+    display: flex;       /* 让名字和状态在一行 */
+    align-items: center; /* 垂直居中 */
+}
+
+/* ★ 修改：极简文字状态 */
+.status-tag {
+    background: transparent !important; /* 去掉背景 */
+    padding: 0 !important;              /* 去掉内边距 */
+    margin-left: 8px !important;
+    
+    font-size: 11px !important;         /* 字号小一点 */
+    color: #888 !important;             /* 浅灰色 */
+    font-weight: 400 !important;
+    letter-spacing: 0.5px;
+    
+    /* 让它前面加个小圆点 (· Online) 的感觉 */
+    display: flex;
+    align-items: center;
+}
+
+
+/* 5. 底部悬浮胶囊 */
+.chat-bottom-tabs {
+    position: fixed;
+    bottom: 30px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important; /* 绝对居中 */
+    width: auto !important;
+    min-width: 200px;
+    
+    background: #ffffff !important;
+    border-radius: 100px !important; /* 完全胶囊 */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important; /* 柔和阴影 */
+    border: none !important;
+    padding: 8px 20px !important;
+    gap: 15px;
+}
+
+.bottom-tab {
+    padding: 10px !important;
+    color: #ccc; /* 未选中是浅灰 */
+}
+.bottom-tab.active {
+    color: #333; /* 选中是深黑 */
+    transform: scale(1.1);
+    background: transparent !important;
+}
+
+
+  // 找到 updateChatStatusDisplay 函数
+function updateChatStatusDisplay(chatId) {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[chatId] ? data[chatId] : {};
+        // 获取状态，如果没设置，默认显示一个简单的点或者空
+        const status = charData.currentStatus; 
+        
+        const statusTag = document.getElementById(`status-tag-${chatId}`);
+        if (statusTag) {
+            if (status) {
+                // 如果有状态，取第一段，比如 "在线"
+                // 并在前面加个小点，显得高级： "· 在线"
+                let displayStatus = status.split('-')[0];
+                // 如果你想模仿图里的英文，可以这里强行转：
+                if (displayStatus === '在线') displayStatus = '在线';
+                
+                statusTag.textContent = `· ${displayStatus}`; 
+            } else {
+                statusTag.textContent = '';
+            }
+        }
+    });
+}    
+/* ============ 🖤 Ins 极简图标优化 🖤 ============ */
+
+/* 1. 朋友圈图标微调 */
+.moments-icon svg {
+    stroke: #333; /* 深黑色线条 */
+    transition: transform 0.3s ease;
+}
+/* 鼠标放上去转一下，像光圈在动 */
+.moments-card:hover .moments-icon svg {
+    transform: rotate(90deg);
+}
+
+/* 2. 底部图标样式 */
+.bottom-tab svg {
+    /* 这里的 currentColor 会自动读取按钮的颜色 */
+    /* 我们在之前的 CSS 里设置了：未选中是灰色(#ccc)，选中是黑色(#333) */
+    stroke-width: 1.8px; /* 线条粗细，1.8px 刚刚好，很优雅 */
+    transition: all 0.3s ease;
+}
+
+/* 选中状态：加粗一点点，或者变成实心（Ins风格通常是加粗线条） */
+.bottom-tab.active svg {
+    stroke-width: 2.0px; /* 选中时线条稍微粗一点点 */
+    stroke: #2c3e50;     /* 深色 */
+    transform: scale(1.1); /* 微微放大 */
+}
+
+/* 去掉原来 emoji 可能残留的 font-size 设置，防止干扰 */
+.bottom-tab {
+    font-size: 0 !important; /* 隐藏原来的文字大小设置 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============ 💬 聊天详情页美化 (冬日纯白版) ============ */
+
+/* 1. 整体容器 */
+.chat-detail-screen {
+    background: #f5f6f8 !important; /* 全局统一浅灰底 */
+    position: relative;
+    z-index: 200; /* 确保盖住底下的页面 */
+}
+
+/* 2. 顶部 Header */
+.chat-detail-header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.03) !important;
+    padding: 15px 20px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.chat-detail-title {
+    font-size: 16px !important;
+    font-weight: 700;
+    color: #333;
+    letter-spacing: 0.5px;
+}
+
+/* 3. 消息气泡美化 */
+/* AI (左侧) - 纯白卡片 */
+.message-item:not(.me) .message-bubble {
+    background: #ffffff !important;
+    color: #333 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03) !important;
+    border-radius: 18px 18px 18px 2px !important; /* 左下角小尖 */
+    padding: 12px 16px !important;
+}
+
+/* 我 (右侧) - Ins 深黑风 */
+.message-item.me .message-bubble {
+    background: #2c3e50 !important; /* 高级深蓝灰 */
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2) !important;
+    border-radius: 18px 18px 2px 18px !important; /* 右下角小尖 */
+    padding: 12px 16px !important;
+}
+
+/* 4. 输入栏悬浮美化 */
+.chat-input-bar {
+    background: #f5f6f8 !important; /* 透底 */
+    border-top: none !important;
+    padding: 10px 15px 30px !important; /* 底部留白 */
+}
+
+.chat-input {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 25px !important; /* 胶囊圆角 */
+    padding: 12px 20px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important;
+    font-size: 15px !important;
+    color: #333;
+}
+
+.chat-input:focus {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08) !important;
+}
+
+/* 输入栏右侧按钮 (圆形纯白) */
+.action-icon-btn {
+    width: 42px !important;
+    height: 42px !important;
+    background: #fff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+    margin-left: 10px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+}
+
+.action-icon-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important;
+}
+
+/* 5. 功能图标栏 (表情等) */
+.emoji-btn-wrapper {
+    background: transparent !important;
+    padding: 8px 20px !important;
+    justify-content: space-between; /* 均匀分布 */
+    display: flex;
+}
+
+.emoji-btn {
+    color: #999; /* 默认浅灰 */
+    transition: all 0.3s;
+    background: transparent !important;
+    padding: 5px !important;
+}
+
+.emoji-btn:hover {
+    color: #2c3e50; /* 悬停变深 */
+    transform: scale(1.1);
+}
+
+/* ============ 🛠️ 功能图标栏优化 (大图标+紧凑版) ============ */
+
+.emoji-btn-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    
+    /* ★ 核心修改 1：布局方式 */
+    justify-content: flex-start !important; /* 靠左排列，不两端对齐 */
+    gap: 22px !important;                   /* 图标之间的固定间距 */
+    
+    padding: 12px 20px !important;          /* 增加一点上下舒适度 */
+    background: transparent !important;
+    
+    /* 防止图标太多换行，支持横向滑动（像真手机一样） */
+    overflow-x: auto !important; 
+    white-space: nowrap !important;
+    
+    /* 隐藏滚动条 (美观) */
+    scrollbar-width: none; /* Firefox */
+}
+.emoji-btn-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/* ★ 核心修改 2：图标按钮本体 */
+.emoji-btn {
+    /* 颜色加深：从 #999 改成 #555，甚至 #444 */
+    color: #555 !important; 
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* 防止被压缩 */
+    flex-shrink: 0 !important; 
+    transition: all 0.2s ease;
+}
+
+/* ★ 核心修改 3：SVG 尺寸 */
+.emoji-btn svg {
+    width: 26px !important;  /* 加大！之前是 22px */
+    height: 26px !important;
+    stroke-width: 1.7px !important; /* 线条稍微加粗一点点，更有质感 */
+}
+
+/* 悬停交互 */
+.emoji-btn:hover {
+    color: #2c3e50 !important; /* 悬停变黑 */
+    transform: scale(1.15);    /* 稍微放大一点点 */
+}
+
+/* 点击反馈 */
+.emoji-btn:active {
+    transform: scale(0.95);
+}
+      /* ============ 🔙 顶部导航栏按钮美化 (Ins 极简风) ============ */
+
+/* 1. 按钮容器：圆形、透明、大点击区 */
+.chat-detail-header .back-btn {
+    width: 44px !important;       /* 加大点击区域，手指好按 */
+    height: 44px !important;
+    border-radius: 50% !important; /* 正圆 */
+    
+    background: transparent !important; /* 平时完全透明 */
+    border: none !important;
+    
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    
+    cursor: pointer;
+    transition: background 0.2s ease;
+    
+    /* 防止被挤压 */
+    flex-shrink: 0;
+}
+
+/* 2. 交互反馈：悬停或点击时出现淡淡的灰圆 */
+.chat-detail-header .back-btn:hover,
+.chat-detail-header .back-btn:active {
+    background: rgba(0, 0, 0, 0.05) !important; /* 极淡的高级灰 */
+}
+
+/* 3. 图标线条：统一深灰 + 精致粗细 */
+.chat-detail-header .back-btn svg {
+    width: 26px !important;   /* 图标大一点，大气 */
+    height: 26px !important;
+    
+    stroke: #333 !important;  /* 纯黑/深灰，对比度高 */
+    stroke-width: 1.7px !important; /* 和底栏图标保持一致的精致感 */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    
+    transition: transform 0.2s;
+}
+
+/* 4. 小彩蛋：点击返回时，箭头往左“缩”一下 */
+.chat-detail-header .back-btn:first-child:active svg {
+    transform: translateX(-3px);
+}
+
+/* 5. 标题文字微调：让它和按钮对齐得更舒服 */
+.chat-detail-title {
+    font-size: 17px !important;
+    font-weight: 600 !important;
+    color: #1a1a1a !important; /* 接近纯黑 */
+    letter-spacing: 0.5px;
+}
+/* ============ 🌍 世界书页面美化 (Ins 手账风) ============ */
+
+/* 1. 全局背景 */
+.worldbook-screen {
+    background: #f5f6f8 !important; /* 统一浅灰底 */
+}
+
+/* 2. 头部美化 */
+.worldbook-header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.03) !important;
+    padding: 15px 20px !important;
+}
+
+/* 3. 分类栏：横向滑动的悬浮胶囊 */
+.category-bar {
+    background: transparent !important;
+    border: none !important;
+    padding: 15px 20px 5px !important;
+    overflow-x: auto;
+}
+
+.category-tags {
+    gap: 12px !important;
+}
+
+.category-tag {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 20px !important;
+    padding: 8px 18px !important;
+    font-size: 13px !important;
+    color: #999 !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03) !important; /* 微微悬浮 */
+    transition: all 0.3s;
+    font-weight: 500;
+}
+
+/* 选中状态：深黑 */
+.category-tag.active {
+    background: #2c3e50 !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3) !important;
+    transform: translateY(-1px);
+}
+
+/* 4. 世界书卡片：纯白大圆角 */
+.worldbook-content {
+    padding: 15px 20px 100px !important; /* 底部留白给按钮 */
+}
+
+.worldbook-card {
+    background: #fff !important;
+    border-radius: 24px !important;
+    border: none !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.03) !important; /* 高级柔光阴影 */
+    padding: 20px 24px !important;
+    margin-bottom: 20px !important;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.worldbook-card:active {
+    transform: scale(0.98);
+}
+
+/* 装饰性左边条（可选，增加一点设计感） */
+.worldbook-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20px;
+    bottom: 20px;
+    width: 4px;
+    background: #f0f2f5;
+    border-radius: 0 4px 4px 0;
+}
+
+.card-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #333 !important;
+    margin-bottom: 10px !important;
+    padding-left: 10px; /* 给装饰条留位置 */
+}
+
+.card-preview {
+    font-size: 14px !important;
+    color: #666 !important;
+    line-height: 1.6 !important;
+    padding-left: 10px;
+    margin-bottom: 20px !important;
+    opacity: 0.8;
+}
+
+/* 底部区域 */
+.card-footer {
+    padding-left: 10px;
+    border-top: 1px solid #f9f9f9;
+    padding-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 分类标签小字 */
+.card-category {
+    background: #f5f6f8 !important;
+    color: #999 !important;
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    font-weight: 500;
+}
+
+/* 5. 操作按钮美化：把原来的色块改成优雅的文字或图标 */
+.card-actions {
+    gap: 15px !important;
+}
+
+.action-btn {
+    background: transparent !important;
+    padding: 5px 10px !important;
+    font-size: 13px !important;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* 编辑按钮 */
+.btn-edit {
+    color: #2c3e50 !important; /* 深蓝灰 */
+}
+
+/* 删除按钮 */
+.btn-delete {
+    color: #ccc !important; /* 浅灰，防止误触，更极简 */
+}
+.btn-delete:hover {
+    color: #ff4757 !important; /* 悬停才变红 */
+}
+
+/* 6. 悬浮添加按钮 (FAB) */
+.add-btn {
+    background: #2c3e50 !important; /* 深黑实心圆 */
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 8px 20px rgba(44, 62, 80, 0.4) !important;
+    
+    /* 放到右下角，稍微高一点，避开可能的底部栏 */
+    bottom: 40px !important;
+    right: 25px !important;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.add-btn:active {
+    transform: scale(0.9);
+}
+/* ============ 🛍️ 购物页面美化 (Ins 白金版) ============ */
+
+/* 1. 基础容器：统一浅灰背景 */
+.shopping-screen, .shopping-cart-screen {
+    background: #f5f6f8 !important;
+}
+
+/* 2. 头部美化 */
+.shopping-header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.03) !important;
+    padding: 10px 20px !important;
+    height: 60px;
+}
+
+/* 3. 胶囊切换条 (Segmented Control) */
+.shopping-switch-container {
+    background: #eef0f4 !important; /* 浅灰槽 */
+    padding: 4px !important;
+    border-radius: 100px !important;
+    border: none !important;
+    display: flex;
+    gap: 0 !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.shopping-switch-btn {
+    border-radius: 100px !important;
+    padding: 6px 20px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #999 !important;
+    box-shadow: none !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 选中状态：纯白悬浮块 */
+.shopping-switch-btn.active, 
+.shopping-switch-btn.active-food {
+    background: #ffffff !important;
+    color: #333 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    transform: scale(1.02);
+}
+
+/* 购物车小红点：改成极简黑点或红点 */
+.cart-badge {
+    top: 0 !important;
+    right: 0 !important;
+    background: #ff4757 !important;
+    border: 2px solid #fff !important; /* 加个白边，更精致 */
+    box-shadow: 0 2px 5px rgba(255, 71, 87, 0.3);
+}
+
+/* 4. 搜索栏：大白胶囊 */
+.shopping-search-area {
+    background: transparent !important;
+    padding: 10px 20px 20px !important;
+}
+
+.search-card {
+    background: #fff !important;
+    border-radius: 20px !important; /* 胶囊圆角 */
+    border: none !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.03) !important;
+    padding: 8px 8px 8px 20px !important; /* 右边padding小点给按钮 */
+}
+
+.search-input {
+    font-size: 15px !important;
+    color: #333;
+}
+
+.search-btn {
+    background: #2c3e50 !important; /* 深黑按钮 */
+    color: white !important;
+    border-radius: 14px !important;
+    border: none !important;
+    padding: 8px 20px !important;
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.2) !important;
+}
+
+/* 5. 商品卡片：纯白大圆角 */
+.shopping-content {
+    padding: 0 20px 100px !important;
+}
+
+.product-card {
+    background: #fff !important;
+    border-radius: 24px !important;
+    border: none !important;
+    padding: 20px 24px !important;
+    margin-bottom: 15px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.03) !important;
+    transition: transform 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-card:active {
+    transform: scale(0.98);
+}
+
+/* 商品名 */
+.product-name {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+    margin-bottom: 12px !important;
+    line-height: 1.5;
+}
+
+/* 标签：淡雅色系 */
+.tag-goods {
+    background: #fff5e6 !important; /* 淡橙 */
+    color: #ff9f43 !important;
+    border: none !important;
+    padding: 4px 10px !important;
+    border-radius: 8px !important;
+    font-weight: 600;
+}
+.tag-food {
+    background: #f0f2f5 !important; /* 淡灰 */
+    color: #666 !important;
+    border: none !important;
+    padding: 4px 10px !important;
+    border-radius: 8px !important;
+}
+
+/* 底部价格与按钮行 */
+.product-bottom-row {
+    margin-top: 15px !important;
+    align-items: center !important;
+}
+
+.product-price {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important; /* 价格用深色，更高级 */
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 购买按钮：极简胶囊 */
+.btn-mini-add {
+    background: #2c3e50 !important; /* 黑色 */
+    color: white !important;
+    border-radius: 100px !important;
+    padding: 8px 18px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.15);
+    background-image: none !important; /* 去掉之前的渐变 */
+}
+
+/* 外卖模式按钮：稍微换个色，比如暖橙 */
+.food-title ~ .product-bottom-row .btn-mini-add {
+    background: #ff9f43 !important; 
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(255, 159, 67, 0.2);
+}
+
+/* 6. 购物车页面美化 */
+.cart-item {
+    background: #fff !important;
+    border-radius: 20px !important;
+    border: none !important;
+    padding: 20px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.03) !important;
+}
+
+/* 数量加减按钮 */
+.quantity-btn {
+    border: 1px solid #eee !important;
+    color: #333 !important;
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 14px !important;
+}
+
+/* 底部结算栏：悬浮大白条 */
+.cart-footer {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,0,0,0.03) !important;
+    border-radius: 32px 32px 0 0 !important; /* 顶部圆角 */
+    padding: 25px 25px 30px !important;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.05);
+}
+
+/* 支付方式选择：胶囊 */
+.payment-option {
+    border: 1px solid #f0f0f0 !important;
+    background: #fff !important;
+    border-radius: 12px !important;
+    padding: 8px 12px !important;
+}
+.payment-option.selected {
+    border-color: #2c3e50 !important;
+    background: #f8f9fa !important;
+    color: #333 !important;
+}
+
+/* 结算按钮：通栏大黑条 */
+.btn-checkout {
+    background: #2c3e50 !important;
+    border-radius: 16px !important;
+    height: 50px !important;
+    font-size: 16px !important;
+    box-shadow: 0 8px 20px rgba(44, 62, 80, 0.25) !important;
+    margin-top: 15px !important;
+}
+   /* ============ 🏠 主屏幕：Winter OS 高定版 ============ */
+
+/* 1. 全局背景：参考图那种高级的冷灰色 */
+.main-screen {
+    background: #b4b8bf /* 冷灰色 */
+    /* 如果想要渐变，可以用下面这行 */
+    /* background: linear-gradient(180deg, #c4c8cf 0%, #aab0b8 100%) !important; */
+    padding: 0 25px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 2. 顶部双组件区 */
+.top-widgets-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px; /* 两个组件的间距 */
+    margin-bottom: 30px;
+  /* ★★★ 新增下面这两行 ★★★ */
+    margin-left: 20px;  /* 左边距 */
+    margin-right: 20px; /* 右边距 */
+}
+
+/* 找到这块代码，替换成下面这样 */
+.widget-box {
+    /* background: rgba(255, 255, 255, 0.9);  <-- 这一行是原本的白色背景，删掉或注释掉 */
+    
+    background: transparent !important; /* ✨ 核心修改：背景变成完全透明 */
+    box-shadow: none !important;        /* 建议：透明的时候把阴影也去掉，不然会像个脏印子 */
+    backdrop-filter: none !important;   /* 建议：去掉磨砂效果，让它完全透亮 */
+    
+    /* 下面这些保持不变 */
+    border-radius: 24px;
+    padding: 8px; 
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+/* 左边组件 */
+.left-widget {
+    flex: 1; /* 占比 1 */
+    height: 160px; /* ★ 强制高度对齐 */
+}
+
+/* 右边组件 (稍微大点？其实是稍微宽点，但高度要锁死) */
+.right-widget {
+    flex: 1.1; /* 占比稍微大一点点，视觉上更宽 */
+    height: 160px; /* ★ 强制高度对齐 */
+}
+
+.widget-img-wrapper {
+    width: 100%;
+    flex: 1; /* 占满剩余高度 */
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.widget-placeholder-img {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: #999;
+}
+
+/* 如果你想放真图片，img 样式 */
+.widget-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.widget-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+/* 3. C位个人区 */
+.profile-section {
+    text-align: center;
+    margin-bottom: 35px;
+    cursor: pointer;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3); /* 半透明底 */
+    margin: 0 auto 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.8); /* 白色细边框 */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-signature {
+    font-size: 14px;
+    color: #fff; /* 白色字 */
+    text-shadow: 0 1px 3px rgba(0,0,0,0.2); /* 淡淡的投影让字更清晰 */
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+/* 4. App 图标阵列 */
+.apps-grid-ins {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, auto);
+    gap: 20px 15px; /* 行间距20，列间距15 */
+    margin-bottom: 40px;
+}
+
+.app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.app-item:active {
+    transform: scale(0.95);
+}
+
+.app-icon-box {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px; /* iOS 风格圆角 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    background: #ffffff !important; /* 强制纯白底 */
+}
+/* 如果你有自定义图标图片，用这个 */
+.app-icon-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.app-label {
+    font-size: 11px;
+    color: #fff; /* 白色文字 */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    font-weight: 500;
+}
+
+/* 5. 底部音乐组件 */
+.music-widget {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 24px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    
+    /* 悬浮在底部 */
+    position: absolute;
+    bottom: 35px;
+    left: 25px;
+    right: 25px;
+}
+
+.music-cover {
+    width: 40px;
+    height: 40px;
+    background: #333;
+    border-radius: 50%; /* 黑胶唱片感 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    animation: spin 10s linear infinite;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+.music-info {
+    flex: 1;
+    margin-left: 15px;
+}
+
+.music-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+}
+
+.music-artist {
+    font-size: 11px;
+    color: #999;
+}
+
+.music-control {
+    width: 32px;
+    height: 32px;
+    background: #f0f0f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}   
+
+/* ============ 🧩 顶部组件定制化 (Winter OS) ============ */
+
+.top-widgets-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px; /* 间距 */
+    margin-bottom: 30px;
+    height: 155px; /* ★ 锁死高度，确保左右绝对对齐 */
+}
+
+.widget-box {
+    background: rgba(255, 255, 255, 0.9); /* 保持白色背景 */
+    padding: 0 !important; /* ✨ 核心修改：内边距改为0，图片就会撑满边缘，盖住白底 */
+
+.widget-box:active {
+    transform: scale(0.98);
+}
+
+/* 左侧组件：各占一半 */
+.left-widget {
+    flex: 1; /* 宽度占比 */
+}
+
+/* 右侧组件：稍微宽一点点 */
+.right-widget {
+    flex: 1.1; /* 视觉平衡 */
+}
+
+/* 图片容器 */
+.widget-img-wrapper {
+    width: 100%;
+    background: #f2f4f6; /* 图片加载前的底色 */
+    border-radius: 18px; /* 图片圆角 */
+    overflow: hidden;
+    position: relative;
+}
+
+/* 左侧图片：自适应剩余空间 */
+.left-widget .widget-img-wrapper {
+    flex: 1; /* 撑满除了文字以外的空间 */
+    margin-bottom: 8px; /* 图片和文字的间距 */
+}
+
+/* 右侧图片：撑满全高 */
+.right-widget .widget-img-wrapper.full-height {
+    height: 100%; /* 强制撑满 */
+    border-radius: 18px;
+}
+
+/* 里面的图片标签 */
+.widget-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 裁剪填充 */
+    display: block;
+}
+
+/* 占位符文字 (没有图时显示) */
+.widget-placeholder-text {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: #ccc;
+}
+
+/* 找到 .widget-text-area，把里面的内容改成这样 */
+.widget-text-area {
+    padding: 0 4px 4px 4px;
+    text-align: center !important; /* 刚才改的居中 */
+    
+    /* ✨ 新增下面这几行 ✨ */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 垂直居中 */
+    min-height: 40px;        /* 没字的时候也要撑开一点高度，保持美观 */
+}
+
+/* ✨ 针对每一行文字的魔法 */
+.widget-line-1, .widget-line-2 {
+    white-space: pre-wrap;   /* 关键！这样空格才会被当成字符显示出来 */
+    min-height: 1.2em;       /* 即使没字，也保留一行的高度 */
+    empty-cells: show;       /* 确保空的时候也能显示 */
+}
+
+.widget-line-1 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2px;
+    /* 超出省略 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.widget-line-2 {
+    font-size: 10px;
+    color: #999;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif; /* 用英文字体好看 */
+    letter-spacing: 0.5px;
+}
+
+/* 弹窗适配移动端 */
+#widgetModal .modal {
+    width: 85% !important; /* 手机上不要太宽 */
+    max-width: 320px;
+    border-radius: 24px;
+    padding: 25px;
+}
       
+      /* 这是美化底部*/
     </style>
 </head>
 <body>
     <div class="phone-screen">
         <!-- 主屏幕 -->
-        <div class="main-screen" id="mainScreen">
-            <div class="user-info" onclick="openEditModal()">
-                <div class="avatar" id="mainAvatar">👤</div>
-                <div class="user-id" id="mainUserId">我的小手机</div>
-                <div class="signature" id="mainSignature">今天也要开心呀～</div>
-            </div>
-            
-               <div class="apps-grid">
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('world')">
-                        <div class="app-emoji" id="icon-world">🌍</div>
-                    </div>
-                    <div class="app-name">世界书</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('chat')">
-                        <div class="app-emoji" id="icon-chat">💬</div>
-                    </div>
-                    <div class="app-name">聊天</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('wallpaper')">
-                        <div class="app-emoji" id="icon-wallpaper">🎨</div>
-                    </div>
-                    <div class="app-name">壁纸</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('api')">
-                        <div class="app-emoji" id="icon-api">⚙️</div>
-                    </div>
-                    <div class="app-name">API设置</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder1')">
-                        <div class="app-emoji" id="icon-placeholder1">📱</div>
-                    </div>
-                    <div class="app-name">应用1</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder2')">
-                        <div class="app-emoji" id="icon-placeholder2">🎵</div>
-                    </div>
-                    <div class="app-name">应用2</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder3')">
-                        <div class="app-emoji" id="icon-placeholder3">📷</div>
-                    </div>
-                    <div class="app-name">应用3</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder4')">
-                        <div class="app-emoji" id="icon-placeholder4">🎮</div>
-                    </div>
-                    <div class="app-name">应用4</div>
-                </div>
-            </div>
+     <div class="main-screen" id="mainScreen">
+    
+    <div style="height: 50px;"></div>
 
+   <div class="top-widgets-container">
+     <div class="widget-box left-widget" onclick="openWidgetEditor('left')">
+            <div class="widget-img-wrapper" id="leftWidgetImg">
+                <div class="widget-placeholder-text">🎧</div>
+            </div>
             
-            <div class="bottom-space"></div>
+            <div class="widget-text-area">
+                <div class="widget-line-1" id="leftWidgetLine1">小猫来信</div>
+                
+                <div class="widget-line-2" id="leftWidgetLine2">Dec. 12</div>
+            </div>
         </div>
+
+        <div class="widget-box right-widget" onclick="openWidgetEditor('right')">
+            <div class="widget-img-wrapper full-height" id="rightWidgetImg">
+                <div class="widget-placeholder-text">💻</div>
+            </div>
+        </div>
+    </div>
+
+   <div class="profile-section" onclick="openProfileEditor()">
+        <div class="profile-avatar" id="mainAvatar">
+            <img src="https://img.heliar.top/file/1765364506053_feather.png" style="opacity:0.5">
+        </div>
+        <div class="profile-signature" id="mainSignature">✨ .•* ❄️ winter</div>
+    </div>
+
+ <div class="apps-grid-ins">
+        <div class="app-item" onclick="openApp('world')">
+            <div class="app-icon-box" id="icon-world" style="background: #fff;">🌍</div>
+            <div class="app-label">世界书</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('chat')">
+            <div class="app-icon-box" id="icon-chat" style="background: #fff;">💬</div>
+            <div class="app-label">聊天</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('wallpaper')">
+            <div class="app-icon-box" id="icon-wallpaper" style="background: #fff;">🎨</div>
+            <div class="app-label">壁纸</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('api')">
+            <div class="app-icon-box" id="icon-api" style="background: #fff;">⚙️</div>
+            <div class="app-label">设置</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('placeholder1')">
+            <div class="app-icon-box" id="icon-placeholder1" style="background: #fff;">📱</div>
+            <div class="app-label">小红书</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('placeholder2')">
+            <div class="app-icon-box" id="icon-placeholder2" style="background: #fff;">🎵</div>
+            <div class="app-label">网易云</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('placeholder3')">
+            <div class="app-icon-box" id="icon-placeholder3" style="background: #fff;">📷</div>
+            <div class="app-label">相机</div>
+        </div>
+
+        <div class="app-item" onclick="openApp('placeholder4')">
+            <div class="app-icon-box" id="icon-placeholder4" style="background: #fff;">🎮</div>
+            <div class="app-label">游戏</div>
+        </div>
+    </div>
+
+    <div class="music-widget">
+        <div class="music-cover">💿</div>
+        <div class="music-info">
+            <div class="music-title">Winter Story</div>
+            <div class="music-artist">The Seasons</div>
+        </div>
+        <div class="music-control">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#333"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </div>
+    </div>
+
+</div>
 
         <!-- 壁纸设置页面 -->
         <div class="wallpaper-screen" id="wallpaperScreen">
@@ -4000,22 +5417,24 @@ color: #333;
       <!-- 世界书页面 -->
 <div class="worldbook-screen" id="worldbookScreen">
     <div class="worldbook-header">
-        <button class="back-btn" onclick="backToMain()">←</button>
-        <div class="header-title">世界书</div>
+        <button class="back-btn" onclick="backToMain()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="header-title" style="font-weight: 700; font-size: 17px; letter-spacing: 0.5px;">世界书</div>
+        <div style="width: 40px;"></div>
     </div>
     
     <div class="category-bar">
         <div class="category-tags" id="categoryTags">
-            <div class="category-tag active" data-category="all">全部</div>
-            <div class="category-tag" data-category="manage">管理分类</div>
-        </div>
+            </div>
     </div>
     
     <div class="worldbook-content" id="worldbookList">
-        <!-- 世界书列表将在这里动态生成 -->
-    </div>
+        </div>
     
-    <button class="add-btn" onclick="openAddWorldbook()">+</button>
+    <button class="add-btn" onclick="openAddWorldbook()">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
 </div>
       <!-- API设置页面 -->
 <div class="api-screen" id="apiScreen">
@@ -4077,50 +5496,56 @@ color: #333;
         <div class="header-title">聊天</div>
     </div>
     
-    <!-- 朋友圈入口卡片 -->
-    <div class="moments-card" onclick="openMoments()">
-        <div class="moments-left">
-            <div class="moments-icon">🌟</div>
-            <div class="moments-text">
-                <div class="moments-title">朋友圈</div>
-                <div class="moments-desc">看看大家在干什么~</div>
-            </div>
-        </div>
-        <div class="moments-arrow">→</div>
-    </div>
     
     <!-- 聊天列表 -->
     <div class="chat-list-container" id="chatListContainer">
         <!-- 聊天列表将在这里动态生成 -->
     </div>
-    <div class="wallet-container" id="walletContainer" style="display: none;">
-    <div class="alipay-card">
-        <div class="balance-label">总资产(元)</div>
-        <div class="balance-amount" id="walletBalance">2,000.00</div>
-        <div class="wallet-actions">
-            <button class="wallet-act-btn" onclick="handleWalletAction('recharge')">充值</button>
-            <button class="wallet-act-btn" onclick="handleWalletAction('withdraw')">提现</button>
+ <div class="wallet-container" id="walletContainer" style="display: none;">
+    
+    <div class="wallet-card-ins">
+        <div class="wallet-card-top">
+            <span class="card-chip">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="4"></rect><line x1="2" y1="8" x2="22" y2="8"></line><line x1="2" y1="16" x2="22" y2="16"></line><line x1="8" y1="2" x2="8" y2="22"></line><line x1="16" y1="2" x2="16" y2="22"></line></svg>
+            </span>
+            <span class="card-bank-name">WINTER BANK</span>
+        </div>
+        
+        <div class="wallet-balance-area">
+            <div class="balance-label">Total Assets</div>
+            <div class="balance-amount">¥<span id="walletBalance">2,000.00</span></div>
+        </div>
+        
+        <div class="wallet-btn-row">
+            <button class="wallet-action-btn" onclick="handleWalletAction('recharge')">充值</button>
+            <button class="wallet-action-btn outline" onclick="handleWalletAction('withdraw')">提现</button>
         </div>
     </div>
 
-    <div class="wallet-grid">
-        <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #ff9800;">📝</div>
-            <div class="wallet-text">账单</div>
+    <div class="wallet-functions-ins">
+        <div class="func-item">
+            <div class="func-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            <div class="func-name">账单</div>
         </div>
-        <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #ff5252;">👨‍👩‍👧</div>
-            <div class="wallet-text">亲属卡</div>
+        <div class="func-item">
+            <div class="func-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </div>
+            <div class="func-name">亲属卡</div>
         </div>
-        <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #2196f3;">📈</div>
-            <div class="wallet-text">理财</div>
+        <div class="func-item">
+            <div class="func-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+            </div>
+            <div class="func-name">理财</div>
         </div>
     </div>
 
-    <div class="bill-section">
-        <div class="bill-header">近期账单</div>
-        <div id="billList" class="bill-list">
+    <div class="bill-section-ins">
+        <div class="bill-header-ins">Recent Transactions</div>
+        <div id="billList" class="bill-list-ins">
             </div>
     </div>
 </div>
@@ -4128,26 +5553,58 @@ color: #333;
  <button class="add-btn" onclick="openAddChatMenu()">+</button>
     
     <!-- 底部分组栏 -->
-    <div class="chat-bottom-tabs">
-        <button class="bottom-tab active" data-tab="single" onclick="switchChatTab('single')">💬</button>
-        <button class="bottom-tab" data-tab="group" onclick="switchChatTab('group')">👥</button>
-      <button class="bottom-tab" data-tab="wallet" onclick="switchChatTab('wallet')">💰</button>
-    </div>
+<div class="chat-bottom-tabs">
+    <button class="bottom-tab active" data-tab="single" onclick="switchChatTab('single')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+    </button>
+
+    <button class="bottom-tab" data-tab="group" onclick="switchChatTab('group')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+    </button>
+
+    <button class="bottom-tab" data-tab="moments" onclick="openMomentsFromTab(this)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="14.31" y1="8" x2="20.05" y2="17.94"></line>
+            <line x1="9.69" y1="8" x2="21.17" y2="8"></line>
+            <line x1="7.38" y1="12" x2="13.12" y2="2.06"></line>
+            <line x1="9.69" y1="16" x2="3.95" y2="6.06"></line>
+            <line x1="14.31" y1="16" x2="2.83" y2="16"></line>
+            <line x1="16.62" y1="12" x2="10.88" y2="21.94"></line>
+        </svg>
+    </button>
+
+    <button class="bottom-tab" data-tab="wallet" onclick="switchChatTab('wallet')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+    </button>
+</div>
 </div>
 <!-- 聊天详情页面 -->
 <div class="chat-detail-screen" id="chatDetailScreen">
- <div class="chat-detail-header">
-    <button class="back-btn" onclick="backToChatList()">←</button>
-    <div style="flex: 1; display: flex; flex-direction: column; margin-left: 10px;">
-        <div class="chat-detail-title" id="chatDetailTitle">张三</div>
-        <div class="character-status" id="characterStatus" style="display: none;"></div>
+    <div class="chat-detail-header">
+        <button class="back-btn" onclick="backToChatList()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        
+        <div style="flex: 1; display: flex; flex-direction: column; margin-left: 10px; text-align: center;">
+            <div class="chat-detail-title" id="chatDetailTitle">角色名</div>
+            <div class="character-status" id="characterStatus" style="display: none; font-size: 10px; color: #999; margin-top: 2px;"></div>
+        </div>
+        
+        <button class="back-btn" onclick="openCharacterInfo()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+        </button>
     </div>
-    <button class="back-btn" onclick="openCharacterInfo()">⋮</button>
-</div>
-
-
-     
-   
 
     <div class="messages-container" id="messagesContainer">
         <button class="load-more-btn" id="loadMoreBtn" style="display: none;" onclick="loadMoreMessages()">
@@ -4155,125 +5612,79 @@ color: #333;
         </button>
         <div id="messagesList"></div>
     </div>
-    <!-- 引用消息框 -->
-<div class="quote-box" id="quoteBox" style="display: none;">
-    <div class="quote-header">
-        <span id="quoteAuthor">引用：张三</span>
-        <span class="quote-close" onclick="cancelQuote()">×</span>
-    </div>
-    <div class="quote-content" id="quoteContent">消息内容...</div>
-</div>
 
-<!-- 多选模式操作栏 -->
-<div class="multi-select-bar" id="multiSelectBar" style="display: none;">
-    <div class="selected-count">已选<span id="selectedCountText">0</span>条</div>
-    <div class="multi-select-actions">
-        <button class="btn-multi-cancel" onclick="cancelMultiSelect()">取消</button>
-        <button class="btn-multi-delete" onclick="deleteSelectedMessages()">删除</button>
-    </div>
-</div>
-<!-- 表情包按钮 -->
-<div class="emoji-btn-wrapper">
-    <button class="emoji-btn" onclick="toggleEmojiPanel()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-            <line x1="9" y1="9" x2="9.01" y2="9"></line>
-            <line x1="15" y1="9" x2="15.01" y2="9"></line>
-        </svg>
-    </button>
-    
-  <button class="emoji-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="1 4 1 10 7 10"></polyline>
-        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-    </svg>
-</button>
-
- <!-- ▼▼▼ 新增：发送图片按钮 ▼▼▼ -->
-    <button class="emoji-btn" onclick="document.getElementById('imageInput').click()" title="发送图片">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-            <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
-    </button>
-    <!-- 隐藏的文件选择器 -->
-    <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
-    <!-- ▲▲▲ 新增结束 ▲▲▲ -->
-    <!-- ▼▼▼ 新增：转账按钮 ▼▼▼ -->
-    <button class="emoji-btn" onclick="openTransferModal()" title="转账">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-            <line x1="2" y1="10" x2="22" y2="10"></line>
-        </svg>
-    </button>
-    <!-- ▲▲▲ 转账按钮结束 ▲▲▲ -->
-  <!-- 麦克风按钮 -->
-<button class="emoji-btn" onclick="openVoiceModal()" title="发送语音">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-        <line x1="12" y1="19" x2="12" y2="23"></line>
-        <line x1="8" y1="23" x2="16" y2="23"></line>
-    </svg>
-</button>
-<!-- ▼▼▼ 新增：电话图标按钮 ▼▼▼ -->
-<button class="emoji-btn" onclick="openCall()" title="视频通话">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-    </svg>
-</button>
-<!-- ▲▲▲ 新增结束 ▲▲▲ -->
-<!-- ▼▼▼ 在电话按钮的后面添加购物按钮 ▼▼▼ -->
-<button class="emoji-btn" onclick="openShopping()" title="购物">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-        <circle cx="9" cy="21" r="1"></circle>
-        <circle cx="20" cy="21" r="1"></circle>
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-    </svg>
-</button>
-<!-- ▲▲▲ 购物按钮添加结束 ▲▲▲ -->
-
-  
-</div>
-<!-- 表情包面板 -->
-<div class="emoji-panel" id="emojiPanel" style="display: none;">
-    <!-- 顶部操作栏 -->
-    <div class="emoji-panel-header">
-        <button class="emoji-header-btn" onclick="openEmojiUpload()">上传</button>
-        <button class="emoji-header-btn" onclick="openEmojiCategoryManager()">分类管理</button>
-<button class="emoji-header-btn" id="clearEmojiBtn" onclick="clearCurrentEmojis()" style="display: none; color: #ff4757; border-color: #ff4757;">清空当前</button>
-        <button class="emoji-header-btn" onclick="toggleEmojiDeleteMode()">删除模式</button>
+    <div class="quote-box" id="quoteBox" style="display: none;">
+        <div class="quote-header">
+            <span id="quoteAuthor">引用</span>
+            <span class="quote-close" onclick="cancelQuote()">×</span>
+        </div>
+        <div class="quote-content" id="quoteContent">内容...</div>
     </div>
     
-    <!-- 搜索框 -->
-    <div class="emoji-search-box">
-        <input type="text" class="emoji-search-input" id="emojiSearchInput" placeholder="🔍 搜索表情包..." oninput="searchEmojis()">
-    </div>
-    
-    <!-- 分类标签栏 -->
-    <div class="emoji-category-bar" id="emojiCategoryBar">
-        <span class="emoji-category-tag active" data-category="all" onclick="switchEmojiCategory('all')">全部</span>
-        <!-- 其他分类将动态生成 -->
-    </div>
-    
-    <!-- 表情包网格 -->
-    <div class="emoji-grid-container">
-        <div class="emoji-grid" id="emojiGrid">
-            <!-- 表情包将动态生成 -->
+    <div class="multi-select-bar" id="multiSelectBar" style="display: none;">
+        <div class="selected-count">已选<span id="selectedCountText">0</span>条</div>
+        <div class="multi-select-actions">
+            <button class="btn-multi-cancel" onclick="cancelMultiSelect()">取消</button>
+            <button class="btn-multi-delete" onclick="deleteSelectedMessages()">删除</button>
         </div>
     </div>
-</div>
+
+    <div class="emoji-btn-wrapper">
+        <button class="emoji-btn" onclick="toggleEmojiPanel()" title="表情包">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </button>
+        
+        <button class="emoji-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        </button>
+
+        <button class="emoji-btn" onclick="document.getElementById('imageInput').click()" title="发送图片">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+
+        <button class="emoji-btn" onclick="openTransferModal()" title="转账">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        </button>
+
+        <button class="emoji-btn" onclick="openVoiceModal()" title="发送语音">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
+        
+        <button class="emoji-btn" onclick="openCall()" title="视频通话">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        </button>
+        
+        <button class="emoji-btn" onclick="openShopping()" title="购物">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        </button>
+    </div>
+
+    <div class="emoji-panel" id="emojiPanel" style="display: none;">
+        <div class="emoji-panel-header">
+            <button class="emoji-header-btn" onclick="openEmojiUpload()">上传</button>
+            <button class="emoji-header-btn" onclick="openEmojiCategoryManager()">分类管理</button>
+            <button class="emoji-header-btn" id="clearEmojiBtn" onclick="clearCurrentEmojis()" style="display: none; color: #ff4757; border-color: #ff4757;">清空当前</button>
+            <button class="emoji-header-btn" onclick="toggleEmojiDeleteMode()">删除模式</button>
+        </div>
+        <div class="emoji-search-box">
+            <input type="text" class="emoji-search-input" id="emojiSearchInput" placeholder="🔍 搜索表情包..." oninput="searchEmojis()">
+        </div>
+        <div class="emoji-category-bar" id="emojiCategoryBar"></div>
+        <div class="emoji-grid-container">
+            <div class="emoji-grid" id="emojiGrid"></div>
+        </div>
+    </div>
 
     <div class="chat-input-bar">
-        <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
-      <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
-            <img src="https://img.heliar.top/file/1765364506053_feather.png" alt="发送">
+        <textarea class="chat-input" id="chatInput" placeholder="Type a message..." rows="1"></textarea>
+        
+        <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
 
         <button class="action-icon-btn" id="receiveBtn" onclick="receiveAIReply()" title="接收回信">
-            <img src="https://img.heliar.top/file/1765364502822_mail.png" alt="接收">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
         </button>
     </div>
 </div>
@@ -4463,7 +5874,60 @@ color: #333;
 
 
     </div>
+<div class="modal-overlay" id="widgetModal" onclick="closeWidgetModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title" id="widgetModalTitle">编辑组件</div>
+        
+        <div class="form-group">
+            <label class="form-label">更换图片</label>
+            <div class="file-input-area" onclick="document.getElementById('widgetFileInput').click()" style="padding: 15px;">
+                <div id="widgetFilePreview" style="font-size: 13px; color: #666;">📁 点击选择图片</div>
+                <input type="file" id="widgetFileInput" accept="image/*" style="display: none;" onchange="previewWidgetImage(this)">
+            </div>
+        </div>
+        
+        <div id="widgetTextInputs">
+            <div class="form-group">
+                <label class="form-label">第一行文字 (标题)</label>
+                <input type="text" id="widgetLine1Input" class="form-input" placeholder="例如：小猫来信">
+            </div>
+            <div class="form-group">
+                <label class="form-label">第二行文字 (日期/备注)</label>
+                <input type="text" id="widgetLine2Input" class="form-input" placeholder="例如：Dec. 12">
+            </div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeWidgetModal()">取消</button>
+            <button class="btn btn-save" onclick="saveWidgetData()">保存</button>
+        </div>
+    </div>
+</div>
 
+<div class="modal-overlay" id="profileModal" onclick="closeProfileModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">编辑个人资料</div>
+        
+        <div class="form-group">
+            <label class="form-label">更换头像</label>
+            <div class="file-input-area" onclick="document.getElementById('profileFileInput').click()" style="padding: 15px;">
+                <div id="profileFilePreview" style="font-size: 13px; color: #666;">📁 点击选择新头像</div>
+                <input type="file" id="profileFileInput" accept="image/*" style="display: none;" onchange="previewProfileImage(this)">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">个性签名</label>
+            <input type="text" id="profileSigInput" class="form-input" placeholder="输入你的个性签名...">
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeProfileModal()">取消</button>
+            <button class="btn btn-save" onclick="saveProfileData()">保存</button>
+        </div>
+    </div>
+</div>
+  
 <!-- 编辑弹窗 -->
 <div class="modal-overlay" id="editModal" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()" style="max-height: 80vh; overflow-y: auto; width: 90%; max-width: 320px; padding: 20px;">
@@ -4930,41 +6394,55 @@ color: #333;
 </div>
 <!-- ============ 购物页面 ============ -->
 <div class="shopping-screen" id="shoppingScreen">
-    <!-- 顶部导航栏 -->
-<div class="shopping-header">
-    <button class="back-btn" onclick="backFromShopping()">←</button>
+    <div class="shopping-header">
+        <button class="back-btn" onclick="backFromShopping()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        
+        <div class="header-title" style="margin: 0; flex: 1; display: flex; justify-content: center;">
+            <div class="shopping-switch-container">
+                <button class="shopping-switch-btn active" id="btn-goods" onclick="switchShoppingTab('goods')">百货</button>
+                <button class="shopping-switch-btn" id="btn-food" onclick="switchShoppingTab('food')">外卖</button>
+            </div>
+        </div>
+        
+        <button class="back-btn" onclick="openShoppingCart()" style="position: relative;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
+        </button>
+    </div>
     
-    <div class="header-title" style="margin: 0; display: flex; justify-content: center;">
-        <div class="shopping-switch-container">
-            <button class="shopping-switch-btn active" id="btn-goods" onclick="switchShoppingTab('goods')">百货</button>
-            <button class="shopping-switch-btn" id="btn-food" onclick="switchShoppingTab('food')">外卖</button>
+    <div class="shopping-search-area">
+        <div class="search-card">
+            <div class="search-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+            <input type="text" id="shoppingSearchInput" class="search-input" placeholder="Search products...">
+            <button class="search-btn" onclick="generateProducts()">Go</button>
         </div>
     </div>
+
+    <div class="shopping-content" id="shoppingProductList">
+        </div>
     
-    <button class="back-btn" onclick="openShoppingCart()" style="position: relative;">
-        🛒
-        <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
+    <button class="add-btn" onclick="openAddProduct()">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </button>
 </div>
-    
- <!-- 搜索区域 -->
-<div class="shopping-search-area">
-    <div class="search-card">
-        <div class="search-icon">🔍</div>
-        <input type="text" id="shoppingSearchInput" class="search-input" placeholder="搜索你想要的商品...">
-        <button class="search-btn" onclick="generateProducts()">搜索</button>
-    </div>
-</div>
 
-
+<div class="shopping-cart-screen" id="shoppingCartScreen">
+    <div class="shopping-header">
+        <button class="back-btn" onclick="backToShopping()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="header-title" style="font-weight: 700; font-size: 17px;">购物车</div>
+        <div style="width: 40px;"></div> </div>
     
-    <!-- 商品列表 -->
-    <div class="shopping-content" id="shoppingProductList">
-        <!-- 商品卡片将在这里动态生成 -->
-    </div>
+    <div class="cart-content" id="cartContent">
+        </div>
     
-    <!-- 添加商品按钮 -->
-    <button class="add-btn" onclick="openAddProduct()">+</button>
+    <div class="cart-footer" id="cartFooter">
+        </div>
 </div>
 
 <!-- 购物车页面 -->
@@ -5024,85 +6502,53 @@ color: #333;
 let diaries = [];
 let currentViewingDiaryId = null;
 
-        function initDB() {
-           const request = indexedDB.open('phoneData', 12);
-            
-            request.onerror = () => console.error('数据库打开失败');
-            
-            request.onsuccess = (event) => {
-                db = event.target.result;
-                loadUserInfo();
-                loadWallpaper();
-              loadWorldbooks();
-              loadApiConfig();
-loadApiSchemes();
-              loadAppIcons();
-              loadWalletData(); // 加载钱包
-            };
-            
-            request.onupgradeneeded = (event) => {
-                db = event.target.result;
-                if (!db.objectStoreNames.contains('userInfo')) {
-                    db.createObjectStore('userInfo', { keyPath: 'id' });
+function initDB() {
+    console.log("正在初始化数据库 (版本 18)..."); 
+    // ★ 修改 1：版本号改成 18 (强制刷新)
+    const request = indexedDB.open('phoneData', 18);
+    
+    request.onerror = (e) => console.error('数据库打开失败:', e);
+    
+    request.onsuccess = (event) => {
+        console.log("数据库连接成功！开始加载数据...");
+        db = event.target.result;
+        
+        // 加载所有数据
+        loadUserInfo();
+        loadWallpaper();
+        loadWorldbooks();
+        loadApiConfig();
+        loadApiSchemes();
+        loadAppIcons();
+        loadWalletData();
+        loadWidgetData(); 
+        loadProfileData(); 
+    };
+    
+    request.onupgradeneeded = (event) => {
+        console.log("正在升级数据库结构...");
+        db = event.target.result;
+        
+        // ★ 修改 2：注意看这里！把 'wallpapers' 改成了 'wallpaper' (去掉s)
+        // 这样就和 saveWallpaper 里的名字对上号了！
+        const stores = [
+            'userInfo', 'chatHistory', 'characterInfo', 'wallpaper', // <--- 这里改成了单数
+            'worldbooks', 'apiConfig', 'apiSchemes', 'appIcons', 
+            'wallet', 'widgetData'
+        ];
+        
+        stores.forEach(name => {
+            if (!db.objectStoreNames.contains(name)) {
+                console.log(`正在创建仓库: ${name}`);
+                if (name === 'worldbooks') {
+                    db.createObjectStore(name, { keyPath: 'id', autoIncrement: true });
+                } else {
+                    db.createObjectStore(name, { keyPath: 'id' });
                 }
-                if (!db.objectStoreNames.contains('wallpaper')) {
-                    db.createObjectStore('wallpaper', { keyPath: 'id' });
-                }
-              if (!db.objectStoreNames.contains('worldbooks')) {
-    db.createObjectStore('worldbooks', { keyPath: 'id', autoIncrement: true });
+            }
+        });
+    };
 }
-if (!db.objectStoreNames.contains('categories')) {
-    db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
-}
-              if (!db.objectStoreNames.contains('apiConfig')) {
-    db.createObjectStore('apiConfig', { keyPath: 'id' });
-}
-if (!db.objectStoreNames.contains('apiSchemes')) {
-    db.createObjectStore('apiSchemes', { keyPath: 'id', autoIncrement: true });
-}
-if (!db.objectStoreNames.contains('chats')) {
-    db.createObjectStore('chats', { keyPath: 'id', autoIncrement: true });
-}
-if (!db.objectStoreNames.contains('messages')) {
-    db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-}
-              if (!db.objectStoreNames.contains('characterInfo')) {
-    db.createObjectStore('characterInfo', { keyPath: 'id' });
-}if (!db.objectStoreNames.contains('appIcons')) {
-    db.createObjectStore('appIcons', { keyPath: 'id' });
-}if (!db.objectStoreNames.contains('diaries')) {
-    db.createObjectStore('diaries', { keyPath: 'id', autoIncrement: true });
-}if (!db.objectStoreNames.contains('emojis')) {
-    db.createObjectStore('emojis', { keyPath: 'id', autoIncrement: true });
-}
-if (!db.objectStoreNames.contains('emojiCategories')) {
-    db.createObjectStore('emojiCategories', { keyPath: 'id' });
-}
-if (!db.objectStoreNames.contains('callSettings')) {
-    db.createObjectStore('callSettings', { keyPath: 'id' });
-}
-if (!db.objectStoreNames.contains('callSettings')) {
-    db.createObjectStore('callSettings', { keyPath: 'id' });
-}
-// ▼▼▼ 在这里添加购物相关的表 ▼▼▼
-if (!db.objectStoreNames.contains('products')) {
-    db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
-}
-if (!db.objectStoreNames.contains('shoppingCart')) {
-    db.createObjectStore('shoppingCart', { keyPath: 'id', autoIncrement: true });
-}
-if (!db.objectStoreNames.contains('shoppingCategories')) {
-    db.createObjectStore('shoppingCategories', { keyPath: 'id' });
-}
-// ▲▲▲ 添加结束 ▲▲▲
-if (!db.objectStoreNames.contains('wallet')) {
-    db.createObjectStore('wallet', { keyPath: 'id' });
-}
-
-
-
-            };
-        }
         
  function saveToDB(storeName, data) {
     const transaction = db.transaction([storeName], 'readwrite');
@@ -5195,36 +6641,44 @@ function loadFromDB(storeName, callback) {
                 reader.onload = (e) => {
                     currentWallpaper = e.target.result;
                     applyWallpaper(currentWallpaper);
-                    saveToDB('wallpaper', { data: currentWallpaper, type: 'local' });
+         saveToDB('wallpapers', { data: currentWallpaper, type: 'local' });
                     backToMain();
                 };
                 reader.readAsDataURL(fileInput.files[0]);
             } else if (urlInput.value) {
                 currentWallpaper = urlInput.value;
                 applyWallpaper(currentWallpaper);
-                saveToDB('wallpaper', { data: currentWallpaper, type: 'url' });
+               saveToDB('wallpapers', { data: currentWallpaper, type: 'url' });
                 backToMain();
             } else {
                 alert('请选择图片或输入网址');
             }
         }
         
-        function applyWallpaper(wallpaperData) {
-            if (wallpaperData) {
-                document.body.style.background = `url(${wallpaperData}) center/cover no-repeat`;
-            } else {
-                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            }
-        }
+   function applyWallpaper(wallpaperData) {
+    // 1. 获取手机屏幕元素，而不是整个网页 body
+    const screen = document.getElementById('mainScreen'); 
+    
+    if (wallpaperData) {
+        // 2. 设置为新壁纸
+        // 注意：这里用了 setProperty ... 'important'，是为了覆盖 CSS 里那个灰色的默认背景
+        screen.style.setProperty('background', `url(${wallpaperData}) center/cover no-repeat`, 'important');
+    } else {
+        // 3. 如果没有壁纸，清空内联样式，它会自动变回默认的灰色或渐变
+        screen.style.background = ''; 
+    }
+}
+
         
-        function loadWallpaper() {
-            loadFromDB('wallpaper', (data) => {
-                if (data && data.data) {
-                    currentWallpaper = data.data;
-                    applyWallpaper(currentWallpaper);
-                }
-            });
+     function loadWallpaper() {
+    loadFromDB('wallpapers', (data) => {
+        if (data && data.data) {
+            currentWallpaper = data.data;
+            applyWallpaper(currentWallpaper);
         }
+    });
+}
+
         
         // 文件预览
         document.getElementById('wallpaperFile').addEventListener('change', function(e) {
@@ -5256,31 +6710,45 @@ function loadFromDB(storeName, callback) {
             document.getElementById('editModal').style.display = 'none';
         }
         
-   function loadCurrentInfo() {
-    document.getElementById('userIdInput').value = document.getElementById('mainUserId').textContent;
-    document.getElementById('signatureInput').value = document.getElementById('mainSignature').textContent;
+ // ✂️ 纯净版：只加载签名和颜色
+function loadCurrentInfo() {
+    // 1. 获取签名
+    const sigEl = document.getElementById('mainSignature');
+    // 如果还没设置过，给个默认的空值
+    document.getElementById('signatureInput').value = sigEl ? sigEl.textContent : '';
     
-    // 加载当前颜色
+    // 2. 这里虽然没用了，但为了防止报错，把 ID 输入框留空 (如果你还没删掉弹窗里的输入框)
+    const idInput = document.getElementById('userIdInput');
+    if (idInput) idInput.value = ''; 
+
+    // 3. 加载当前颜色
     loadFromDB('userInfo', (data) => {
         if (data) {
             const textColor = data.textColor || '#ffffff';
             const appTextColor = data.appTextColor || '#ffffff';
             
-            document.getElementById('textColorInput').value = textColor;
-            document.getElementById('appTextColorInput').value = appTextColor;
+            const textColorInput = document.getElementById('textColorInput');
+            if (textColorInput) textColorInput.value = textColor;
+            
+            const appTextColorInput = document.getElementById('appTextColorInput');
+            if (appTextColorInput) appTextColorInput.value = appTextColor;
             
             // 同步预览框颜色
-            document.getElementById('textColorPreview').style.background = textColor;
-            document.getElementById('appTextColorPreview').style.background = appTextColor;
+            const textPreview = document.getElementById('textColorPreview');
+            if (textPreview) textPreview.style.background = textColor;
+            
+            const appPreview = document.getElementById('appTextColorPreview');
+            if (appPreview) appPreview.style.background = appTextColor;
         }
     });
 }
 
 
-        
- function saveUserInfo() {
-    const userId = document.getElementById('userIdInput').value || '我的小手机';
-    const signature = document.getElementById('signatureInput').value || '今天也要开心呀～';
+// ✂️ 纯净版：不再依赖主屏幕的元素
+function saveUserInfo() {
+    // ID 既然不显示了，就给个固定值，或者这里你随便写什么都行
+    const userId = 'WinterUser'; 
+    const signature = document.getElementById('signatureInput').value || '✨ .•* ❄️ winter';
     const textColor = document.getElementById('textColorInput').value;
     const appTextColor = document.getElementById('appTextColorInput').value;
     const avatarFile = document.getElementById('avatarInput').files[0];
@@ -5291,13 +6759,14 @@ function loadFromDB(storeName, callback) {
             const avatarData = e.target.result;
             updateUI(userId, signature, avatarData, textColor, appTextColor);
             saveToDB('userInfo', { userId, signature, avatar: avatarData, textColor, appTextColor });
+            
             // 触发全局头像更新事件
-window.dispatchEvent(new StorageEvent('storage', {
-    key: 'userAvatar',
-    newValue: avatarData
-}));
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'userAvatar',
+                newValue: avatarData
+            }));
 
-          closeModal();
+            closeModal();
         };
         reader.readAsDataURL(avatarFile);
     } else {
@@ -5312,22 +6781,29 @@ window.dispatchEvent(new StorageEvent('storage', {
 }
 
         
-    function updateUI(userId, signature, avatar, textColor, appTextColor) {
-    document.getElementById('mainUserId').textContent = userId;
-    document.getElementById('mainSignature').textContent = signature;
+   // ✂️ 纯净版：彻底删除了 ID 相关的操作
+function updateUI(userId, signature, avatar, textColor, appTextColor) {
+    // 1. 更新签名 (Winter OS 的核心)
+    const sigElement = document.getElementById('mainSignature');
+    if (sigElement) {
+        sigElement.textContent = signature;
+        if (textColor) sigElement.style.color = textColor;
+    }
     
+    // 2. 更新头像
     if (avatar) {
-        document.getElementById('mainAvatar').innerHTML = `<img src="${avatar}" alt="头像">`;
+        const avatarElement = document.getElementById('mainAvatar');
+        if (avatarElement) {
+            avatarElement.innerHTML = `<img src="${avatar}" alt="头像">`;
+        }
     }
     
-    // 应用字体颜色
-    if (textColor) {
-        document.getElementById('mainUserId').style.color = textColor;
-        document.getElementById('mainSignature').style.color = textColor;
-    }
-    
-    // 应用App图标字体颜色
+    // 3. 更新 App 文字颜色
     if (appTextColor) {
+        document.querySelectorAll('.app-label').forEach(el => {
+            el.style.color = appTextColor;
+        });
+        // 兼容旧版样式的类名
         document.querySelectorAll('.app-name').forEach(el => {
             el.style.color = appTextColor;
         });
@@ -5878,43 +7354,46 @@ function loadChats() {
 }
 
 // 切换聊天/钱包 Tab
+// 切换底部 Tab 的核心逻辑 (修复版)
 function switchChatTab(tab) {
-    // 1. 更新底部按钮状态
+    // 1. 视觉切换：更新底部图标的选中状态
     document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.bottom-tab[data-tab="${tab}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`.bottom-tab[data-tab="${tab}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
     
-    // 获取需要控制的元素
+    // 2. 获取页面元素
     const chatList = document.getElementById('chatListContainer');
     const walletContainer = document.getElementById('walletContainer');
     const addBtn = document.querySelector('.chat-screen .add-btn');
     const headerTitle = document.querySelector('.chat-screen .header-title');
-    const momentsCard = document.querySelector('.moments-card'); // ★ 找到朋友圈卡片
     
-    // 2. 界面切换逻辑
+    // 3. 根据点击的 tab 执行不同逻辑
     if (tab === 'wallet') {
-        // === 进入钱包模式 ===
-        chatList.style.display = 'none';
-        walletContainer.style.display = 'block';
-        addBtn.style.display = 'none';      // 隐藏加号
-        momentsCard.style.display = 'none'; // ★ 隐藏朋友圈
+        // === 🔴 进入钱包模式 ===
+        currentChatTab = 'wallet';
         
-        headerTitle.textContent = '我的钱包';
+        chatList.style.display = 'none';      // 隐藏聊天列表
+        walletContainer.style.display = 'block'; // 显示钱包
+        addBtn.style.display = 'none';        // 钱包页不显示加号
         
-        // 刷新钱包数据
-        renderWallet();
+        headerTitle.textContent = '钱包';
+        renderWallet(); // 刷新钱包数据
         
     } else {
-        // === 进入聊天模式 (单聊/群聊/偷看) ===
-        chatList.style.display = 'block';
-        walletContainer.style.display = 'none';
-        addBtn.style.display = 'block';     // 显示加号
-        momentsCard.style.display = 'flex'; // ★ 显示朋友圈
+        // === 🔵 进入聊天模式 (单聊 或 群聊) ===
         
-        headerTitle.textContent = '聊天';
+        // ★ 核心修复：更新全局变量，告诉程序现在是看'single'还是'group'
+        currentChatTab = tab; 
         
-        // 恢复之前的逻辑
-        currentChatTab = tab;
-        renderChatList();
+        chatList.style.display = 'block';     // 显示聊天列表
+        walletContainer.style.display = 'none'; // 隐藏钱包
+        addBtn.style.display = 'block';       // 显示加号
+        
+        // 顺便把标题也改一下，区分更明显
+        headerTitle.textContent = (tab === 'single') ? '消息' : '群组';
+        
+        // ★ 核心修复：强制重新渲染列表，触发数据过滤
+        renderChatList(); 
     }
 }
 
@@ -7190,6 +8669,10 @@ ${weatherInfoStr}
 更新状态时：[状态]在线-正在煮面|||[消息]第一条消息...
 保持状态时：[状态]保持|||[消息]第一条消息...
 
+【购物规则】
+请仔细阅读上方的[系统记录]。如果你发现自己刚刚已经送过某种礼物（如草莓），请不要短时间内重复赠送，除非用户明确表示还想要，一切根据人设来。
+
+      
 【重要回复要求】你每次都需要根据人设，世界书，上下文聊天记录参考
 1. 你的回复必须分成6-12条独立消息，用"|||"符号分隔
 2. 转账功能：[转账:金额:备注]
@@ -8471,6 +9954,8 @@ function handleCityInfoCheckbox() {
     }
 }
 
+
+      
 // 打开城市信息设置弹窗
 function openCityInfoModal() {
     if (!currentChatId) {
@@ -9449,10 +10934,45 @@ const recentMessages = await new Promise(resolve => {
     });
 });
 
-   const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇真实的个人日记。
+ // ================= 进阶优化：全家桶版 =================
+    
+    // 1. 定义一个【超级灵感库】（包含你的旧爱 + 新欢）
+    const allCreativeModules = [
+        // --- 你的经典款 (绝不丢失！) ---
+        "❤️ 恋爱日记 (记录甜蜜瞬间)",
+        "📝 备忘录 (重要的事情记下来)",
+        "💢 记仇本 (虽然记仇但还是爱你的)",
+        "🥴 精神状态 (发疯/emo/平静)",
+        "🤔 反思复盘 (吾日三省吾身)",
+        "👗 今日OOTD (穿搭记录)",
+        "📅 TodoList (待办事项)",
+        "😊 开心小事 (微小但确定的幸福)",
+        "😖 烦恼清单 (吐槽大会)",
+
+        // --- 新增的盲盒趣味款 ---
+        "👀 偷听到的 (记录对方说过的金句)",
+        "💡 脑洞大开 (突然想到的怪点子)",
+        "🍽️ 干饭记录 (今天吃了啥/想吃啥)",
+        "🎵 今日BGM (一首符合心情的歌)",
+        "🔋 社交电量 (显示剩余电量%)",
+        "🛌 梦境碎片 (昨晚做了什么梦)",
+        "📢 系统公告 (假装发布一条新闻)",
+        "💊 今日药方 (给心情开个药)",
+        "🛒 许愿清单 (想要的东西)",
+        "🏆 今日成就 (哪怕是按时起床也算)"
+    ];
+
+    // 2. 随机抽取 10 个给 AI 挑选（保证每次打开日记都有新鲜感）
+    // 这样既可能出现“恋爱日记”，也可能出现“社交电量”，充满惊喜！
+    const suggestedModules = allCreativeModules
+        .sort(() => 0.5 - Math.random()) // 打乱顺序
+        .slice(0, 10)                    // 取前10个
+        .join("\n");
+
+    const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇**灵魂有趣、拒绝流水账**的个人日记。
 
 【角色人设】
-${characterInfo.personality || '一个真实的人'}
+${characterInfo.personality || '一个真实有趣的人'}
 
 【对方人设】
 ${characterInfo.myPersonality || '无'}
@@ -9460,94 +10980,55 @@ ${characterInfo.myPersonality || '无'}
 【最近30轮聊天记忆】
 ${recentMessages}
 
-请根据以上信息，结合最近的聊天内容，写出符合你性格和经历的真实日记。
+请根据聊天内容，**智能选择最合适的板块**来写日记。
 
-【必须包含】
+【核心要求】
+1. **日记标题**：必须搞怪、有趣或文艺。（例如：“关于我今天差点饿死这件事”、“某人今天怪怪的”）
+2. **今日天气/心情**：可以用颜文字或emoji搞怪。
 
-- 日记标题（简短有趣，15字以内）
-- 今日天气（${weatherInfo || '根据心情虚构天气'}）
-- 今日心情（用emoji + 简短描述）
+【动态板块生成规则】
+请从下面列表中选择 **3个** 最贴合今天聊天内容的板块，然后再 **自创 1 个** 与今天对话高度相关的“限定板块”。
+(总共 4 个板块)
 
-【动态板块】从以下选择4个（正好4个，不要重复）：
-1. 开心小事
-2. 烦恼清单
-3. 恋爱日记
-4. 备忘录
-5. 记仇本
-6. TodoList
-7. 精神状态
-8. 反思复盘
-9.今日OOTD
+[本次随机备选池]:
+${suggestedModules}
 
-【今日感悟】（固定在最后，必须写）
-- 总字数不低于300字
-- 必须分成3-4段，每段之间用空行分隔
-- 每段开头空两格（首行缩进）
+**自创板块示例**：
+- 如果聊了游戏 -> [🎮 峡谷战况]
+- 如果聊了吵架 -> [🏳️ 举白旗投降] 或 [😤 今天的理都在我这]
+- 如果聊了熬夜 -> [🐼 秃头以此明志]
 
-⚠️ 严格字数要求（非常重要）：
-• 每段字数：60-100字（禁止超过100字）
-• 如果一段写超过100字，立即结束这段，开始新段落
-• 每段只讲一个小观点，不要贪多
+【今日感悟】（固定在最后）
+- 字数：200-300字
+- 必须分成3段，每段开头空两格
+- 像朋友谈心一样，走心、真实
 
-【每段字数检查清单】
-✓ 第1段：60-100字 ✓
-✓ 第2段：60-100字 ✓
-✓ 第3段：60-100字 ✓
-✓ 第4段：60-100字 ✓（可选）
-
-写作风格：
-- 像真人一样深入思考和总结
-- 每段集中讲一个小感悟
-- 宁可多分几段，也不要一段写太长
-
-
-【写作风格】
-- 自然真实，可以有错别字、语气词
-- 可以划掉内容重写：用 ~~删除内容~~ 新内容
-- TodoList用 [x] 已完成，[ ] 未完成
-- 加入emoji表达情绪
-- 符合你的人设：${characterInfo.personality || '一个真实的人'}
-
-【严格格式】
-标题: xxx
-今日天气: xxx
-今日心情: xxx
+【严格输出格式示例】
+标题: 震惊！某人竟然...
+今日天气: 🌤️ 适合想你
+今日心情: (｡•ˇ‸ˇ•｡) 哼
 
 [板块1名称]
 1. xxx
-2. ~~xxx~~ xxx
-3. xxx
+2. xxx
 
 [板块2名称]
-• [x] xxx
-• [ ] xxx
+1. xxx
+2. xxx
 
 [板块3名称]
-xxx...
+...
 
-[板块4名称]
-xxx...
+[自创板块名称]
+...
 
 [今日感悟]
-  第一段内容...
-
-  第二段内容...
-
-  第三段内容...
+  (这里写感悟内容...)
   
-标签: #标签1 #标签2 #标签3
+标签: #标签1 #标签2
 
-【最后警告】
-如果今日感悟的任何一段超过100字，你将违反规则。
-请在写每段时，数着字数写，写到80-90字时就立即换段。
-
-每段结构：
-1. 开头（10-20字）
-2. 展开（40-60字）
-3. 收尾（10-20字）
-总计：60-100字
-
-请开始写日记。`;
+`;
+    // ================= 进阶优化结束 =================
 
     try {
         const url = currentApiConfig.baseUrl.endsWith('/') 
@@ -11161,6 +12642,31 @@ ${characterInfo.cityInfoEnabled ? `
         const contextCount = contextRounds * 2;
         const recentMessages = allMessages.slice(-contextCount).map(msg => {
             let content = msg.content;
+
+// ★★★ 核心修复：把购物订单“翻译”成文字给AI看 ★★★
+            if (msg.type === 'shopping_order') {
+                const data = msg.orderData;
+                const itemNames = data.items.map(i => i.name).join('、');
+                const price = data.totalPrice.toFixed(2);
+                
+                // 情况A：AI给用户买了东西
+                if (data.orderType === 'ai_buy_for_user') {
+                    // 加上 [系统记录] 前缀，让 AI 知道这是已经发生的事实
+                    content = `[系统记录] 你刚刚给用户买了：${itemNames} (¥${price})，订单已完成。`;
+                } 
+                // 情况B：用户请AI代付
+                else if (data.orderType === 'ask_ta_pay') {
+                    const statusText = data.status === 'pending' ? '等待你确认' : 
+                                     data.status === 'paid' ? '你已同意支付' : '你已拒绝';
+                    content = `[系统记录] 用户请求你代付：${itemNames} (¥${price})，当前状态：${statusText}。`;
+                }
+                // 情况C：用户给AI买了东西
+                else if (data.orderType === 'buy_for_ta') {
+                    content = `[系统记录] 用户送了你礼物：${itemNames} (¥${price})，你已收下。`;
+                }
+            }
+            // ★★★ 结束 ★★★
+      
           // ★★★ 核心修复：用 isSticker 字段精准判断 ★★★
     if (msg.type === 'image') {
         if (msg.isSticker === true) {
@@ -12517,7 +14023,268 @@ function rejectAIPayRequest(messageId) {
     scrollToBottom();
 }
 
+// ============ 🧩 主屏幕组件逻辑 (安全增强版) ============
 
+let currentEditingWidget = null; 
+let widgetTempImage = null; 
+
+// 辅助函数：安全地获取元素，找不到也不报错
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+function safeSetHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+// 1. 打开编辑弹窗
+function openWidgetEditor(side) {
+    currentEditingWidget = side;
+    widgetTempImage = null; 
+    
+    const modal = document.getElementById('widgetModal');
+    if (!modal) { console.error("找不到 widgetModal 弹窗 HTML"); return; }
+    
+    // 重置文件输入
+    const fileInput = document.getElementById('widgetFileInput');
+    if (fileInput) fileInput.value = '';
+    const filePreview = document.getElementById('widgetFilePreview');
+    if (filePreview) filePreview.textContent = '📁 点击选择图片';
+    
+    // 切换界面显示
+    const title = document.getElementById('widgetModalTitle');
+    const textInputs = document.getElementById('widgetTextInputs');
+    
+    if (side === 'left') {
+        if (title) title.textContent = '编辑左侧组件';
+        if (textInputs) textInputs.style.display = 'block'; 
+        
+        // 读取当前文字填充到输入框
+        const line1 = document.getElementById('leftWidgetLine1');
+        const line2 = document.getElementById('leftWidgetLine2');
+        const input1 = document.getElementById('widgetLine1Input');
+        const input2 = document.getElementById('widgetLine2Input');
+        
+        if (input1 && line1) input1.value = line1.textContent;
+        if (input2 && line2) input2.value = line2.textContent;
+        
+    } else {
+        if (title) title.textContent = '编辑右侧组件';
+        if (textInputs) textInputs.style.display = 'none'; 
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// 2. 关闭弹窗
+function closeWidgetModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('widgetModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// 3. 预览
+function previewWidgetImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            widgetTempImage = e.target.result; 
+            const preview = document.getElementById('widgetFilePreview');
+            if (preview) preview.textContent = '✅ 图片已选择 (点击保存生效)';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 4. 保存数据 (修复版：精准保存空格和空内容)
+function saveWidgetData() {
+    if (typeof loadFromDB !== 'function' || typeof saveToDB !== 'function') {
+        alert("数据库功能未加载，请刷新页面！");
+        return;
+    }
+
+    loadFromDB('widgetData', (data) => {
+        const newData = data || {}; 
+        if (newData.id) delete newData.id;
+
+        // --- 存图片 ---
+        if (widgetTempImage) {
+            newData[currentEditingWidget + 'Img'] = widgetTempImage;
+            const imgId = `${currentEditingWidget}WidgetImg`;
+            const imgEl = document.getElementById(imgId);
+            if (imgEl) imgEl.innerHTML = `<img src="${widgetTempImage}">`;
+        }
+        
+        // --- 存文字 (仅左侧) ---
+        if (currentEditingWidget === 'left') {
+            const input1 = document.getElementById('widgetLine1Input');
+            const input2 = document.getElementById('widgetLine2Input');
+            const line1El = document.getElementById('leftWidgetLine1');
+            const line2El = document.getElementById('leftWidgetLine2');
+
+            // ✨ 核心修改：直接获取 value，不管是空格还是空字符串都照单全收
+            if (input1) {
+                newData.leftText1 = input1.value;
+                if (line1El) line1El.textContent = input1.value;
+            }
+
+            if (input2) {
+                newData.leftText2 = input2.value;
+                if (line2El) line2El.textContent = input2.value;
+            }
+        }
+        
+        saveToDB('widgetData', newData);
+        closeWidgetModal();
+    });
+}
+
+// 5. 加载组件数据 (修复版：允许空字符串)
+function loadWidgetData() {
+    if (typeof loadFromDB !== 'function') return;
+
+    loadFromDB('widgetData', (data) => {
+        if (!data) return;
+
+        // 恢复左侧图片
+        if (data.leftImg) {
+            const el = document.getElementById('leftWidgetImg');
+            if (el) el.innerHTML = `<img src="${data.leftImg}">`;
+        }
+
+        // 恢复左侧文字 (✨ 核心修改：允许空内容覆盖默认字)
+        const line1El = document.getElementById('leftWidgetLine1');
+        const line2El = document.getElementById('leftWidgetLine2');
+
+        // 只要数据里有记录（哪怕是空字符串），就覆盖掉 HTML 里的默认字
+        if (data.leftText1 !== undefined) {
+            line1El.textContent = data.leftText1;
+        }
+        if (data.leftText2 !== undefined) {
+            line2El.textContent = data.leftText2;
+        }
+        
+        // 恢复右侧图片
+        if (data.rightImg) {
+            const el = document.getElementById('rightWidgetImg');
+            if (el) el.innerHTML = `<img src="${data.rightImg}">`;
+        }
+    });
+}
+              
+// ============ 👤 个人资料逻辑 (Profile) ============
+
+let profileTempImage = null; // 临时存头像
+
+// 1. 打开编辑弹窗
+function openProfileEditor() {
+    profileTempImage = null; // 重置
+    
+    const modal = document.getElementById('profileModal');
+    const sigInput = document.getElementById('profileSigInput');
+    const currentSig = document.getElementById('mainSignature');
+    const filePreview = document.getElementById('profileFilePreview');
+    const fileInput = document.getElementById('profileFileInput');
+
+    // 安全检查：如果弹窗HTML没加，就不继续
+    if (!modal) {
+        console.error("找不到 profileModal，请检查 HTML 是否添加了弹窗代码");
+        return;
+    }
+
+    // 重置状态
+    if(fileInput) fileInput.value = '';
+    if(filePreview) filePreview.textContent = '📁 点击选择新头像';
+
+    // 填充当前的签名
+    if (sigInput && currentSig) {
+        sigInput.value = currentSig.textContent;
+    }
+
+    modal.style.display = 'flex';
+}
+
+// 2. 关闭弹窗
+function closeProfileModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('profileModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// 3. 预览头像
+function previewProfileImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profileTempImage = e.target.result;
+            const preview = document.getElementById('profileFilePreview');
+            if(preview) preview.textContent = '✅ 头像已选择';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 4. 保存资料 (修复版：解决了ID冲突问题)
+function saveProfileData() {
+    if (typeof loadFromDB !== 'function' || typeof saveToDB !== 'function') {
+        alert("数据库功能未加载");
+        return;
+    }
+
+    loadFromDB('userInfo', (data) => {
+        // ★★★ 修复点：同样去掉 { id: 'user' }
+        const newData = data || {};
+        if (newData.id) delete newData.id;
+        
+        // --- 处理头像 ---
+        if (profileTempImage) {
+            newData.avatar = profileTempImage;
+            const avatarEl = document.getElementById('mainAvatar');
+            if (avatarEl) {
+                avatarEl.innerHTML = `<img src="${profileTempImage}">`;
+            }
+        }
+        
+        // --- 处理签名 ---
+        const sigInput = document.getElementById('profileSigInput');
+        if (sigInput) {
+            newData.signature = sigInput.value;
+            const sigEl = document.getElementById('mainSignature');
+            if (sigEl) {
+                sigEl.textContent = sigInput.value;
+            }
+        }
+        
+        saveToDB('userInfo', newData);
+        closeProfileModal();
+    });
+}
+
+// 5. 加载资料 (页面启动时用)
+function loadProfileData() {
+    if (typeof loadFromDB !== 'function') return;
+
+    loadFromDB('userInfo', (data) => {
+        if (!data) return;
+        
+        // 恢复头像
+        if (data.avatar) {
+            const el = document.getElementById('mainAvatar');
+            if(el) el.innerHTML = `<img src="${data.avatar}">`;
+        }
+        
+        // 恢复签名
+        if (data.signature) {
+            const el = document.getElementById('mainSignature');
+            if(el) el.textContent = data.signature;
+        }
+    });
+}
+
+
+
+      
         // 初始化，
         initDB();
 
