@@ -71,14 +71,14 @@
             font-style: italic;
         }
         
-        .apps-grid {
-            padding: 0 30px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 25px;
-            margin-bottom: 40px;
-        }
+     .apps-grid {
+    padding: 0 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 25px;
+    margin-bottom: 20px;  /* 改小一点 */
+}
         
              .app-icon-wrapper {
             display: flex;
@@ -163,26 +163,40 @@
             --gc-btn-b: #ff4757;      /* B键颜色 */
         }
 
-        .game-console-widget {
-            margin: 0 25px 30px;
-            /* 使用变量 */
-            background: var(--gc-body); 
-            border-bottom: 6px solid var(--gc-shadow);
-            border-radius: 16px;
-            padding: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            cursor: pointer;
-            transition: transform 0.1s;
-            position: relative; /* 方便定位 */
-        }
+.game-console-widget {
+    /* ▼▼▼ 固定在底部 ▼▼▼ */
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 50px);
+    max-width: 325px;
+    /* ▲▲▲ 固定定位结束 ▲▲▲ */
+    
+    background: var(--gc-body); 
+    border-bottom: 6px solid var(--gc-shadow);
+    border-radius: 16px 16px 0 0;  /* 只保留顶部圆角 */
+    padding: 20px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);  /* 阴影改为向上 */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    z-index: 50;  /* 确保在其他元素上方 */
+}
+
+
 
         .game-console-widget:active {
             transform: translateY(4px);
             border-bottom-width: 2px;
         }
+/* ▼▼▼ 设置页面里的预览游戏机放大 ▼▼▼ */
+.console-settings-screen .game-console-widget {
+    transform: scale(1.5) !important;  /* 放大到1.5倍 */
+    margin: 40px auto;  /* 上下留更多空间，左右居中 */
+}
 
         /* 1. AB按钮：增加背景适配属性 */
         .btn-a, .btn-b {
@@ -291,9 +305,10 @@
         /* 结束 */
 
 
-        .bottom-space {
-            flex: 1;
-        }
+      .bottom-space {
+    flex: 1;
+    min-height: 180px;  /* 给游戏机留出空间，防止被遮挡 */
+}
         
         /* 壁纸页面样式 */
         .wallpaper-screen {
@@ -1273,7 +1288,8 @@
     display: flex;
     align-items: center;
     padding: 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 0.5px solid #f0f0f0; /* 极细线 */
+    background: #fff;
 }
 
 .chat-detail-title {
@@ -1309,13 +1325,13 @@
     margin-left: 6px;
 }
 
-/* 消息容器 */
 .messages-container {
     flex: 1;
     overflow-y: auto;
     padding: 20px;
-    background: #f5f5f5;
+    background: #fafafa; /* 更淡的灰，接近白色 */
 }
+
 
 .load-more-btn {
     width: 100%;
@@ -1347,13 +1363,23 @@
 
 .message-bubble {
     max-width: 70%;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: #e0e0e0;
-    color: #333;
+    padding: 12px 16px; /* 稍微大一点 */
+    border-radius: 18px; /* 更圆润 */
+    background: #ffffff; /* AI消息用纯白 */
+    color: #1a1a1a;
     word-wrap: break-word;
-    line-height: 1.4;
+    line-height: 1.5;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04); /* 极淡阴影 */
+    border: 0.5px solid #f5f5f5; /* 极细边框 */
 }
+/* 用户消息气泡 */
+.message-item.me .message-bubble {
+    background: #1a1a1a; /* 深黑色 */
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
 
 .message-time {
     font-size: 11px;
@@ -1366,25 +1392,32 @@
 .chat-input-bar {
     display: flex;
     align-items: flex-end;
-    padding: 15px;
-    border-top: 1px solid #eee;
-    background: white;
-    gap: 10px;
+    padding: 15px 20px;
+    border-top: 0.5px solid #f0f0f0; /* 极细线 */
+    background: #fafafa; /* 淡灰背景 */
+    gap: 12px;
 }
 
 .chat-input {
     flex: 1;
-    padding: 10px 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 20px;
-    font-size: 16px;  /* ← 改成16px */
+    padding: 12px 16px;
+    border: 0.5px solid #e5e5e5; /* 极细边框 */
+    border-radius: 24px; /* 更圆 */
+    font-size: 16px;
     resize: none;
     max-height: 72px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     outline: none;
-    transition: border-color 0.3s;
+    transition: all 0.3s;
     overflow: hidden;
     overflow-wrap: break-word;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02); /* 微阴影 */
+}
+
+.chat-input:focus {
+    border-color: #1a1a1a; /* 聚焦时变深黑 */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 /* 隐藏textarea的所有箭头和滚动条按钮 */
@@ -1445,20 +1478,29 @@
     cursor: not-allowed;
 }
 /* 新的图标按钮样式 */
-        .action-icon-btn {
-            background: transparent;
-            border: none;
-            width: 44px;       /* 按钮整体大小 */
-            height: 44px;
-            padding: 10px;     /* 内边距，控制图标显示大小 */
-            cursor: pointer;
-            transition: transform 0.2s, background 0.3s;
-            border-radius: 50%; /* 圆形按钮 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 5px;  /* 按钮之间的间距 */
-        }
+.action-icon-btn {
+    background: transparent;
+    border: none;
+    width: 40px; /* 稍小一点 */
+    height: 40px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+}
+
+.action-icon-btn:hover {
+    background: #f8f8f8; /* 更淡的悬停色 */
+    transform: scale(1.05); /* 微微放大 */
+}
+
+.action-icon-btn:active {
+    transform: scale(0.95);
+}
 
         /* 鼠标悬停变色 */
         .action-icon-btn:hover {
@@ -3676,156 +3718,159 @@ color: #333;
     padding-bottom: 80px;
 }
 
-/* ========== 钱包卡片美化 (高级支付宝风) ========== */
+ /* ========== 钱包卡片美化 (Ins精致线条风) ========== */
 
-/* 1. 卡片主体：悬浮感 + 质感渐变 */
+/* 1. 卡片主体：去油腻，极简白 */
 .alipay-card {
-    /* 支付宝蓝渐变：从左上到右下 */
-    background: linear-gradient(135deg, #1677ff 0%, #0050b3 100%);
-    border-radius: 16px; /* 大圆角 */
-    margin: 20px 20px 0; /* 四周留白，让它浮起来 */
-    padding: 25px 24px;  /* 增加内边距 */
-    color: white;
-    
-    /* 高级投影：让卡片有立体感 */
-    box-shadow: 0 8px 20px rgba(22, 119, 255, 0.25);
-    
+    /* 移除所有渐变和阴影，改为纯净布局 */
+    background: transparent;
+    border-radius: 0; 
+    margin: 0;
+    padding: 30px 25px 10px;
+    color: #333;
     position: relative;
-    overflow: hidden; /* 用于裁剪装饰圆圈 */
+    text-align: center; /* 居中对齐更有杂志感 */
 }
 
-/* 2. 增加一点微光装饰 (右上角的透明圆圈) */
+/* 移除之前的光效装饰 */
 .alipay-card::after {
-    content: '';
-    position: absolute;
-    top: -30px;
-    right: -30px;
-    width: 120px;
-    height: 120px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-    pointer-events: none;
+    display: none;
 }
 
 .balance-label {
     font-size: 13px;
-    opacity: 0.85;
-    margin-bottom: 8px;
+    color: #999;
+    text-transform: uppercase; /* 大写更高级 */
+    letter-spacing: 1.5px;     /* 字间距增加 */
     font-weight: 500;
+    margin-bottom: 5px;
 }
 
 .balance-amount {
-    font-size: 38px;
-    font-weight: 700;
+    font-size: 42px; /* 更大更细 */
+    font-weight: 300; /* 细字体 */
     margin-bottom: 25px;
-    letter-spacing: 0.5px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; /* 确保数字字体好看 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1a1a1a;
 }
 
 .wallet-actions {
     display: flex;
-    gap: 12px;
+    justify-content: center; /* 按钮居中 */
+    gap: 15px;
 }
 
-/* 3. 按钮美化：半透明磨砂质感 */
+/* 2. 按钮美化：Ins风浅灰胶囊 */
 .wallet-act-btn {
-    background: rgba(255,255,255,0.15); /* 半透明白 */
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
-    padding: 8px 24px; /* 按钮宽一点 */
-    border-radius: 8px;
+    background: #f2f2f2; /* 浅灰背景 */
+    border: none;
+    color: #1a1a1a;
+    padding: 12px 35px; /* 更宽扁 */
+    border-radius: 25px; /* 全圆角 */
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    backdrop-filter: blur(5px); /* 磨砂效果 */
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 .wallet-act-btn:hover {
-    background: rgba(255,255,255,0.25);
-    transform: translateY(-1px); /* 悬停微微上浮 */
+    background: #e5e5e5;
+    transform: translateY(-1px);
 }
 
 .wallet-act-btn:active {
     transform: scale(0.98);
 }
 
-/* 2. 功能区 (3个格子) */
+/* 3. 功能区：纯线条图标 */
 .wallet-grid {
     display: flex;
-    padding: 20px 0;
-    border-bottom: 8px solid #f5f5f5; /* 用灰色分隔条隔开 */
+    justify-content: space-around; /* 分散对齐 */
+    padding: 15px 20px;
+    border-bottom: 1px solid #f8f8f8; /* 极淡分割线 */
+    margin-top: 10px;
 }
 
 .wallet-grid-item {
-    flex: 1;
+    flex: none; /* 防止拉伸 */
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
     cursor: pointer;
+    width: 60px;
 }
 
 .wallet-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px; /* 小圆角 */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    color: white;
+    color: #333; /* 图标颜色：深黑 */
+    background: #f9f9f9; /* 极淡的灰色底，或者可以直接 transparent */
+    border: 1px solid transparent; /* 预留边框位置 */
+    transition: all 0.3s;
+}
+/* 悬停时图标略微变深 */
+.wallet-grid-item:hover .wallet-icon {
+    background: #f0f0f0;
+    color: #000;
 }
 
 .wallet-text {
-    font-size: 13px;
-    color: #333;
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+    letter-spacing: 0.5px;
 }
 
-/* 3. 账单列表 (极简白色) */
+/* 4. 账单列表：杂志排版 */
 .bill-section {
-    padding: 0 20px;
+    padding: 0 25px;
 }
 
 .bill-header {
-    font-size: 15px;
-    font-weight: 600;
-    color: #333;
-    padding: 15px 0;
-    border-bottom: 1px solid #f0f0f0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    padding: 25px 0 15px;
+    border-bottom: none; /* 去掉分割线 */
+    letter-spacing: -0.5px;
 }
 
 .bill-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #f9f9f9;
-}
-
-.bill-left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    padding: 18px 0;
+    border-bottom: 1px solid #f8f8f8; /* 极细线 */
 }
 
 .bill-title {
     font-size: 15px;
     color: #333;
+    font-weight: 500;
+    margin-bottom: 4px;
 }
 
 .bill-time {
-    font-size: 12px;
-    color: #999;
+    font-size: 11px;
+    color: #bbb; /* 更淡的时间颜色 */
+    font-weight: 400;
 }
 
 .bill-amount {
     font-size: 16px;
     font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, monospace; /* 数字等宽更有质感 */
 }
 
-.amount-income { color: #ff4757; } /* 收入红色 */
-.amount-expense { color: #333; }   /* 支出黑色 */   
+.amount-income { color: #1a1a1a; } /* 收入不用红色，用高级黑 */
+.amount-expense { color: #999; }   /* 支出用灰色 */
 
 /* ============ 购物车支付方式选择样式 ============ */
 .cart-payment-section {
@@ -4162,7 +4207,11 @@ color: #333;
                     <div class="app-name">应用4</div>
                 </div>
             </div>
-  <!-- ▼▼▼ 新增：像素游戏机组件 ▼▼▼ -->
+
+  
+            
+            <div class="bottom-space"></div>
+<!-- ▼▼▼ 新增：像素游戏机组件 ▼▼▼ -->
            <div class="game-console-widget" onclick="openConsoleSettings()">
                 <div class="console-screen">
                     <!-- 加上 id="mainPet" -->
@@ -4185,8 +4234,8 @@ color: #333;
                 </div>
             </div>
             <!-- ▲▲▲ 新增结束 ▲▲▲ -->
-            
-            <div class="bottom-space"></div>
+
+
         </div>
 
         <!-- 壁纸设置页面 -->
@@ -4375,35 +4424,50 @@ color: #333;
         <!-- 聊天列表将在这里动态生成 -->
     </div>
     <div class="wallet-container" id="walletContainer" style="display: none;">
-    <div class="alipay-card">
-        <div class="balance-label">总资产(元)</div>
-        <div class="balance-amount" id="walletBalance">2,000.00</div>
-        <div class="wallet-actions">
+<!-- 替换开始：新的极简钱包头部 -->
+    <div class="alipay-card" style="background: transparent; box-shadow: none; margin: 10px 0 0 0; padding: 30px 25px 10px; color: #333;">
+        <div class="balance-label" style="color: #999; font-size: 14px; letter-spacing: 1px;">Total Balance</div>
+        <div class="balance-amount" id="walletBalance" style="color: #333; font-weight: 300; font-size: 42px;">2,000.00</div>
+        
+        <div class="wallet-actions" style="margin-top: 25px;">
             <button class="wallet-act-btn" onclick="handleWalletAction('recharge')">充值</button>
             <button class="wallet-act-btn" onclick="handleWalletAction('withdraw')">提现</button>
         </div>
     </div>
 
-    <div class="wallet-grid">
+    <div class="wallet-grid" style="border-bottom: 1px solid #f5f5f5; padding: 20px 15px;">
         <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #ff9800;">📝</div>
+            <!-- 使用 SVG 替换原来的 Emoji -->
+            <div class="wallet-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
             <div class="wallet-text">账单</div>
         </div>
         <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #ff5252;">👨‍👩‍👧</div>
-            <div class="wallet-text">亲属卡</div>
+            <div class="wallet-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div class="wallet-text">亲密付</div>
         </div>
         <div class="wallet-grid-item">
-            <div class="wallet-icon" style="background: #2196f3;">📈</div>
+            <div class="wallet-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
             <div class="wallet-text">理财</div>
         </div>
     </div>
 
     <div class="bill-section">
-        <div class="bill-header">近期账单</div>
+        <div class="bill-header" style="border:none; padding-top: 25px; font-size: 18px; font-weight: 700;">Recent Activity</div>
         <div id="billList" class="bill-list">
-            </div>
+            <!-- JS会自动填充账单 -->
+        </div>
     </div>
+
+
+   
+
+ 
 </div>
     <!-- 悬浮添加按钮 -->
  <button class="add-btn" onclick="openAddChatMenu()">+</button>
@@ -4477,12 +4541,12 @@ color: #333;
 <!-- 表情包按钮 -->
 <div class="emoji-btn-wrapper">
     <button class="emoji-btn" onclick="toggleEmojiPanel()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-            <line x1="9" y1="9" x2="9.01" y2="9"></line>
-            <line x1="15" y1="9" x2="15.01" y2="9"></line>
-        </svg>
+       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+</svg>
     </button>
     
   <button class="emoji-btn" id="retryBtn" onclick="retryAIReply()" title="撤回重发">
@@ -4529,11 +4593,11 @@ color: #333;
 <!-- ▲▲▲ 新增结束 ▲▲▲ -->
 <!-- ▼▼▼ 在电话按钮的后面添加购物按钮 ▼▼▼ -->
 <button class="emoji-btn" onclick="openShopping()" title="购物">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2">
-        <circle cx="9" cy="21" r="1"></circle>
-        <circle cx="20" cy="21" r="1"></circle>
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-    </svg>
+   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <path d="M16 10a4 4 0 0 1-8 0"></path>
+</svg>
 </button>
 <!-- ▲▲▲ 购物按钮添加结束 ▲▲▲ -->
 
@@ -4571,11 +4635,16 @@ color: #333;
     <div class="chat-input-bar">
         <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
       <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
-            <img src="https://img.heliar.top/file/1765364506053_feather.png" alt="发送">
+           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;">
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+</svg>
         </button>
 
         <button class="action-icon-btn" id="receiveBtn" onclick="receiveAIReply()" title="接收回信">
-            <img src="https://img.heliar.top/file/1765364502822_mail.png" alt="接收">
+           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+</svg>
         </button>
     </div>
 </div>
@@ -12903,9 +12972,39 @@ function applyConsoleSettingsToUI(data) {
     if (data.textColor) root.style.setProperty('--gc-text', data.textColor);
     
     // 应用按键 (可能是颜色，也可能是图片URL)
-    if (data.btnAColor) root.style.setProperty('--gc-btn-a', data.btnAColor);
-    if (data.btnBColor) root.style.setProperty('--gc-btn-b', data.btnBColor);
-    
+  // 应用AB按键 (图片模式需要特殊处理)
+if (data.btnAColor) {
+    root.style.setProperty('--gc-btn-a', data.btnAColor);
+    const btnAs = document.querySelectorAll('.btn-a');
+    if (data.btnAColor.includes('url(') || data.btnAColor.includes('data:image')) {
+        btnAs.forEach(el => {
+            el.style.backgroundSize = 'cover';
+            el.style.backgroundPosition = 'center';
+        });
+    } else {
+        btnAs.forEach(el => {
+            el.style.backgroundSize = '';
+            el.style.backgroundPosition = '';
+        });
+    }
+}
+
+if (data.btnBColor) {
+    root.style.setProperty('--gc-btn-b', data.btnBColor);
+    const btnBs = document.querySelectorAll('.btn-b');
+    if (data.btnBColor.includes('url(') || data.btnBColor.includes('data:image')) {
+        btnBs.forEach(el => {
+            el.style.backgroundSize = 'cover';
+            el.style.backgroundPosition = 'center';
+        });
+    } else {
+        btnBs.forEach(el => {
+            el.style.backgroundSize = '';
+            el.style.backgroundPosition = '';
+        });
+    }
+}
+
     // ★★★ 十字键特殊处理 ★★★
     if (data.dpadColor) {
         root.style.setProperty('--gc-dpad', data.dpadColor);
