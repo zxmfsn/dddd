@@ -6,29 +6,52 @@
 
     <title>冻梨小手机</title>
     <style>
+   /* 1. 重置基础样式 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        /* 2. 浏览器窗口样式 (背景台) */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            overflow: hidden;
-        }
-        
-        .phone-screen {
-            max-width: 375px;
-            height: 100vh;
-            margin: 0 auto;
-            position: relative;
-            color: white;
-            overflow: hidden;
-        }
-        
-        /* 主屏幕样式 */
-        .main-screen {
+            
+            /* ▼▼▼ 关键点1：把 body 背景改成深灰色，模拟桌子 ▼▼▼ */
+            background: #2c3e50; 
+            
+            /* ▼▼▼ 关键点2：让手机容器在浏览器正中间 ▼▼▼ */
             height: 100vh;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* 防止浏览器出现滚动条 */
+        }
+        
+        /* 3. 手机容器样式 (限制范围) */
+        .phone-screen {
+            /* ▼▼▼ 关键点3：必须写 width 而不是 max-width，强制固定宽度 ▼▼▼ */
+            width: 375px;
+            height: 100vh; /* 或者写 812px 模拟 iPhone X 高度 */
+            
+            /* ▼▼▼ 关键点4：这里必须是 relative，它是所有内部悬浮元素的“爸爸” ▼▼▼ */
+            position: relative; 
+            
+            /* ▼▼▼ 关键点5：壁纸搬家到这里来了 ▼▼▼ */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            
+            /* 加点阴影让它像个手机 */
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            color: white;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        /* 4. 确保主屏幕占满手机容器 */
+        .main-screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
             flex-direction: column;
+            overflow-y: auto; /* 允许主屏幕内部滚动 */
         }
         
         .user-info {
@@ -71,13 +94,21 @@
             font-style: italic;
         }
         
-     .apps-grid {
-    padding: 0 30px;
+.apps-grid {
+    /* padding: 0 30px;  <-- 修改这一行 */
+    padding: 0 15px;     /* 改小内边距 */
+    
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(2, 1fr);
-    gap: 25px;
-    margin-bottom: 20px;  /* 改小一点 */
+    
+    /* gap: 25px;        <-- 修改这一行 */
+    gap: 15px;           /* 改小间距，原来的25px太宽了 */
+    
+    margin-bottom: 20px;
+    
+    /* ▼▼▼ 新增：让整个网格在容器里水平居中 ▼▼▼ */
+    justify-content: center; 
 }
         
              .app-icon-wrapper {
@@ -87,14 +118,19 @@
             gap: 8px;
         }
         
-             .app-icon {
-            width: 65px;
-            height: 65px;
-            border-radius: 18px;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            overflow: hidden;
-        }
+     .app-icon {
+    /* width: 65px;      <-- 修改这一行 */
+    width: 58px;         /* 改成 58px，视觉上几乎看不出区别，但空间就够了 */
+    
+    /* height: 65px;     <-- 修改这一行 */
+    height: 58px;        /* 保持正方形 */
+    
+    /* 下面的保持不变 */
+    border-radius: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
 
 
         .app-icon:hover {
@@ -121,6 +157,25 @@
             object-fit: cover;
         }
         
+/* ▼▼▼ 强制覆盖样式，确保显示线条 ▼▼▼ */
+.ins-icon-box {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important; /* 去掉背景色 */
+}
+
+.ins-icon-box svg {
+    width: 32px !important;       /* 图标稍微大一点点 */
+    height: 32px !important;
+    stroke: #ffffff !important;   /* 强制纯白线条 */
+    stroke-width: 1.5px !important;
+    fill: none !important;        /* 强制去填充 */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+
         .app-name {
             font-size: 10px;
             text-align: center;
@@ -151,163 +206,9 @@
         }
         
 
-/* ▼▼▼ 游戏机样式（变量化升级版） ▼▼▼ */
-        :root {
-            /* 定义默认皮肤，稍后JS会覆盖这些 */
-            --gc-body: #f4f4f4;       /* 机身 */
-            --gc-shadow: #dcdcdc;     /* 底部阴影 */
-            --gc-screen-bg: #9bbc0f;  /* 屏幕底色 */
-            --gc-text: #0f380f;       /* 屏幕文字颜色 */
-            --gc-dpad: #333333;       /* 十字键颜色 */
-            --gc-btn-a: #ff4757;      /* A键颜色 */
-            --gc-btn-b: #ff4757;      /* B键颜色 */
-        }
-
-.game-console-widget {
-    /* ▼▼▼ 固定在底部 ▼▼▼ */
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 50px);
-    max-width: 325px;
-    /* ▲▲▲ 固定定位结束 ▲▲▲ */
-    
-    background: var(--gc-body); 
-    border-bottom: 6px solid var(--gc-shadow);
-    border-radius: 16px 16px 0 0;  /* 只保留顶部圆角 */
-    padding: 20px;
-    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);  /* 阴影改为向上 */
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    cursor: pointer;
-    transition: transform 0.1s;
-    z-index: 50;  /* 确保在其他元素上方 */
-}
-
-
-
-        .game-console-widget:active {
-            transform: translateY(4px);
-            border-bottom-width: 2px;
-        }
-/* ▼▼▼ 设置页面里的预览游戏机放大 ▼▼▼ */
-.console-settings-screen .game-console-widget {
-    transform: scale(1.5) !important;  /* 放大到1.5倍 */
-    margin: 40px auto;  /* 上下留更多空间，左右居中 */
-}
-
-        /* 1. AB按钮：增加背景适配属性 */
-        .btn-a, .btn-b {
-            width: 24px; height: 24px; border-radius: 50%;
-            background: var(--gc-btn-a); /* 这里可能变成 url(...) */
-            box-shadow: 1px 2px 0 rgba(0,0,0,0.3);
-            /* ▼▼▼ 新增：让图片填满按钮 ▼▼▼ */
-            background-size: cover;
-            background-position: center;
-        }
-
-        /* 2. 十字键容器：增加背景适配 */
-        .d-pad {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            transform: scale(0.7);
-            /* ▼▼▼ 新增 ▼▼▼ */
-            background: var(--gc-dpad); /* 如果是图片，会显示在这里 */
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
-
-        /* 3. ▼▼▼ 核心逻辑：如果是图片模式，隐藏原来的拼凑方块 ▼▼▼ */
-        .d-pad.use-image-mode div {
-            display: none !important;
-        }
-        .console-screen {
-            background: var(--gc-screen-bg); /* 使用变量 */
-            border: 4px solid #555;
-            border-radius: 8px 8px 20px 8px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-            position: relative;
-            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
-            overflow: hidden;
-            color: var(--gc-text); /* 使用变量 */
-        }
-
-        .pixel-pet {
-            font-size: 32px;
-            animation: petBounce 1s infinite alternate steps(2);
-        }
-        
-        @keyframes petBounce {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-5px); }
-        }
-
-        .console-text {
-            margin-left: auto;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            font-size: 12px;
-            opacity: 0.8;
-            letter-spacing: 2px;
-        }
-
-        .console-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 5px;
-        }
-
-        .d-pad {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            transform: scale(0.7);
-        }
-        
-        /* 十字键颜色变量 */
-        .d-up, .d-down, .d-left, .d-right, .d-center {
-            position: absolute;
-            background: var(--gc-dpad); 
-        }
-        
-        .d-center { width: 20px; height: 20px; top: 20px; left: 20px; }
-        .d-up { width: 20px; height: 20px; top: 0; left: 20px; border-radius: 3px 3px 0 0; }
-        .d-down { width: 20px; height: 20px; bottom: 0; left: 20px; border-radius: 0 0 3px 3px; }
-        .d-left { width: 20px; height: 20px; top: 20px; left: 0; border-radius: 3px 0 0 3px; }
-        .d-right { width: 20px; height: 20px; top: 20px; right: 0; border-radius: 0 3px 3px 0; }
-
-        .action-btns {
-            display: flex;
-            gap: 10px;
-            transform: rotate(-20deg);
-        }
-
-        /* 按钮颜色变量 */
-        .btn-a {
-            width: 24px; height: 24px; border-radius: 50%;
-            background: var(--gc-btn-a);
-            box-shadow: 1px 2px 0 rgba(0,0,0,0.3);
-        }
-        .btn-b {
-            width: 24px; height: 24px; border-radius: 50%;
-            background: var(--gc-btn-b);
-            box-shadow: 1px 2px 0 rgba(0,0,0,0.3);
-            margin-top: 8px;
-        }
-        /* 结束 */
-
-
-      .bottom-space {
+.bottom-space {
     flex: 1;
-    min-height: 180px;  /* 给游戏机留出空间，防止被遮挡 */
+    min-height: 20px; 
 }
         
         /* 壁纸页面样式 */
@@ -750,7 +651,7 @@
 }
 
 .add-btn {
-    position: fixed;
+   position: absolute;
     bottom: 30px;
     right: 30px;
     width: 56px;
@@ -791,54 +692,7 @@
     overflow-y: auto;
 }
 
-.section {
-    margin-bottom: 30px;
-}
 
-.scheme-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.scheme-btn {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f8f8f8;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.3s;
-}
-
-.scheme-btn:hover {
-    background: #e8e8e8;
-}
-
-.api-btn {
-    width: 100%;
-    padding: 12px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    cursor: pointer;
-    margin-top: 10px;
-    transition: background 0.3s;
-}
-
-.api-btn:hover {
-    background: #5a6fd8;
-}
-
-.action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 20px;
-}
 
 .btn-test, .btn-save, .btn-save-scheme {
     padding: 14px;
@@ -956,7 +810,7 @@
 }
 /* 底部分组栏 */
 .chat-bottom-tabs {
-    position: fixed;
+    position: absolute;
     /* 距离底部悬浮 25px */
     bottom: 25px;
     /* 左右留空，居中 */
@@ -1108,7 +962,7 @@
 
 
 .add-btn {
-    position: fixed;
+   position: absolute;
     bottom: 30px;
     right: 30px;
     width: 56px;
@@ -4145,6 +3999,581 @@ color: #333;
 .chat-actions {
     border-radius: 0 !important; /* 去掉圆角，因为是直角的列表行 */
 }   
+
+/* ============ 新增：双组件布局样式 (Ins线条风) ============ */
+
+/* 1. 组件行容器 */
+.widgets-row {
+    display: flex;
+    justify-content: space-between; /* 左右贴边对齐 */
+    padding: 0 25px; /* 和上面的APP网格边距保持视觉一致 */
+    gap: 15px;       /* 两个组件之间的空隙 */
+    margin-bottom: 20px;
+    margin-top: 10px; /* 和上面APP拉开一点距离 */
+}
+
+/* 2. 组件通用盒子 (正方形) */
+.widget-box {
+    flex: 1; /* 两个平分宽度 */
+    aspect-ratio: 1 / 1; /* 强制正方形 */
+    
+    /* === Ins高冷线条风格核心 === */
+    background: rgba(255, 255, 255, 0.1); /* 极淡的透明白 */
+    border: 1px solid rgba(255, 255, 255, 0.35); /* 精致的细白边框 */
+    border-radius: 22px; /* 圆润的角 */
+    
+    position: relative;
+    overflow: hidden;
+    color: white;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.widget-box:active {
+    transform: scale(0.96); /* 点击时的微缩反馈 */
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* === 左侧：音乐组件样式 === */
+.music-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 音乐圆环 (模拟唱片/进度条) */
+.music-ring {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    /* 使用锥形渐变模拟进度条效果 */
+    background: conic-gradient(rgba(255,255,255,0.9) 0% 70%, rgba(255,255,255,0.2) 70% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 微微的投影增加立体感 */
+    position: relative;
+}
+
+/* 圆环中间的遮罩 (形成环状) */
+/* 修改 .music-ring::after，让它只作为背景遮罩 */
+.music-ring::after {
+    content: '';
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    background: rgba(255,255,255,0.1); 
+    border-radius: 50%;
+    backdrop-filter: blur(5px);
+    z-index: 0; /* 放在底层 */
+}
+
+/* ▼▼▼ 新增：圆环内的封面图样式 ▼▼▼ */
+.music-cover-img {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 1; /* 在遮罩之上，但在图标之下 */
+    opacity: 0.8; /* 稍微透明一点符合Ins风，想要清晰改成 1 */
+}
+
+/* 播放图标 */
+.music-icon {
+    font-size: 24px;
+    z-index: 2; /* 浮在最上面 */
+    color: white;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.widget-box {
+    /* ...原有样式... */
+    background-size: cover !important; /* 强制背景填满 */
+    background-position: center !important;
+}
+.music-title {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+}
+
+.music-desc {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 2px;
+    font-weight: 300;
+}
+
+/* === 右侧：便签组件样式 === */
+.note-widget {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+}
+
+.note-header {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+    text-transform: uppercase; /* 英文大写更显高级 */
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.2); /* 标题分割线 */
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.note-list {
+    list-style: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.note-item {
+    font-size: 13px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.9;
+}
+
+/* 极简的勾选框装饰 */
+.note-checkbox {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid rgba(255,255,255,0.6);
+    border-radius: 4px;
+    display: inline-block;
+}
+/* 组件结束 */
+
+/* ============ API页面：Ins精致线条风重制版 ============ */
+
+/* 1. 背景与布局：极简灰白 */
+.api-screen {
+    background: #f9f9f9 !important; /* 整体背景改淡灰，突出卡片 */
+}
+
+.api-content {
+    padding: 20px 20px 40px; /* 增加底部留白 */
+}
+
+/* 2. 卡片容器：悬浮感白块 */
+.api-card {
+    background: #ffffff;
+    border-radius: 24px; /* 更大的圆角 */
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03); /* 极淡的高级阴影 */
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* 3. 标题：小字大写，间距拉开 */
+.api-section-title {
+    font-size: 12px;
+    color: #999;
+    font-weight: 600;
+    letter-spacing: 1.5px; /* 字间距 */
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 4. 输入框：去黑边，改用柔和线条 */
+.ins-input-group {
+    margin-bottom: 18px;
+}
+
+.ins-label {
+    display: block;
+    font-size: 13px;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+    margin-left: 4px;
+}
+
+.ins-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: #f8f8f8; /* 极淡灰底 */
+    border: 1px solid #eee; /* 极细边框 */
+    border-radius: 16px; /* 圆润 */
+    font-size: 15px;
+    color: #333;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.ins-input:focus {
+    background: #fff;
+    border-color: #333; /* 聚焦变黑线条 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ins-input::placeholder {
+    color: #ccc;
+    font-size: 13px;
+}
+
+/* 5. 按钮：核心线条风格 */
+.ins-btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* 通用线条按钮 */
+.ins-line-btn {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: 1.5px solid #e0e0e0; /* 默认灰线条 */
+    border-radius: 30px; /* 胶囊状 */
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.ins-line-btn:active {
+    transform: scale(0.96);
+}
+
+/* 黑色实心按钮 (Primary) */
+.ins-btn-black {
+    background: #333;
+    color: white;
+    border: 1.5px solid #333;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.ins-btn-black:hover {
+    background: #000;
+}
+
+/* 蓝色线条 (Action) */
+.ins-btn-blue-line {
+    color: #667eea;
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+.ins-btn-blue-line:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* 红色线条 (Delete) */
+.ins-btn-red-line {
+    color: #ff4757;
+    border-color: #ff4757;
+    background: #fff5f6;
+}
+
+/* 底部操作栏布局 */
+.api-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* ============ 壁纸/图标页面：Ins风重制版 ============ */
+
+/* 1. 全局背景统一 */
+.wallpaper-screen {
+    background: #f9f9f9 !important;
+}
+
+/* 2. 顶部预览区卡片化 */
+.ins-preview-card {
+    background: white;
+    border-radius: 24px;
+    padding: 30px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* 3. 手机预览框美化 */
+.ins-phone-frame {
+    width: 140px;
+    height: 240px;
+    border-radius: 24px;
+    border: 6px solid #333; /* 模拟手机边框 */
+    overflow: hidden;
+    position: relative;
+    background: #f0f0f0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    margin-bottom: 15px;
+}
+
+/* 4. 精致的分段控制器 (Tabs) */
+.ins-tab-group {
+    background: #f0f0f0;
+    padding: 4px;
+    border-radius: 12px;
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.ins-tab-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* 激活状态：白色悬浮块 */
+.ins-tab-btn.active {
+    background: white;
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* 5. 极简上传区域 */
+.ins-upload-area {
+    border: 1.5px dashed #e0e0e0;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafafa;
+}
+
+.ins-upload-area:hover {
+    border-color: #999;
+    background: #f4f4f4;
+}
+
+.ins-upload-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+/* 6. 图标网格优化 */
+.ins-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.ins-icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ins-icon-item:active {
+    transform: scale(0.95);
+}
+
+.ins-icon-preview-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: white;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+
+/* ============ 世界书页面：Ins风重制版 ============ */
+
+/* 1. 全局容器 */
+.worldbook-screen {
+    background: #f9f9f9 !important; /* 统一灰底 */
+}
+
+/* 2. 分类栏 (横向滚动) */
+.ins-category-scroll {
+    padding: 10px 20px 20px; /* 增加底部留白 */
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+    gap: 12px;
+    /* 隐藏滚动条 */
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+}
+.ins-category-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* 3. 分类标签 (胶囊风格) */
+.ins-cat-pill {
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #999;
+    background: white;
+    border: 1px solid #eee;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0; /* 防止挤压 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.ins-cat-pill.active {
+    background: #333;
+    color: white;
+    border-color: #333;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 4. 世界书列表容器 */
+.ins-book-list {
+    padding: 0 20px 80px; /* 底部留出空间给悬浮按钮 */
+}
+
+/* 5. 世界书卡片 (核心样式) */
+.ins-book-card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.ins-book-card:active {
+    transform: scale(0.98);
+}
+
+.ins-book-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.ins-book-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+}
+
+.ins-book-tag {
+    font-size: 10px;
+    padding: 4px 10px;
+    background: #f4f4f4;
+    color: #666;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.ins-book-preview {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    /* 限制显示3行 */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 6. 卡片底部操作栏 */
+.ins-book-actions {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #f5f5f5;
+    padding-top: 12px;
+    justify-content: flex-end;
+}
+
+.ins-action-btn {
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.ins-btn-edit {
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+.ins-btn-edit:hover {
+    background: #f0f0f0;
+}
+
+.ins-btn-del {
+    color: #ff4757;
+    border: 1px solid #ffeaea;
+    background: #fffafa;
+}
+.ins-btn-del:hover {
+    background: #ffe0e0;
+    border-color: #ff4757;
+}
+
+/* 7. 悬浮添加按钮 (黑色高级版) */
+.ins-float-add {
+    position: absolute;
+    bottom: 30px;
+    right: 25px;
+    width: 56px;
+    height: 56px;
+    background: #333;
+    color: white;
+    border-radius: 20px; /* 方圆形 */
+    border: none;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s;
+}
+
+.ins-float-add:active {
+    transform: scale(0.9);
+}
     </style>
 </head>
 <body>
@@ -4157,240 +4586,296 @@ color: #333;
                 <div class="signature" id="mainSignature">今天也要开心呀～</div>
             </div>
             
-               <div class="apps-grid">
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('world')">
-                        <div class="app-emoji" id="icon-world">🌍</div>
-                    </div>
-                    <div class="app-name">世界书</div>
+<div class="apps-grid">
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('world')">
+            <div class="app-emoji ins-icon-box" id="icon-world">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </div>
+        </div>
+        <div class="app-name">世界书</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('chat')">
+            <div class="app-emoji ins-icon-box" id="icon-chat">
+                <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            </div>
+        </div>
+        <div class="app-name">聊天</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('wallpaper')">
+            <div class="app-emoji ins-icon-box" id="icon-wallpaper">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </div>
+        </div>
+        <div class="app-name">壁纸</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('api')">
+            <div class="app-emoji ins-icon-box" id="icon-api">
+                <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            </div>
+        </div>
+        <div class="app-name">API设置</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('placeholder1')">
+            <div class="app-emoji ins-icon-box" id="icon-placeholder1">
+                <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            </div>
+        </div>
+        <div class="app-name">围脖</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('placeholder2')">
+            <div class="app-emoji ins-icon-box" id="icon-placeholder2">
+                <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            </div>
+        </div>
+        <div class="app-name">贴叭</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('placeholder3')">
+            <div class="app-emoji ins-icon-box" id="icon-placeholder3">
+                <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </div>
+        </div>
+        <div class="app-name">x</div>
+    </div>
+
+    <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('placeholder4')">
+            <div class="app-emoji ins-icon-box" id="icon-placeholder4">
+                <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4m-2-2v4"></path><line x1="15" y1="11" x2="15.01" y2="11"></line><line x1="18" y1="13" x2="18.01" y2="13"></line></svg>
+            </div>
+        </div>
+        <div class="app-name">监控</div>
+    </div>
+</div>
+<div class="widgets-row">
+              <div class="widget-box music-widget" onclick="openWidgetSettings('music')">
+                  <div class="music-ring">
+    <img id="musicCoverDisplay" class="music-cover-img" style="display:none;"> <div class="music-icon">▶</div> 
+</div>
+                    <div class="music-title">Lover</div>
+                    <div class="music-desc">Taylor Swift</div>
                 </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('chat')">
-                        <div class="app-emoji" id="icon-chat">💬</div>
+
+               <div class="widget-box note-widget" onclick="openWidgetSettings('note')">
+                    <div class="note-header">
+                        <span>TO DO LIST</span>
+                        <span>✏️</span>
                     </div>
-                    <div class="app-name">聊天</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('wallpaper')">
-                        <div class="app-emoji" id="icon-wallpaper">🎨</div>
+                    <div class="note-list">
+                        <div class="note-item">
+                            <span class="note-checkbox"></span> 记得喝水
+                        </div>
+                        <div class="note-item">
+                            <span class="note-checkbox"></span> 早点睡觉
+                        </div>
+                        <div class="note-item">
+                            <span class="note-checkbox" style="background:white; border-color:white;"></span> 永远开心
+                        </div>
                     </div>
-                    <div class="app-name">壁纸</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('api')">
-                        <div class="app-emoji" id="icon-api">⚙️</div>
-                    </div>
-                    <div class="app-name">API设置</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder1')">
-                        <div class="app-emoji" id="icon-placeholder1">📱</div>
-                    </div>
-                    <div class="app-name">应用1</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder2')">
-                        <div class="app-emoji" id="icon-placeholder2">🎵</div>
-                    </div>
-                    <div class="app-name">应用2</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder3')">
-                        <div class="app-emoji" id="icon-placeholder3">📷</div>
-                    </div>
-                    <div class="app-name">应用3</div>
-                </div>
-                <div class="app-icon-wrapper">
-                    <div class="app-icon" onclick="openApp('placeholder4')">
-                        <div class="app-emoji" id="icon-placeholder4">🎮</div>
-                    </div>
-                    <div class="app-name">应用4</div>
                 </div>
             </div>
-
   
             
             <div class="bottom-space"></div>
-<!-- ▼▼▼ 新增：像素游戏机组件 ▼▼▼ -->
-           <div class="game-console-widget" onclick="openConsoleSettings()">
-                <div class="console-screen">
-                    <!-- 加上 id="mainPet" -->
-                    <div class="pixel-pet" id="mainPet">👾</div>
-                    <!-- 加上 id="mainConsoleText" -->
-                    <div class="console-text" id="mainConsoleText">ADVENTURE</div>
-                </div>
-                <div class="console-controls">
-                    <div class="d-pad">
-                        <div class="d-up"></div>
-                        <div class="d-left"></div>
-                        <div class="d-center"></div>
-                        <div class="d-right"></div>
-                        <div class="d-down"></div>
-                    </div>
-                    <div class="action-btns">
-                        <div class="btn-a"></div>
-                        <div class="btn-b"></div>
-                    </div>
-                </div>
-            </div>
-            <!-- ▲▲▲ 新增结束 ▲▲▲ -->
-
 
         </div>
 
         <!-- 壁纸设置页面 -->
-        <div class="wallpaper-screen" id="wallpaperScreen">
-            <div class="wallpaper-header">
-                <button class="back-btn" onclick="backToMain()">←</button>
-                <div class="header-title">壁纸设置</div>
+     <div class="wallpaper-screen" id="wallpaperScreen">
+    <div class="api-header" style="background: transparent; border: none; padding: 20px;">
+        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+        <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">WALLPAPER</div>
+    </div>
+    
+    <div class="api-content" style="padding: 0 20px 40px;">
+        
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>🎨 PREVIEW</span>
+                <span>当前效果</span>
             </div>
             
-            <div class="wallpaper-content">
-                <div class="section-title">更换壁纸</div>
+            <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <div class="ins-phone-frame" id="wallpaperPreview">
+                    </div>
                 
-                <div class="wallpaper-editor">
-                    <div class="preview-area">
-                        <div class="preview-phone" id="wallpaperPreview">
-                        </div>
-                        <div class="preview-label">预览效果</div>
+                <div style="flex: 1;">
+                    <div class="ins-tab-group">
+                        <button class="ins-tab-btn active" onclick="switchTab('local')">相册</button>
+                        <button class="ins-tab-btn" onclick="switchTab('url')">链接</button>
                     </div>
                     
-                    <div class="input-area">
-                        <div class="tab-buttons">
-                            <button class="tab-btn active" onclick="switchTab('local')">本地相册</button>
-                            <button class="tab-btn" onclick="switchTab('url')">网址链接</button>
+                    <div class="tab-content active" id="localTab">
+                        <div class="ins-upload-area" onclick="document.getElementById('wallpaperFile').click()">
+                            <div class="ins-upload-icon">📁</div>
+                            <div style="font-size: 12px; color: #999;">点击选择图片</div>
+                            <input type="file" id="wallpaperFile" accept="image/*" style="display:none;">
                         </div>
-                        
-                        <div class="tab-content active" id="localTab">
-                            <div class="file-input-area" onclick="document.getElementById('wallpaperFile').click()">
-                                <div>📁 点击选择图片</div>
-                                <div style="font-size: 12px; color: #666; margin-top: 5px;">支持 JPG、PNG 格式</div>
-                                <input type="file" id="wallpaperFile" accept="image/*">
-                            </div>
-                        </div>
-                        
-                        <div class="tab-content" id="urlTab">
-                            <input type="url" class="url-input" id="wallpaperUrl" placeholder="输入图片网址...">
-                        </div>
-                        
-                        <button class="save-btn" onclick="saveWallpaper()">保存壁纸</button>
                     </div>
+                    
+                    <div class="tab-content" id="urlTab">
+                        <input type="url" class="ins-input" id="wallpaperUrl" placeholder="输入图片链接...">
+                    </div>
+                    
+                    <button class="ins-line-btn ins-btn-black" onclick="saveWallpaper()" style="margin-top: 15px; width: 100%;">
+                        <span>保存壁纸</span>
+                    </button>
                 </div>
-            
-               <div class="section-title" style="margin-top: 40px;">更换app图标</div>
-                <div style="text-align: center; color: #666; font-size: 13px; margin-bottom: 20px;">
-                    点击图标进行修改
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 280px; margin: 0 auto;">
-                    <div class="app-icon-editor" onclick="openIconEditor('world')">
-                        <div class="app-icon-preview" id="preview-world">🌍</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">世界书</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('chat')">
-                        <div class="app-icon-preview" id="preview-chat">💬</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">聊天</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('wallpaper')">
-                        <div class="app-icon-preview" id="preview-wallpaper">🎨</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">壁纸</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('api')">
-                        <div class="app-icon-preview" id="preview-api">⚙️</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">API设置</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('placeholder1')">
-                        <div class="app-icon-preview" id="preview-placeholder1">📱</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用1</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('placeholder2')">
-                        <div class="app-icon-preview" id="preview-placeholder2">🎵</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用2</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('placeholder3')">
-                        <div class="app-icon-preview" id="preview-placeholder3">📷</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用3</div>
-                    </div>
-                    <div class="app-icon-editor" onclick="openIconEditor('placeholder4')">
-                        <div class="app-icon-preview" id="preview-placeholder4">🎮</div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">应用4</div>
-                    </div>
-                </div>
-</div>
-                       
-        </div>
-      <!-- 世界书页面 -->
-<div class="worldbook-screen" id="worldbookScreen">
-    <div class="worldbook-header">
-        <button class="back-btn" onclick="backToMain()">←</button>
-        <div class="header-title">世界书</div>
-    </div>
-    
-    <div class="category-bar">
-        <div class="category-tags" id="categoryTags">
-            <div class="category-tag active" data-category="all">全部</div>
-            <div class="category-tag" data-category="manage">管理分类</div>
-        </div>
-    </div>
-    
-    <div class="worldbook-content" id="worldbookList">
-        <!-- 世界书列表将在这里动态生成 -->
-    </div>
-    
-    <button class="add-btn" onclick="openAddWorldbook()">+</button>
-</div>
-      <!-- API设置页面 -->
-<div class="api-screen" id="apiScreen">
-    <div class="api-header">
-        <button class="back-btn" onclick="backToMain()">←</button>
-        <div class="header-title">API设置</div>
-    </div>
-    
-    <div class="api-content">
-        <!-- 方案选择区域 -->
-        <div class="section">
-            <div class="section-title">当前方案</div>
-            <select id="apiSchemeSelect" class="form-input">
-                <option value="">选择方案</option>
-            </select>
-            <div class="scheme-buttons">
-                <button class="scheme-btn" onclick="newScheme()">新建</button>
-                <button class="scheme-btn" onclick="deleteScheme()">删除</button>
             </div>
         </div>
         
-        <!-- API配置区域 -->
-        <div class="section">
-            <div class="section-title">API配置</div>
-            <div class="form-group">
-                <label class="form-label">方案名称</label>
-                <input type="text" id="apiName" class="form-input" placeholder="输入方案名称">
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>📱 ICONS</span>
+                <span>图标定制</span>
             </div>
-            <div class="form-group">
-                <label class="form-label">反代地址</label>
-                <input type="url" id="apiBaseUrl" class="form-input" placeholder="https://api.openai.com/v1">
-            </div>
-            <div class="form-group">
-                <label class="form-label">API密钥</label>
-                <input type="password" id="apiKey" class="form-input" placeholder="sk-...">
-            </div>
-            <button class="api-btn" onclick="getModels()">获取模型</button>
             
-            <div class="form-group" id="modelGroup" style="display: none;">
-                <label class="form-label">选择模型</label>
-                <select id="modelSelect" class="form-input">
+            <div class="ins-icon-grid">
+                <div class="ins-icon-item" onclick="openIconEditor('world')">
+                    <div class="ins-icon-preview-box" id="preview-world">🌍</div>
+                    <div style="font-size: 11px; color: #999;">世界书</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('chat')">
+                    <div class="ins-icon-preview-box" id="preview-chat">💬</div>
+                    <div style="font-size: 11px; color: #999;">聊天</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('wallpaper')">
+                    <div class="ins-icon-preview-box" id="preview-wallpaper">🎨</div>
+                    <div style="font-size: 11px; color: #999;">壁纸</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('api')">
+                    <div class="ins-icon-preview-box" id="preview-api">⚙️</div>
+                    <div style="font-size: 11px; color: #999;">API</div>
+                </div>
+                
+                <div class="ins-icon-item" onclick="openIconEditor('placeholder1')">
+                    <div class="ins-icon-preview-box" id="preview-placeholder1">📱</div>
+                    <div style="font-size: 11px; color: #999;">围脖</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('placeholder2')">
+                    <div class="ins-icon-preview-box" id="preview-placeholder2">🎵</div>
+                    <div style="font-size: 11px; color: #999;">贴叭</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('placeholder3')">
+                    <div class="ins-icon-preview-box" id="preview-placeholder3">📷</div>
+                    <div style="font-size: 11px; color: #999;">x</div>
+                </div>
+                <div class="ins-icon-item" onclick="openIconEditor('placeholder4')">
+                    <div class="ins-icon-preview-box" id="preview-placeholder4">🎮</div>
+                    <div style="font-size: 11px; color: #999;">监控</div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+      <!-- 世界书页面 -->
+<div class="worldbook-screen" id="worldbookScreen">
+    <div class="api-header" style="background: transparent; border: none; padding: 20px;">
+        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+        <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">WORLDBOOK</div>
+    </div>
+    
+    <div class="ins-category-scroll" id="categoryTags">
+        </div>
+    
+    <div class="worldbook-content ins-book-list" id="worldbookList">
+        </div>
+    
+    <button class="ins-float-add" onclick="openAddWorldbook()">+</button>
+</div>
+      <!-- API设置页面 -->
+
+<div class="api-screen" id="apiScreen">
+    <div class="api-header" style="background: transparent; border: none;">
+        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+        <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">SETTINGS</div>
+    </div>
+    
+    <div class="api-content">
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>⚡ SCHEME</span>
+                <span>方案管理</span>
+            </div>
+            
+            <div class="ins-input-group">
+                <select id="apiSchemeSelect" class="ins-input" style="appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 15px center; background-size: 10px;">
+                    <option value="">选择方案</option>
+                </select>
+            </div>
+            
+            <div class="ins-btn-row">
+                <button class="ins-line-btn" onclick="newScheme()">
+                    <span>+ 新建</span>
+                </button>
+                <button class="ins-line-btn ins-btn-red-line" onclick="deleteScheme()">
+                    <span>🗑 删除</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>⚙️ CONFIG</span>
+                <span>核心配置</span>
+            </div>
+            
+            <div class="ins-input-group">
+                <label class="ins-label">方案名称</label>
+                <input type="text" id="apiName" class="ins-input" placeholder="给方案起个名字...">
+            </div>
+            
+            <div class="ins-input-group">
+                <label class="ins-label">API 接口地址 (Base URL)</label>
+                <input type="url" id="apiBaseUrl" class="ins-input" placeholder="https://api.openai.com/v1">
+            </div>
+            
+            <div class="ins-input-group">
+                <label class="ins-label">API 密钥 (Key)</label>
+                <input type="password" id="apiKey" class="ins-input" placeholder="sk-...">
+            </div>
+
+            <button class="ins-line-btn ins-btn-blue-line" onclick="getModels()" style="width: 100%; margin-top: 5px;">
+                📡 点击获取模型列表
+            </button>
+            
+            <div class="ins-input-group" id="modelGroup" style="display: none; margin-top: 15px;">
+                <label class="ins-label">选择模型</label>
+                <select id="modelSelect" class="ins-input">
                 </select>
             </div>
         </div>
         
-        <!-- 操作按钮 -->
-        <div class="action-buttons">
-            <button class="btn-test" onclick="testConnection()">测试连接</button>
-            <button class="btn-save" onclick="saveConfig()">保存配置</button>
-            <button class="btn-save-scheme" onclick="saveAsScheme()">保存为方案</button>
+        <div class="api-footer-actions">
+            <div class="ins-btn-row">
+                <button class="ins-line-btn" onclick="testConnection()">
+                    <span>⚡ 测试连接</span>
+                </button>
+                <button class="ins-line-btn" onclick="saveAsScheme()">
+                    <span>💾 另存为</span>
+                </button>
+            </div>
+            
+            <button class="ins-line-btn ins-btn-black" onclick="saveConfig()" style="padding: 16px;">
+                <span>确认保存当前配置</span>
+            </button>
         </div>
     </div>
 </div>
+
       <!-- 聊天页面 -->
 <!-- 聊天页面 -->
 <div class="chat-screen" id="chatScreen">
@@ -4885,7 +5370,67 @@ color: #333;
         </div>
     </div>
 </div>
+<div class="modal-overlay" id="musicSettingsModal" onclick="closeWidgetSettings('music')">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">音乐组件设置</div>
+        
+        <div class="form-group">
+            <label class="form-label">组件背景图</label>
+            <div class="file-input-area" onclick="document.getElementById('musicBgInput').click()" style="padding: 10px;">
+                <div style="font-size: 12px;">点击更换背景</div>
+                <input type="file" id="musicBgInput" accept="image/*" style="display: none;" onchange="handleWidgetImage(this, 'musicBgPreview')">
+            </div>
+            <div id="musicBgPreview" style="height: 40px; margin-top: 5px; border-radius: 8px; background: #f0f0f0; display: none; background-size: cover; background-position: center;"></div>
+            <button class="api-btn" onclick="clearWidgetImage('musicBg')" style="margin-top: 5px; background: #f0f0f0; color: #666;">恢复默认透明</button>
+        </div>
 
+        <div class="form-group">
+            <label class="form-label">圆环内图片 (专辑封面)</label>
+            <div class="file-input-area" onclick="document.getElementById('musicCoverInput').click()" style="padding: 10px;">
+                <div style="font-size: 12px;">点击更换封面</div>
+                <input type="file" id="musicCoverInput" accept="image/*" style="display: none;" onchange="handleWidgetImage(this, 'musicCoverPreview')">
+            </div>
+            <div id="musicCoverPreview" style="height: 40px; margin-top: 5px; border-radius: 8px; background: #f0f0f0; display: none; background-size: cover; background-position: center;"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">歌曲信息</label>
+            <input type="text" id="musicTitleInput" class="form-input" placeholder="歌名 (如: Lover)" style="margin-bottom: 5px;">
+            <input type="text" id="musicArtistInput" class="form-input" placeholder="歌手 (如: Taylor Swift)">
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeWidgetSettings('music')">取消</button>
+            <button class="btn btn-save" onclick="saveMusicSettings()">保存</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="noteSettingsModal" onclick="closeWidgetSettings('note')">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">便签组件设置</div>
+        
+        <div class="form-group">
+            <label class="form-label">组件背景图</label>
+            <div class="file-input-area" onclick="document.getElementById('noteBgInput').click()" style="padding: 10px;">
+                <div style="font-size: 12px;">点击更换背景</div>
+                <input type="file" id="noteBgInput" accept="image/*" style="display: none;" onchange="handleWidgetImage(this, 'noteBgPreview')">
+            </div>
+            <div id="noteBgPreview" style="height: 40px; margin-top: 5px; border-radius: 8px; background: #f0f0f0; display: none; background-size: cover; background-position: center;"></div>
+            <button class="api-btn" onclick="clearWidgetImage('noteBg')" style="margin-top: 5px; background: #f0f0f0; color: #666;">恢复默认透明</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">待办事项 (每行一条)</label>
+            <textarea id="noteContentInput" class="form-input" rows="5" placeholder="记得喝水&#10;早点睡觉&#10;永远开心"></textarea>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeWidgetSettings('note')">取消</button>
+            <button class="btn btn-save" onclick="saveNoteSettings()">保存</button>
+        </div>
+    </div>
+</div>
 <!-- 世界书编辑弹窗 -->
 <div class="modal-overlay" id="worldbookModal" onclick="closeWorldbookModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -5020,35 +5565,35 @@ color: #333;
 </div>
 <!-- 图标编辑弹窗 -->
 <div class="modal-overlay" id="iconEditorModal" onclick="closeIconEditor(event)">
-    <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-title">更换图标</div>
+    <div class="modal" onclick="event.stopPropagation()" style="background: #fff; border-radius: 24px; padding: 25px; width: 300px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
         
-        <div class="form-group">
-            <label class="form-label">当前图标预览</label>
-            <div class="app-icon-preview" id="currentIconPreview" style="width: 80px; height: 80px; font-size: 36px;">🌍</div>
+        <div class="modal-title" style="font-size: 16px; font-weight: 700; margin-bottom: 20px; letter-spacing: 1px;">EDIT ICON</div>
+        
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <div class="ins-icon-preview-box" id="currentIconPreview" style="width: 80px; height: 80px; font-size: 36px; border: 2px solid #eee;">
+                </div>
         </div>
         
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="switchIconTab('local')">本地相册</button>
-            <button class="tab-btn" onclick="switchIconTab('url')">网址链接</button>
-            <button class="tab-btn" onclick="resetToDefaultIcon()">恢复默认</button>
+        <div class="ins-tab-group">
+            <button class="ins-tab-btn active" onclick="switchIconTab('local')">本地</button>
+            <button class="ins-tab-btn" onclick="switchIconTab('url')">链接</button>
+            <button class="ins-tab-btn" onclick="resetToDefaultIcon()">恢复</button>
         </div>
         
-        <div class="tab-content active" id="iconLocalTab" style="margin-top: 15px;">
-            <div class="file-input-area" onclick="document.getElementById('iconFile').click()">
-                <div>📁 点击选择图片</div>
-                <div style="font-size: 12px; color: #666; margin-top: 5px;">支持 JPG、PNG 格式</div>
+        <div class="tab-content active" id="iconLocalTab">
+            <div class="ins-upload-area" onclick="document.getElementById('iconFile').click()" style="padding: 20px;">
+                <div style="font-size: 12px; color: #999;">点击选择新图标</div>
                 <input type="file" id="iconFile" accept="image/*" style="display: none;">
             </div>
         </div>
         
-        <div class="tab-content" id="iconUrlTab" style="margin-top: 15px;">
-            <input type="url" class="url-input" id="iconUrl" placeholder="输入图片网址...">
+        <div class="tab-content" id="iconUrlTab">
+            <input type="url" class="ins-input" id="iconUrl" placeholder="输入图片链接...">
         </div>
         
-        <div class="modal-buttons" style="margin-top: 20px;">
-            <button class="btn btn-cancel" onclick="closeIconEditor()">取消</button>
-            <button class="btn btn-save" onclick="saveAppIcon()">保存</button>
+        <div class="ins-btn-row" style="margin-top: 20px;">
+            <button class="ins-line-btn" onclick="closeIconEditor()">取消</button>
+            <button class="ins-line-btn ins-btn-black" onclick="saveAppIcon()">保存</button>
         </div>
     </div>
 </div>
@@ -5432,7 +5977,7 @@ let diaries = [];
 let currentViewingDiaryId = null;
 
         function initDB() {
-           const request = indexedDB.open('phoneData', 21);
+           const request = indexedDB.open('phoneData', 22);
             
             request.onerror = () => console.error('数据库打开失败');
             
@@ -5445,6 +5990,7 @@ let currentViewingDiaryId = null;
 loadApiSchemes();
               loadAppIcons();
               loadWalletData(); // 加载钱包
+              loadWidgetSettings();
             };
             
             request.onupgradeneeded = (event) => {
@@ -5509,7 +6055,9 @@ if (!db.objectStoreNames.contains('wallet')) {
                     db.createObjectStore('gameConsole', { keyPath: 'id' });
                 }
 
-
+if (!db.objectStoreNames.contains('widgetSettings')) {
+    db.createObjectStore('widgetSettings', { keyPath: 'id' });
+}
             };
         }
         
@@ -5577,16 +6125,37 @@ function loadFromDB(storeName, callback) {
 }
         
         // 壁纸功能
-        function switchTab(tabName) {
-            // 切换按钮状态
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // 切换内容
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(tabName + 'Tab').classList.add('active');
-        }
-        
+// 修复壁纸页面的 Tab 切换
+function switchTab(tabName) {
+    // ▼▼▼ 修复点：类名改为 .ins-tab-btn ▼▼▼
+    document.querySelectorAll('.ins-tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // 给当前点击的按钮加 active
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    // 切换内容区域 (内容区域的类名 tab-content 没变，保持原样即可)
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(tabName + 'Tab').classList.add('active');
+}
+
+// 修复图标编辑页面的 Tab 切换
+function switchIconTab(tab) {
+    // ▼▼▼ 修复点：这里也是 .ins-tab-btn ▼▼▼
+    document.querySelectorAll('#iconEditorModal .ins-tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    document.querySelectorAll('#iconEditorModal .tab-content').forEach(content => content.classList.remove('active'));
+    if (tab === 'local') {
+        document.getElementById('iconLocalTab').classList.add('active');
+    } else if (tab === 'url') {
+        document.getElementById('iconUrlTab').classList.add('active');
+    }
+}
         function updateWallpaperPreview() {
             const preview = document.getElementById('wallpaperPreview');
             if (currentWallpaper) {
@@ -5619,14 +6188,19 @@ function loadFromDB(storeName, callback) {
             }
         }
         
-        function applyWallpaper(wallpaperData) {
-            if (wallpaperData) {
-                document.body.style.background = `url(${wallpaperData}) center/cover no-repeat`;
-            } else {
-                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            }
-        }
-        
+/* 修改 applyWallpaper 函数 */
+function applyWallpaper(wallpaperData) {
+    // 1. 获取手机屏幕容器
+    const screen = document.querySelector('.phone-screen');
+    
+    if (wallpaperData) {
+        // 2. 把壁纸应用到 screen 而不是 body
+        screen.style.background = `url(${wallpaperData}) center/cover no-repeat`;
+    } else {
+        // 3. 恢复默认渐变
+        screen.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+}
         function loadWallpaper() {
             loadFromDB('wallpaper', (data) => {
                 if (data && data.data) {
@@ -5798,20 +6372,25 @@ function loadWorldbooks() {
 
 function renderCategories() {
     const container = document.getElementById('categoryTags');
-    container.innerHTML = '<div class="category-tag active" data-category="all">全部</div>';
     
+    // 生成“全部”标签
+    let html = `<div class="ins-cat-pill ${currentCategory === 'all' ? 'active' : ''}" data-category="all">全部</div>`;
+    
+    // 生成其他分类标签
     categories.forEach(cat => {
-        container.innerHTML += `<div class="category-tag" data-category="${cat}">${cat}</div>`;
+        html += `<div class="ins-cat-pill ${currentCategory === cat ? 'active' : ''}" data-category="${cat}">${cat}</div>`;
     });
     
-    container.innerHTML += '<div class="category-tag" data-category="manage">管理分类</div>';
+    // 生成“管理分类”标签 (用特殊样式区分，比如加个边框颜色)
+    html += `<div class="ins-cat-pill" data-category="manage" style="border-style: dashed;">⚙ 管理</div>`;
     
-    // 添加点击事件
-    container.querySelectorAll('.category-tag').forEach(tag => {
+    container.innerHTML = html;
+    
+    // 重新绑定点击事件
+    container.querySelectorAll('.ins-cat-pill').forEach(tag => {
         tag.addEventListener('click', () => switchCategory(tag.dataset.category));
     });
 }
-
 function switchCategory(category) {
     if (category === 'manage') {
         openCategoryManager();
@@ -5819,35 +6398,48 @@ function switchCategory(category) {
     }
     
     currentCategory = category;
-    document.querySelectorAll('.category-tag').forEach(tag => tag.classList.remove('active'));
-    document.querySelector(`[data-category="${category}"]`).classList.add('active');
+    
+    // ▼▼▼ 修复点：把原来的 .category-tag 改成 .ins-cat-pill ▼▼▼
+    document.querySelectorAll('.ins-cat-pill').forEach(tag => tag.classList.remove('active'));
+    
+    // 找到当前点击的那个标签，加上 active 样式
+    const activeTag = document.querySelector(`.ins-cat-pill[data-category="${category}"]`);
+    if (activeTag) {
+        activeTag.classList.add('active');
+    }
+    
     renderWorldbooks();
 }
-
 function renderWorldbooks() {
     const container = document.getElementById('worldbookList');
     const filtered = currentCategory === 'all' ? worldbooks : worldbooks.filter(wb => wb.category === currentCategory);
     
     if (filtered.length === 0) {
-        container.innerHTML = '<div style="text-align: center; color: #999; margin-top: 50px;">暂无世界书</div>';
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 60px; opacity: 0.5;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🍃</div>
+                <div style="font-size: 13px;">暂无内容</div>
+            </div>`;
         return;
     }
     
+    // 生成 Ins 风卡片
     container.innerHTML = filtered.map(wb => `
-        <div class="worldbook-card">
-            <div class="card-title">${wb.title}</div>
-            <div class="card-preview">${wb.content.substring(0, 100)}...</div>
-            <div class="card-footer">
-                <div class="card-category">${wb.category}</div>
-                <div class="card-actions">
-                    <button class="action-btn btn-edit" onclick="editWorldbook(${wb.id})">编辑</button>
-                    <button class="action-btn btn-delete" onclick="deleteWorldbook(${wb.id})">删除</button>
-                </div>
+        <div class="ins-book-card">
+            <div class="ins-book-header">
+                <div class="ins-book-title">${wb.title}</div>
+                <div class="ins-book-tag">${wb.category}</div>
+            </div>
+            
+            <div class="ins-book-preview">${wb.content}</div>
+            
+            <div class="ins-book-actions">
+                <button class="ins-action-btn ins-btn-edit" onclick="editWorldbook(${wb.id})">EDIT</button>
+                <button class="ins-action-btn ins-btn-del" onclick="deleteWorldbook(${wb.id})">DELETE</button>
             </div>
         </div>
     `).join('');
 }
-
 function openAddWorldbook() {
     alert('添加世界书功能开发中...');
 }
@@ -5909,20 +6501,44 @@ function saveWorldbook() {
         return;
     }
     
+    // 确保 worldbooks 是数组
+    if (!Array.isArray(worldbooks)) {
+        worldbooks = [];
+    }
+
     if (editingWorldbookId) {
         // 编辑现有世界书
         const index = worldbooks.findIndex(wb => wb.id === editingWorldbookId);
-        worldbooks[index] = { ...worldbooks[index], title, content, category };
+        if (index > -1) {
+            worldbooks[index] = { ...worldbooks[index], title, content, category };
+        }
     } else {
         // 添加新世界书
-        const newId = worldbooks.length > 0 ? Math.max(...worldbooks.map(wb => wb.id)) + 1 : 1;
-        worldbooks.push({ id: newId, title, content, category, createTime: new Date().toISOString() });
+        // ▼▼▼ 优化：防止 id 重复或计算错误 ▼▼▼
+        const newId = worldbooks.length > 0 ? Math.max(...worldbooks.map(wb => wb.id || 0)) + 1 : 1;
+        worldbooks.push({ 
+            id: newId, 
+            title, 
+            content, 
+            category, 
+            createTime: new Date().toISOString() 
+        });
     }
     
+    // 保存并刷新
     saveToDB('worldbooks', worldbooks);
-    renderWorldbooks();
+    
+    // ▼▼▼ 关键：如果当前不在这个分类下，自动切过去，不然你看不到新加的 ▼▼▼
+    if (currentCategory !== 'all' && currentCategory !== category) {
+        switchCategory(category); // 自动切到对应分类
+    } else {
+        renderWorldbooks(); // 就在当前分类，直接刷新
+    }
+    
     closeWorldbookModal();
+    // alert('保存成功！'); // 不需要弹窗，直接看效果更流畅
 }
+
 // 分类管理功能
 function openCategoryManager() {
     renderCategoryList();
@@ -5936,57 +6552,70 @@ function closeCategoryModal(event) {
 
 function renderCategoryList() {
     const container = document.getElementById('categoryList');
+    
+    // ▼▼▼ 优化：Ins 风格的列表布局 ▼▼▼
     container.innerHTML = categories.map(cat => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
-            <span>${cat}</span>
-            ${cat !== '默认分类' ? `<button class="action-btn btn-delete" onclick="deleteCategory('${cat}')">删除</button>` : ''}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f5f5f5;">
+            <span style="font-size: 15px; color: #333; font-weight: 500;">${cat}</span>
+            ${cat !== '默认分类' ? 
+                `<button class="ins-action-btn ins-btn-del" onclick="deleteCategory('${cat}')" style="padding: 6px 14px; font-size: 12px;">删除</button>` 
+                : '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">系统默认</span>'}
         </div>
     `).join('');
 }
 
 function addCategory() {
     const name = document.getElementById('newCategoryName').value.trim();
+    
     if (!name) {
         alert('请输入分类名称');
         return;
     }
     if (categories.includes(name)) {
-        alert('分类已存在');
+        alert('这个分类已经存在啦');
         return;
     }
     
     categories.push(name);
+    
+    // 保存
     saveToDB('categories', categories);
-    renderCategories();
-    renderCategoryList();
+    
+    // 刷新所有相关界面
+    renderCategories();      // 顶部条
+    renderCategoryList();    // 弹窗列表
+    
+    // 清空输入框
     document.getElementById('newCategoryName').value = '';
 }
 
 function deleteCategory(categoryName) {
-    if (confirm(`确定删除分类"${categoryName}"吗？\n该分类下的世界书将移动到默认分类。`)) {
-        // 将该分类下的世界书移动到默认分类
-        worldbooks.forEach(wb => {
-            if (wb.category === categoryName) {
-                wb.category = '默认分类';
-            }
-        });
+    if (confirm(`确定删除分类 "${categoryName}" 吗？\n该分类下的世界书将移动到默认分类。`)) {
+        // 1. 数据处理：把该分类下的内容移到默认分类
+        if (Array.isArray(worldbooks)) {
+            worldbooks.forEach(wb => {
+                if (wb.category === categoryName) {
+                    wb.category = '默认分类';
+                }
+            });
+        }
         
-        // 删除分类
+        // 2. 从列表中移除
         categories = categories.filter(cat => cat !== categoryName);
         
-        // 保存数据
-        saveToDB('categories', categories);
-        saveToDB('worldbooks', worldbooks);
-        
-        // 更新界面
-        renderCategories();
-        renderCategoryList();
-        renderWorldbooks();
-        
-        // 如果当前选中的是被删除的分类，切换到全部
+        // 3. ▼▼▼ 关键修复：如果删的是当前正选中的，立刻切回 'all' ▼▼▼
         if (currentCategory === categoryName) {
             currentCategory = 'all';
         }
+        
+        // 4. 保存数据
+        saveToDB('categories', categories);
+        saveToDB('worldbooks', worldbooks);
+        
+        // 5. 刷新界面
+        renderCategories();      // 刷新顶部的胶囊条
+        renderCategoryList();    // 刷新弹窗里的列表
+        renderWorldbooks();      // 刷新主列表内容
     }
 }
 // API设置功能函数
@@ -7572,62 +8201,72 @@ async function receiveAIReply() {
             }
         }
 
-        // 7. 构建系统提示词
-        let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
-特别警告：如果你要发送表情包，格式必须是[搜表情:关键词]，不能是[表情包:xx]！
-【角色人设】
+    // 7. 构建系统提示词（深度扮演优化版）
+        let systemPrompt = `你现在是【${chat.name}】。请忘掉AI或语言模型的身份，完全沉浸在这个角色中，用TA的灵魂去思考和表达。
+
+### 1. 灵魂与思维 (Deep Roleplay)
+**【你的核心设定】**
 ${characterInfo.personality || '一个友好、真诚的角色。'}
 
-【对方人设】
+**【对方（我）的设定】**
 ${characterInfo.myPersonality || '无'}
 
-【关联世界书信息】
+**【扮演要求】**
+* **思维逻辑**：请完全按照上述人设的性格特点、价值观和思维习惯来处理信息。做决定时，要问自己“${chat.name}在这种情况下会怎么想？”。
+* **表达习惯**：模仿该角色特有的口癖、语调（如傲娇、温柔、粗鲁或高冷）和用词风格。
+* **拒绝OOC**：时刻警惕，绝对禁止说出任何不符合人设的话，也不要表现出AI的机械感或服务型态度（除非人设就是机器人）。
+
+### 2. 记忆与世界观 (Memory & Context)
+**【深层记忆/世界书】**
 ${worldbooksContent}
 
-请在回复时自然地参考世界书中的设定。
+**【记忆融合指南】**
+* 上述世界书内容是你**真实的过往经历**和你**所处的真实世界**，而非一段文字设定。
+* 请将**当前的聊天上下文**与**世界书记忆**自然结合。回复时，请像回忆往事一样自然地调用这些信息，不要生硬地复述设定。
+* 如果对话中涉及过去，请基于这些设定做出符合逻辑的反应。
 
-【时间信息】
+### 3. 当前时空 (Environment)
+**【时间信息】**
 今天是：${dateStr} ${timeStr}
-当前时间：${timeStr}
 ${getBirthdayPrompt(characterInfo.birthday)}
 
-【城市与天气信息】
+**【环境与天气】**
 ${weatherInfoStr}
+*(请让环境因素自然地影响你的心情或行动，例如下雨时可能会不想出门)*
 
-【状态系统】
-你有一个当前状态，格式为"主要状态-详细描述"。
-当前状态：${characterInfo.currentStatus || '在线-刚刚上线'}
+### 4. 状态系统 (必须执行)
+你有一个当前状态，格式为："主要状态-详细描述"。
+**当前状态**：${characterInfo.currentStatus || '在线-刚刚上线'}
+
+**【格式要求】**
 你必须在回复的最开头按以下格式表明状态：
-更新状态时：[状态]在线-正在煮面|||[消息]第一条消息...
-保持状态时：[状态]保持|||[消息]第一条消息...
+* **更新状态时**：[状态]在线-正在煮面|||[消息]第一条消息...
+* **保持状态时**：[状态]保持|||[消息]第一条消息...
 
-【购物规则】
-请仔细阅读上方的[系统记录]。如果你发现自己刚刚已经送过某种礼物（如草莓），请不要短时间内重复赠送，除非用户明确表示还想要，一切根据人设来。
+### 5. 功能指令 (严格遵守)
+* **表情包**：必须使用 [搜表情:关键词] (例如：[搜表情:开心])，禁止使用 [表情包:xx]。
+* **转账**：[转账:金额:备注]
+* **发送语音**：[发送语音:语音内容]
+* **领取转账**：如果你决定领取对方的转账，回复中必须包含 [领取转账] 四个字。
 
-      
-【重要回复要求】你每次都需要根据人设，世界书，上下文聊天记录参考
-1. 你的回复必须分成6-12条独立消息，用"|||"符号分隔
-2. 转账功能：[转账:金额:备注]
-3. 语音消息功能：[发送语音:内容]
-4. 如果你要领取对方的转账，请在回复中包含[领取转账]四个字。
-5. 购物功能（送礼与代付）：
-请根据对话语境，决定是送对方礼物，还是向对方求买单。
-请务必在回复末尾加上对应指令：
-A.【送礼物】（你想送给对方）：
-   指令格式：[购物:送礼:物品名称]
-   场景：对方想要某物，或者你想给惊喜。
-   示例：宝，给你买了花！|||[购物:送礼:红玫瑰]
-B.【求代付】（你想让对方给你买）：
-   指令格式：[购物:代付:物品名称]
-   场景：你表达想吃/想要某物，希望对方买给你。
-   示例：老公我好想吃那个蛋糕呀~|||[购物:代付:草莓蛋糕]
+### 6. 购物系统 (送礼与代付)
+*(请根据人设和当前亲密度判断。若系统记录显示刚送过某物，请勿短时间重复赠送)*
+* **【送礼物】** (你想送给我)：
+    * 场景：符合你人设的关心方式，想给我惊喜。
+    * 指令：[购物:送礼:物品名称]
+    * 示例：笨蛋，顺路买了这个给你。|||[购物:送礼:热奶茶]
+* **【求代付】** (你想让我买单)：
+    * 场景：符合你人设的撒娇或请求方式。
+    * 指令：[购物:代付:物品名称]
+    * 示例：我的零花钱花光了...帮帮我嘛~|||[购物:代付:游戏皮肤]
 
+### 7. 输出格式规范
+1.  **分段回复**：你的回复必须分成 **6-12条** 独立消息，模拟真人聊天的节奏。
+2.  **分隔符**：消息之间必须使用 "|||" 符号分隔。
 
-
-【格式提醒】
-如果要更新状态，格式为：[状态]xxx|||[消息]第一条|||第二条
-如果不更新状态，直接写：第一条|||第二条|||第三条
-注意：不要在消息内容前加[消息]标记，直接写内容即可。
+**格式最终示例**：
+[状态]xxx|||[消息]第一条内容|||第二条内容|||[购物:xxx:xxx]
+*(注意：不要在消息内容前加[消息]标记，直接写内容即可)*
 `;
 
         // 加载表情库提示
@@ -8728,31 +9367,27 @@ function loadAppIcons() {
         updateAllIcons();
     });
 }
-// 更新所有图标显示
+
+// 修改后的图标更新逻辑
 function updateAllIcons() {
-            Object.keys(appIcons).forEach(key => {
-                const iconData = appIcons[key];
-                const mainIconContainer = document.getElementById(`icon-${key}`);
-                const previewIcon = document.getElementById(`preview-${key}`);
-                
-                if (iconData) {
-                    // 主屏幕图标更新 (保持不变)
-                    if (mainIconContainer) {
-                        mainIconContainer.innerHTML = `<img src="${iconData}" style="width: 100%; height: 100%; object-fit: cover; display: block;">`;
-                    }
-                    // ▼▼▼ 修改下面这一行：给预览图标也加上 style 样式 ▼▼▼
-                    if (previewIcon) {
-                        previewIcon.innerHTML = `<img src="${iconData}" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 12px;">`;
-                    }
-                } else {
-                    // 恢复默认 (保持不变)
-                    if (mainIconContainer) mainIconContainer.textContent = defaultIcons[key];
-                    if (previewIcon) previewIcon.textContent = defaultIcons[key];
-                }
-            });
-        }
-
-
+    Object.keys(appIcons).forEach(key => {
+        const iconData = appIcons[key];
+        const mainIconContainer = document.getElementById(`icon-${key}`);
+        const previewIcon = document.getElementById(`preview-${key}`);
+        
+        // 只有当用户真的上传了自定义图片时，才去覆盖
+        if (iconData && iconData.length > 20) { // 简单判断是否为有效图片数据
+            if (mainIconContainer) {
+                // 如果是图片，就覆盖 HTML
+                mainIconContainer.innerHTML = `<img src="${iconData}" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 12px;">`;
+            }
+            if (previewIcon) {
+                previewIcon.innerHTML = `<img src="${iconData}" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 12px;">`;
+            }
+        } 
+        // 否则（如果没有自定义图片），什么都不做！保持 HTML 里写好的 SVG 线条图标！
+    });
+}
 
 
 
@@ -12947,7 +13582,7 @@ function rejectAIPayRequest(messageId) {
     renderMessages();
     scrollToBottom();
 }
-// ============ 游戏机自定义逻辑 ============
+
 let currentEditingPart = null; // 记录当前正在改哪个部位的颜色
 
 // 1. 初始化时加载设置
@@ -12960,7 +13595,7 @@ function loadConsoleSettings() {
 }
 // 在 initDB() 的 onsuccess 里调用 loadConsoleSettings(); (这一步请手动加在 initDB success 回调里)
 
-// 2. 应用设置到界面（核心）
+
 // 2. 应用设置到界面 (更新版)
 function applyConsoleSettingsToUI(data) {
     const root = document.documentElement;
@@ -13040,157 +13675,208 @@ function closeConsoleSettings() {
     document.getElementById('consoleSettingsScreen').style.display = 'none';
     document.getElementById('mainScreen').style.display = 'flex';
 }
-
-// 4. 触发编辑 (更新版)
-function triggerColor(part) {
-    currentEditingPart = part;
+// 简单的音乐组件点击交互
+function toggleMusicState(element) {
+    const icon = element.querySelector('.music-icon');
+    const ring = element.querySelector('.music-ring');
     
-    // 如果是机身或屏幕 -> 选颜色
-    if (part === 'body' || part === 'screen') {
-        document.getElementById('consoleColorPicker').click();
-    } 
-    // 如果是按键 -> 选图片
-    else if (part === 'dpad' || part === 'btnA' || part === 'btnB') {
-        // 提示用户
-        const choice = confirm("要把这个按键换成自定义图片吗？\n点击[确定]上传图片\n点击[取消]使用纯色");
-        if (choice) {
-             document.getElementById('consoleFilePicker').click(); // 弹文件框
+    if (icon.textContent === '▶') {
+        icon.textContent = '⏸'; // 变成暂停
+        // 让圆环转起来的视觉假象（如果你想加动画可以后续再说）
+        ring.style.background = 'conic-gradient(#667eea 0% 100%)'; // 变色
+    } else {
+        icon.textContent = '▶'; // 变回播放
+        ring.style.background = 'conic-gradient(rgba(255,255,255,0.9) 0% 70%, rgba(255,255,255,0.2) 70% 100%)'; // 恢复
+    }
+}
+
+// ============ 组件设置逻辑 ============
+
+// 临时存储图片数据
+let tempWidgetImages = {
+    musicBg: null,
+    musicCover: null,
+    noteBg: null
+};
+
+// 1. 初始化组件数据
+function loadWidgetSettings() {
+    loadFromDB('widgetSettings', (data) => {
+        if (!data) return;
+        
+        // 应用音乐设置
+        const musicWidget = document.querySelector('.music-widget');
+        if (data.musicBg) {
+            musicWidget.style.backgroundImage = `url(${data.musicBg})`;
         } else {
-             document.getElementById('consoleColorPicker').click(); // 弹颜色框
+            musicWidget.style.backgroundImage = '';
         }
+        
+        const musicCover = document.getElementById('musicCoverDisplay');
+        if (data.musicCover) {
+            musicCover.src = data.musicCover;
+            musicCover.style.display = 'block';
+        } else {
+            musicCover.style.display = 'none';
+        }
+        
+        if (data.musicTitle) document.querySelector('.music-title').textContent = data.musicTitle;
+        if (data.musicArtist) document.querySelector('.music-desc').textContent = data.musicArtist;
+
+        // 应用便签设置
+        const noteWidget = document.querySelector('.note-widget');
+        if (data.noteBg) {
+            noteWidget.style.backgroundImage = `url(${data.noteBg})`;
+            // 如果有背景图，文字颜色稍微加深一点防止看不清，或者保持白色加阴影
+            noteWidget.style.textShadow = '0 1px 3px rgba(0,0,0,0.5)'; 
+        } else {
+            noteWidget.style.backgroundImage = '';
+            noteWidget.style.textShadow = 'none';
+        }
+
+        if (data.noteContent) {
+            const listHtml = data.noteContent.split('\n').map(text => `
+                <div class="note-item">
+                    <span class="note-checkbox"></span> ${text}
+                </div>
+            `).join('');
+            document.querySelector('.note-list').innerHTML = listHtml;
+        }
+    });
+}
+// ============ 组件设置功能 (这是新加的) ============
+
+// 1. 打开组件设置弹窗
+function openWidgetSettings(type) {
+    // 如果点击的是【音乐组件】
+    if (type === 'music') {
+        // 显示音乐弹窗
+        document.getElementById('musicSettingsModal').style.display = 'flex';
+        
+        // 自动把现在的歌名填进去，方便你改
+        const currentTitle = document.querySelector('.music-title').textContent;
+        const currentArtist = document.querySelector('.music-desc').textContent;
+        
+        document.getElementById('musicTitleInput').value = currentTitle;
+        document.getElementById('musicArtistInput').value = currentArtist;
+    } 
+    // 如果点击的是【便签组件】
+    else {
+        // 显示便签弹窗
+        document.getElementById('noteSettingsModal').style.display = 'flex';
+        
+        // 自动把现在的便签内容填进去
+        const items = document.querySelectorAll('.note-item');
+        // 把列表变成文字，一行一条
+        const text = Array.from(items).map(item => item.textContent.trim()).join('\n');
+        
+        document.getElementById('noteContentInput').value = text;
     }
 }
 
-// 5. 应用颜色并保存
-function applyConsoleColor(color) {
-    if (!currentEditingPart) return;
+// 2. 关闭组件设置弹窗
+function closeWidgetSettings(type) {
+    document.getElementById(type + 'SettingsModal').style.display = 'none';
     
-    loadFromDB('gameConsole', (data) => {
-        const settings = data || { id: 1 };
-        const root = document.documentElement;
-
-        switch (currentEditingPart) {
-            case 'body':
-                settings.bodyColor = color;
-                // 自动计算一个深一点的阴影色
-                settings.shadowColor = adjustColor(color, -40); 
-                root.style.setProperty('--gc-body', color);
-                root.style.setProperty('--gc-shadow', settings.shadowColor);
-                break;
-            case 'screen':
-                settings.screenBg = color;
-                root.style.setProperty('--gc-screen-bg', color);
-                break;
-            case 'dpad':
-                settings.dpadColor = color; // 存的是颜色值
-                break;
-            case 'btnA':
-                settings.btnAColor = color;
-                break;
-            case 'btnB':
-                settings.btnBColor = color;
-                break;
-        }
-        
-        saveToDB('gameConsole', settings);
-         applyConsoleSettingsToUI(settings);
-    });
-}
-
-// 6. 编辑文字/小人
-function editConsoleContent(type) {
-    loadFromDB('gameConsole', (data) => {
-        const settings = data || { id: 1 };
-        
-        if (type === 'pet') {
-            const val = prompt("请输入新的小人（推荐emoji）：", settings.petContent || '👾');
-            if (val) {
-                settings.petContent = val;
-                document.getElementById('mainPet').textContent = val;
-                document.getElementById('previewPet').textContent = val;
-            }
-        } else if (type === 'text') {
-            const val = prompt("请输入屏幕文字（推荐英文）：", settings.screenText || 'ADVENTURE');
-            if (val) {
-                settings.screenText = val;
-                document.getElementById('mainConsoleText').textContent = val;
-                document.getElementById('previewConsoleText').textContent = val;
-            }
-        }
-        
-        saveToDB('gameConsole', settings);
-    });
-}
-
-// 7. 辅助函数：颜色变暗（用于生成阴影）
-function adjustColor(color, amount) {
-    let usePound = false;
-    if (color[0] == "#") {
-        color = color.slice(1);
-        usePound = true;
+    // 如果有临时图片数据，顺便清理一下（防止下次打开还留着）
+    if (typeof tempWidgetImages !== 'undefined') {
+        tempWidgetImages = { musicBg: null, musicCover: null, noteBg: null };
     }
-    let num = parseInt(color, 16);
-    let r = (num >> 16) + amount;
-    if (r > 255) r = 255; else if (r < 0) r = 0;
-    let b = ((num >> 8) & 0x00FF) + amount;
-    if (b > 255) b = 255; else if (b < 0) b = 0;
-    let g = (num & 0x0000FF) + amount;
-    if (g > 255) g = 255; else if (g < 0) g = 0;
-    return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6,'0');
 }
-
-// 8. 重置设置
-function resetConsoleSettings() {
-    if(!confirm('确定恢复默认配色吗？')) return;
-    const defaultSettings = {
-        id: 1,
-        bodyColor: '#f4f4f4',
-        shadowColor: '#dcdcdc',
-        screenBg: '#9bbc0f',
-        textColor: '#0f380f',
-        dpadColor: '#333333',
-        btnAColor: '#ff4757',
-        btnBColor: '#ff4757',
-        petContent: '👾',
-        screenText: 'ADVENTURE'
-    };
-    saveToDB('gameConsole', defaultSettings);
-    applyConsoleSettingsToUI(defaultSettings);
-}
-// ★★★ 新增：处理按键图片上传 ★★★
-function handleConsoleImageUpload(input) {
-    const file = input.files[0];
-    if (!file || !currentEditingPart) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const bgValue = `url('${e.target.result}')`; // 转成 CSS 的 url(...) 格式
         
-        loadFromDB('gameConsole', (data) => {
-            const settings = data || { id: 1 };
-            
-            if (currentEditingPart === 'dpad') {
-                settings.dpadColor = bgValue; // 此时存的是 url(...)
-            } else if (currentEditingPart === 'btnA') {
-                settings.btnAColor = bgValue;
-            } else if (currentEditingPart === 'btnB') {
-                settings.btnBColor = bgValue;
-            }
-            
-            saveToDB('gameConsole', settings);
-            applyConsoleSettingsToUI(settings); // 刷新界面
-        });
+// ============ 补充组件逻辑代码 (请复制到 script 末尾) ============
+
+// 1. 处理组件图片上传预览
+function handleWidgetImage(input, previewId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // 存入临时变量
+            if (input.id === 'musicBgInput') tempWidgetImages.musicBg = e.target.result;
+            if (input.id === 'musicCoverInput') tempWidgetImages.musicCover = e.target.result;
+            if (input.id === 'noteBgInput') tempWidgetImages.noteBg = e.target.result;
+
+            // 显示预览
+            const preview = document.getElementById(previewId);
+            preview.style.backgroundImage = `url(${e.target.result})`;
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 2. 清除组件背景图
+function clearWidgetImage(type) {
+    // 标记为空字符串，表示要删除
+    tempWidgetImages[type] = ''; 
+    
+    // 隐藏预览
+    const preview = document.getElementById(type + 'Preview');
+    if (preview) {
+        preview.style.backgroundImage = '';
+        preview.style.display = 'none';
+    }
+    
+    // 清空文件输入框
+    const input = document.getElementById(type + 'Input');
+    if (input) input.value = '';
+}
+
+// 3. 保存音乐组件设置
+function saveMusicSettings() {
+    const title = document.getElementById('musicTitleInput').value;
+    const artist = document.getElementById('musicArtistInput').value;
+
+    // 先读取旧数据，以免覆盖掉没修改的部分
+    loadFromDB('widgetSettings', (oldData) => {
+        const currentData = oldData || {};
         
-        // 清空input，防止重复选同一张图不触发change
-        input.value = '';
-    };
-    reader.readAsDataURL(file);
+        const newData = {
+            ...currentData,
+            musicTitle: title,
+            musicArtist: artist
+        };
+
+        // 只有当用户修改了图片（temp里有值）时，才更新图片数据
+        // 如果 temp 是 '' (空字符串)，说明用户点了清除，也会被更新进去
+        if (tempWidgetImages.musicBg !== null) newData.musicBg = tempWidgetImages.musicBg;
+        if (tempWidgetImages.musicCover !== null) newData.musicCover = tempWidgetImages.musicCover;
+
+        // 保存并刷新
+        saveToDB('widgetSettings', newData);
+        loadWidgetSettings(); // 立即刷新界面
+        closeWidgetSettings('music');
+        
+        // 重置临时变量
+        tempWidgetImages.musicBg = null;
+        tempWidgetImages.musicCover = null;
+    });
+}
+
+// 4. 保存便签组件设置
+function saveNoteSettings() {
+    const content = document.getElementById('noteContentInput').value;
+
+    loadFromDB('widgetSettings', (oldData) => {
+        const currentData = oldData || {};
+        
+        const newData = {
+            ...currentData,
+            noteContent: content
+        };
+
+        if (tempWidgetImages.noteBg !== null) newData.noteBg = tempWidgetImages.noteBg;
+
+        saveToDB('widgetSettings', newData);
+        loadWidgetSettings();
+        closeWidgetSettings('note');
+        
+        tempWidgetImages.noteBg = null;
+    });
 }
 
 
-//游戏机修改结束
-
-        // 初始化，
+// 初始化，
         initDB();
 
     </script>
