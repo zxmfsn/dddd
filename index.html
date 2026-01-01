@@ -7,6 +7,14 @@
     <title>冻梨小手机</title>
     <style>
    /* 1. 重置基础样式 */
+
+   @font-face {
+    font-family: 'CustomCute';
+   @import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&display=swap');
+    font-weight: normal;
+    font-style: normal;
+}
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         /* 2. 浏览器窗口样式 (背景台) */
@@ -228,21 +236,32 @@
         }
         
         .back-btn {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            background: #f0f0f0;
+            background: transparent;
             border: none;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 18px;
-            transition: background 0.3s;
+            transition: background 0.2s;
+            padding: 0;
         }
         
         .back-btn:hover {
-            background: #e0e0e0;
+            background: rgba(0,0,0,0.05);
+        }
+
+        /* 通用返回按钮SVG样式 */
+        .back-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: #333;
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         
         .header-title {
@@ -1141,34 +1160,72 @@
 .chat-detail-header {
     display: flex;
     align-items: center;
-    padding: 20px;
-    border-bottom: 0.5px solid #f0f0f0; /* 极细线 */
-    background: #fff;
+    padding: 15px 20px;
+    border-bottom: 0.5px solid #f0f0f0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* 聊天页面的返回按钮特殊处理：透明背景，SVG适配 */
+.chat-detail-header .back-btn {
+    margin-right: 5px;
+}
+
+.header-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    margin-right: 10px;
+    background: #f0f0f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid rgba(0,0,0,0.05);
+    flex-shrink: 0;
+}
+
+.header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .chat-detail-title {
-    flex: 1;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: #333;
     line-height: 1.2;
-    text-align:left;
-    margin: 0 px;
+    text-align: left;
+    margin: 0;
 }
 
-
 .character-status {
-   font-size: 12px;  /* 先设置一个基准大小 */
-    transform: scale(0.9); /* 强制缩小到 85% (约等于 10px) */
-    transform-origin: left top; /* ❗️关键：固定左上角缩放，防止缩放后文字跑偏 */
+    font-size: 13px;
     color: #999;
-    font-style: italic;
     text-align: left;
-    padding: 0;
-    margin: 0;
-    margin-top: 3px;
-    background: transparent;
+    margin-top: 2px;
     line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    
+    /* ▼▼▼ 修改这里：加上 !important 强制应用字体 ▼▼▼ */
+   font-family: 'Zhi Mang Xing', cursive !important;
+    font-weight: normal;
+}
+/* 状态圆点 */
+.character-status::before {
+    content: '';
+    display: inline-block;
+    width: 8px !important;
+    height: 8px !important;
+    background: #10ac84;
+    border-radius: 50%;
 }
 
 
@@ -5164,6 +5221,242 @@ input[type=range] {
 }
 /*记忆css结束*/
 
+/* ============ 🆕 档案中心 (Archives) 样式 ============ */
+
+/* 1. 顶部 Tab 栏重构 (三段式) */
+.memory-tabs {
+    justify-content: space-between; /* 分散对齐 */
+    padding: 0 10px;
+}
+
+.memory-tab-item {
+    flex: 1;
+    text-align: center;
+    font-size: 13px; /* 字体稍微改小一点显精致 */
+    padding: 12px 0;
+    color: #999;
+    font-weight: 500;
+    transition: all 0.3s;
+    letter-spacing: 0.5px;
+}
+
+.memory-tab-item.active {
+    color: #333;
+    font-weight: 600;
+}
+
+/* 2. 档案页容器 (Tab 1) */
+.archive-container {
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* A区：基础信息卡 (自动同步) */
+.archive-card-base {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.archive-avatar {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    margin-right: 20px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    border: 3px solid rgba(255,255,255,0.8);
+    box-shadow: 0 0 0 1px #eee; /* 细边框装饰 */
+}
+.archive-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+.archive-base-info {
+    flex: 1;
+}
+
+.archive-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-meta-row {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    gap: 10px;
+    font-family: -apple-system, sans-serif;
+}
+
+/* B区：私密数据网格 (拓展数据) */
+.archive-grid-box {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden; /* 圆角裁剪 */
+    border: 1px solid #f0f0f0;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 两列 */
+    margin-bottom: 20px;
+}
+
+.archive-grid-item {
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 去掉偶数列的右边框 */
+.archive-grid-item:nth-child(2n) {
+    border-right: none;
+}
+/* 去掉最后一行的下边框 */
+.archive-grid-item:nth-last-child(-n+2) {
+    border-bottom: none;
+}
+
+.grid-label {
+    font-size: 10px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.grid-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* C区：深度档案 (长文本) */
+.archive-deep-section {
+    margin-bottom: 20px;
+}
+
+.archive-section-title {
+    font-size: 12px;
+    color: #667eea; /* 主题色 */
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-text-box {
+    background: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #555;
+    border: 1px solid #f0f0f0;
+}
+
+/* 顶部 Header 的氛围感副标题 */
+.archive-subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: #ccc;
+    font-style: italic;
+    margin: -10px 0 15px 0;
+    font-family: serif; /* 衬线体显高级 */
+}
+
+/* 编辑按钮 (位于Tab 1右上角) */
+.archive-edit-float {
+    position: fixed;
+    bottom: 30px;
+    right: 25px;
+    width: 50px;
+    height: 50px;
+    background: white;
+    color: #333;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    z-index: 100;
+    border: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.archive-edit-float:active { transform: scale(0.95); }
+/* === 档案卡片修正与分析按钮样式 === */
+
+/* 1. 修正卡片基准定位 */
+.archive-card-base {
+    position: relative; /* 关键：为了让里面的按钮能绝对定位 */
+    /* 原有样式保持不变 */
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+/* 2. 分析按钮样式 (Ins风黑底胶囊) */
+/* 修改这一段 */
+.archive-analyze-btn {
+    position: absolute;
+    
+    /* ▼▼▼ 修改这里：从 top 改为 bottom ▼▼▼ */
+    top: auto;        /* 必须重置 top */
+    bottom: 15px;     /* 固定在右下角 */
+    right: 15px;
+    
+    /* 样式保持不变 */
+    background: #333;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 10;
+}
+.archive-analyze-btn:hover {
+    transform: scale(1.05);
+    background: #000;
+}
+
+.archive-analyze-btn:active {
+    transform: scale(0.95);
+}
+
+.archive-analyze-btn.loading {
+    background: #ccc;
+    cursor: wait;
+}
+
     </style>
 </head>
 <body>
@@ -5285,7 +5578,7 @@ input[type=range] {
         <!-- 壁纸设置页面 -->
      <div class="wallpaper-screen" id="wallpaperScreen">
     <div class="api-header" style="background: transparent; border: none; padding: 20px;">
-        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">WALLPAPER</div>
     </div>
     
@@ -5373,8 +5666,8 @@ input[type=range] {
 </div>
       <!-- 世界书页面 -->
 <div class="worldbook-screen" id="worldbookScreen">
-    <div class="api-header" style="background: transparent; border: none; padding: 20px;">
-        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+<div class="api-header" style="background: transparent; border: none; padding: 20px;">
+        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">WORLDBOOK</div>
     </div>
     
@@ -5389,8 +5682,8 @@ input[type=range] {
       <!-- API设置页面 -->
 
 <div class="api-screen" id="apiScreen">
-    <div class="api-header" style="background: transparent; border: none;">
-        <button class="back-btn" onclick="backToMain()" style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">←</button>
+<div class="api-header" style="background: transparent; border: none;">
+        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">SETTINGS</div>
     </div>
     
@@ -5469,8 +5762,8 @@ input[type=range] {
       <!-- 聊天页面 -->
 <!-- 聊天页面 -->
 <div class="chat-screen" id="chatScreen">
-    <div class="chat-header">
-        <button class="back-btn" onclick="backToMain()">←</button>
+<div class="chat-header">
+        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         <div class="header-title">聊天</div>
     </div>
     
@@ -5578,34 +5871,139 @@ input[type=range] {
 <div class="memory-screen" id="memoryScreen">
     <div class="memory-header">
         <button class="back-btn" onclick="backToCharacterInfoFromMemory()">←</button>
-        <div class="header-title" style="flex: 1; text-align: center; margin-left: 40px; font-weight: 700;">MEMORY</div>
+        <div class="header-title" style="flex: 1; text-align: center; margin-left: 40px; font-weight: 700;">ARCHIVES</div>
         
         <div class="memory-header-actions">
-            <button class="memory-icon-btn" onclick="openCondenseModal()" title="精简记忆">✨</button>
-            <button class="memory-icon-btn" onclick="openMemorySettings()" title="记忆设置">⚙️</button>
+            <button class="memory-icon-btn" onclick="openCondenseModal()" title="整理">✨</button>
         </div>
     </div>
 
     <div class="memory-tabs">
-        <div class="memory-tab-item active" onclick="switchMemoryTab('tags')" id="tab-tags">印象标签</div>
+        <div class="memory-tab-item active" onclick="switchMemoryTab('profile')" id="tab-profile">他的档案</div>
+        <div class="memory-tab-item" onclick="switchMemoryTab('tags')" id="tab-tags">他眼中的你</div>
         <div class="memory-tab-item" onclick="switchMemoryTab('timeline')" id="tab-timeline">时光相册</div>
     </div>
 
     <div class="memory-content-area">
-        <div class="memory-tags-container" id="memoryTagsList">
+        
+      <div id="archiveProfileView" style="display: block;">
+            
+            <div class="archive-card-base">
+                <button class="archive-analyze-btn" onclick="analyzeProfile()" id="analyzeBtn">
+                    <span>⚡</span> 分析
+                </button>
+
+                <div class="archive-avatar" id="arcAvatar">👤</div>
+                <div class="archive-base-info">
+                    <div class="archive-name">
+                        <span id="arcName">Character</span>
+                        <span id="arcZodiac" style="font-size: 12px; font-weight:normal; background:#f0f0f0; padding:2px 6px; border-radius:4px; color:#666;">--座</span>
+                    </div>
+                    <div class="archive-meta-row">
+                        <span id="arcCity">未知城市</span>
+                        <span>|</span>
+                        <span id="arcBirthday">未知生日</span>
+                    </div>
+                </div>
             </div>
+
+          <div class="archive-grid-box">
+                <div class="archive-grid-item">
+                    <span class="grid-label">HEIGHT</span>
+                    <span class="grid-value" id="arcHeight">--</span>
+                </div>
+                <div class="archive-grid-item">
+                    <span class="grid-label">WEIGHT</span>
+                    <span class="grid-value" id="arcWeight">--</span>
+                </div>
+                <div class="archive-grid-item">
+                    <span class="grid-label">LIKES (爱好)</span>
+                    <span class="grid-value" id="arcLikes" style="font-size: 13px; text-align: center;">--</span>
+                </div>
+                <div class="archive-grid-item">
+                    <span class="grid-label">DISLIKES (厌恶)</span>
+                    <span class="grid-value" id="arcDislikes" style="font-size: 13px; text-align: center;">--</span>
+                </div>
+            </div>
+
+          <div class="archive-deep-section">
+                <div class="archive-section-title">✨性格分析 (Analysis)</div>
+                <div class="archive-text-box" id="arcCorePersonality" style="color: #999; font-style: italic;">
+                    （暂无分析，请生成...）
+                </div>
+            </div>
+
+            <div class="archive-deep-section">
+                <div class="archive-section-title">🔒 秘密档案 (Secret)</div>
+                <div class="archive-text-box" id="arcSecret">这里记录着他不为人知的一面...</div>
+            </div>
+        </div>
+
+        <div id="memoryTagsList" style="display: none;">
+            <div class="archive-subtitle">Fragments of you in his mind...</div>
+            <div id="tagsContainer" class="memory-tags-container"></div>
+        </div>
         
         <div class="memory-timeline" id="memoryTimelineList" style="display: none;">
             </div>
     </div>
 
-    <button class="add-btn" onclick="openAddMemoryModal()">+</button>
+    <button class="add-btn" id="memoryFloatingBtn" onclick="handleMemoryFloatClick()">+</button>
 </div>
+
+<div class="modal-overlay" id="editArchiveModal" onclick="closeEditArchiveModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">编辑私密档案</div>
+        
+  <div class="form-group">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1">
+                    <label class="form-label">爱好 (1-3个)</label>
+                    <input type="text" id="editArcLikes" class="form-input" placeholder="如: 摄影, 甜食">
+                </div>
+                <div style="flex:1">
+                    <label class="form-label">厌恶 (可无)</label>
+                    <input type="text" id="editArcDislikes" class="form-input" placeholder="如: 香菜, 甚至没有">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1">
+                    <label class="form-label">MBTI</label>
+                    <input type="text" id="editArcMbti" class="form-input" placeholder="如: INTJ">
+                </div>
+                <div style="flex:1">
+                    <label class="form-label">血型</label>
+                    <input type="text" id="editArcBlood" class="form-input" placeholder="如: A型">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">秘密/背景故事 (仅展示用)</label>
+            <textarea id="editArcSecret" class="form-input" rows="5" placeholder="写下关于他的秘密或背景故事..."></textarea>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeEditArchiveModal()">取消</button>
+            <button class="btn btn-save" onclick="saveExtendedArchive()">保存</button>
+        </div>
+    </div>
+</div>
+
+
 <!-- 聊天详情页面 -->
 <div class="chat-detail-screen" id="chatDetailScreen">
  <div class="chat-detail-header">
-    <button class="back-btn" onclick="backToChatList()">←</button>
-    <div style="flex: 1; display: flex; flex-direction: column; margin-left: 10px;">
+    <button class="back-btn" onclick="backToChatList()">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #333; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <div id="chatHeaderAvatar" class="header-avatar"></div>
+    
+    <div style="flex: 1; display: flex; flex-direction: column;">
         <div class="chat-detail-title" id="chatDetailTitle">张三</div>
         <div class="character-status" id="characterStatus" style="display: none;"></div>
     </div>
@@ -5769,7 +6167,7 @@ input[type=range] {
                     <div class="stat-label ins-stat-label">日记</div>
                 </div>
              <div class="ins-stat-item" onclick="openMemoryScreen()"> <div class="stat-number ins-stat-num" id="charFollowing">0</div>
-    <div class="stat-label ins-stat-label">记忆</div>
+    <div class="stat-label ins-stat-label">档案</div>
 </div>
                 <div class="ins-stat-item">
                     <div class="stat-number ins-stat-num" id="charItinerary">0</div>
@@ -7674,8 +8072,8 @@ function updateDetailPageStatus(chatId) {
         const statusElement = document.getElementById('characterStatus');
         if (statusElement) {
             statusElement.textContent = status;
-            statusElement.style.display = 'block';
-    
+            statusElement.style.display = 'flex';
+            
         }
     });
 }
@@ -7716,11 +8114,20 @@ function openChatDetail(chatId) {
     if (!chat) return;
     
     // 设置标题 - 动态获取备注
-updateDetailPageTitle(chatId, chat.name);
+    updateDetailPageTitle(chatId, chat.name);
+    
+    // 设置导航栏头像
+    const headerAvatar = document.getElementById('chatHeaderAvatar');
+    if (chat.avatarImage) {
+        headerAvatar.innerHTML = `<img src="${chat.avatarImage}">`;
+    } else {
+        headerAvatar.textContent = chat.avatar || '👤';
+    }
+
     // 显示角色状态
-updateDetailPageStatus(chatId);
-// 检查并更新天气信息
-checkAndUpdateWeather(chatId);
+    updateDetailPageStatus(chatId);
+    // 检查并更新天气信息
+    checkAndUpdateWeather(chatId);
 
     // 隐藏聊天列表，显示详情页
     document.getElementById('chatScreen').style.display = 'none';
@@ -8932,11 +9339,11 @@ function closeEditBasicInfo(event) {
 }
 
 // 保存基本信息
+// ============ 🔄 修复版：保存基本信息 (双向同步) ============
 function saveBasicInfo() {
     if (!currentChatId) return;
     
     const newName = document.getElementById('editCharName').value.trim();
- 
     const avatarFile = document.getElementById('editAvatarInput').files[0];
     
     if (!newName) {
@@ -8947,53 +9354,59 @@ function saveBasicInfo() {
     const chat = chats.find(c => c.id === currentChatId);
     if (!chat) return;
     
-    // 处理头像
+    // 内部处理函数
     const processAvatar = (avatarData) => {
-        // 更新聊天列表中的信息
+        // 1. 更新聊天列表 (chats 表)
         chat.name = newName;
         if (avatarData) {
             chat.avatarImage = avatarData;
-        } else {
-            // 如果没有选择新头像，尝试从用户信息加载
-            loadFromDB('userInfo', (userData) => {
-                if (userData && userData.avatar) {
-                    chat.avatarImage = userData.avatar;
-                }
-            });
+        } else if (!chat.avatarImage) {
+            // 如果没图且原来也没图，尝试用个人信息兜底(可选)
+            // chat.avatarImage = ... 
         }
         
-        // 保存聊天列表
+        // 保存 chats 表
         saveToDB('chats', { list: chats });
         
-        // 更新角色详细信息中的地址
+        // 2. ★★★ 核心修复：同步更新角色详情 (characterInfo 表) ★★★
         loadFromDB('characterInfo', (data) => {
             const allCharData = data || {};
-            const charData = allCharData[currentChatId] || {};
-         
-            allCharData[currentChatId] = charData;
+            // 确保对象存在
+            if (!allCharData[currentChatId]) allCharData[currentChatId] = {};
+            
+            const charData = allCharData[currentChatId];
+            
+            // 强制同步名字
+            charData.name = newName;
+            // 强制同步头像 (如果有新头像)
+            if (avatarData) {
+                charData.avatarImage = avatarData;
+            } else if (chat.avatarImage) {
+                // 如果这次没传新图，但 chat 里有旧图，也要同步过来
+                charData.avatarImage = chat.avatarImage; 
+            }
+            
+            // 保存 characterInfo 表
             saveToDB('characterInfo', allCharData);
             
-            // 刷新聊天列表显示
+            // 3. 刷新所有受影响的 UI
+            // 刷新聊天列表
             if (document.getElementById('chatScreen').style.display === 'flex') {
                 renderChatList();
             }
-            
-            // 刷新聊天详情页标题 - 优先显示备注
-            if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-                updateDetailPageTitle(currentChatId, newName);
-            }
-            
-            // 刷新角色信息页显示
+            // 刷新聊天详情页标题
+            updateDetailPageTitle(currentChatId, newName);
+            // 刷新角色信息页
             loadCharacterInfo(currentChatId);
             
             // 关闭弹窗
             closeEditBasicInfo();
             
-            alert('基本信息已保存并同步');
+            alert('基本信息已保存并同步！✨');
         });
     };
     
-    // 如果有选择新头像
+    // 处理文件读取
     if (avatarFile) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -9001,11 +9414,10 @@ function saveBasicInfo() {
         };
         reader.readAsDataURL(avatarFile);
     } else {
+        // 没有新图片，传 null，复用旧图
         processAvatar(null);
     }
 }
-
-
 // 头像预览功能
 document.addEventListener('DOMContentLoaded', () => {
     const editAvatarInput = document.getElementById('editAvatarInput');
@@ -13539,16 +13951,6 @@ let editingMemoryId = null;
 let currentMemEditType = 'tag'; // 'tag' or 'moment'
 
 // 1. 打开/关闭页面
-function openMemoryScreen() {
-    if (!currentChatId) return;
-    
-    // 隐藏角色信息页
-    document.getElementById('characterInfoScreen').style.display = 'none';
-    document.getElementById('memoryScreen').style.display = 'flex';
-    
-    // 加载数据
-    loadMemories();
-}
 
 function backToCharacterInfoFromMemory() {
     document.getElementById('memoryScreen').style.display = 'none';
@@ -13590,25 +13992,6 @@ function loadMemories() {
         const momentCount = chatMemories.filter(m => m.type === 'moment').length;
         document.getElementById('totalMemoriesCount').textContent = momentCount;
     });
-}
-
-function renderMemoryTags(tags) {
-    const container = document.getElementById('memoryTagsList');
-    
-    if (tags.length === 0) {
-        container.innerHTML = '<div style="width:100%; text-align:center; color:#ccc; margin-top:50px;">暂无印象标签<br>点击右下角 + 添加</div>';
-        return;
-    }
-    
-    // 排序：置顶的在前
-    tags.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-    
-    container.innerHTML = tags.map(tag => `
-        <div class="mem-tag ${tag.isPinned ? 'pinned' : ''}" onclick="openEditMemoryModal(${tag.id})">
-            ${tag.isPinned ? '<span class="mem-tag-pin-icon">📌</span>' : ''}
-            ${tag.content}
-        </div>
-    `).join('');
 }
 
 function renderMemoryTimeline(moments) {
@@ -14417,6 +14800,470 @@ function updateRetryButtonState() {
         retryBtn.disabled = true;
         retryBtn.style.opacity = '0.3'; // 禁用状态半透明
     }
+}
+
+
+// ============ 🏛️ 新版档案中心逻辑 (A+B 混合架构) ============
+
+let currentArchiveTab = 'profile'; // profile, tags, timeline
+
+// 1. 打开档案页 (更新)
+function openMemoryScreen() {
+    if (!currentChatId) return;
+    
+    // 隐藏角色页，显示档案页
+    document.getElementById('characterInfoScreen').style.display = 'none';
+    document.getElementById('memoryScreen').style.display = 'flex';
+    
+    // 默认打开“他的档案”
+    switchMemoryTab('profile');
+    
+    // 加载数据
+    loadArchives();
+}
+
+// 2. Tab 切换逻辑 (控制 3 个页面 + 悬浮按钮状态)
+function switchMemoryTab(tab) {
+    currentArchiveTab = tab;
+    
+    // 1. 更新 Tab 样式
+    document.querySelectorAll('.memory-tab-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    
+    // 2. 切换内容区域显示
+    document.getElementById('archiveProfileView').style.display = 'none';
+    document.getElementById('memoryTagsList').style.display = 'none';
+    document.getElementById('memoryTimelineList').style.display = 'none';
+    
+    const floatBtn = document.getElementById('memoryFloatingBtn');
+    
+    if (tab === 'profile') {
+        document.getElementById('archiveProfileView').style.display = 'block';
+        // Profile 页：按钮变为编辑图标
+        floatBtn.textContent = '✎';
+        floatBtn.style.background = 'white';
+        floatBtn.style.color = '#333';
+        floatBtn.style.border = '1px solid #eee';
+    } 
+    else if (tab === 'tags') {
+        document.getElementById('memoryTagsList').style.display = 'block';
+        // Tags 页：按钮为添加 +
+        floatBtn.textContent = '+';
+        floatBtn.style.background = '#667eea'; // 恢复紫色
+        floatBtn.style.color = 'white';
+        floatBtn.style.border = 'none';
+    } 
+    else { // timeline
+        document.getElementById('memoryTimelineList').style.display = 'block';
+        // Timeline 页：按钮为添加 +
+        floatBtn.textContent = '+';
+        floatBtn.style.background = '#667eea';
+        floatBtn.style.color = 'white';
+        floatBtn.style.border = 'none';
+    }
+}
+
+// 3. 悬浮按钮点击处理
+function handleMemoryFloatClick() {
+    if (currentArchiveTab === 'profile') {
+        openEditArchiveModal(); // 编辑档案
+    } else {
+        openAddMemoryModal(); // 添加标签或回忆 (复用旧逻辑)
+    }
+}
+
+// 4. 核心加载函数：同时加载 A类(Sync) 和 B类(Extended) 数据
+// ============ 🔄 修复版：加载档案 (强力同步版) ============
+function loadArchives() {
+    // 1. 先从 chats 列表里找最新的基础信息 (这是最准的)
+    const chat = chats.find(c => c.id === currentChatId);
+    const chatName = chat ? chat.name : 'Character';
+    const chatAvatar = chat ? (chat.avatarImage || chat.avatar) : '👤';
+
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        
+        // --- 1. A区：基础信息 (混合数据源) ---
+        const avatarEl = document.getElementById('arcAvatar');
+        const nameEl = document.getElementById('arcName');
+        
+        if (avatarEl && nameEl) {
+            // 头像策略：优先用 characterInfo 里的，没有就用 chats 里的
+            const finalAvatar = charData.avatarImage || chatAvatar;
+            
+            if (finalAvatar && finalAvatar.length > 10) { // 简单判断是不是 Base64 图片
+                avatarEl.innerHTML = `<img src="${finalAvatar}">`;
+            } else {
+                avatarEl.textContent = finalAvatar;
+            }
+            
+            // 名字策略：优先显示备注(remark)，没有备注就显示名字(name)
+            // 这里的 name 优先取 characterInfo 的，如果没有就取 chats 里的
+            const finalName = charData.remark || charData.name || chatName;
+            nameEl.textContent = finalName;
+            
+            // 其他信息保持不变
+            document.getElementById('arcZodiac').textContent = getZodiacSign(charData.birthday) || '未知星座';
+            document.getElementById('arcCity').textContent = charData.charVirtualAddress || '未知城市';
+            document.getElementById('arcBirthday').textContent = charData.birthday || '未知';
+        }
+
+        // --- 2. B区 & C区：拓展数据 (保持不变) ---
+        const ext = charData.extendedProfile || {}; 
+        
+        document.getElementById('arcHeight').textContent = ext.height || '--';
+        document.getElementById('arcWeight').textContent = ext.weight || '--';
+        document.getElementById('arcLikes').textContent = ext.likes || '--';
+        document.getElementById('arcDislikes').textContent = ext.dislikes || '--';
+        
+        const displayAnalysis = ext.coreTrait || '（暂无分析，请点击右下角“⚡”生成...）';
+        const coreEl = document.getElementById('arcCorePersonality');
+        coreEl.innerText = displayAnalysis;
+        
+        if (!ext.coreTrait) {
+            coreEl.style.color = '#999';
+            coreEl.style.fontStyle = 'italic';
+        } else {
+            coreEl.style.color = '#555';
+            coreEl.style.fontStyle = 'normal';
+        }
+
+        document.getElementById('arcSecret').innerText = ext.secret || '（需要通过聊天积累数据，点击分析生成...）';
+    });
+
+    // 加载标签和相册
+    loadFromDB('memories', (data) => {
+        let allMemories = [];
+        if (Array.isArray(data)) allMemories = data;
+        else if (data && data.list) allMemories = data.list;
+        const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
+        renderMemoryTags(chatMemories.filter(m => m.type === 'tag'));
+        renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
+    });
+}
+
+// 辅助：根据日期算星座
+function getZodiacSign(dateStr) {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    
+    if((month == 1 && day <= 19) || (month == 12 && day >=22)) return "摩羯座";
+    if((month == 1 && day >= 20) || (month == 2 && day <= 18)) return "水瓶座";
+    if((month == 2 && day >= 19) || (month == 3 && day <= 20)) return "双鱼座";
+    if((month == 3 && day >= 21) || (month == 4 && day <= 19)) return "白羊座";
+    if((month == 4 && day >= 20) || (month == 5 && day <= 20)) return "金牛座";
+    if((month == 5 && day >= 21) || (month == 6 && day <= 21)) return "双子座";
+    if((month == 6 && day >= 22) || (month == 7 && day <= 22)) return "巨蟹座";
+    if((month == 7 && day >= 23) || (month == 8 && day <= 22)) return "狮子座";
+    if((month == 8 && day >= 23) || (month == 9 && day <= 22)) return "处女座";
+    if((month == 9 && day >= 23) || (month == 10 && day <= 23)) return "天秤座";
+    if((month == 10 && day >= 24) || (month == 11 && day <= 22)) return "天蝎座";
+    if((month == 11 && day >= 23) || (month == 12 && day <= 21)) return "射手座";
+    return null;
+}
+
+// 5. 编辑拓展档案逻辑
+function openEditArchiveModal() {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const ext = charData.extendedProfile || {};
+        
+        // 填充表单
+        document.getElementById('editArcHeight').value = ext.height || '';
+        document.getElementById('editArcWeight').value = ext.weight || '';
+        document.getElementById('editArcMbti').value = ext.mbti || '';
+        document.getElementById('editArcBlood').value = ext.blood || '';
+        document.getElementById('editArcSecret').value = ext.secret || '';
+        
+        document.getElementById('editArchiveModal').style.display = 'flex';
+    });
+}
+
+function closeEditArchiveModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('editArchiveModal').style.display = 'none';
+}
+
+function saveExtendedArchive() {
+    const extData = {
+        height: document.getElementById('editArcHeight').value.trim(),
+        weight: document.getElementById('editArcWeight').value.trim(),
+        mbti: document.getElementById('editArcMbti').value.trim(),
+        blood: document.getElementById('editArcBlood').value.trim(),
+        secret: document.getElementById('editArcSecret').value.trim()
+    };
+    
+    // 保存到 characterInfo 里的 extendedProfile 字段
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        // 更新拓展字段
+        allData[currentChatId].extendedProfile = extData;
+        
+        saveToDB('characterInfo', allData);
+        
+        // 刷新显示
+        loadArchives();
+        closeEditArchiveModal();
+    });
+}
+
+// 修复：更新 renderMemoryTags 里的容器ID
+// 请确保你原来的 renderMemoryTags 函数里，容器获取 ID 已经改成 'tagsContainer'
+// 下面是兼容代码，建议替换原 renderMemoryTags
+function renderMemoryTags(tags) {
+    const container = document.getElementById('tagsContainer'); // 改成新的ID
+    if (!container) return; // 防御性检查
+
+    if (tags.length === 0) {
+        container.innerHTML = '<div style="width:100%; text-align:center; color:#ccc; margin-top:50px; font-size:12px;">暂无印象标签<br>点击右下角 + 添加</div>';
+        return;
+    }
+    
+    tags.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+    
+    container.innerHTML = tags.map(tag => `
+        <div class="mem-tag ${tag.isPinned ? 'pinned' : ''}" onclick="openEditMemoryModal(${tag.id})">
+            ${tag.isPinned ? '<span class="mem-tag-pin-icon">📌</span>' : ''}
+            ${tag.content}
+        </div>
+    `).join('');
+}
+
+// ============ ⚡ 档案分析功能 (V3: 基于聊天记录的真实推导) ============
+
+// ============ ⚡ 档案分析功能 (V4: 性格分析描述版) ============
+
+async function analyzeProfile() {
+    if (!currentChatId) return;
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置，才能使用AI分析功能');
+        return;
+    }
+
+    const btn = document.getElementById('analyzeBtn');
+    const originalText = btn.innerHTML;
+
+    try {
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.innerHTML = '<span>🧬</span> 分析中...';
+
+        // 1. 获取数据
+        const [charData, chatHistory] = await Promise.all([
+            new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
+            new Promise(resolve => loadFromDB('messages', data => {
+                const list = data && data.list ? data.list : [];
+                // 获取最近 50 条聊天记录
+                const history = list.filter(m => m.chatId === currentChatId)
+                                    .slice(-50)
+                                    .map(m => `${m.senderId === 'me' ? '我' : 'TA'}: ${m.content}`)
+                                    .join('\n');
+                resolve(history || "（暂无聊天记录）");
+            }))
+        ]);
+
+        // 2. 构建提示词
+        const prompt = `你是一位深度角色分析师。请基于【原始设定】和【聊天记录】，生成该角色的性格分析档案。
+
+【原始设定】
+名称：${charData.remark || charData.name}
+人设：${charData.personality || '无'}
+
+【最近聊天记录片段】
+${chatHistory}
+
+【任务要求】
+请提取并推导以下5项数据。**必须基于人设和聊天内容的真实表现，严禁瞎编。**
+
+1. **身高/体重**：真实数值或合理推测。
+2. **性格分析**：**不要写成语！** 请写一段简短的描述（50字以内）。结合性格和喜好，描述TA是个什么样的人。
+   * 格式参考：“性格比较阴沉痴情，特别喜欢吃甜食，但在‘我’面前会表现得很幼稚，对xx话题很敏感。”
+3. **爱好**：提取1-3个具体爱好（如：摄影, 睡觉）。没有填"--"。
+4. **厌恶**：提取1-3个厌恶点。没有填"无"。
+5. **秘密档案**：基于聊天记录挖掘的小秘密或习惯。
+
+【严格输出格式】：
+身高|||体重|||性格分析描述|||爱好|||厌恶|||秘密档案
+
+例如：
+183cm|||74kg|||外表高冷但内心很粘人，特别喜欢猫咪，最近对做饭很感兴趣，是个典型的口嫌体正直。|||猫, 料理|||早起|||其实每天晚上都会偷偷翻看以前的聊天记录。`;
+
+        // 3. 调用 API
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.4 // 稍微提高一点点灵活性，让描述更自然
+            })
+        });
+
+        if (!response.ok) throw new Error('API请求失败');
+        
+        const data = await response.json();
+        const content = data.choices[0].message.content.trim();
+
+        // 4. 解析结果
+        const parts = content.split('|||').map(s => s.trim());
+        
+        if (parts.length >= 6) {
+            const newExtData = {
+                height: parts[0],
+                weight: parts[1],
+                coreTrait: parts[2], // 这里存的是“性格分析描述”
+                likes: parts[3],
+                dislikes: parts[4],
+                secret: parts[5]
+            };
+
+            // 5. 保存
+            loadFromDB('characterInfo', (allData) => {
+                if (!allData) allData = {};
+                if (!allData[currentChatId]) allData[currentChatId] = {};
+                
+                const oldExt = allData[currentChatId].extendedProfile || {};
+                allData[currentChatId].extendedProfile = { ...oldExt, ...newExtData };
+                
+                saveToDB('characterInfo', allData);
+                loadArchives();
+                
+                // 稍微延时一点
+                setTimeout(() => {
+                    alert('🧬 分析完成！性格档案已生成');
+                }, 100);
+            });
+        } else {
+            throw new Error('AI返回格式不正确');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('分析失败：' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.innerHTML = originalText;
+    }
+}
+// ============ 🔄 修复版：加载档案 (解决同步问题 & 新字段适配) ============
+function loadArchives() {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        
+        // --- 1. A区：基础信息 (强制同步) ---
+        // 确保获取 DOM 元素
+        const avatarEl = document.getElementById('arcAvatar');
+        const nameEl = document.getElementById('arcName');
+        
+        if (avatarEl && nameEl) {
+            // 同步头像
+            if (charData.avatarImage) {
+                avatarEl.innerHTML = `<img src="${charData.avatarImage}">`;
+            } else {
+                avatarEl.textContent = charData.avatar || '👤';
+            }
+            
+            // 同步名字 (优先用备注，没有则用原名)
+            nameEl.textContent = charData.remark || charData.name || 'Character';
+            
+            // 同步其他基础信息
+            document.getElementById('arcZodiac').textContent = getZodiacSign(charData.birthday) || '未知星座';
+            document.getElementById('arcCity').textContent = charData.charVirtualAddress || '未知城市';
+            document.getElementById('arcBirthday').textContent = charData.birthday || '未知';
+        }
+
+        // --- 2. B区 & C区：拓展数据 (新字段适配) ---
+        const ext = charData.extendedProfile || {}; 
+        
+        document.getElementById('arcHeight').textContent = ext.height || '--';
+        document.getElementById('arcWeight').textContent = ext.weight || '--';
+        document.getElementById('arcLikes').textContent = ext.likes || '--';     // 爱好
+        document.getElementById('arcDislikes').textContent = ext.dislikes || '--'; // 厌恶
+        
+       // ▼▼▼ 修改这里：性格分析 ▼▼▼
+        // 如果有分析结果(coreTrait)，就显示分析结果。
+        // 如果没有，显示默认提示语，不再显示 charData.personality (原始人设)
+        const displayAnalysis = ext.coreTrait || '（暂无分析，请点击右下角“⚡”生成...）';
+        
+        // 样式微调：如果是默认提示语，字体颜色淡一点
+        const coreEl = document.getElementById('arcCorePersonality');
+        coreEl.innerText = displayAnalysis;
+        
+        if (!ext.coreTrait) {
+            coreEl.style.color = '#999';
+            coreEl.style.fontStyle = 'italic';
+        } else {
+            coreEl.style.color = '#555';
+            coreEl.style.fontStyle = 'normal';
+        }
+
+        // 秘密档案
+        document.getElementById('arcSecret').innerText = ext.secret || '（需要通过聊天积累数据，点击分析生成...）';
+    });
+
+    // 加载标签和相册 (保持不变)
+    loadFromDB('memories', (data) => {
+        let allMemories = [];
+        if (Array.isArray(data)) allMemories = data;
+        else if (data && data.list) allMemories = data.list;
+        const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
+        renderMemoryTags(chatMemories.filter(m => m.type === 'tag'));
+        renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
+    });
+}
+
+// ============ 💾 保存编辑 (适配新字段) ============
+function openEditArchiveModal() {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const ext = charData.extendedProfile || {};
+        
+        document.getElementById('editArcHeight').value = ext.height || '';
+        document.getElementById('editArcWeight').value = ext.weight || '';
+        // 适配新字段
+        document.getElementById('editArcLikes').value = ext.likes || '';
+        document.getElementById('editArcDislikes').value = ext.dislikes || '';
+        document.getElementById('editArcSecret').value = ext.secret || '';
+        
+        document.getElementById('editArchiveModal').style.display = 'flex';
+    });
+}
+
+function saveExtendedArchive() {
+    const extData = {
+        height: document.getElementById('editArcHeight').value.trim(),
+        weight: document.getElementById('editArcWeight').value.trim(),
+        likes: document.getElementById('editArcLikes').value.trim(),       // 爱好
+        dislikes: document.getElementById('editArcDislikes').value.trim(), // 厌恶
+        secret: document.getElementById('editArcSecret').value.trim(),
+        // 核心性格(coreTrait) 手动编辑不改它，或者如果你想改，需要在弹窗加个输入框。这里暂时保留旧的。
+        coreTrait: characterInfoData.extendedProfile ? characterInfoData.extendedProfile.coreTrait : '' 
+    };
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        // 合并数据（保留 AI 分析出的 coreTrait）
+        const oldExt = allData[currentChatId].extendedProfile || {};
+        allData[currentChatId].extendedProfile = { ...oldExt, ...extData };
+        
+        saveToDB('characterInfo', allData);
+        loadArchives();
+        closeEditArchiveModal();
+    });
 }
 
 // 初始化，
