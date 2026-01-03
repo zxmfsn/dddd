@@ -1,0 +1,5511 @@
+  /* 1. 重置基础样式 */
+
+   @font-face {
+    font-family: 'CustomCute';
+   @import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&display=swap');
+    font-weight: normal;
+    font-style: normal;
+}
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* 2. 浏览器窗口样式 (背景台) */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            
+            /* ▼▼▼ 关键点1：把 body 背景改成深灰色，模拟桌子 ▼▼▼ */
+            background: #2c3e50; 
+            
+            /* ▼▼▼ 关键点2：让手机容器在浏览器正中间 ▼▼▼ */
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* 防止浏览器出现滚动条 */
+        }
+        
+        /* 3. 手机容器样式 (限制范围) */
+        .phone-screen {
+            /* ▼▼▼ 关键点3：必须写 width 而不是 max-width，强制固定宽度 ▼▼▼ */
+            width: 375px;
+            height: 100vh; /* 或者写 812px 模拟 iPhone X 高度 */
+            
+            /* ▼▼▼ 关键点4：这里必须是 relative，它是所有内部悬浮元素的“爸爸” ▼▼▼ */
+            position: relative; 
+            
+            /* ▼▼▼ 关键点5：壁纸搬家到这里来了 ▼▼▼ */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            
+            /* 加点阴影让它像个手机 */
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            color: white;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        /* 4. 确保主屏幕占满手机容器 */
+        .main-screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* 允许主屏幕内部滚动 */
+        }
+        
+        .user-info {
+            text-align: center;
+            padding: 60px 20px 40px;
+            cursor: pointer;
+        }
+        
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+            overflow: hidden;
+        }
+        
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .user-id {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .signature {
+            font-size: 14px;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        
+.apps-grid {
+    /* padding: 0 30px;  <-- 修改这一行 */
+    padding: 0 15px;     /* 改小内边距 */
+    
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    
+    /* gap: 25px;        <-- 修改这一行 */
+    gap: 15px;           /* 改小间距，原来的25px太宽了 */
+    
+    margin-bottom: 20px;
+    
+    /* ▼▼▼ 新增：让整个网格在容器里水平居中 ▼▼▼ */
+    justify-content: center; 
+}
+        
+             .app-icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+     .app-icon {
+    /* width: 65px;      <-- 修改这一行 */
+    width: 58px;         /* 改成 58px，视觉上几乎看不出区别，但空间就够了 */
+    
+    /* height: 65px;     <-- 修改这一行 */
+    height: 58px;        /* 保持正方形 */
+    
+    /* 下面的保持不变 */
+    border-radius: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+
+        .app-icon:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.25);
+        }
+        
+        .app-icon:active {
+            transform: scale(0.95);
+        }
+        
+        .app-emoji {
+            font-size: 24px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .app-emoji img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+/* ▼▼▼ 强制覆盖样式，确保显示线条 ▼▼▼ */
+.ins-icon-box {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important; /* 去掉背景色 */
+}
+
+.ins-icon-box svg {
+    width: 32px !important;       /* 图标稍微大一点点 */
+    height: 32px !important;
+    stroke: #ffffff !important;   /* 强制纯白线条 */
+    stroke-width: 1.5px !important;
+    fill: none !important;        /* 强制去填充 */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+
+        .app-name {
+            font-size: 10px;
+            text-align: center;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        
+        .app-icon:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.25);
+        }
+        
+        .app-icon:active {
+            transform: scale(0.95);
+        }
+        
+        .app-emoji {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .app-name {
+            font-size: 10px;
+            text-align: center;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+        
+
+.bottom-space {
+    flex: 1;
+    min-height: 20px; 
+}
+        
+        /* 壁纸页面样式 */
+        .wallpaper-screen {
+            height: 100vh;
+            background: white;
+            color: #333;
+            display: none;
+            flex-direction: column;
+        }
+        
+        .wallpaper-header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .back-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            padding: 0;
+        }
+        
+        .back-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        /* 通用返回按钮SVG样式 */
+        .back-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: #333;
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        
+        .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 40px;
+        }
+        
+        .wallpaper-content {
+            flex: 1;
+            padding: 30px 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        .wallpaper-editor {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .preview-area {
+            flex-shrink: 0;
+        }
+        
+        .preview-phone {
+            width: 120px;
+            height: 200px;
+            border-radius: 20px;
+            border: 3px solid #ddd;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .preview-phone img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .preview-label {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .input-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #f8f8f8;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-input-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .file-input-area:hover {
+            border-color: #667eea;
+        }
+        
+        .file-input-area input {
+            display: none;
+        }
+        
+      .url-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;  /* ← 改成16px */
+    outline: none;
+    transition: border-color 0.3s;
+}
+        
+        .url-input:focus {
+            border-color: #667eea;
+        }
+        
+        .save-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            align-self: flex-start;
+            margin-top: 10px;
+        }
+        
+        .save-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .save-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 320px;
+            max-width: 90%;
+            color: #333;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        /* 颜色选择器优化 */
+
+
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid #e1e5e9;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+
+.color-preview:active {
+    transform: scale(0.95);
+}
+
+
+
+        .form-input {
+            width: 100%;
+          max-width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .form-input:focus {
+            border-color: #667eea;
+        }
+        
+        .avatar-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            margin: 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid #e1e5e9;
+        }
+        
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-button {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .file-button:hover {
+            background: #5a6fd8;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-save {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #5a6fd8;
+        }
+/* 世界书页面样式 */
+.worldbook-screen {
+    height: 100vh;
+    background: white;
+    color: #333;
+    display: none;
+    flex-direction: column;
+}
+
+.worldbook-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.category-bar {
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.category-tags {
+    display: flex;
+    gap: 10px;
+}
+
+.category-tag {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #f8f8f8;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+
+.category-tag.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.worldbook-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.worldbook-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #eee;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.card-preview {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-category {
+    background: #f0f0f0;
+    color: #666;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-edit {
+    background: #667eea;
+    color: white;
+}
+
+.btn-delete {
+    background: #ff4757;
+    color: white;
+}
+
+.add-btn {
+   position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s;
+    z-index: 100;
+}
+
+.add-btn:hover {
+    transform: scale(1.1);
+}
+/* API设置页面样式 */
+.api-screen {
+    height: 100vh;
+    background: white;
+    color: #333;
+    display: none;
+    flex-direction: column;
+}
+
+.api-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.api-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+
+
+.btn-test, .btn-save, .btn-save-scheme {
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-test {
+    background: #48dbfb;
+    color: white;
+}
+
+.btn-test:hover {
+    background: #0abde3;
+}
+
+.btn-save {
+    background: #1dd1a1;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #10ac84;
+}
+
+.btn-save-scheme {
+    background: #667eea;
+    color: white;
+}
+
+.btn-save-scheme:hover {
+    background: #5a6fd8;
+}
+/* 聊天页面样式 */
+.chat-screen {
+    height: 100vh;
+    background: #f8f9fa; 
+    color: #333;
+    display: none;
+    flex-direction: column;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+/* 朋友圈入口卡片 */
+
+  .moments-card {
+     margin: 10px 15px 15px;
+    padding: 18px 20px;
+    background: #ffffff; 
+    border-radius: 18px;
+    backdrop-filter: none;
+    border: none;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.moments-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.moments-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.moments-icon {
+    font-size: 24px;
+}
+
+.moments-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.moments-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c2c2c;
+}
+
+.moments-desc {
+    font-size: 12px;
+    color: #999;
+}
+
+.moments-arrow {
+    font-size: 18px;
+    color: #667eea;
+}
+
+
+
+/* 聊天列表区域 */
+.chat-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 15px 100px; 
+    background: transparent; 
+}
+/* 底部分组栏 */
+.chat-bottom-tabs {
+    position: absolute;
+    /* 距离底部悬浮 25px */
+    bottom: 25px;
+    /* 左右留空，居中 */
+    left: 20px;
+    right: 20px;
+    max-width: 335px; /* 375 - 40 */
+    margin: 0 auto;
+    
+    /* 高级毛玻璃背景 */
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
+    /* 去掉顶部边框，改用四周圆角 */
+    border-top: none;
+    border-radius: 30px; /* 全圆角胶囊状 */
+    
+    /* 强烈的悬浮投影 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    
+    display: flex;
+    justify-content: space-around; /* 图标分散对齐 */
+    padding: 10px 10px;
+    z-index: 101;
+    border: 1px solid rgba(255,255,255,0.5); /* 极细内发光边框 */
+}
+
+.bottom-tab {
+    filter: none !important; 
+}
+
+/* ============ 新增：SVG图标通用样式 ============ */
+.ins-icon {
+    width: 28px;
+    height: 28px;
+    stroke: #999;     /* 默认灰色线条 */
+    stroke-width: 1.8px; /* 线条粗细 */
+    fill: none;       /* 默认不填充 */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: all 0.3s ease;
+}
+
+/* 朋友圈入口的图标稍微大一点，颜色深一点 */
+.moments-icon .ins-icon {
+    width: 32px;
+    height: 32px;
+    stroke: #333; /* 深灰色 */
+    stroke-width: 1.5px;
+}
+
+/* ============ 修改：底部栏激活状态 ============ */
+/* 底部栏图标默认状态 */
+.bottom-tab .ins-icon {
+    stroke: #999; /* 未选中是灰色 */
+}
+
+/* 底部栏激活状态 (active) */
+.bottom-tab.active .ins-icon {
+    stroke: #2c2c2c; /* 选中变深黑 */
+    stroke-width: 2.5px; /* 选中线条变粗，更有质感 */
+    /* 如果想做成选中变实心，可以在这里加 fill: #2c2c2c; 但线性风格通常是变粗 */
+    transform: scale(1.05); /* 微微放大 */
+}
+
+/* 去掉之前可能存在的 grayscale 滤镜，因为现在直接控制 stroke 颜色 */
+.bottom-tab {
+    filter: none !important; 
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    border: 1px solid #f0f0f0;
+    position: relative; /* 确保这一行存在 */
+    z-index: 2;
+}
+
+
+.chat-item:hover {
+    background: #f8f8f8;
+}
+
+.chat-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.chat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.chat-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.chat-time {
+    font-size: 11px;
+    color: #999;
+}
+
+.chat-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-preview {
+    font-size: 13px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.chat-badge {
+    background: #ff4757;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+
+.add-btn {
+   position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s;
+    z-index: 100;
+    display: none; /* 默认隐藏 */
+}
+
+.add-btn:hover {
+    transform: scale(1.1);
+}
+
+/* 在世界书和聊天页面显示 */
+.worldbook-screen .add-btn,
+.chat-screen .add-btn {
+    display: block;
+}
+
+  /* 聊天页面的添加按钮位置上移 */
+.chat-screen .add-btn {
+    /* 提高位置，避开悬浮栏 */
+    bottom: 100px; 
+    right: 25px;
+    
+    /* 风格调整：Ins风渐变或纯黑 */
+    background: #2c2c2c; /* 纯黑高级感 */
+    /* 或者保留你原来的渐变，改为：background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+    
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    width: 50px;
+    height: 50px;
+    border-radius: 20px; /* 方圆形更符合现在的iOS设计 */
+}
+    /* 成员选择列表样式 */
+.member-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.member-item:hover {
+    background: #f8f8f8;
+}
+
+.member-item:last-child {
+    border-bottom: none;
+}
+
+.member-checkbox {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-right: 12px;
+}
+
+.member-name {
+    font-size: 15px;
+    color: #333;
+}
+/* 左滑操作相关样式 */
+.chat-item-wrapper {
+   
+    margin-bottom: 12px;
+    border-radius: 18px;
+   
+    overflow: visible; 
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    /* 纯白卡片背景 */
+    background: #ffffff;
+    /* 大圆角 */
+    border-radius: 18px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s;
+    /* 去掉之前的边框 */
+    border: none;
+    /* 极淡阴影 */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    position: relative;
+    z-index: 2;
+}
+.chat-item:hover {
+    /* 悬停微上浮 */
+    background: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.chat-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    display: flex;
+    z-index: 1;
+    transform: translateX(100%); /* 用transform隐藏 */
+    transition: transform 0.3s ease;
+     border-radius: 0 18px 18px 0; /* 只有右侧圆角 */
+    overflow: hidden; /* 裁剪圆角 */
+}
+.action-btn-slide {
+    width: 80px;
+    border: none;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.action-pin {
+    background: #667eea;
+}
+
+.action-pin:active {
+    background: #5a6fd8;
+}
+
+.action-delete {
+    background: #ff4757;
+}
+
+.action-delete:active {
+    background: #ee5a6f;
+}
+
+.pin-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: #667eea;
+    font-size: 16px;
+    z-index: 3;
+    padding: 0px 0px;
+ 
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+/* 聊天详情页面样式 */
+.chat-detail-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+}
+
+.chat-detail-header {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 0.5px solid #f0f0f0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+/* 右上角"更多"按钮样式（只针对最右边的按钮） */
+.chat-detail-header button:last-child,
+.chat-detail-header .action-icon-btn:last-child {
+    width: auto !important;
+    height: 32px !important;
+    padding: 6px 14px !important;
+    background: transparent !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 16px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #333 !important;
+    margin-left: auto !important;
+}
+
+.chat-detail-header button:last-child:hover,
+.chat-detail-header .action-icon-btn:last-child:hover {
+    background: #f8f8f8 !important;
+}
+
+/* 隐藏右边按钮内的所有内容（图标、图片等） */
+.chat-detail-header button:last-child > *,
+.chat-detail-header .action-icon-btn:last-child > * {
+    display: none !important;
+}
+
+/* 显示"更多"文字 */
+.chat-detail-header button:last-child::before,
+.chat-detail-header .action-icon-btn:last-child::before {
+    content: "更多" !important;
+    display: block !important;
+}
+
+
+
+/* 聊天页面的返回按钮特殊处理：透明背景，SVG适配 */
+.chat-detail-header .back-btn {
+    margin-right: 5px;
+}
+
+.header-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    margin-right: 10px;
+    background: #f0f0f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid rgba(0,0,0,0.05);
+    flex-shrink: 0;
+}
+
+.header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-detail-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.2;
+    text-align: left;
+    margin: 0;
+}
+
+.character-status {
+    font-size: 13px;
+    color: #999;
+    text-align: left;
+    margin-top: 2px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    
+    /* ▼▼▼ 修改这里：加上 !important 强制应用字体 ▼▼▼ */
+   font-family: 'Zhi Mang Xing', cursive !important;
+    font-weight: normal;
+}
+/* 状态圆点 */
+.character-status::before {
+    content: '';
+    display: inline-block;
+    width: 8px !important;
+    height: 8px !important;
+    background: #10ac84;
+    border-radius: 50%;
+}
+
+
+.chat-name .status-tag {
+    font-size: 11px;
+    color: #667eea;
+    font-weight: normal;
+    margin-left: 6px;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #fafafa; /* 更淡的灰，接近白色 */
+}
+
+
+.load-more-btn {
+    width: 100%;
+    padding: 10px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    color: #666;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.load-more-btn:hover {
+    background: #f8f8f8;
+}
+
+/* 消息气泡 */
+.message-item {
+    display: flex;
+    margin-bottom: 15px;
+    align-items: flex-end;
+}
+
+.message-item.me {
+    flex-direction: row-reverse;
+}
+
+.message-bubble {
+    max-width: 70%;
+    padding: 4px 8px; /* 稍微大一点 */
+    border-radius: 18px; /* 更圆润 */
+    background: #ffffff; /* AI消息用纯白 */
+    color: #1a1a1a;
+    word-wrap: break-word;
+    line-height: 1.5;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04); /* 极淡阴影 */
+    border: 0.5px solid #f5f5f5; /* 极细边框 */
+}
+/* 用户消息气泡 */
+.message-item.me .message-bubble {
+    background: #1a1a1a; /* 深黑色 */
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+
+.message-time {
+    font-size: 11px;
+    color: #999;
+    margin: 0 8px;
+    white-space: nowrap;
+}
+
+/* 输入栏 */
+.chat-input-bar {
+    display: flex;
+    align-items: flex-end;
+    padding: 15px 20px;
+    border-top: 0.5px solid #f0f0f0; /* 极细线 */
+    background: #fafafa; /* 淡灰背景 */
+    gap: 12px;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 0.5px solid #e5e5e5; /* 极细边框 */
+    border-radius: 24px; /* 更圆 */
+    font-size: 16px;
+    resize: none;
+    max-height: 72px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    outline: none;
+    transition: all 0.3s;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02); /* 微阴影 */
+}
+
+.chat-input:focus {
+    border-color: #1a1a1a; /* 聚焦时变深黑 */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 隐藏textarea的所有箭头和滚动条按钮 */
+.chat-input::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+}
+
+.chat-input::-webkit-scrollbar-button {
+    display: none !important;
+    height: 0;
+    width: 0;
+}
+
+.chat-input::-webkit-scrollbar-thumb {
+    background: transparent;
+}
+
+.chat-input::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-input::-webkit-inner-spin-button,
+.chat-input::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    display: none !important;
+    margin: 0;
+}
+
+
+.chat-input:focus {
+    border-color: #667eea;
+}
+.chat-input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.receive-btn {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.receive-btn:hover {
+    background: #5a6fd8;
+}
+
+.receive-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+/* 新的图标按钮样式 */
+.action-icon-btn {
+    background: transparent;
+    border: none;
+    width: 40px; /* 稍小一点 */
+    height: 40px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+}
+
+.action-icon-btn:hover {
+    background: #f8f8f8; /* 更淡的悬停色 */
+    transform: scale(1.05); /* 微微放大 */
+}
+
+.action-icon-btn:active {
+    transform: scale(0.95);
+}
+
+        /* 鼠标悬停变色 */
+        .action-icon-btn:hover {
+            background: #f5f5f5;
+        }
+
+        /* 点击时的缩小效果 */
+        .action-icon-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* 图片样式 */
+        .action-icon-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0.7; /* 默认稍微淡一点，显高级 */
+            transition: opacity 0.3s;
+        }
+
+        .action-icon-btn:hover img {
+            opacity: 1;   /* 悬停时完全不透明 */
+        }
+/* 系统消息 */
+.system-message {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin: 10px 0;
+}
+/* 禁用消息文本选择 */
+.message-bubble {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* 消息操作菜单按钮 */
+.message-menu-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+    background: white;
+    border: 1px solid #e0e0e0;
+}
+
+.message-menu-btn:hover {
+    background: #f8f8f8;
+}
+
+.message-menu-btn:last-child {
+    margin-bottom: 0;
+}
+
+/* 撤回消息样式 */
+.revoked-message {
+    color: #999;
+    font-style: italic;
+    cursor: pointer;
+    user-select: none;
+}
+
+.revoked-message:hover {
+    text-decoration: underline;
+}
+
+.revoked-content {
+    display: none;
+    margin-top: 8px;
+    padding: 8px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+}
+
+.revoked-content.show {
+    display: block;
+}
+/* 多选模式相关样式 */
+.message-item.multi-select-mode {
+    padding-left: 50px;
+    position: relative;
+}
+
+.message-checkbox {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.multi-select-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: white;
+    border-top: 1px solid #eee;
+}
+
+.selected-count {
+    font-size: 14px;
+    color: #333;
+}
+
+.multi-select-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-multi-cancel {
+    padding: 8px 20px;
+    background: #f0f0f0;
+    color: #666;
+    border: none;
+    border-radius: 16px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-multi-delete {
+    padding: 8px 20px;
+    background: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 引用框样式 */
+.quote-box {
+    padding: 12px 15px;
+    background: #f5f5f5;
+    border-left: 3px solid #667eea;
+    margin: 0 15px;
+}
+
+.quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.quote-header span:first-child {
+    font-size: 13px;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.quote-close {
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.quote-close:hover {
+    color: #666;
+}
+
+.quote-content {
+    font-size: 13px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 消息中的引用样式 */
+.message-quoted {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid #667eea;
+}
+
+.message-quoted-author {
+    font-size: 12px;
+    color: #667eea;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.message-quoted-content {
+    font-size: 12px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-quoted-time {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+/* 角色信息页面 */
+.character-info-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+}
+
+.character-info-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 30px;
+}
+
+.character-profile-section {
+    text-align: center;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+}
+
+.character-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    margin: 0 auto 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    cursor: pointer; /* 新增 */
+    transition: transform 0.3s; /* 新增 */
+    overflow: hidden; /* 新增 */
+}
+.character-avatar:hover {
+    transform: scale(1.05);
+}
+.character-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.character-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+   cursor: pointer; /* 新增 */
+}
+
+.character-location {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 25px;
+    cursor: pointer; /* 新增 */
+}
+.character-location:hover {
+    color: #667eea;
+}
+.character-stats {
+    display: flex;
+    justify-content: space-around;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 20px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #999;
+}
+
+.character-edit-form {
+    padding: 20px;
+}
+
+/* 防止日期选择器超出容器 */
+.character-edit-form input[type="date"] {
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+
+.gender-options {
+    display: flex;
+    gap: 15px;
+}
+
+.gender-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+}
+
+.gender-option input {
+    cursor: pointer;
+}
+
+.save-character-btn {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.3s;
+}
+
+.save-character-btn:hover {
+    background: #5a6fd8;
+}
+
+.app-icon-editor {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.app-icon-editor:hover {
+    transform: scale(1.05);
+}
+
+.app-icon-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.app-icon-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+/* 日记页面样式 */
+.diary-screen {
+    height: 100vh;
+    background: #f5f5f5;
+    display: none;
+    flex-direction: column;
+}
+
+/* 召唤卡片 */
+
+.summon-card {
+    margin: 20px;
+    padding: 35px 25px;
+    background: 
+        linear-gradient(135deg, 
+            #fff5f7 0%, 
+            #ffe4ec 50%, 
+            #ffd6e3 100%);
+    border-radius: 25px;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 
+        0 5px 20px rgba(255, 182, 193, 0.3),
+        inset 0 -2px 10px rgba(255, 255, 255, 0.5);
+    border: 3px dashed #ffb3d1;
+}
+
+/* 左上角小兔子 */
+.summon-card::before {
+    content: '🐰';
+    position: absolute;
+    top: -18px;
+    left: 15px;
+    font-size: 40px;
+    animation: rabbitJump 2s ease-in-out infinite;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.1));
+    z-index: 2;
+}
+
+/* 顶部中央信封 */
+.summon-card::after {
+    content: '💌';
+    position: absolute;
+    top: -15px;
+    right: 15px;
+    font-size: 38px;
+    animation: envelopeSway 2.5s ease-in-out infinite;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.1));
+}
+
+@keyframes rabbitJump {
+    0%, 100% { 
+        transform: translateY(0) rotate(-8deg); 
+    }
+    50% { 
+        transform: translateY(-12px) rotate(8deg); 
+    }
+}
+
+@keyframes envelopeSway {
+    0%, 100% { 
+        transform: translateY(0) rotate(3deg); 
+    }
+    50% { 
+        transform: translateY(-8px) rotate(-3deg); 
+    }
+}
+
+.summon-card:hover {
+    transform: scale(1.08) translateY(-5px);
+    box-shadow: 
+        0 10px 35px rgba(255, 105, 180, 0.4),
+        inset 0 -3px 15px rgba(255, 255, 255, 0.6);
+    border-color: #ff69b4;
+}
+
+.summon-card:active {
+    animation: cardBounce 0.5s ease;
+}
+
+@keyframes cardBounce {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(0.95) rotate(-3deg); }
+    50% { transform: scale(1.05); }
+    75% { transform: scale(0.98) rotate(3deg); }
+}
+
+.summon-text {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ff1493;
+    text-shadow: 
+        0 2px 4px rgba(255,255,255,0.8),
+        0 0 15px rgba(255, 105, 180, 0.3);
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 底部小爪印 */
+.stars-container {
+    pointer-events: none;
+}
+
+.stars-container::before {
+    content: '🐾';
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    font-size: 22px;
+    opacity: 0.5;
+    animation: pawFade 2s ease-in-out infinite;
+}
+
+.stars-container::after {
+    content: '🐾';
+    position: absolute;
+    bottom: 5px;
+    right: 20px;
+    font-size: 22px;
+    opacity: 0.5;
+    animation: pawFade 2s ease-in-out infinite 1s;
+}
+
+@keyframes pawFade {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+}
+
+/* 星星特效容器 */
+.stars-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    pointer-events: none;
+}
+
+.star {
+    position: absolute;
+    font-size: 20px;
+    animation: starTwinkle 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes starTwinkle {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(180deg);
+    }
+}
+
+/* 写日记状态卡片 */
+.writing-diary-card {
+    margin: 20px;
+    padding: 30px 20px;
+    background: white;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.writing-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.writing-text {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.pen-animation {
+    font-size: 24px;
+    animation: penWrite 1.5s ease-in-out infinite;
+}
+
+@keyframes penWrite {
+    0%, 100% { transform: translateY(0) rotate(-10deg); }
+    50% { transform: translateY(-5px) rotate(10deg); }
+}
+
+/* 日记列表容器 */
+.diary-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0 20px;
+}
+
+/* 日记卡片 */
+.diary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 15px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.diary-card:active {
+    transform: scale(0.98);
+}
+
+.diary-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.diary-time {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.diary-preview {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.diary-tags {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.diary-tag {
+    background: #f0f0ff;
+    color: #667eea;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+/* ========== 日记详情页美化 ========== */
+        .diary-detail-screen {
+            height: 100vh;
+            background: #f0f2f5; /* 背景稍微深一点，突出纸张 */
+            display: none;
+            flex-direction: column;
+        }
+
+        .diary-detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px; /* 给纸张留出边距 */
+        }
+
+        /* 纸张容器 */
+        .diary-paper {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-height: 80vh; /* 保证纸张足够长 */
+            position: relative;
+            color: #4a4a4a;
+        }
+
+        /* 顶部装饰条（可选，增加设计感） */
+        .diary-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            height: 6px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 0 0 6px 6px;
+        }
+
+        /* 日记标题 */
+        .diary-detail-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        /* 元信息（日期、天气、心情） */
+        .diary-meta {
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed #eee; /* 虚线分割 */
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .diary-meta-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 板块样式 */
+        .diary-section {
+            margin-bottom: 30px;
+        }
+
+        /* 板块标题 */
+        .diary-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea; /* 主题色 */
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #667eea; /* 左侧竖线装饰 */
+            display: flex;
+            align-items: center;
+        }
+
+        /* 板块内容列表 */
+        .diary-section-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #555;
+            padding-left: 5px;
+        }
+
+        .diary-section-content ul {
+            padding-left: 0; /* 去掉默认缩进 */
+            list-style: none;
+        }
+
+        .diary-section-content li {
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 20px; /* 给自定义圆点留位置 */
+        }
+
+        /* 自定义圆点 */
+        .diary-section-content li::before {
+            content: '•';
+            color: #ddd;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+/* ▼▼▼ 新增：如果是待办事项，去掉前面的圆点，并减少左边距 ▼▼▼ */
+        .diary-section-content li.is-todo::before {
+            display: none;
+        }
+        
+        .diary-section-content li.is-todo {
+            padding-left: 0; /* 不需要给圆点留位置了 */
+            list-style: none;
+        }
+      /* ▼▼▼ 新增：针对 OOTD 等不需要圆点的列表项 ▼▼▼ */
+        .diary-section-content li.no-dot::before {
+            display: none;
+        }
+        
+        .diary-section-content li.no-dot {
+            padding-left: 0;
+            list-style: none;
+        }
+        /* 特殊样式的列表项 */
+        .checkbox-done {
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .checkbox-undone {
+            color: #ccc;
+            margin-right: 5px;
+        }
+
+        .strikethrough {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* 感悟段落 */
+        .diary-reflection p {
+            text-indent: 2em;
+            margin-bottom: 15px;
+            text-align: justify; /* 两端对齐 */
+        }
+
+        /* 标签区域 */
+        .diary-tags {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #f5f5f5;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .diary-tag {
+            background: #f0f0ff;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+
+/* 删除线效果 */
+.strikethrough {
+    text-decoration: line-through;
+    text-decoration-color: #8d6e63;
+    opacity: 0.6;
+}
+/* 复选框样式 */
+.checkbox-done {
+    color: #81c784;
+}
+.checkbox-undone {
+    color: #ccc;
+}
+
+/* 表情包按钮 */
+.emoji-btn-wrapper {
+    padding: 3px 15px 2px;
+    background: white;
+    display: flex;  /* ← 添加这行 */
+    align-items: center;  /* ← 添加这行 */
+}
+.emoji-btn-wrapper {
+    padding: 3px 15px 2px;
+    background: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;  /* ← 图标间隔距离 */
+}
+
+.emoji-btn {
+    width: 25px;
+    height: 25px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-btn:active {
+    transform: scale(0.9);
+}
+
+.emoji-btn:hover {
+    background: #ebebeb;
+}
+
+/* 表情包面板 */
+.emoji-panel {
+    position: absolute; 
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    max-width: 375px;
+    margin: 0 auto;
+    height: 60vh;
+    background: white;
+    border-top: 1px solid #eee;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+/* 顶部操作栏 */
+.emoji-panel-header {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.emoji-header-btn {
+    padding: 8px 16px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.emoji-header-btn:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* 搜索框 */
+.emoji-search-box {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.emoji-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+}
+
+/* 分类标签栏 */
+.emoji-category-bar {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.emoji-category-tag {
+    display: inline-block;
+    padding: 6px 14px;
+    margin-right: 8px;
+    background: #f0f0f0;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+color: #333;
+}
+
+.emoji-category-tag.active {
+    background: #667eea;
+    color: white;
+}
+
+/* 表情包网格 */
+.emoji-grid-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.emoji-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.emoji-item:hover {
+    transform: scale(1.1);
+}
+
+.emoji-item-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.emoji-item-text {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 删除模式 */
+.emoji-item.delete-mode {
+    position: relative;
+}
+
+.emoji-item.delete-mode .emoji-delete-icon {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 图片消息样式 */
+.message-image {
+    width: 95px;  /* 固定宽度 */
+    height: 95px;  /* 固定高度 */
+    object-fit: cover;  /* 裁剪填充，保持比例 */
+    border-radius: 8px;
+    cursor: pointer;
+    display: block;
+}
+
+/* 快捷金额按钮 */
+.quick-amount-btn {
+    flex: 1;
+    padding: 8px 10px;
+    background: #fff0f6;
+    border: 1px solid #ffb3d9;
+    border-radius: 8px;
+    color: #ff69b4;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-amount-btn:active {
+    background: #ff69b4;
+    color: white;
+    transform: scale(0.95);
+}
+
+/* ============ 转账消息卡片 (明显灰色版) ============ */
+.transfer-card {
+    /* 1. 布局：Grid 结构 (左图标 | 右内容) */
+    display: grid !important;
+    grid-template-columns: 42px 1fr !important;
+    grid-template-rows: auto auto !important;
+    column-gap: 12px !important;
+    align-items: center !important;
+    
+    /* 2. 皮肤：【明显加深的灰色背景】 */
+    width: 200px !important;
+    max-width: 100% !important;
+    
+    background: #e6e6e6 !important; /* <--- 这是一个很明显的灰色 */
+    
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    margin: 6px 0 !important;
+    box-shadow: none !important; 
+    cursor: pointer !important;
+    position: relative !important;
+    transition: all 0.2s !important;
+}
+
+/* 3. 左侧图标 */
+.transfer-icon {
+    display: flex !important;
+    grid-row: 1 / 3 !important; 
+    grid-column: 1 / 2 !important;
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: 1.5px solid #ff9f43 !important;
+    color: #ff9f43 !important;
+    font-size: 20px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 !important;
+}
+
+/* 4. 右侧上排 - 金额 */
+.transfer-amount {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+    margin: 0 0 2px 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+    align-self: end !important;
+    font-family: -apple-system, sans-serif !important;
+}
+
+.transfer-amount::before { content: "转账 "; font-weight: normal; }
+.transfer-amount::after { content: " 元"; font-weight: normal; }
+
+/* 5. 右侧下排 - 状态 (使用伪元素生成文字) */
+.transfer-card::after {
+    content: "待领取"; 
+    grid-column: 2 / 3 !important;
+    grid-row: 2 / 3 !important;
+    font-size: 12px !important;
+    color: #ff9f43 !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    align-self: start !important;
+    margin-top: 2px !important;
+}
+
+/* 6. 已领取状态 */
+.transfer-card.received::after {
+    content: "已领取" !important;
+    color: #999999 !important;
+    font-weight: normal !important;
+}
+
+/* 已领取时图标变灰 */
+.transfer-card.received .transfer-icon {
+    border-color: #bbbbbb !important;
+    color: #bbbbbb !important;
+}
+
+/* 7. 隐藏不需要的元素 */
+.transfer-status, .transfer-note {
+    display: none !important;
+}
+
+/* 8. 强制覆盖所有状态背景为灰色 */
+.transfer-card.sent, 
+.transfer-card.pending, 
+.transfer-card.received {
+    background: #e6e6e6 !important; /* <--- 强制变灰 */
+}
+
+/* 悬停效果：更深一点的灰 */
+.transfer-card:hover {
+    background: #dbdbdb !important;
+    border-color: #ff9f43 !important;
+}
+
+
+/* 语音消息气泡样式（浅灰声波版） */
+.voice-bubble {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 80px;
+    max-width: 200px;
+    position: relative;
+}
+
+/* 我发出的：浅灰色 #e6e6e6 */
+.message-item.me .voice-bubble {
+    background: #e6e6e6; 
+    border-color: rgba(0,0,0,0.05);
+}
+
+.voice-bubble:active {
+    transform: scale(0.98);
+}
+
+/* 语音波纹图标（声波律动） */
+.voice-wave {
+    display: flex;
+    align-items: center; /* 确保竖条垂直居中 */
+    gap: 3px;            /* 竖条之间的间距 */
+    height: 20px;        /* 固定高度容器 */
+    flex-shrink: 0;
+}
+
+/* 竖条样式 */
+.voice-wave span {
+    width: 3px;           /* 细竖条 */
+    background: #555;     /* 深灰色线条 */
+    border-radius: 2px;   /* 两头圆润 */
+    display: block;
+    
+    /* 初始高度 */
+    height: 6px;
+    
+    /* 上下伸缩动画 */
+    animation: soundWave 1.2s ease-in-out infinite;
+}
+
+/* 三根竖条错开播放，形成波浪感 */
+.voice-wave span:nth-child(1) {
+    animation-delay: 0s;
+    height: 8px;
+}
+
+.voice-wave span:nth-child(2) {
+    animation-delay: 0.2s;
+    height: 14px; /* 中间这根最高 */
+}
+
+.voice-wave span:nth-child(3) {
+    animation-delay: 0.4s;
+    height: 10px;
+}
+
+/* 上下伸缩动画帧 */
+@keyframes soundWave {
+    0%, 100% { height: 6px; opacity: 0.6; }
+    50% { height: 18px; opacity: 1; } /* 拉长 */
+}
+
+/* 语音时长 */
+.voice-duration {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    flex: 1;
+}
+
+/* 文字内容展开 */
+.voice-text-content {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    animation: fadeIn 0.2s ease;
+    word-break: break-all;
+}
+
+.message-item.me .voice-text-content {
+    border-top-color: rgba(0,0,0,0.15);
+}
+
+.voice-text-content.show {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 语音条容器 */
+.voice-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+   /* ============ 通话页面样式 ============ */
+.call-screen {
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+}
+/* 顶部状态区 */
+.call-header {
+    padding: 30px 20px 15px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.call-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.call-status {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+}
+
+
+/* 对话区域容器 */
+.call-messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 15px 10px;
+}
+
+.call-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 动作描写框 */
+.call-action-desc {
+    background: rgba(0,0,0,0.4);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-style: italic;
+    color: #ddd;
+    font-size: 13px;
+    text-align: center;
+    margin: 10px auto;
+    max-width: 85%;
+    line-height: 1.5;
+    backdrop-filter: blur(5px);
+}
+
+/* AI消息气泡 */
+.call-message-ai {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 75%;
+    font-size: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 用户消息气泡 */
+.call-message-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 75%;
+    font-size: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* 挂断按钮区域 */
+.call-hangup-section {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.hangup-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #ff4757;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,71,87,0.4);
+    transition: all 0.3s;
+}
+
+.hangup-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(255,71,87,0.6);
+}
+
+.hangup-btn:active {
+    transform: scale(0.95);
+}
+
+/* 输入栏 */
+.call-input-bar {
+    display: flex;
+    align-items: flex-end;
+    padding: 15px;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.call-input-bar .chat-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    font-size: 16px;
+    resize: none;
+    max-height: 72px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    outline: none;
+    background: rgba(255,255,255,0.9);
+    transition: border-color 0.3s;
+}
+
+.call-input-bar .chat-input:disabled {
+    background: rgba(255,255,255,0.5);
+    color: #999;
+    cursor: not-allowed;
+}
+
+.call-input-bar .chat-input:focus {
+    border-color: white;
+}
+ /* 通话设置按钮 */
+.call-settings-btn {
+    position: absolute;
+    top: 30px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s;
+  font-size: 18px;
+}
+
+.call-settings-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.call-settings-btn:active {
+    transform: scale(0.95);
+}
+/* 通话页面自定义样式变量 */
+.call-screen {
+    --call-ai-bubble-color: rgba(255,255,255,0.9);
+    --call-ai-text-color: #333;
+    --call-user-bubble-color: linear-gradient(135deg, #667eea, #764ba2);
+    --call-user-text-color: white;
+    --call-name-color: white;
+}
+
+/* 应用角色名颜色 */
+.call-name {
+    color: var(--call-name-color) !important;
+}
+
+/* 应用自定义颜色 */
+.call-message-ai {
+    background: var(--call-ai-bubble-color) !important;
+    color: var(--call-ai-text-color) !important;
+}
+
+.call-message-user {
+    background: var(--call-user-bubble-color) !important;
+    color: var(--call-user-text-color) !important;
+}
+  /* 通话设置弹窗内的表单优化 */
+#callSettingsModal .form-group {
+    margin-bottom: 15px;
+}
+
+#callSettingsModal .form-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+#callSettingsModal .file-input-area {
+    padding: 15px;
+    font-size: 13px;
+}
+
+#callSettingsModal .api-btn {
+    padding: 10px;
+    font-size: 13px;
+}
+
+#callSettingsModal .modal-buttons {
+    margin-top: 15px;
+    gap: 10px;
+}
+
+#callSettingsModal .btn {
+    padding: 10px;
+    font-size: 14px;
+}
+/* ============ 购物功能样式 ============ */
+.shopping-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100; /* 提高层级 */
+    max-width: 375px; /* 保持手机宽度 */
+    margin: 0 auto;
+}
+
+
+.shopping-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.shopping-search-area {
+    padding: 20px;
+    background: #f8f8f8;
+}
+
+/* 搜索框容器：确保弹性布局 */
+.search-card {
+    background: white;
+    border-radius: 16px;
+    padding: 10px 12px; /* 稍微减小一点内边距 */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* 减小间距，给按钮留空间 */
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #f0f0f0;
+}
+
+/* 搜索按钮：防止变形 */
+.search-btn {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px; /* 左右间距改小一点点 */
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    
+    /* ★ 核心修改：防止按钮把布局撑坏 ★ */
+    flex-shrink: 0;       /* 无论空间多挤，按钮都不许缩小 */
+    white-space: nowrap;  /* 文字不许换行 */
+    min-width: 60px;      /* 保证最小宽度 */
+    display: flex;        /* 让内部文字/图标居中 */
+    justify-content: center;
+    align-items: center;
+}
+/* 加载动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.search-btn.loading {
+    pointer-events: none; /* 加载时禁止点击 */
+}
+
+.search-btn.loading::before {
+    content: '⏳';
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    margin-right: 4px;
+}
+
+/* 加载时的旋转动画 (可选，会让等待过程很可爱) */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.search-btn.loading-mode {
+    border-color: #ff9f43;
+    color: #ff9f43;
+    background: #fff8f0;
+}
+
+.search-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    background: transparent;
+    padding: 0;
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.search-btn {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 8px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+
+.search-btn:hover {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.search-btn:active {
+    transform: translateY(0);
+    background: #f0f0f0;
+}
+
+
+
+.shopping-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px 80px;
+}
+
+/* 商品卡片样式 */
+.product-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+}
+
+
+.product-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+
+
+.product-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ff4757;
+    margin: 8px 0;
+}
+
+.product-description {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.product-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.product-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-edit {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.btn-edit:hover {
+    background: #e0e0e0;
+}
+
+.btn-delete {
+    background: #fff0f0;
+    color: #ff4757;
+}
+
+.btn-delete:hover {
+    background: #ffe0e0;
+}
+
+.btn-add-cart {
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+.btn-add-cart:hover {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+}
+
+
+/* 购物车徽章 */
+.cart-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.shopping-cart-screen {
+    height: 100vh;
+    background: white;
+    display: none;
+    flex-direction: column;
+    position:absolute; 
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100; /* 提高层级 */
+    max-width: 375px; /* 保持手机宽度 */
+    margin: 0 auto;
+}
+
+
+.cart-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+}
+
+.cart-item {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+}
+
+.cart-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cart-item-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    flex: 1;
+}
+
+.cart-item-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.cart-item-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.quantity-btn:hover {
+    background: #f0f0f0;
+}
+
+.quantity-btn:active {
+    transform: scale(0.9);
+}
+
+.quantity-number {
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+}
+
+.cart-item-delete {
+    color: #ff4757;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+.cart-item-delete:hover {
+    text-decoration: underline;
+}
+
+/* ============ 购物车底部布局 ============ */
+.cart-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    background: white;
+}
+/* 第一行：支付方式 + 总价 */
+.cart-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+/* 左侧：支付方式选择（横向紧凑） */
+/* 左侧：支付方式选择（强制横向） */
+.payment-options {
+    display: flex;
+    flex-direction: row !important;  /* 强制横向 */
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: center;
+}
+.payment-option {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;  /* 缩小内边距 */
+    background: white;
+    border: 1.5px solid #e0e0e0;  /* 边框变细 */
+    border-radius: 6px;  /* 圆角变小 */
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.payment-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.payment-option.selected {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+.payment-radio {
+    width: 14px;   /* 缩小单选按钮 */
+    height: 14px;
+    margin-right: 4px;  /* 减小间距 */
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.payment-label {
+    cursor: pointer;
+    font-size: 12px;  /* 缩小字体 */
+    color: #333;
+    font-weight: 500;
+}
+/* 右侧：总价 */
+.cart-total-inline {
+    font-size: 16px;  /* 稍微缩小 */
+    font-weight: 600;
+    color: #333;
+}
+.cart-total-inline span {
+    color: #ff4757;
+    font-size: 18px;  /* 稍微缩小 */
+}
+/* 第二行：结算按钮 */
+.btn-checkout {
+    width: 100%;
+    padding: 12px;  /* 稍微缩小 */
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;  /* 稍微缩小 */
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.btn-checkout:hover {
+    background: #5a6fd8;
+}
+.btn-checkout:active {
+    transform: scale(0.98);
+}
+.btn-checkout:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ============ 购物订单卡片样式（保持不变） ============ */
+.shopping-order-card {
+    max-width: 85%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 10px 0;
+}
+
+.shopping-order-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.order-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-icon {
+    font-size: 20px;
+}
+
+.order-type-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.order-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-status {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.order-status.status-paid {
+    color: #1dd1a1;
+}
+
+.order-status.status-pending {
+    color: #ff9f43;
+}
+
+.order-status.status-rejected {
+    color: #999;
+}
+
+.order-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.order-view-detail {
+    font-size: 12px;
+    color: #667eea;
+    text-align: center;
+    margin-top: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.order-view-detail:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+.order-detail {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    animation: fadeIn 0.3s ease;
+}
+
+.order-detail.show {
+    display: block;
+}
+
+.order-detail-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-number {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.order-items-list {
+    margin-bottom: 10px;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 10px 0;
+}
+
+.order-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+
+.cart-total {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+    text-align: right;
+}
+
+.cart-total span {
+    color: #ff4757;
+    font-size: 22px;
+}
+
+.btn-checkout {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-checkout:hover {
+    background: #5a6fd8;
+}
+
+.btn-checkout:active {
+    transform: scale(0.98);
+}
+
+/* 空状态样式 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+}
+
+.empty-state-text {
+    font-size: 15px;
+}
+/* ========== 购物/外卖切换按钮样式 ========== */
+.shopping-switch-container {
+    display: flex;
+    background: #f0f2f5;
+    padding: 3px;
+    border-radius: 16px;
+    border: 1px solid #e1e1e1;
+}
+
+.shopping-switch-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* 选中状态：百货（默认紫色） */
+.shopping-switch-btn.active {
+    background: #667eea;
+    color: white;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+}
+
+/* 选中状态：外卖（橙色，稍后我们在JS里动态添加这个类） */
+.shopping-switch-btn.active-food {
+    background: #ff9f43 !important; /* 强制橙色 */
+    color: white;
+    box-shadow: 0 2px 6px rgba(255, 159, 67, 0.4);
+}
+/* ========== 电商/外卖 进阶样式 ========== */
+
+/* 商品标题：淘宝风 (两行显示，多出省略) */
+.product-name.goods-title {
+    font-size: 15px;
+    font-weight: normal; /* 淘宝标题通常不加粗，但字多 */
+    line-height: 1.4;
+    color: #333;
+    margin-bottom: 8px;
+    
+    /* 限制显示两行 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 外卖标题：美团风 (加粗，单行或双行) */
+.product-name.food-title {
+    font-size: 16px;
+    font-weight: 700; /* 外卖强调菜名 */
+    color: #333;
+    margin-bottom: 6px;
+}
+
+/* 标签容器 */
+.product-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+/* 标签通用样式 */
+.product-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+/* 🛍️ 百货标签风格 (红/橙色系) */
+.tag-goods {
+    color: #ff5000; /* 淘宝红 */
+    background: #fff0e6;
+    border-color: #ffdec2;
+}
+/* 第一个标签通常突出一点，我们可以用CSS选择器让它变实心 (可选) */
+.tag-goods:first-child {
+    background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+    color: white;
+    border: none;
+    border-radius: 2px;
+}
+
+/* 🍱 外卖标签风格 (美团黄/灰) */
+.tag-food {
+    color: #666;
+    background: #f4f4f4; /* 灰色底 */
+}
+/* 外卖的评分标签 (通常是第一个) 高亮 */
+.tag-food:first-child {
+    color: #ff9900; /* 评分黄 */
+    background: #fff8e1;
+    font-weight: bold;
+}
+
+/* 底部价格和按钮行 */
+.product-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 5px;
+}
+
+.product-price {
+    color: #ff5000; /* 淘宝红价格 */
+    font-weight: 700;
+    font-size: 18px;
+}
+/* 外卖模式价格颜色可以稍微不同 */
+.food-title ~ .product-bottom-row .product-price {
+    color: #ff4a4a; 
+}
+
+/* 迷你购买按钮 */
+.btn-mini-add {
+    background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+/* 外卖模式按钮变黄 */
+.food-title ~ .product-bottom-row .btn-mini-add {
+    background: #ffd161; /* 美团黄 */
+    color: #333;
+    font-weight: 600;
+}
+
+.btn-text-only {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+   /* ========== 钱包页面样式 (支付宝风) ========== */
+.wallet-container {
+    flex: 1;
+    background: #fff; /* 整体白色背景 */
+    overflow-y: auto;
+    padding-bottom: 80px;
+}
+
+ /* ========== 钱包卡片美化 (Ins精致线条风) ========== */
+
+/* 1. 卡片主体：去油腻，极简白 */
+.alipay-card {
+    /* 移除所有渐变和阴影，改为纯净布局 */
+    background: transparent;
+    border-radius: 0; 
+    margin: 0;
+    padding: 30px 25px 10px;
+    color: #333;
+    position: relative;
+    text-align: center; /* 居中对齐更有杂志感 */
+}
+
+/* 移除之前的光效装饰 */
+.alipay-card::after {
+    display: none;
+}
+
+.balance-label {
+    font-size: 13px;
+    color: #999;
+    text-transform: uppercase; /* 大写更高级 */
+    letter-spacing: 1.5px;     /* 字间距增加 */
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.balance-amount {
+    font-size: 42px; /* 更大更细 */
+    font-weight: 300; /* 细字体 */
+    margin-bottom: 25px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1a1a1a;
+}
+
+.wallet-actions {
+    display: flex;
+    justify-content: center; /* 按钮居中 */
+    gap: 15px;
+}
+
+/* 2. 按钮美化：Ins风浅灰胶囊 */
+.wallet-act-btn {
+    background: #f2f2f2; /* 浅灰背景 */
+    border: none;
+    color: #1a1a1a;
+    padding: 12px 35px; /* 更宽扁 */
+    border-radius: 25px; /* 全圆角 */
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.wallet-act-btn:hover {
+    background: #e5e5e5;
+    transform: translateY(-1px);
+}
+
+.wallet-act-btn:active {
+    transform: scale(0.98);
+}
+
+/* 3. 功能区：纯线条图标 */
+.wallet-grid {
+    display: flex;
+    justify-content: space-around; /* 分散对齐 */
+    padding: 15px 20px;
+    border-bottom: 1px solid #f8f8f8; /* 极淡分割线 */
+    margin-top: 10px;
+}
+
+.wallet-grid-item {
+    flex: none; /* 防止拉伸 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 60px;
+}
+
+.wallet-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px; /* 小圆角 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333; /* 图标颜色：深黑 */
+    background: #f9f9f9; /* 极淡的灰色底，或者可以直接 transparent */
+    border: 1px solid transparent; /* 预留边框位置 */
+    transition: all 0.3s;
+}
+/* 悬停时图标略微变深 */
+.wallet-grid-item:hover .wallet-icon {
+    background: #f0f0f0;
+    color: #000;
+}
+
+.wallet-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* 4. 账单列表：杂志排版 */
+.bill-section {
+    padding: 0 25px;
+}
+
+.bill-header {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    padding: 25px 0 15px;
+    border-bottom: none; /* 去掉分割线 */
+    letter-spacing: -0.5px;
+}
+
+.bill-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid #f8f8f8; /* 极细线 */
+}
+
+.bill-title {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.bill-time {
+    font-size: 11px;
+    color: #bbb; /* 更淡的时间颜色 */
+    font-weight: 400;
+}
+
+.bill-amount {
+    font-size: 16px;
+    font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, monospace; /* 数字等宽更有质感 */
+}
+
+.amount-income { color: #1a1a1a; } /* 收入不用红色，用高级黑 */
+.amount-expense { color: #999; }   /* 支出用灰色 */
+
+/* ============ 购物车支付方式选择样式 ============ */
+.cart-payment-section {
+    padding: 15px 20px;
+    background: #f8f8f8;
+    border-top: 1px solid #eee;
+}
+
+.payment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;
+    background: white;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    /* 确保没有 width: 100% 或 display: block */
+}
+
+
+.payment-radio {
+    width: 12px !important;
+    height: 12px !important;
+    margin-right: 3px !important;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.payment-label {
+    cursor: pointer;
+    font-size: 11px !important;  /* 超小字体 */
+    color: #333;
+    font-weight: 500;
+}
+
+
+.payment-option:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+.payment-option.selected {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.payment-radio {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.payment-label {
+    flex: 1;
+    cursor: pointer;
+}
+
+.payment-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 3px;
+}
+
+.payment-desc {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 结算按钮禁用状态 */
+.btn-checkout:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ============ 购物订单卡片样式 ============ */
+.shopping-order-card {
+    max-width: 85%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 10px 0;
+}
+
+.shopping-order-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.order-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-icon {
+    font-size: 20px;
+}
+
+.order-type-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.order-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-status {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.order-status.status-paid {
+    color: #1dd1a1;
+}
+
+.order-status.status-pending {
+    color: #ff9f43;
+}
+
+.order-status.status-rejected {
+    color: #999;
+}
+
+.order-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff4757;
+}
+
+.order-view-detail {
+    font-size: 12px;
+    color: #667eea;
+    text-align: center;
+    margin-top: 5px;
+    cursor: pointer; /* 确保有这行 */
+    user-select: none; /* 防止文字被选中 */
+}
+.order-view-detail:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+/* 订单详情展开 */
+.order-detail {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    animation: fadeIn 0.3s ease;
+}
+
+.order-detail.show {
+    display: block;
+}
+
+.order-detail-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-number {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.order-items-list {
+    margin-bottom: 10px;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 10px 0;
+}
+
+.order-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.order-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-close-detail {
+    text-align: center;
+    font-size: 12px;
+    color: #667eea;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+   /* ============ 新增：聊天列表合并大卡片样式 (已修复左滑溢出问题) ============ */
+
+/* 1. 大容器：这是一个承载所有消息的大白块 */
+.chat-group-card {
+    background: #ffffff;
+    border-radius: 20px; /* 大圆角 */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03); /* 整体的淡阴影 */
+    overflow: hidden; /* 保证内部子元素不溢出圆角 */
+    margin-bottom: 20px;
+    /* ▼▼▼ 新增：确保大卡片本身也有相对定位，防止内部元素跑偏 ▼▼▼ */
+    position: relative; 
+    z-index: 1;
+}
+
+/* 2. 重置每一行的包装器 (核心修复区) */
+.chat-item-wrapper {
+    margin-bottom: 0 !important; /* 去掉行与行的间距 */
+    border-radius: 0 !important; /* 去掉每一行的圆角 */
+    background: transparent;
+    border-bottom: 0.5px solid #f0f0f0; /* 添加极细分割线 */
+    
+    /* ▼▼▼ 关键修复点：加上这两句，按钮就被锁在每一行里了 ▼▼▼ */
+    position: relative !important;  /* 让绝对定位的按钮以这一行为基准 */
+    overflow: hidden !important;    /* 这一行多余的内容统统藏起来 */
+    height: auto;                   /* 高度自适应 */
+}
+
+/* 最后一行去掉分割线，完美闭合 */
+.chat-item-wrapper:last-child {
+    border-bottom: none;
+}
+
+/* 3. 重置每一行的点击区域 */
+.chat-item {
+    border-radius: 0 !important; /* 去掉圆角 */
+    box-shadow: none !important; /* 去掉单行阴影 */
+    background: transparent !important; /* 背景透明，透出大卡片的白色 */
+    padding: 18px 20px; /* 稍微增加内边距，更有呼吸感 */
+    width: 100%; /* 确保占满宽度 */
+    position: relative;
+    z-index: 2; /* 确保内容在按钮上面 */
+}
+
+/* 4. 悬停效果改为背景变色，而不是上浮 */
+.chat-item:hover {
+    transform: none !important; /* 禁止上浮，防止和左滑冲突 */
+    background: #f9f9f9 !important; /* 微微变灰 */
+}
+
+/* 5. 修正左滑按钮的定位 */
+.chat-actions {
+    border-radius: 0 !important; /* 去掉圆角，因为是直角的列表行 */
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0; /* 确保高度撑满整行 */
+    height: 100%;
+    z-index: 1; /* 在内容下面 */
+    /* 保持原有的 Flex 布局 */
+    display: flex;
+}
+
+/* ============ 新增：双组件布局样式 (Ins线条风) ============ */
+
+/* 1. 组件行容器 */
+.widgets-row {
+    display: flex;
+    justify-content: space-between; /* 左右贴边对齐 */
+    padding: 0 25px; /* 和上面的APP网格边距保持视觉一致 */
+    gap: 15px;       /* 两个组件之间的空隙 */
+    margin-bottom: 20px;
+    margin-top: 10px; /* 和上面APP拉开一点距离 */
+}
+
+/* 2. 组件通用盒子 (正方形) */
+.widget-box {
+    flex: 1; /* 两个平分宽度 */
+    aspect-ratio: 1 / 1; /* 强制正方形 */
+    
+    /* === Ins高冷线条风格核心 === */
+    background: rgba(255, 255, 255, 0.1); /* 极淡的透明白 */
+    border: 1px solid rgba(255, 255, 255, 0.35); /* 精致的细白边框 */
+    border-radius: 22px; /* 圆润的角 */
+    
+    position: relative;
+    overflow: hidden;
+    color: white;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.widget-box:active {
+    transform: scale(0.96); /* 点击时的微缩反馈 */
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* === 左侧：音乐组件样式 === */
+.music-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 音乐圆环 (模拟唱片/进度条) */
+.music-ring {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    /* 使用锥形渐变模拟进度条效果 */
+    background: conic-gradient(rgba(255,255,255,0.9) 0% 70%, rgba(255,255,255,0.2) 70% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 微微的投影增加立体感 */
+    position: relative;
+}
+
+/* 圆环中间的遮罩 (形成环状) */
+/* 修改 .music-ring::after，让它只作为背景遮罩 */
+.music-ring::after {
+    content: '';
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    background: rgba(255,255,255,0.1); 
+    border-radius: 50%;
+    backdrop-filter: blur(5px);
+    z-index: 0; /* 放在底层 */
+}
+
+/* ▼▼▼ 新增：圆环内的封面图样式 ▼▼▼ */
+.music-cover-img {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 1; /* 在遮罩之上，但在图标之下 */
+    opacity: 0.8; /* 稍微透明一点符合Ins风，想要清晰改成 1 */
+}
+
+/* 播放图标 */
+.music-icon {
+    font-size: 24px;
+    z-index: 2; /* 浮在最上面 */
+    color: white;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.widget-box {
+    /* ...原有样式... */
+    background-size: cover !important; /* 强制背景填满 */
+    background-position: center !important;
+}
+.music-title {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+}
+
+.music-desc {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 2px;
+    font-weight: 300;
+}
+
+/* === 右侧：便签组件样式 === */
+.note-widget {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+}
+
+.note-header {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+    text-transform: uppercase; /* 英文大写更显高级 */
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.2); /* 标题分割线 */
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.note-list {
+    list-style: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.note-item {
+    font-size: 13px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.9;
+}
+
+/* 极简的勾选框装饰 */
+.note-checkbox {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid rgba(255,255,255,0.6);
+    border-radius: 4px;
+    display: inline-block;
+}
+/* 组件结束 */
+
+/* ============ API页面：Ins精致线条风重制版 ============ */
+
+/* 1. 背景与布局：极简灰白 */
+.api-screen {
+    background: #f9f9f9 !important; /* 整体背景改淡灰，突出卡片 */
+}
+
+.api-content {
+    padding: 20px 20px 40px; /* 增加底部留白 */
+}
+
+/* 2. 卡片容器：悬浮感白块 */
+.api-card {
+    background: #ffffff;
+    border-radius: 24px; /* 更大的圆角 */
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03); /* 极淡的高级阴影 */
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* 3. 标题：小字大写，间距拉开 */
+.api-section-title {
+    font-size: 12px;
+    color: #999;
+    font-weight: 600;
+    letter-spacing: 1.5px; /* 字间距 */
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 4. 输入框：去黑边，改用柔和线条 */
+.ins-input-group {
+    margin-bottom: 18px;
+}
+
+.ins-label {
+    display: block;
+    font-size: 13px;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+    margin-left: 4px;
+}
+
+.ins-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: #f8f8f8; /* 极淡灰底 */
+    border: 1px solid #eee; /* 极细边框 */
+    border-radius: 16px; /* 圆润 */
+    font-size: 15px;
+    color: #333;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.ins-input:focus {
+    background: #fff;
+    border-color: #333; /* 聚焦变黑线条 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ins-input::placeholder {
+    color: #ccc;
+    font-size: 13px;
+}
+
+/* 5. 按钮：核心线条风格 */
+.ins-btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* 通用线条按钮 */
+.ins-line-btn {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: 1.5px solid #e0e0e0; /* 默认灰线条 */
+    border-radius: 30px; /* 胶囊状 */
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.ins-line-btn:active {
+    transform: scale(0.96);
+}
+
+/* 黑色实心按钮 (Primary) */
+.ins-btn-black {
+    background: #333;
+    color: white;
+    border: 1.5px solid #333;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.ins-btn-black:hover {
+    background: #000;
+}
+
+/* 蓝色线条 (Action) */
+.ins-btn-blue-line {
+    color: #667eea;
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+.ins-btn-blue-line:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* 红色线条 (Delete) */
+.ins-btn-red-line {
+    color: #ff4757;
+    border-color: #ff4757;
+    background: #fff5f6;
+}
+
+/* 底部操作栏布局 */
+.api-footer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* ============ 壁纸/图标页面：Ins风重制版 ============ */
+
+/* 1. 全局背景统一 */
+.wallpaper-screen {
+    background: #f9f9f9 !important;
+}
+
+/* 2. 顶部预览区卡片化 */
+.ins-preview-card {
+    background: white;
+    border-radius: 24px;
+    padding: 30px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* 3. 手机预览框美化 */
+.ins-phone-frame {
+    width: 140px;
+    height: 240px;
+    border-radius: 24px;
+    border: 6px solid #333; /* 模拟手机边框 */
+    overflow: hidden;
+    position: relative;
+    background: #f0f0f0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    margin-bottom: 15px;
+}
+
+/* 4. 精致的分段控制器 (Tabs) */
+.ins-tab-group {
+    background: #f0f0f0;
+    padding: 4px;
+    border-radius: 12px;
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.ins-tab-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* 激活状态：白色悬浮块 */
+.ins-tab-btn.active {
+    background: white;
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* 5. 极简上传区域 */
+.ins-upload-area {
+    border: 1.5px dashed #e0e0e0;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafafa;
+}
+
+.ins-upload-area:hover {
+    border-color: #999;
+    background: #f4f4f4;
+}
+
+.ins-upload-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+/* 6. 图标网格优化 */
+.ins-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.ins-icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ins-icon-item:active {
+    transform: scale(0.95);
+}
+
+.ins-icon-preview-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: white;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+
+/* ============ 世界书页面：Ins风重制版 ============ */
+
+/* 1. 全局容器 */
+.worldbook-screen {
+    background: #f9f9f9 !important; /* 统一灰底 */
+}
+
+/* 2. 分类栏 (横向滚动) */
+.ins-category-scroll {
+    padding: 10px 20px 20px; /* 增加底部留白 */
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+    gap: 12px;
+    /* 隐藏滚动条 */
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+}
+.ins-category-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* 3. 分类标签 (胶囊风格) */
+.ins-cat-pill {
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #999;
+    background: white;
+    border: 1px solid #eee;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0; /* 防止挤压 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.ins-cat-pill.active {
+    background: #333;
+    color: white;
+    border-color: #333;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 4. 世界书列表容器 */
+.ins-book-list {
+    padding: 0 20px 80px; /* 底部留出空间给悬浮按钮 */
+}
+
+/* 5. 世界书卡片 (核心样式) */
+.ins-book-card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.ins-book-card:active {
+    transform: scale(0.98);
+}
+
+.ins-book-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.ins-book-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+}
+
+.ins-book-tag {
+    font-size: 10px;
+    padding: 4px 10px;
+    background: #f4f4f4;
+    color: #666;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.ins-book-preview {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    /* 限制显示3行 */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 6. 卡片底部操作栏 */
+.ins-book-actions {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #f5f5f5;
+    padding-top: 12px;
+    justify-content: flex-end;
+}
+
+.ins-action-btn {
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.ins-btn-edit {
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+.ins-btn-edit:hover {
+    background: #f0f0f0;
+}
+
+.ins-btn-del {
+    color: #ff4757;
+    border: 1px solid #ffeaea;
+    background: #fffafa;
+}
+.ins-btn-del:hover {
+    background: #ffe0e0;
+    border-color: #ff4757;
+}
+
+/* 7. 悬浮添加按钮 (黑色高级版) */
+.ins-float-add {
+    position: absolute;
+    bottom: 30px;
+    right: 25px;
+    width: 56px;
+    height: 56px;
+    background: #333;
+    color: white;
+    border-radius: 20px; /* 方圆形 */
+    border: none;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s;
+}
+
+.ins-float-add:active {
+    transform: scale(0.9);
+}
+
+/* ============ 角色信息页：Ins 极简风重制 ============ */
+
+/* 1. 背景与容器 */
+.ins-profile-screen {
+    background: #f9f9f9 !important; /* 整体浅灰底 */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 2. 顶部个人资料卡 */
+.ins-profile-header {
+    background: #fff;
+    padding: 30px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 15px;
+}
+
+.ins-avatar-box {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 2px solid #f0f0f0; /* 外圈装饰线 */
+    padding: 3px; /* 头像与圈的间距 */
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+.ins-avatar-box:active { transform: scale(0.95); }
+
+.ins-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #e0e0e0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+}
+.ins-avatar-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.ins-char-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 15px;
+    letter-spacing: 0.5px;
+}
+
+/* 粉丝/日记 数据栏 */
+.ins-stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    width: 100%;
+}
+.ins-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+.ins-stat-num {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+}
+.ins-stat-label {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+}
+
+/* 3. 设置列表组 (圆角白块) */
+.ins-list-group {
+    background: #fff;
+    border-radius: 16px;
+    margin: 0 15px 15px;
+    padding: 0 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+/* 列表行 */
+.ins-list-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 0.5px solid #f5f5f5; /* 极细分割线 */
+}
+.ins-list-item:last-child { border-bottom: none; }
+
+/* 左侧图标 */
+.ins-item-icon {
+    width: 22px;
+    height: 22px;
+    stroke: #333;
+    stroke-width: 1.5;
+    fill: none;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* 标签文字 */
+.ins-item-label {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+    flex: 1; /* 撑开空间 */
+}
+
+/* 右侧输入框/内容 */
+.ins-item-input {
+    border: none;
+    text-align: right;
+    font-size: 14px;
+    color: #666;
+    outline: none;
+    background: transparent;
+    width: 60%;
+    font-family: inherit;
+}
+.ins-item-input::placeholder { color: #ccc; }
+
+/* 箭头 */
+.ins-arrow {
+    color: #ccc;
+    font-size: 18px;
+    margin-left: 8px;
+}
+
+/* 4. 特殊控件样式 */
+/* 文本域容器 */
+.ins-textarea-box {
+    width: 100%;
+    margin-top: 10px;
+}
+.ins-textarea {
+    width: 100%;
+    border: 1px solid #f0f0f0;
+    background: #f9f9f9;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    color: #666;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+}
+.ins-textarea:focus { border-color: #667eea; background: #fff; }
+
+/* 世界书选择框美化 */
+#worldbookSelector {
+    border: none !important;
+    background: #f9f9f9;
+    border-radius: 12px !important;
+    padding: 5px !important;
+}
+
+/* 滑动条美化 */
+input[type=range] {
+    accent-color: #667eea; /* 滑块颜色 */
+}
+
+/* 底部大按钮 (居中胶囊版) */
+.ins-save-btn {
+    display: block;          /* 必须是块级元素 */
+    width: 60%;              /* 宽度设为 60%，不要占满 */
+    max-width: 200px;        /* 限制最大宽度，防止在大屏太宽 */
+    margin: 30px auto 50px;  /* 关键：左右 auto 实现居中，下边距留够 */
+    
+    background: #333;        /* 高冷黑 */
+    color: #fff;
+    border: none;
+    padding: 15px;
+    border-radius: 30px;     /* 全圆角 */
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.ins-save-btn:active { transform: scale(0.95); }
+
+/* ============ 城市弹窗美化 ============ */
+
+/* 弹窗容器微调 */
+#cityInfoModal .modal {
+    background: #f9f9f9; /* 浅灰底色 */
+    border-radius: 24px; /* 更圆润 */
+    padding: 0;          /*以此接管内边距 */
+    overflow: hidden;
+}
+
+/* 标题栏 */
+.ins-modal-header {
+    background: #fff;
+    padding: 20px;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    color: #333;
+    border-bottom: 0.5px solid #eee;
+}
+
+/* 滚动内容区 */
+.ins-modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 分组标题 */
+.ins-group-title {
+    font-size: 12px;
+    color: #999;
+    margin: 15px 15px 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.ins-group-title:first-child { margin-top: 0; }
+
+/* 获取天气按钮 (蓝色文字链风格) */
+.ins-fetch-btn {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    color: #667eea;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.ins-fetch-btn:active { background: #f0f0f0; }
+
+/* ============ 天气卡片：清新蓝天版 ============ */
+
+.weather-preview-card {
+    /* 背景：经典的“晴空蓝”渐变 */
+    background: linear-gradient(160deg, #56CCF2 0%, #2F80ED 100%);
+    
+    border-radius: 20px;
+    padding: 25px 22px;
+    color: white;
+    margin-top: 20px;
+    /* 投影改成柔和的蓝色光晕 */
+    box-shadow: 0 8px 25px rgba(47, 128, 237, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 装饰：右上角模拟一个小太阳的光晕 */
+.weather-preview-card::before {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    filter: blur(15px);
+}
+
+/* 城市板块 */
+.weather-section {
+    position: relative;
+    z-index: 1;
+}
+
+/* 上半部分分割线：改成柔和的白色半透明线 */
+.weather-section.border-bottom {
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+/* 城市名称 */
+.weather-city-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 文字加一点投影更清晰 */
+}
+
+/* 天气数据行 */
+.weather-data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+/* "今天"的数据 */
+.is-today {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* "明天"的数据 */
+.is-tomorrow {
+    font-size: 13px;
+    color: rgba(255,255,255,0.9); /* 明天稍微亮一点，不用那么灰 */
+}
+
+/* 更新时间脚标 */
+.weather-update-time {
+    text-align: center; /* 居中显示更好看 */
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 15px;
+    background: rgba(0,0,0,0.1); /* 加个小背景条 */
+    padding: 4px;
+    border-radius: 10px;
+    display: inline-block;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* 底部按钮栏 (居中版) */
+.ins-modal-footer {
+    background: #fff;
+    padding: 20px 20px 30px; /* 底部空间留大一点 */
+    display: flex;
+    justify-content: center; /* ★ 关键：水平居中 */
+    gap: 20px; /* 按钮之间的间距 */
+    border-top: 0.5px solid #eee;
+}
+
+/* 按钮微调：让它稍微宽一点，看起来更稳重 */
+.ins-modal-footer .btn {
+    min-width: 100px; /* 限制最小宽度 */
+    padding: 10px 20px;
+}
+
+/* ============ 记忆空间样式 ============ */
+.memory-screen {
+    height: 100vh;
+    background: #f9f9f9;
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+}
+
+.memory-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    background: white;
+    border-bottom: 1px solid #eee;
+}
+
+.memory-header-actions {
+    display: flex;
+    gap: 15px; /* 按钮之间的间距 */
+}
+
+.memory-icon-btn {
+    font-size: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    color: #333;
+    transition: transform 0.2s;
+}
+
+.memory-icon-btn:active {
+    transform: scale(0.9);
+}
+
+/* 顶部 Tab 切换 */
+.memory-tabs {
+    display: flex;
+    background: white;
+    padding: 10px 20px;
+    gap: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.memory-tab-item {
+    font-size: 15px;
+    font-weight: 600;
+    color: #999;
+    padding-bottom: 8px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s;
+}
+
+.memory-tab-item.active {
+    color: #333;
+    font-size: 16px;
+}
+
+.memory-tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background: #667eea;
+    border-radius: 2px;
+}
+
+/* 内容区域 */
+.memory-content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* --- 1. 印象标签样式 --- */
+.memory-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-content: flex-start;
+}
+
+.mem-tag {
+    padding: 8px 16px;
+    background: white;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #333;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mem-tag:active {
+    transform: scale(0.95);
+    background: #f5f5f5;
+}
+
+.mem-tag.pinned {
+    border-color: #ffd700;
+    background: #fffdf0;
+}
+
+.mem-tag-pin-icon {
+    font-size: 10px;
+    color: #ffa502;
+}
+
+/* --- 2. 时光相册样式 (时间轴) --- */
+.memory-timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+/* 垂直线 */
+.memory-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 0;
+    width: 2px;
+    background: #e0e0e0;
+    border-radius: 1px;
+}
+
+.timeline-item {
+    margin-bottom: 25px;
+    position: relative;
+}
+
+/* 时间轴上的圆点 */
+.timeline-dot {
+    position: absolute;
+    left: -24px;
+    top: 15px; /* 对齐卡片顶部 */
+    width: 10px;
+    height: 10px;
+    background: #667eea;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #e0e0e0;
+}
+
+.timeline-date {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 6px;
+    margin-left: 4px;
+    font-weight: 500;
+}
+
+.timeline-card {
+    background: white;
+    border-radius: 12px;
+    padding: 12px 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    border: 1px solid #f0f0f0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #444;
+    position: relative;
+}
+
+.timeline-card:active {
+    background: #fafafa;
+}
+
+.timeline-edit-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 12px;
+    color: #ccc;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* 编辑/添加记忆弹窗样式微调 */
+.mem-type-switch {
+    display: flex;
+    background: #f0f0f0;
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.mem-type-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.mem-type-btn.active {
+    background: white;
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+/*记忆css结束*/
+
+/* ============ 🆕 档案中心 (Archives) 样式 ============ */
+
+/* 1. 顶部 Tab 栏重构 (三段式) */
+.memory-tabs {
+    justify-content: space-between; /* 分散对齐 */
+    padding: 0 10px;
+}
+
+.memory-tab-item {
+    flex: 1;
+    text-align: center;
+    font-size: 13px; /* 字体稍微改小一点显精致 */
+    padding: 12px 0;
+    color: #999;
+    font-weight: 500;
+    transition: all 0.3s;
+    letter-spacing: 0.5px;
+}
+
+.memory-tab-item.active {
+    color: #333;
+    font-weight: 600;
+}
+
+/* 2. 档案页容器 (Tab 1) */
+.archive-container {
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* A区：基础信息卡 (自动同步) */
+.archive-card-base {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.archive-avatar {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    margin-right: 20px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    border: 3px solid rgba(255,255,255,0.8);
+    box-shadow: 0 0 0 1px #eee; /* 细边框装饰 */
+}
+.archive-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+.archive-base-info {
+    flex: 1;
+}
+
+.archive-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-meta-row {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    gap: 10px;
+    font-family: -apple-system, sans-serif;
+}
+
+/* B区：私密数据网格 (拓展数据) */
+.archive-grid-box {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden; /* 圆角裁剪 */
+    border: 1px solid #f0f0f0;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 两列 */
+    margin-bottom: 20px;
+}
+
+.archive-grid-item {
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 去掉偶数列的右边框 */
+.archive-grid-item:nth-child(2n) {
+    border-right: none;
+}
+/* 去掉最后一行的下边框 */
+.archive-grid-item:nth-last-child(-n+2) {
+    border-bottom: none;
+}
+
+.grid-label {
+    font-size: 10px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.grid-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* C区：深度档案 (长文本) */
+.archive-deep-section {
+    margin-bottom: 20px;
+}
+
+.archive-section-title {
+    font-size: 12px;
+    color: #667eea; /* 主题色 */
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-text-box {
+    background: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #555;
+    border: 1px solid #f0f0f0;
+}
+
+/* 顶部 Header 的氛围感副标题 */
+.archive-subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: #ccc;
+    font-style: italic;
+    margin: -10px 0 15px 0;
+    font-family: serif; /* 衬线体显高级 */
+}
+
+/* 编辑按钮 (位于Tab 1右上角) */
+.archive-edit-float {
+    position: fixed;
+    bottom: 30px;
+    right: 25px;
+    width: 50px;
+    height: 50px;
+    background: white;
+    color: #333;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    z-index: 100;
+    border: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.archive-edit-float:active { transform: scale(0.95); }
+/* === 档案卡片修正与分析按钮样式 === */
+
+/* 1. 修正卡片基准定位 */
+.archive-card-base {
+    position: relative; /* 关键：为了让里面的按钮能绝对定位 */
+    /* 原有样式保持不变 */
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+/* 2. 分析按钮样式 (Ins风黑底胶囊) */
+/* 修改这一段 */
+.archive-analyze-btn {
+    position: absolute;
+    
+    /* ▼▼▼ 修改这里：从 top 改为 bottom ▼▼▼ */
+    top: auto;        /* 必须重置 top */
+    bottom: 15px;     /* 固定在右下角 */
+    right: 15px;
+    
+    /* 样式保持不变 */
+    background: #333;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 10;
+}
+.archive-analyze-btn:hover {
+    transform: scale(1.05);
+    background: #000;
+}
+
+.archive-analyze-btn:active {
+    transform: scale(0.95);
+}
+
+.archive-analyze-btn.loading {
+    background: #ccc;
+    cursor: wait;
+}
