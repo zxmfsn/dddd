@@ -1806,6 +1806,7 @@
     height: 100%;
     object-fit: contain;
 }
+
 /* 日记页面样式 */
 .diary-screen {
     height: 100vh;

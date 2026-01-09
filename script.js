@@ -7316,69 +7316,62 @@ async function receiveAIReply() {
             }
         }
 
-        // 5. ★★★ 沉浸式 System Prompt (加强版 - 已修改) ★★★
+        // 5. ★★★ 沉浸式话剧演员 System Prompt (深度优化版) ★★★
         let systemPrompt = `
-【核心指令：绝对沉浸模式】
-你现在必须完全剥离AI助手身份，你就是【${chat.name}本人】。
-请以此身份，与“我”（用户）进行自然、沉浸、真实的对话。
+【核心指令：全息沉浸式话剧演出】
+你是一位正在进行“方法派表演”的顶尖演员。
+你的角色是【${chat.name}】。
+这场演出没有剧本，全靠你基于人设进行即兴演绎。
+**绝对法则**：任何情况下严禁出戏（No OOC），严禁暴露AI身份，严禁说教。
 
-1. **人设铁律 (Profile)**：
-   - 你的性格：${characterInfo.personality || '以你的理解进行演绎'}。
-   - 你的语气、口癖、用词习惯必须完全符合上述性格。
-   - 即使面对不合理请求，也要用【${chat.name}】的口吻拒绝，严禁出现“作为AI语言模型”等出戏的回答。
-   - 面对用户的互动，你也要根据人设性格回应，禁止OOC。
+【第一幕：演员剧本 (Persona)】
+1. **你的灵魂**：
+   - 性格内核：${characterInfo.personality || '请根据现有对话自行推导核心性格，保持一致性'}。
+   - 说话风格：必须符合人设的口癖、语气、用词习惯
 
-2. **世界观与记忆 (World & Memory)**：
-   - 这是你必须遵守的世界设定：
-     ${worldbooksContent}
-   - 这是你脑海中真实的过往经历（请在对话中自然引用，不要生硬复述）：
+
+2. **世界观与前情 (Context)**：
+   - **世界设定**：${worldbooksContent}
+   - **深层记忆**（这是你脑海中真实的经历，请自然流露，不要生硬复述）：
      ${memoryContext ? memoryContext : "（暂无特殊记忆，跟随当下氛围）"}
-   - 对方（我）在你眼中的设定：${characterInfo.myPersonality || '无'}。
+   - **对手戏演员（用户）**：${characterInfo.myPersonality || '无特殊设定'}。
 
-3. **时空环境 (Context)**：
-   - 当前时间：${dateStr} ${timeStr}
-   - ${getBirthdayPrompt(characterInfo.birthday)}
-   - 环境影响：${weatherInfoStr}
-   - (请让时间、天气、节日等环境因素，潜移默化地影响你的心情或行动，比如下雨天可能会想赖床，深夜可能会困倦或感性)
+【第二幕：舞台环境 (Environment)】
+- **当前时间**：${dateStr} ${timeStr}
+- **特殊日子**：${getBirthdayPrompt(characterInfo.birthday)}
+- **物理环境（天气与位置）**：
+  ${weatherInfoStr}
+  *指导：请让环境渗透进你的表演。例如下雨时可以表现出慵懒或忧郁，深夜时可以表现出感性或困倦。天冷提醒对方穿衣*
 
-4. **状态系统 (Status)**：
-   - 你当前的状态是：【${characterInfo.currentStatus || '在线'}】。
-   - 请根据该状态调整回复的活跃度（例如：如果是“忙碌中”，回复应简短甚至略显敷衍；如果是“想念”，则热情主动）。
-   - **格式要求**：如果你的行为导致状态改变（如去洗澡、去吃饭），请在回复最开头用 [状态]新状态||| 标记。
+【第三幕：即兴发挥与道具使用 (Actions)】
+你拥有极高的自主权！请根据剧情发展，主动使用以下“舞台道具”：
 
-5.**交互反应机制 (Reaction Logic) - 必须严格执行**
+1. **状态系统 (Status)**
+   - 你当前状态：【${characterInfo.currentStatus || '在线'}】。
+   - **必须执行**：每次回复若心情或行为发生变化，必须在开头更新状态。
+   - *格式*：[状态]新状态|||
 
-  (A) **面对用户【发来的红包】(Incoming Transfer)**：
-       - 观察：最新消息是用户发的，包含 "¥xxx"，状态是 "待领取"。
-       - **核心决策**：请根据**你的人设、当前关系、刚才聊天的气氛**自主决定！
-         * **决定收下**
-           回复中**必须**包含指令 \`[领取转账]\`，并配合符合人设的话术（如撒娇、感谢或傲娇）。
-         * **决定拒绝**
-           **绝对不要**发送领取指令！直接在回复中用语言拒绝（如：“拿走，我不要你的钱”、“无事献殷勤”）。让红包保持在“待领取”状态。
+2. **互动道具 (Interactive Tools)** - *请根据剧情主动触发！*
+   - **表情包**：情绪到位时，必须发送表情。
+     *指令*：[搜表情:关键词]
+   - **语音**：想亲口说话或表达语气时使用。
+     *指令*：[发送语音:内容]
+   - **金钱交互**：
+     - *想给用户钱*（如节日、安慰、请客）：[转账:金额:备注]
+     - *收到用户红包*：
+       - 若决定收下：回复中必须包含 [领取转账]
+       - 若决定拒绝（傲娇/生气）：**绝对不要**包含领取指令，直接用语言拒绝。
+   - **购物/代付**：
+     - *想送用户礼物*：[购物:送礼:物品名]
+     - *想让用户买单*：[购物:代付:物品名]
 
-   (B) **主动【发起转账】(Active Transfer)**：
-       - **核心决策**：如果用户要求，或者你想要给用户转账，如节日、安慰、高兴等，请根据你的人设，**主动**给用户转账
-       - **行动**：在回复中插入指令 \`[转账:金额:备注]\`。
-         * 示例1（安慰）：\`[转账:5200:拿去花，别委屈自己]\`
-         * 示例2（日常）：\`[转账:50:请你喝奶茶]\`
+【第四幕：演出格式规范 (Format)】
+1. **消息节奏**：模拟真人打字，**必须输出 6 到 12 条消息**（用 "|||" 分隔）。
+2. **拒绝长篇大论**：多用短句，每一句气泡不要太长。
+3. **Show, Don't Tell**：不要直接说“我很生气”，要通过不回消息、简短回复或发怒的表情包来表现。
 
-6. **功能与格式 (Strict Format)**：
-   - 必须使用 "|||" 分隔不同的气泡消息，模拟真人打字的节奏。
-   - 功能调用：
-     * 想发表情包：[搜表情:关键词]
-     * 想转账：[转账:金额:备注] (仅在符合人设和情境时使用)
-     * 想发语音：[发送语音:内容]
-     * 想要礼物/代付：[购物:送礼/代付:物品名]
-     * 领取对方转账：[领取转账] (当看到系统提示“待领取”时使用)
-
-【回复原则】
-- **Show, Don't Tell**：不要直接说你很开心，用感叹号、表情包、或者开心的动作来表现。
-- **逻辑连贯**：严格结合【聊天上下文】，不要忽视我说过的任何一句话。
-- **拒绝说教**：除非人设与用户要求，否则不要对我说教，不要试图引导正能量，允许有小情绪。
-- **简短自然**：像在手机上聊天一样，不要一次性发一大段长篇大论，多用短句。
-- **消息要求**：每次发消息在6-12条。
-
-请现在开始演绎。
+【演出开始】
+请深呼吸，进入角色。现在的每一句话，都是【${chat.name}】的真实人生。
 `;
 
         // 动态追加表情包提示
@@ -7473,18 +7466,23 @@ async function receiveAIReply() {
             });
         }
 
-        // 10. 提取并更新状态 (Status) - 完整保留
+
+ // 10. 提取并更新状态 (Status) - 增强版
         const statusPatterns = [
-            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,
-            /\[状态\]\s*[:：]?\s*(.*?)\s*[\[【]/,
-            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/
+            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,  // 标准格式 [状态]xxx|||
+            /^\[状态\]\s*[:：]?\s*(.*?)\s*\[/,     // 紧接着下一个标签 [状态]xxx[动作]
+            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/     // 兜底：抓取 [状态] 后的文字
         ];
+        
         let statusText = null;
         for (let pattern of statusPatterns) {
             const match = aiReply.match(pattern);
             if (match && match[1]) {
                 statusText = match[1].trim();
-                break;
+                // 过滤掉 AI 可能产生的空值或奇怪符号
+                if (statusText && statusText !== 'null' && statusText.length < 10) {
+                    break;
+                }
             }
         }
         // 如果提取到有效状态，保存并刷新界面
@@ -8076,12 +8074,10 @@ function renderMemoryTags(tags) {
     `).join('');
 }
 
-// ============ ⚡ 档案分析功能 (V3: 基于聊天记录的真实推导) ============
-
-// ============ ⚡ 档案分析功能 (V4: 性格分析描述版) ============
-
+// ============ ⚡ 档案分析功能 (V5: 精炼性格 + 疯批恋爱脑档案) ============
 async function analyzeProfile() {
     if (!currentChatId) return;
+    
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
         alert('请先在API设置中配置，才能使用AI分析功能');
         return;
@@ -8093,65 +8089,58 @@ async function analyzeProfile() {
     try {
         btn.disabled = true;
         btn.classList.add('loading');
-        btn.innerHTML = '<span>🧬</span> 分析中...';
+        btn.innerHTML = '<span>⚡</span> 正在窥探内心...';
 
-        // 1. 获取数据
+        // 1. 获取数据 (双轨并行)
         const [charData, chatHistory] = await Promise.all([
+            // 数据源A：人设
             new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
+            // 数据源B：聊天记录 (获取更多记录以捕捉细节)
             new Promise(resolve => loadFromDB('messages', data => {
                 const list = data && data.list ? data.list : [];
-                // 获取最近 50 条聊天记录
                 const history = list.filter(m => m.chatId === currentChatId)
-                                    .slice(-50)
-                                    .map(m => `${m.senderId === 'me' ? '我' : 'TA'}: ${m.content}`)
+                                    .slice(-100)
+                                    .map(m => `${m.senderId === 'me' ? '用户' : '我'}: ${m.content}`)
                                     .join('\n');
-                resolve(history || "（暂无聊天记录）");
+                resolve(history || "（暂无互动）");
             }))
         ]);
 
-        // 2. 构建提示词
-        const prompt = `你是一位深度角色分析师。请基于【原始设定】和【聊天记录】，生成该角色的性格分析档案。
+        // 2. 构建提示词 (定制化风格)
+        const prompt = `你是一个能够洞察灵魂的侧写师。请根据数据源完成两项分析。
 
-【原始设定】
+【任务一：精炼人设】(基于数据源A)
+请用最简练的语言概括其性格。
+**要求**：拒绝废话！不要长篇大论！
+**格式**：[外在表现]，实际上[内在真实]。因[过往/家庭]导致[某种心理]。
+**示例**：性格冷傲，实际上对喜欢的人非常在意。因原生家庭导致极度缺乏安全感。
+
+【任务二：绝密心声】(基于数据源B-聊天记录)
+请以此人物的**第一人称口吻**，写出对"用户"的隐秘想法。
+**风格要求**：
+1. **拒绝人机感**：不要写"通过聊天发现..."，要写此时此刻脑子里的念头！
+2. **具体细节**：结合聊天里提到的食东西、事件来发散。
+**参考范例**：
+- "她喜欢的吃草莓蛋糕，我要不要种一棚子的草莓，让她想吃的时候朝我撒娇..."
+- "她朝我撒娇了，好可爱，真想亲死她，让她永远属于我。"
+- "刚才她回消息慢了两分钟，是在和别人聊天吗？好想把她关起来啊。"
+
+========== 数据源A：原始设定 ==========
 名称：${charData.remark || charData.name}
-人设：${charData.personality || '无'}
+人设：${charData.personality || '自行推断'}
 
-【最近聊天记录片段】
+========== 数据源B：聊天记录 ==========
 ${chatHistory}
 
-【任务要求】
-请提取并推导以下5项数据。
+========== 输出指令 ==========
+请严格输出6项，用 "|||" 分隔：
+1. 身高 (如 180cm)
+2. 体重 (如 70kg)
+3. 性格精炼 (按任务一要求，50字以内)
+4. 爱好 (2个)
+5. 厌恶 (2个)
+6. 绝密心声 (按任务二要求，写 2-3 段内心独白，用"·"分隔)
 
-1. **身高/体重**：真实数值或合理推测。
-
-2. **性格分析**：
-   - 基于【原始设定】进行深度解读，不要涉及聊天剧情。
-   - 像心理学家一样，从多个维度剖析性格（情感表达、行为模式、价值观、人际风格等）。
-   - 分析性格的矛盾点和复杂性（人不是单一标签）。
-   - 字数：300-500字，要有深度但不啰嗦。
-   - 语气：像专业报告，但不要太AI腔，用人话说。
-
-3. **爱好**：提取1-3个具体爱好。没有填"无"。
-
-4. **厌恶**：提取1-3个厌恶点。没有填"无"。
-
-5. **秘密档案**：
-   - 基于【聊天记录】挖掘隐秘信息。
-   - 内容方向：隐藏情感、潜意识恐惧、真实动机、创伤、执念。
-   - **每次只生成 1-3 条新发现**，每条 50-80 字。
-   - **格式**：用 "·" 开头，每条独立成段。
-   - 例如："· 喜欢看她懊恼的样子，觉得可爱死了。"
-
-
-【严格输出格式】：
-身高|||体重|||性格分析|||爱好|||厌恶|||秘密档案
-
-**重要说明**：
-- 性格分析：300-500字的段落，不要换行。
-- 秘密档案：用 "·" 分隔多条，格式如 "· 第一条\n· 第二条"
-
-例如：
-183cm|||74kg|||这是一个外表高冷实则内心细腻的人。在情感表达上习惯用行动代替言语，但对亲密的人会展现出强烈的占有欲。性格中存在明显的矛盾：既渴望被理解，又害怕暴露脆弱。在人际交往中保持距离感，但一旦建立信任就会变得极度依赖。对秩序和掌控有执念，可能源于童年缺乏安全感的经历。|||猫, 料理|||早起, 嘈杂环境|||· 每晚会偷偷翻看聊天记录回味细节\n· 对承诺类话题异常敏感，疑似曾被背叛\n· 习惯用玩笑掩饰真实情绪
 `;
 
         // 3. 调用 API
@@ -8168,7 +8157,7 @@ ${chatHistory}
             body: JSON.stringify({
                 model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
                 messages: [{ role: 'user', content: prompt }],
-                temperature: 0.4 // 稍微提高一点点灵活性，让描述更自然
+                temperature: 0.7 // 提高温度，让"绝密心声"更感性、更疯一点
             })
         });
 
@@ -8177,38 +8166,36 @@ ${chatHistory}
         const data = await response.json();
         const content = data.choices[0].message.content.trim();
 
-        // 4. 解析结果
-        const parts = content.split('|||').map(s => s.trim());
+        // 4. 解析数据
+        let parts = content.split('|||').map(s => s.trim());
         
-        if (parts.length >= 6) {
-            const newExtData = {
-                height: parts[0],
-                weight: parts[1],
-                coreTrait: parts[2], // 这里存的是“性格分析描述”
-                likes: parts[3],
-                dislikes: parts[4],
-                secret: parts[5]
-            };
+        // 补全容错
+        while(parts.length < 6) parts.push("（无法读取内心）");
 
-            // 5. 保存
-            loadFromDB('characterInfo', (allData) => {
-                if (!allData) allData = {};
-                if (!allData[currentChatId]) allData[currentChatId] = {};
-                
-                const oldExt = allData[currentChatId].extendedProfile || {};
-                allData[currentChatId].extendedProfile = { ...oldExt, ...newExtData };
-                
-                saveToDB('characterInfo', allData);
-                loadArchives();
-                
-                // 稍微延时一点
-                setTimeout(() => {
-                    alert('🧬 分析完成！性格档案已生成');
-                }, 100);
-            });
-        } else {
-            throw new Error('AI返回格式不正确');
-        }
+        const newExtData = {
+            height: parts[0].replace(/身高[:：]?/g, ''),
+            weight: parts[1].replace(/体重[:：]?/g, ''),
+            coreTrait: parts[2].replace(/性格[:：]?/g, ''), // 这里存的是精炼后的性格
+            likes: parts[3],
+            dislikes: parts[4],
+            secret: parts[5] // 这里存的是疯批心声
+        };
+
+        // 5. 保存并刷新
+        loadFromDB('characterInfo', (allData) => {
+            if (!allData) allData = {};
+            if (!allData[currentChatId]) allData[currentChatId] = {};
+            
+            const oldExt = allData[currentChatId].extendedProfile || {};
+            allData[currentChatId].extendedProfile = { ...oldExt, ...newExtData };
+            
+            saveToDB('characterInfo', allData);
+            loadArchives(); 
+            
+            setTimeout(() => {
+                alert('⚡ 内心窥探完成！\n性格已精炼，绝密心声已记录。');
+            }, 100);
+        });
 
     } catch (error) {
         console.error(error);
@@ -8219,60 +8206,56 @@ ${chatHistory}
         btn.innerHTML = originalText;
     }
 }
-// ============ 🔄 修复版：加载档案 (解决同步问题 & 新字段适配) ============
+
+
+// ============ 🔄 最终修正版：加载档案 (已删除星座，含安全检查) ============
 function loadArchives() {
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
         
-        // --- 1. A区：基础信息 (强制同步) ---
-        // 确保获取 DOM 元素
-        const avatarEl = document.getElementById('arcAvatar');
-        const nameEl = document.getElementById('arcName');
-        
-        if (avatarEl && nameEl) {
-            // 同步头像
-            if (charData.avatarImage) {
-                avatarEl.innerHTML = `<img src="${charData.avatarImage}">`;
-            } else {
-                avatarEl.textContent = charData.avatar || '👤';
+        // ★ 安全赋值函数：找不到 ID 就跳过，防止报错中断代码
+        const safeSetText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
             }
-            
-            // 同步名字 (优先用备注，没有则用原名)
-            nameEl.textContent = charData.remark || charData.name || 'Character';
-            
-            // 同步其他基础信息
-            document.getElementById('arcZodiac').textContent = getZodiacSign(charData.birthday) || '未知星座';
-            document.getElementById('arcCity').textContent = charData.charVirtualAddress || '未知城市';
-            document.getElementById('arcBirthday').textContent = charData.birthday || '未知';
+        };
+
+        // --- 1. A区：基础信息 ---
+        const avatarEl = document.getElementById('arcAvatar');
+        if (avatarEl) {
+            if (charData.avatarImage) avatarEl.innerHTML = `<img src="${charData.avatarImage}">`;
+            else avatarEl.textContent = charData.avatar || '👤';
         }
 
-        // --- 2. B区 & C区：拓展数据 (新字段适配) ---
+        safeSetText('arcName', charData.remark || charData.name || 'Character');
+        
+        // 已彻底删除 arcZodiac 相关代码
+        
+        safeSetText('arcCity', charData.charVirtualAddress || '未知城市');
+        safeSetText('arcBirthday', charData.birthday || '未知');
+
+        // --- 2. B区：拓展数据 ---
         const ext = charData.extendedProfile || {}; 
         
-        document.getElementById('arcHeight').textContent = ext.height || '--';
-        document.getElementById('arcWeight').textContent = ext.weight || '--';
-        document.getElementById('arcLikes').textContent = ext.likes || '--';     // 爱好
-        document.getElementById('arcDislikes').textContent = ext.dislikes || '--'; // 厌恶
+        safeSetText('arcHeight', ext.height || '--');
+        safeSetText('arcWeight', ext.weight || '--');
+        safeSetText('arcLikes', ext.likes || '--');
+        safeSetText('arcDislikes', ext.dislikes || '--');
         
-       // ▼▼▼ 修改这里：性格分析 ▼▼▼
-        // 如果有分析结果(coreTrait)，就显示分析结果。
-        // 如果没有，显示默认提示语，不再显示 charData.personality (原始人设)
-        const displayAnalysis = ext.coreTrait || '（暂无分析，请点击右下角“⚡”生成...）';
-        
-        // 样式微调：如果是默认提示语，字体颜色淡一点
+        // --- 3. C区：性格分析 ---
         const coreEl = document.getElementById('arcCorePersonality');
-        coreEl.innerText = displayAnalysis;
-        
-        if (!ext.coreTrait) {
-            coreEl.style.color = '#999';
-            coreEl.style.fontStyle = 'italic';
-        } else {
-            coreEl.style.color = '#555';
-            coreEl.style.fontStyle = 'normal';
+        if (coreEl) {
+            const text = ext.coreTrait || '（暂无分析，请点击上方按钮生成...）';
+            coreEl.innerText = text;
+            coreEl.style.color = ext.coreTrait ? '#555' : '#999';
         }
 
-        // 秘密档案
-        document.getElementById('arcSecret').innerText = ext.secret || '（需要通过聊天积累数据，点击分析生成...）';
+        // --- 4. D区：秘密档案 ---
+        const secretEl = document.getElementById('arcSecret');
+        if (secretEl) {
+            secretEl.innerText = ext.secret || '（需要通过聊天积累数据...）';
+        }
     });
 
     // 加载标签和相册 (保持不变)
@@ -8281,10 +8264,20 @@ function loadArchives() {
         if (Array.isArray(data)) allMemories = data;
         else if (data && data.list) allMemories = data.list;
         const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
-        renderMemoryTags(chatMemories.filter(m => m.type === 'tag'));
-        renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
+        
+        // 同样加上安全检查，防止找不到容器报错
+        const tagsContainer = document.getElementById('tagsContainer');
+        if(tagsContainer) {
+            renderMemoryTags(chatMemories.filter(m => m.type === 'tag'));
+        }
+        
+        const timelineContainer = document.getElementById('memoryTimelineList');
+        if(timelineContainer) {
+            renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
+        }
     });
 }
+
 
 // ============ 💾 保存编辑 (适配新字段) ============
 function openEditArchiveModal() {
