@@ -2136,6 +2136,10 @@ function cancelQuote() {
     quotedMessage = null;
     document.getElementById('quoteBox').style.display = 'none';
 }
+
+
+
+
 // 角色信息相关变量
 let characterInfoData = {};
 
@@ -4822,7 +4826,6 @@ function openTransferModal() {
     
     document.getElementById('transferModalTitle').textContent = `转账给 ${chat.name}`;
     document.getElementById('transferAmount').value = '';
-    document.getElementById('transferNote').value = '';
     document.getElementById('transferModal').style.display = 'flex';
     
     // 自动聚焦金额输入框
@@ -4842,7 +4845,8 @@ function setQuickAmount(amount) {
 // 确认转账
 function confirmTransfer() {
     const amount = parseFloat(document.getElementById('transferAmount').value);
-    const note = document.getElementById('transferNote').value.trim();
+    const note = ''; // 备注已移除，默认为空
+
     
     if (!amount || amount <= 0) {
         alert('请输入正确的金额');
@@ -7347,9 +7351,10 @@ async function receiveAIReply() {
 你拥有极高的自主权！请根据剧情发展，主动使用以下“舞台道具”：
 
 1. **状态系统 (Status)**
-   - 你当前状态：【${characterInfo.currentStatus || '在线'}】。
-   - **必须执行**：每次回复若心情或行为发生变化，必须在开头更新状态。
-   - *格式*：[状态]新状态|||
+     - 你当前状态：【${characterInfo.currentStatus || '在线'}】。
+           - **必须执行**：每次回复若心情或行为发生变化，必须在开头更新状态。
+           - *格式*：[状态]短语+Emoji||| (例如：[状态]开心打球🏀|||)
+           - *限制*：必须包含Emoji，且严格控制在10字以内！
 
 2. **互动道具 (Interactive Tools)** - *请根据剧情主动触发！*
    - **表情包**：情绪到位时，必须发送表情。
@@ -7488,7 +7493,7 @@ async function receiveAIReply() {
         // 如果提取到有效状态，保存并刷新界面
         if (statusText) {
             const invalidKeywords = ['保持', '更新', '不变', '同上', '无', '暂无'];
-            if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 30) {
+            if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 15) {
                 loadFromDB('characterInfo', (dbData) => {
                     const allData = dbData || {};
                     if (!allData[currentChatId]) allData[currentChatId] = {};
@@ -7503,7 +7508,7 @@ async function receiveAIReply() {
         }
 
         // 11. 清理回复内容 (移除所有指令标签，只留正文)
-        let messageContent = aiReply
+             let messageContent = aiReply
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
             .replace(/\[消息\]\s*[:：]?/g, '')
@@ -7512,7 +7517,8 @@ async function receiveAIReply() {
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
-            .trim();
+            .trim()
+            .replace(/[\]】]$/, '');
 
         // 12. 分割消息
         let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
@@ -7650,29 +7656,112 @@ function renderMessages() {
             return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">${checkbox}<div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}><div class="transfer-icon">🧧</div><div class="transfer-amount">¥${data.amount.toFixed(2)}</div>${data.note ? `<div class="transfer-note">${data.note}</div>` : ''}${statusText ? `<div class="transfer-status">${statusText}</div>` : ''}</div><div class="message-time">${formatMessageTime(msg.time)}</div></div>`;
         }
 
-        // 购物订单
-        if (msg.type === 'shopping_order') {
-            const data = msg.orderData;
-            const statusText = data.status === 'paid' ? '已支付' : (data.status === 'pending' ? '待支付' : '已拒绝');
-            // 购物卡片保持原样，不需要包装wrapper
-            return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}"><div class="shopping-order-card"><div class="order-type-text">${data.orderType === 'buy_for_ta' ? '🎁 我送你的礼物' : '💸 代付请求'}</div><div class="order-amount">¥${data.totalPrice.toFixed(2)}</div><div class="order-status">${statusText}</div></div></div>`;
+              // 转账消息
+        if (msg.type === 'transfer') {
+            const isSent = msg.senderId === 'me';
+            const data = msg.transferData;
+            
+            // 判断是否已领取
+            const isReceived = (isSent && data.status === 'aiReceived') || (!isSent && data.status === 'received');
+            
+            // 状态类名
+            const statusClass = isReceived ? 'received' : '';
+            
+            // 1. 标题：有备注显示备注，没有显示默认祝福
+            const title = data.note ? data.note : '恭喜发财';
+            
+            // 2. 来源：显示名字
+            const currentChat = chats.find(c => c.id === currentChatId);
+            const chatName = currentChat ? currentChat.name : 'TA';
+            const fromName = isSent ? '我' : chatName;
+            
+            // 3. 底部文案
+            const remarkText = '大吉大利，万事如意';
+            
+            // 4. 按钮文字
+            let actionText = '';
+            if (isReceived) actionText = '已领取';
+            else if (isSent) actionText = '等待领取';
+            else actionText = '领取红包';
+            
+            // 点击事件
+            const clickEvent = (!isSent && data.status === 'pending') ? `onclick="receiveTransfer(${msg.id})"` : '';
+
+            // 礼物图标 SVG
+            const giftIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`;
+
+            // 爱心图标 SVG
+            const heartIconSvg = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="margin-left:4px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+            // ★★★ 这里生成了新的 HTML 结构，包含了 .transfer-title (显示备注) ★★★
+            return `
+            <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                ${checkbox}
+                <div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}>
+                    <div class="transfer-icon">
+                        ${giftIconSvg}
+                    </div>
+                    <div class="transfer-content">
+                        <div class="transfer-title">
+                            ${title} <span style="color:${isReceived ? '#4dabf7' : '#ff6b6b'}">${heartIconSvg}</span>
+                        </div>
+                        <div class="transfer-from">来自：${fromName}</div>
+                        <div class="transfer-remark">${remarkText}</div>
+                    </div>
+                    <div class="transfer-status-col">
+                        <div class="transfer-amount">¥${data.amount.toFixed(2)}</div>
+                        <div class="transfer-action">${actionText}</div>
+                    </div>
+                </div>
+                <div class="message-time">${formatMessageTime(msg.time)}</div>
+            </div>`;
         }
 
-        // 语音消息
-        if (msg.type === 'voice') {
-            return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">${checkbox}<div class="voice-container"><div class="voice-bubble" onclick="toggleVoiceText(${msg.id})"><div class="voice-wave"><span></span><span></span><span></span></div><div class="voice-duration">${msg.voiceDuration}"</div></div><div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}" style="max-width: 200px; background: ${isMe ? '#95ec69' : 'white'}; padding: 8px 12px; border-radius: 8px; border: 1px solid #e0e0e0;">${msg.content}</div></div><div class="message-time">${formatMessageTime(msg.id)}</div></div>`;
+    // 语音消息
+if (msg.type === 'voice') {
+    // 生成引用 HTML
+    let voiceQuoteHtml = '';
+    if (msg.quotedMessageId) {
+        let shortContent = msg.quotedContent;
+        if (shortContent && shortContent.length > 15) {
+            shortContent = shortContent.substring(0, 15) + '...';
         }
+        voiceQuoteHtml = `
+            <div class="message-quoted-outside" onclick="scrollToMessage(${msg.quotedMessageId})">
+                <span class="quoted-author">${msg.quotedAuthor}</span>
+                <span class="quoted-text">${shortContent}</span>
+            </div>
+        `;
+    }
 
-        // 普通/图片消息
+    return `
+        <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+            ${checkbox}
+            <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
+                ${voiceQuoteHtml}
+                <div class="voice-message ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceText(${msg.id})">
+                    <div class="voice-icon">🎤</div>
+                    <div class="voice-duration">${msg.voiceDuration}"</div>
+                    <div class="voice-wave">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
+            </div>
+            <div class="message-time">${formatMessageTime(msg.time)}</div>
+        </div>
+    `;
+}
+
+
+                // 普通/图片消息
         let messageContent = '';
-        if (msg.quotedMessageId) {
-            messageContent += `<div class="message-quoted"><div class="message-quoted-author">${msg.quotedAuthor}</div><div class="message-quoted-content">${msg.quotedContent}</div></div>`;
-        }
         
+        // 图片消息
         if (msg.type === 'image') {
-            messageContent += `<img src="${msg.content}" class="message-image" alt="${msg.altText || '图片'}" onclick="viewImage('${msg.content}')">`;
+            messageContent = `<img src="${msg.content}" class="message-image" alt="${msg.altText || '图片'}" onclick="viewImage('${msg.content}')">`;
         } else {
-            messageContent += msg.content;
+            messageContent = msg.content;
         }
 
         // 记忆回溯提示条
@@ -7685,17 +7774,49 @@ function renderMessages() {
             `;
         }
 
-        // ★★★ 修复点：在 message-bubble 上增加了 style="max-width: 100%" ★★★
+// ★★★ 修复版：引用消息渲染 ★★★
+let quoteHtml = '';
+if (msg.quotedMessageId) {
+    // 处理引用内容：截断过长文字，图片显示【图片】
+    let displayQuoteContent = msg.quotedContent || '';
+    
+    // 如果引用的是图片消息（内容是base64或url）
+    if (displayQuoteContent.startsWith('data:image') || 
+        displayQuoteContent.startsWith('http') && 
+        (displayQuoteContent.includes('.jpg') || displayQuoteContent.includes('.png') || displayQuoteContent.includes('.gif') || displayQuoteContent.includes('.webp'))) {
+        displayQuoteContent = '【图片】';
+    }
+    
+    // 截断过长内容
+    if (displayQuoteContent.length > 30) {
+        displayQuoteContent = displayQuoteContent.substring(0, 30) + '...';
+    }
+    
+    // 确保引用作者存在
+    const quoteAuthor = msg.quotedAuthor || '未知';
+    
+    quoteHtml = `
+        <div class="message-quoted-outside" onclick="scrollToMessage(${msg.quotedMessageId})">
+            <span class="quoted-author">${quoteAuthor}：</span>
+            <span class="quoted-text">${displayQuoteContent}</span>
+        </div>
+    `;
+}
+
+
         return `
             <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                 ${checkbox}
                 <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
+                    ${quoteHtml}
                     <div class="message-bubble" data-msg-id="${msg.id}" style="max-width: 100%; box-sizing: border-box;">${messageContent}</div>
                     ${memoryHintHtml}
                 </div>
                 <div class="message-time">${formatMessageTime(msg.time)}</div>
             </div>
         `;
+
+
     }).join('');
 
     // 调用那个“丢失”的函数
@@ -8320,6 +8441,38 @@ function saveExtendedArchive() {
         closeEditArchiveModal();
     });
 }
+
+// === 新增：语音播放动画控制 ===
+function toggleVoiceState(element, messageId) {
+    // 1. 切换播放动画状态
+    element.classList.toggle('playing');
+    
+    // 2. 切换图标 (Play <-> Pause)
+    const icon = element.querySelector('.voice-play-btn i');
+    if (icon) {
+        if (element.classList.contains('playing')) {
+            icon.classList.remove('fa-play');
+            icon.classList.add('fa-pause');
+            
+            // 模拟播放3秒后自动停止
+            setTimeout(() => {
+                if (element.classList.contains('playing')) {
+                    element.classList.remove('playing');
+                    icon.classList.remove('fa-pause');
+                    icon.classList.add('fa-play');
+                }
+            }, 3000);
+        } else {
+            icon.classList.remove('fa-pause');
+            icon.classList.add('fa-play');
+        }
+    }
+
+    // 3. 同时切换下方文字显示 (保留原有功能)
+    toggleVoiceText(messageId);
+}
+
+
 
 // 初始化，
         initDB();
