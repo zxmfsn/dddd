@@ -2728,20 +2728,22 @@ color: #333;
     transform: scale(0.98);
 }
 
-/* 播放按钮圆圈 */
+/* 播放按钮圆圈 - 修改为透明，去掉圆圈感 */
 .voice-play-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 24px;              /* 稍微改小 */
+    height: 24px;
+    /* border-radius: 50%;    <-- 不需要圆角了 */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 16px;          /* 图标大小 */
     flex-shrink: 0;
-    background-color: #f0f0f0;
-    color: #555;
+    
+    background-color: transparent; /* ▼▼▼ 关键：改成透明，去掉灰色背景 ▼▼▼ */
+    color: #333;              /* 图标颜色加深 */
     transition: all 0.3s;
 }
+
 
 /* 语音波形容器 */
 .voice-wave {
@@ -2753,14 +2755,17 @@ color: #333;
     margin: 0 10px; /* 左右留间距 */
 }
 
-/* 波形竖条 */
+/* 波形竖条 - 修改颜色和高度 */
 .wave-bar {
     width: 3px;
     border-radius: 2px;
-    background-color: #ccc;
+    
+    background-color: #555;   /* ▼▼▼ 关键：由 #ccc 改深灰色，否则看不清 ▼▼▼ */
+    
     transition: all 0.3s ease;
-    height: 6px; /* 默认高度 */
+    height: 10px;             /* ▼▼▼ 关键：默认高度调高一点，更像声波 ▼▼▼ */
 }
+
 
 /* 语音时长 */
 .voice-duration {
@@ -2805,6 +2810,32 @@ color: #333;
 .message-item.me .voice-wave {
     justify-content: flex-end;
 }
+/* === 波形条基础样式 === */
+.voice-wave .wave-bar {
+    width: 3px;
+    height: 8px;
+    background: #ccc;
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+/* 播放时波形动画 */
+.voice-bubble.playing .voice-wave .wave-bar {
+    background: #667eea;
+    animation: qqWave 1.2s ease-in-out infinite;
+}
+
+/* 波形交错动画 */
+.voice-bubble.playing .voice-wave .wave-bar:nth-child(1) { animation-delay: 0s; }
+.voice-bubble.playing .voice-wave .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+.voice-bubble.playing .voice-wave .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+.voice-bubble.playing .voice-wave .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+.voice-bubble.playing .voice-wave .wave-bar:nth-child(5) { animation-delay: 0.6s; }
+
+/* 播放按钮图标样式 */
+.voice-play-btn i {
+    font-size: 10px;
+}
 
 
 /* 为波纹添加交错动画，产生起伏感 */
@@ -2827,9 +2858,21 @@ color: #333;
 }
 /* 语音文字内容默认隐藏 */
 .voice-text-content {
-    display: none; /* 默认隐藏 */
+    display: none; 
     animation: fadeIn 0.2s ease;
+    
+    /* ▼▼▼ 新增：白底黑字卡片样式 ▼▼▼ */
+    background: #ffffff;
+    color: #333333;
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid #f0f0f0;
 }
+
 
 /* 只有加了 show 类名才显示 */
 .voice-text-content.show {
@@ -5718,4 +5761,46 @@ input[type=range] {
 
 .message-item.me .quoted-text {
     text-align: right;
+}
+/* ============ 引用消息预览框样式 ============ */
+.quote-box {
+    background: #f5f5f5;
+    margin: 0 15px 10px;
+    padding: 12px 15px;
+    border-radius: 12px;
+    position: relative;
+}
+
+.quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#quoteAuthor {
+    font-size: 12px;
+    color: #333;
+    font-weight: 600;
+}
+
+.quote-close {
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.quote-close:hover {
+    color: #ff4757;
+}
+
+#quoteContent {
+    font-size: 13px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }

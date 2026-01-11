@@ -2117,11 +2117,33 @@ function quoteSelectedMessage() {
     
     // 显示引用框
     const quoteBox = document.getElementById('quoteBox');
-    document.getElementById('quoteAuthor').textContent = `引用：${message.senderId === 'me' ? '我' : message.senderId}`;
-   // ▼▼▼ 修改这里：如果是图片消息，显示【图片】▼▼▼
-    const displayContent = message.type === 'image' ? '【图片】' : message.content;
+    
+    // ★ 修复：正确获取作者名称
+    let authorName = '我';
+    if (message.senderId !== 'me') {
+        // 尝试获取角色名称
+        const chat = chats.find(c => c.id === currentChatId);
+        authorName = chat ? chat.name : message.senderId;
+    }
+    document.getElementById('quoteAuthor').textContent = `引用：${authorName}`;
+    
+    // ★ 修复：处理不同类型的消息内容
+    let displayContent = message.content;
+    
+    if (message.type === 'image') {
+        displayContent = '【图片】';
+    } else if (message.type === 'voice') {
+        displayContent = `【语音】${message.content.substring(0, 20)}${message.content.length > 20 ? '...' : ''}`;
+    } else if (message.type === 'transfer') {
+        displayContent = `【转账】¥${message.transferData.amount.toFixed(2)}`;
+    } else if (message.type === 'shopping_order') {
+        displayContent = '【购物订单】';
+    } else if (message.content && message.content.length > 30) {
+        // 普通文本消息，截断过长内容
+        displayContent = message.content.substring(0, 30) + '...';
+    }
+    
     document.getElementById('quoteContent').textContent = `${formatMessageTime(message.time)} ${displayContent}`;
-    // ▲▲▲ 修改结束 ▲▲▲
     quoteBox.style.display = 'block';
     
     // 关闭菜单
@@ -2130,6 +2152,7 @@ function quoteSelectedMessage() {
     // 聚焦输入框
     document.getElementById('chatInput').focus();
 }
+
 
 // 取消引用
 function cancelQuote() {
@@ -7346,6 +7369,7 @@ async function receiveAIReply() {
 - **物理环境（天气与位置）**：
   ${weatherInfoStr}
   *指导：请让环境渗透进你的表演。例如下雨时可以表现出慵懒或忧郁，深夜时可以表现出感性或困倦。天冷提醒对方穿衣*
+  - **空间法则**：这是一场线上聊天，除非用户允许，否则不允许出现任何描写，只用对话。
 
 【第三幕：即兴发挥与道具使用 (Actions)】
 你拥有极高的自主权！请根据剧情发展，主动使用以下“舞台道具”：
@@ -7366,14 +7390,19 @@ async function receiveAIReply() {
      - *收到用户红包*：
        - 若决定收下：回复中必须包含 [领取转账]
        - 若决定拒绝（傲娇/生气）：**绝对不要**包含领取指令，直接用语言拒绝。
+    - *回应用户的代付请求*：
+       - 若同意支付：回复中必须包含 [确认代付]
+       - 若拒绝支付：直接用语言拒绝，不要包含指令。
    - **购物/代付**：
      - *想送用户礼物*：[购物:送礼:物品名]
      - *想让用户买单*：[购物:代付:物品名]
 
+   ═══════════════════════════════格式非常重要！
 【第四幕：演出格式规范 (Format)】
-1. **消息节奏**：模拟真人打字，**必须输出 6 到 12 条消息**（用 "|||" 分隔）。
-2. **拒绝长篇大论**：多用短句，每一句气泡不要太长。
-3. **Show, Don't Tell**：不要直接说“我很生气”，要通过不回消息、简短回复或发怒的表情包来表现。
+1. **消息节奏**：模拟真人打字，**必须输出 6 到 8 条消息**（用 "|||" 分隔）。
+2. **消息长度**：多用短句，每一句话不要太多，需要加上标点符号！
+3. **Show, Don't Tell**：灵活机智，例如可用表情包代替自己想要说的话，知道酸甜苦辣痛苦与幸福，善于表达。
+4. **引用回复**：如果你想针对用户的某句话进行回复，请在单条消息开头加上 [引用:消息ID]。例如：[引用:105]笨蛋，明明是你先说的！
 
 【演出开始】
 请深呼吸，进入角色。现在的每一句话，都是【${chat.name}】的真实人生。
@@ -7430,10 +7459,11 @@ async function receiveAIReply() {
                 content = `[系统通知] ${msg.content}`;
             }
             
-            return {
-                role: msg.senderId === 'me' ? 'user' : 'assistant',
-                content: content
-            };
+            const contentWithId = `[ID:${msg.id}] ${content}`;
+    return {
+        role: msg.senderId === 'me' ? 'user' : 'assistant',
+        content: contentWithId  // <--- 关键修改：把 content 改成 contentWithId
+    };
         });
 
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
@@ -7543,19 +7573,61 @@ async function receiveAIReply() {
                 if (!msgText) continue; // 如果只剩指令，跳过发送
             }
 
-            // 💰 领取转账逻辑
+                   // 💰 领取转账逻辑
             if (msgText.includes('[领取转账]')) {
                  const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
                  if (pendingTransfer) {
+                     // 1. 只更新状态，不要加钱！
                      pendingTransfer.transferData.status = 'aiReceived';
-                     handleTransaction('income', pendingTransfer.transferData.amount, `收到转账-来自${chat.name}`);
+                     
+                     // 2. 插入系统提示
                      const sysMsgId = Date.now() + i + 500;
-                     allMessages.push({ id: sysMsgId, chatId: currentChatId, type: 'system', content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, time: getCurrentTime() });
+                     allMessages.push({ 
+                        id: sysMsgId, 
+                        chatId: currentChatId, 
+                        type: 'system', 
+                        content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, 
+                        time: getCurrentTime() 
+                     });
+                     
                      saveMessages();
                      renderMessages();
                  }
                  msgText = msgText.replace(/\[领取转账\]/g, '').trim();
                  if (!msgText) continue;
+            }
+
+            // 💳 确认代付逻辑 (新增)
+            if (msgText.includes('[确认代付]')) {
+                // 1. 查找最近的一条待支付的代付订单
+                const pendingOrder = allMessages.slice().reverse().find(m => 
+                    m.type === 'shopping_order' && 
+                    m.orderData.orderType === 'ask_ta_pay' && 
+                    m.orderData.status === 'pending'
+                );
+
+                if (pendingOrder) {
+                    // 2. 更新订单状态为已支付
+                    pendingOrder.orderData.status = 'paid';
+                    
+                    // 3. 插入一条系统提示消息
+                    const sysMsgId = Date.now() + i + 800;
+                    allMessages.push({
+                        id: sysMsgId,
+                        chatId: currentChatId,
+                        type: 'system',
+                        content: `${chat.name} 已同意并完成了代付`,
+                        time: getCurrentTime()
+                    });
+                    
+                    // 4. 保存并刷新
+                    saveMessages();
+                    renderMessages();
+                }
+                
+                // 5. 从回复文本中移除指令
+                msgText = msgText.replace(/\[确认代付\]/g, '').trim();
+                if (!msgText) continue; // 如果只剩指令，就不发空消息了
             }
 
             // --- 构建消息对象 ---
@@ -7569,6 +7641,27 @@ async function receiveAIReply() {
                 type: 'text',
                 content: msgText
             };
+
+// ▼▼▼▼▼▼▼▼▼▼ 【添加以下代码：解析引用】 ▼▼▼▼▼▼▼▼▼▼
+    // 检查是否包含引用标记 [引用:xxx]
+    const quoteMatch = msgText.match(/\[引用:(\d+)\]/);
+    if (quoteMatch) {
+        const quotedId = parseInt(quoteMatch[1]);
+        // 找到被引用的那条原始消息
+        const originalMsg = allMessages.find(m => m.id === quotedId);
+        
+        if (originalMsg) {
+            newMessage.quotedMessageId = originalMsg.id;
+            newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
+            newMessage.quotedContent = originalMsg.content;
+            newMessage.quotedTime = formatMessageTime(originalMsg.time);
+            
+            // 把标记从文本中删掉，只保留回复内容
+            msgText = msgText.replace(/\[引用:\d+\]/, '').trim();
+            newMessage.content = msgText; // 更新内容
+        }
+    }
+    // ▲▲▲▲▲▲▲▲▲▲ 【添加结束】 ▲▲▲▲▲▲▲▲▲▲
 
             // 🌟 特殊消息类型构造 (保留旧功能)
             const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
@@ -7717,7 +7810,98 @@ function renderMessages() {
             </div>`;
         }
 
-    // 语音消息
+        // ============ 🛍️ 新增：购物订单渲染逻辑 ============
+        if (msg.type === 'shopping_order') {
+            const data = msg.orderData;
+            
+            // 1. 确定标题和图标
+            let title = '购物订单';
+            let icon = '🛍️';
+            
+            if (data.orderType === 'buy_for_ta') {
+                title = `为 ${data.characterName} 购买`;
+                icon = '🎁';
+            } else if (data.orderType === 'ask_ta_pay') {
+                title = `请 ${data.characterName} 代付`;
+                icon = '💸';
+            } else if (data.orderType === 'ai_buy_for_user') {
+                title = `${data.characterName} 送你的礼物`;
+                icon = '🎁';
+            } else if (data.orderType === 'ai_ask_user_pay') {
+                title = `${data.characterName} 的代付请求`;
+                icon = '💳';
+            }
+            
+            // 2. 确定状态文本
+            let statusText = '待处理';
+            let statusClass = `status-${data.status}`;
+            
+            if (data.status === 'paid') statusText = '已支付';
+            else if (data.status === 'pending') statusText = '待支付';
+            else if (data.status === 'rejected') statusText = '已拒绝';
+            
+            // 3. 生成商品列表 HTML
+            const itemsHtml = data.items.map(item => `
+                <div class="order-item-row">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span>¥${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('');
+            
+            // 4. 生成操作按钮 (仅针对 AI 请求代付且未处理的情况)
+            let actionButtons = '';
+            if (data.orderType === 'ai_ask_user_pay' && data.status === 'pending' && !isMe) {
+                actionButtons = `
+                    <div class="order-divider"></div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="confirmAIPayRequest(${msg.id})" style="flex:1; background:#667eea; color:white; border:none; padding:8px; border-radius:8px; cursor:pointer;">同意支付</button>
+                        <button onclick="rejectAIPayRequest(${msg.id})" style="flex:1; background:#f0f0f0; color:#666; border:none; padding:8px; border-radius:8px; cursor:pointer;">拒绝</button>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                    ${checkbox}
+                    <div class="shopping-order-card" onclick="toggleOrderDetail(${msg.id})">
+                        <div class="order-card-header">
+                            <div class="order-icon">${icon}</div>
+                            <div class="order-type-text">${title}</div>
+                        </div>
+                        
+                        <div class="order-status-row">
+                            <div class="order-status ${statusClass}">${statusText}</div>
+                            <div class="order-amount">¥${data.totalPrice.toFixed(2)}</div>
+                        </div>
+                        
+                        <div class="order-view-detail">${data.isExpanded ? '收起详情' : '点击查看详情'}</div>
+                        
+                        <div class="order-detail ${data.isExpanded ? 'show' : ''}" onclick="event.stopPropagation()">
+                            <div class="order-detail-title">商品清单</div>
+                            <div class="order-items-list">
+                                ${itemsHtml}
+                            </div>
+                            <div class="order-divider"></div>
+                            <div class="order-total-row">
+                                <span>合计</span>
+                                <span>¥${data.totalPrice.toFixed(2)}</span>
+                            </div>
+                            <div class="order-info-row">
+                                <span>订单号</span>
+                                <span>${data.orderNumber.slice(-8)}</span>
+                            </div>
+                            ${actionButtons}
+                        </div>
+                    </div>
+                    <div class="message-time">${formatMessageTime(msg.time)}</div>
+                </div>
+            `;
+        }
+        // ============ 🛍️ 结束 ============
+
+
+
+// 语音消息
 if (msg.type === 'voice') {
     // 生成引用 HTML
     let voiceQuoteHtml = '';
@@ -7739,12 +7923,16 @@ if (msg.type === 'voice') {
             ${checkbox}
             <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
                 ${voiceQuoteHtml}
-                <div class="voice-message ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceText(${msg.id})">
-                    <div class="voice-icon">🎤</div>
-                    <div class="voice-duration">${msg.voiceDuration}"</div>
+                <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id})">
+                    <div class="voice-play-btn"><i class="fa fa-play"></i></div>
                     <div class="voice-wave">
-                        <span></span><span></span><span></span><span></span>
+                        <span class="wave-bar"></span>
+                        <span class="wave-bar"></span>
+                        <span class="wave-bar"></span>
+                        <span class="wave-bar"></span>
+                        <span class="wave-bar"></span>
                     </div>
+                    <div class="voice-duration">${msg.voiceDuration}"</div>
                 </div>
                 <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
             </div>
