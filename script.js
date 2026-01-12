@@ -79,25 +79,38 @@ function saveToDB(storeName, data) {
     const transaction = db.transaction([storeName], 'readwrite');
     const objectStore = transaction.objectStore(storeName);
     
-    if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'chats' || storeName === 'messages') {
+    // ▼▼▼ 修改下面这一行，把 products 和 shoppingCart 加进去 ▼▼▼
+    if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'chats' || storeName === 'messages' || storeName === 'products' || storeName === 'shoppingCart') {
         objectStore.put({ id: 1, list: data.list || data });
     } else {
         objectStore.put({ id: 1, ...data });
     }
 }
+
+
 function loadFromDB(storeName, callback) {
     const transaction = db.transaction([storeName], 'readonly');
     const objectStore = transaction.objectStore(storeName);
     const request = objectStore.get(1);
     
     request.onsuccess = () => {
-        if (storeName === 'worldbooks' || storeName === 'categories') {
-            callback(request.result ? request.result.list : null);
+        if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'products' || storeName === 'shoppingCart') {
+            // ★ 修复：确保返回数组，多重检查
+            if (request.result && Array.isArray(request.result.list)) {
+                callback(request.result.list);
+            } else if (request.result && Array.isArray(request.result)) {
+                callback(request.result);
+            } else {
+                callback([]);
+            }
         } else {
             callback(request.result);
         }
     };
 }
+
+
+
         
         // 页面切换
      function openApp(appName) {
@@ -5733,71 +5746,79 @@ function backFromShopping() {
 // 加载商品列表
 function loadProducts() {
     loadFromDB('products', (data) => {
-        products = data && data.list ? data.list : [];
+        // ▼▼▼ 修改下面这行 ▼▼▼
+        products = data || []; 
         renderProducts();
     });
 }
 
 
+
 // 渲染商品列表（修改版：支持分类过滤）
+// ============ 优化版：渲染商品列表 ============
 function renderProducts() {
     const container = document.getElementById('shoppingProductList');
     
-    // ★ 核心修改：过滤数据
-    // 如果商品没有 type 属性（旧数据），默认算作 'goods'
+    // 过滤数据：只显示当前类型的商品
     const filteredProducts = products.filter(p => {
         const pType = p.categoryType || 'goods'; 
         return pType === currentShoppingType;
     });
     
+    // 空状态美化
     if (filteredProducts.length === 0) {
-        const emptyText = currentShoppingType === 'goods' ? '暂无商品，试试搜索功能吧' : '肚子饿了吗？搜搜想吃啥';
-        const emptyIcon = currentShoppingType === 'goods' ? '🛍️' : '🍜';
+        const emptyText = currentShoppingType === 'goods' ? '暂无好物，试试 AI 搜索生成 ✨' : '肚子饿了？搜搜想吃啥 🍜';
+        const emptyIcon = currentShoppingType === 'goods' ? '🛍️' : '🍱';
         
         container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">${emptyIcon}</div>
-                <div class="empty-state-text">${emptyText}</div>
+            <div class="empty-state" style="padding: 40px 20px; text-align: center; color: #999;">
+                <div class="empty-state-icon" style="font-size: 48px; margin-bottom: 16px; opacity: 0.8;">${emptyIcon}</div>
+                <div class="empty-state-text" style="font-size: 14px;">${emptyText}</div>
             </div>
         `;
         return;
     }
     
-   container.innerHTML = filteredProducts.map(product => {
-        // 1. 处理描述/标签
+    // 渲染卡片
+    container.innerHTML = filteredProducts.map(product => {
+        // 1. 处理标签 (支持 | 分隔)
         let tagsHtml = '';
         if (product.description) {
-            // 如果描述里包含 "|", 说明是新版标签格式
             if (product.description.includes('|')) {
-                const tags = product.description.split('|').map(t => t.trim());
-                tagsHtml = `<div class="product-tags-row">
-                    ${tags.map(tag => `<span class="product-tag tag-${currentShoppingType}">${tag}</span>`).join('')}
+                const tags = product.description.split('|').map(t => t.trim()).slice(0, 3); // 最多显示3个标签
+                tagsHtml = `<div class="product-tags-row" style="display:flex; gap:6px; margin: 6px 0;">
+                    ${tags.map(tag => `
+                        <span class="product-tag" style="font-size:10px; padding:2px 6px; border-radius:4px; background:#f5f5f7; color:#666;">
+                            ${tag}
+                        </span>`).join('')}
                 </div>`;
             } else {
-                // 旧版普通描述，还是直接显示文字
-                tagsHtml = `<div class="product-description">${product.description}</div>`;
+                tagsHtml = `<div class="product-description" style="font-size:12px; color:#999; margin: 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${product.description}</div>`;
             }
         }
 
-        // 2. 渲染卡片
+        // 2. AI 标识
+        const aiBadge = product.type === 'ai' ? '<span style="font-size:10px; color:#667eea; margin-left:4px; vertical-align:middle;"></span>' : '';
+
+        // 3. 渲染卡片 HTML
         return `
-        <div class="product-card">
+        <div class="product-card" style="background:white; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display:flex; flex-direction:column;">
             <div class="product-info-full">
-                <div class="product-name ${currentShoppingType === 'goods' ? 'goods-title' : 'food-title'}">
-                    ${product.name}
+                <div class="product-name" style="font-size:15px; font-weight:600; color:#333; line-height:1.4; margin-bottom:4px;">
+                    ${product.name} ${aiBadge}
                 </div>
                 
                 ${tagsHtml}
                 
-                <div class="product-bottom-row">
-                    <div class="product-price">
-                        <span style="font-size: 12px">¥</span>${product.price.toFixed(2)}
+                <div class="product-bottom-row" style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px;">
+                    <div class="product-price" style="color:#ff4757; font-weight:700; font-size:16px;">
+                        <span style="font-size: 11px; font-weight:normal;">¥</span>${product.price.toFixed(2)}
                     </div>
-                    <div class="product-actions-mini">
-                         <button class="btn-mini-add" onclick="addToCart(${product.id})">
-                           ${currentShoppingType === 'goods' ? '抢购' : '来一单'}
+                    <div class="product-actions-mini" style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn-text-only" onclick="deleteProduct(${product.id})" style="border:none; background:none; color:#ccc; font-size:18px; padding:0 5px; cursor:pointer;">×</button>
+                        <button class="btn-mini-add" onclick="addToCart(${product.id})" style="background:${currentShoppingType === 'goods' ? '#333' : '#ff9f43'}; color:white; border:none; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; cursor:pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                           ${currentShoppingType === 'goods' ? '加入购物车' : '选购'}
                         </button>
-                        <button class="btn-text-only" onclick="deleteProduct(${product.id})" style="color:#ccc; font-size:12px; margin-left:5px;">×</button>
                     </div>
                 </div>
             </div>
@@ -5899,10 +5920,18 @@ function deleteProduct(productId) {
 // 加载购物车
 function loadShoppingCart() {
     loadFromDB('shoppingCart', (data) => {
-        shoppingCart = data && data.list ? data.list : [];
+        // ★ 确保是数组
+        if (Array.isArray(data)) {
+            shoppingCart = data;
+        } else {
+            shoppingCart = [];
+        }
+        console.log('购物车加载完成，商品数:', shoppingCart.length);
         updateCartBadge();
     });
 }
+
+
 
 // 更新购物车徽章
 function updateCartBadge() {
@@ -5917,31 +5946,50 @@ function updateCartBadge() {
     }
 }
 
-// 添加到购物车
+// 添加到购物车 (终极修复版：完全独立存储)
 function addToCart(productId) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const existingItem = shoppingCart.find(item => item.productId === productId);
+    // 直接操作数据库，不依赖内存变量
+    const transaction = db.transaction(['shoppingCart'], 'readwrite');
+    const objectStore = transaction.objectStore('shoppingCart');
+    const request = objectStore.get(1);
     
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        const newId = shoppingCart.length > 0 ? Math.max(...shoppingCart.map(c => c.id)) + 1 : 1;
-        shoppingCart.push({
-            id: newId,
-            productId: productId,
-            quantity: 1,
-            addTime: getCurrentTime()
-        });
-    }
-    
-    saveToDB('shoppingCart', { id: 1, list: shoppingCart });
-    updateCartBadge();
-    
-    // 显示提示
-    alert('已加入购物车');
+    request.onsuccess = () => {
+        let currentCart = [];
+        if (request.result && Array.isArray(request.result.list)) {
+            currentCart = request.result.list;
+        }
+        
+        // 用商品名称判断是否已存在
+        const existingItem = currentCart.find(item => item.productName === product.name);
+        
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            const newId = Date.now(); // ★ 用时间戳作为唯一ID，绝对不会重复
+            currentCart.push({
+                id: newId,
+                productName: product.name,
+                productPrice: product.price,
+                productDesc: product.description || '',
+                quantity: 1,
+                addTime: getCurrentTime()
+            });
+        }
+        
+        // 直接写入数据库
+        objectStore.put({ id: 1, list: currentCart });
+        
+        // 同步内存
+        shoppingCart = currentCart;
+        updateCartBadge();
+        alert('已加入购物车');
+    };
 }
+
+
 // 打开购物车
 function openShoppingCart() {
     document.getElementById('shoppingScreen').style.display = 'none';
@@ -5955,15 +6003,16 @@ function backToShopping() {
     document.getElementById('shoppingScreen').style.display = 'flex';
 }
 
-// 渲染购物车
+// 渲染购物车 (修复版：使用购物车自带的商品信息)
 function renderShoppingCart() {
     const container = document.getElementById('cartContent');
     
     if (shoppingCart.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">🛒</div>
+            <div class="empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; color:#ccc;">
+                <div class="empty-state-icon" style="font-size:60px; margin-bottom:20px; opacity:0.5;">🛒</div>
                 <div class="empty-state-text">购物车是空的</div>
+                <button onclick="backToShopping()" style="margin-top:20px; padding:8px 24px; border:1px solid #ddd; background:white; border-radius:20px; color:#666;">去逛逛</button>
             </div>
         `;
         document.getElementById('cartFooter').style.display = 'none';
@@ -5972,81 +6021,118 @@ function renderShoppingCart() {
     
     document.getElementById('cartFooter').style.display = 'block';
     
+    // ★★★ 修复：直接使用购物车里保存的商品信息 ★★★
     container.innerHTML = shoppingCart.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (!product) return '';
+        // 优先用购物车保存的信息，找不到再去商品列表查
+        let name = item.productName;
+        let price = item.productPrice;
+        
+        if (!name) {
+            const product = products.find(p => p.id === item.productId);
+            name = product ? product.name : '未知商品';
+            price = product ? product.price : 0;
+        }
         
         return `
-            <div class="cart-item">
-                <div class="cart-item-header">
-                    <div class="cart-item-name">${product.name}</div>
-                    <div class="cart-item-price">¥${product.price.toFixed(2)}</div>
+            <div class="cart-item" style="background:white; padding:15px; margin-bottom:1px; display:flex; justify-content:space-between; align-items:center;">
+                <div class="cart-item-info" style="flex:1;">
+                    <div class="cart-item-name" style="font-size:15px; font-weight:500; color:#333; margin-bottom:4px;">${name}</div>
+                    <div class="cart-item-price" style="font-size:13px; color:#999;">¥${price ? price.toFixed(2) : '0.00'}</div>
                 </div>
-                <div class="cart-item-controls">
-                    <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)">-</button>
-                        <div class="quantity-number">${item.quantity}</div>
-                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)">+</button>
+                
+                <div class="cart-item-controls" style="display:flex; align-items:center; gap:15px;">
+                    <div class="quantity-controls" style="display:flex; align-items:center; background:#f5f5f7; border-radius:15px; padding:2px;">
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)" style="width:28px; height:28px; border:none; background:none; color:#333; font-size:16px; cursor:pointer;">-</button>
+                        <div class="quantity-number" style="font-size:13px; font-weight:600; min-width:20px; text-align:center;">${item.quantity}</div>
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)" style="width:28px; height:28px; border:none; background:none; color:#333; font-size:16px; cursor:pointer;">+</button>
                     </div>
-                    <div class="cart-item-delete" onclick="removeFromCart(${item.id})">删除</div>
+                    <div class="cart-item-delete" onclick="removeFromCart(${item.id})" style="color:#ff4757; font-size:12px; cursor:pointer; padding:5px;">删除</div>
                 </div>
             </div>
         `;
     }).join('');
     
-    // 计算总价
     updateCartTotal();
-    
-    // ★★★ 新增：渲染支付方式选择 ★★★
     renderPaymentOptions();
 }
+
+
 // 当前选择的支付方式
 let selectedPaymentMethod = null;
 
-// 渲染支付方式选择
+// ============ 优化版：渲染支付选项 ============
 function renderPaymentOptions() {
     const footer = document.getElementById('cartFooter');
-    
-    // 清空footer内容
-    footer.innerHTML = '';
     
     // 获取当前角色名字
     const chat = chats.find(c => c.id === currentChatId);
     const characterName = chat ? chat.name : 'TA';
     
-    // 计算总价
-    let total = 0;
-    shoppingCart.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-            total += product.price * item.quantity;
-        }
-    });
+// 计算总价 (修复版：使用购物车保存的价格)
+let total = 0;
+shoppingCart.forEach(item => {
+    const price = item.productPrice || 0;
+    total += price * item.quantity;
+});
     
+    // 样式配置：选中态和未选中态
+    const getOptionStyle = (method) => {
+        const isSelected = selectedPaymentMethod === method;
+        return `
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid ${isSelected ? '#667eea' : '#eee'};
+            background: ${isSelected ? '#f0f4ff' : '#f9f9f9'};
+            transition: all 0.2s;
+        `;
+    };
+
     footer.innerHTML = `
-        <div class="cart-top-row">
-            <div class="payment-options">
-                <div class="payment-option ${selectedPaymentMethod === 'buy_for_ta' ? 'selected' : ''}" onclick="selectPaymentMethod('buy_for_ta')">
-                    <input type="radio" name="payment" class="payment-radio" ${selectedPaymentMethod === 'buy_for_ta' ? 'checked' : ''}>
-                    <div class="payment-label"> 为${characterName}购买</div>
+        <div class="cart-footer-inner" style="padding: 15px; background: white; border-top: 1px solid #f0f0f0;">
+            
+            <div class="payment-options" style="display:flex; gap:10px; margin-bottom:15px;">
+                <div class="payment-option" onclick="selectPaymentMethod('buy_for_ta')" style="${getOptionStyle('buy_for_ta')}">
+                    <div style="font-size:18px; margin-bottom:4px;">🎁</div>
+                    <div style="font-size:12px; color:${selectedPaymentMethod === 'buy_for_ta' ? '#667eea' : '#666'}; font-weight:500;">送给${characterName}</div>
                 </div>
                 
-                <div class="payment-option ${selectedPaymentMethod === 'ask_ta_pay' ? 'selected' : ''}" onclick="selectPaymentMethod('ask_ta_pay')">
-                    <input type="radio" name="payment" class="payment-radio" ${selectedPaymentMethod === 'ask_ta_pay' ? 'checked' : ''}>
-                    <div class="payment-label"> 请${characterName}代付</div>
+                <div class="payment-option" onclick="selectPaymentMethod('ask_ta_pay')" style="${getOptionStyle('ask_ta_pay')}">
+                    <div style="font-size:18px; margin-bottom:4px;">💳</div>
+                    <div style="font-size:12px; color:${selectedPaymentMethod === 'ask_ta_pay' ? '#667eea' : '#666'}; font-weight:500;">找${characterName}代付</div>
                 </div>
             </div>
             
-            <div class="cart-total-inline">
-                合计: <span>¥${total.toFixed(2)}</span>
+            <div class="cart-action-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="cart-total-inline">
+                    <span style="font-size:13px; color:#666;">合计:</span>
+                    <span style="font-size:20px; font-weight:700; color:#333;">¥${total.toFixed(2)}</span>
+                </div>
+                
+                <button class="btn-checkout" onclick="checkout()" ${selectedPaymentMethod ? '' : 'disabled'} 
+                    style="
+                        background: ${selectedPaymentMethod ? '#333' : '#ccc'};
+                        color: white;
+                        border: none;
+                        padding: 10px 30px;
+                        border-radius: 25px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: ${selectedPaymentMethod ? 'pointer' : 'not-allowed'};
+                        box-shadow: ${selectedPaymentMethod ? '0 4px 12px rgba(0,0,0,0.2)' : 'none'};
+                    ">
+                    ${selectedPaymentMethod === 'ask_ta_pay' ? '发送请求' : '立即支付'}
+                </button>
             </div>
         </div>
-        
-        <button class="btn-checkout" onclick="checkout()" ${selectedPaymentMethod ? '' : 'disabled'}>
-            结算
-        </button>
     `;
 }
+
 
 // 选择支付方式
 function selectPaymentMethod(method) {
@@ -6100,23 +6186,28 @@ function removeFromCart(cartItemId) {
     renderShoppingCart();
     updateCartBadge();
 }
-
-// 更新购物车总价
+// 更新购物车总价 (修复版)
 function updateCartTotal() {
     let total = 0;
     
     shoppingCart.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-            total += product.price * item.quantity;
+        // ★ 优先用购物车保存的价格
+        let price = item.productPrice;
+        if (!price) {
+            const product = products.find(p => p.id === item.productId);
+            price = product ? product.price : 0;
         }
+        total += price * item.quantity;
     });
     
-    document.getElementById('cartTotalPrice').textContent = `¥${total.toFixed(2)}`;
+    const priceEl = document.getElementById('cartTotalPrice');
+    if (priceEl) {
+        priceEl.textContent = `¥${total.toFixed(2)}`;
+    }
 }
 
-// 结算
-// 结算
+
+// 结算 (修复版：使用购物车自带的商品信息)
 function checkout() {
     if (shoppingCart.length === 0) {
         alert('购物车是空的');
@@ -6128,31 +6219,27 @@ function checkout() {
         return;
     }
     
-    // 计算总价和商品列表
+    // ★★★ 修复：直接用购物车里保存的信息 ★★★
     let total = 0;
     let itemsText = '';
     const orderItems = [];
     
     shoppingCart.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-            total += product.price * item.quantity;
-            itemsText += `${product.name} x${item.quantity}\n`;
-            orderItems.push({
-                name: product.name,
-                quantity: item.quantity,
-                price: product.price
-            });
-        }
+        const price = item.productPrice || 0;
+        const subtotal = price * item.quantity;
+        total += subtotal;
+        itemsText += `${item.productName} x${item.quantity}\n`;
+        orderItems.push({
+            name: item.productName,
+            quantity: item.quantity,
+            price: price
+        });
     });
     
     const chat = chats.find(c => c.id === currentChatId);
     const characterName = chat ? chat.name : 'TA';
     
-    // 根据支付方式执行不同逻辑
     if (selectedPaymentMethod === 'buy_for_ta') {
-        // ========== 为TA购买 ==========
-        // 检查余额
         loadFromDB('wallet', (walletData) => {
             if (!walletData || walletData.balance < total) {
                 const shortage = total - (walletData ? walletData.balance : 0);
@@ -6160,77 +6247,75 @@ function checkout() {
                 return;
             }
             
-            // 确认弹窗
             const confirmText = `确认为【${characterName}】购买？\n\n🎁 商品清单：\n${itemsText}\n💰 总计: ¥${total.toFixed(2)}\n当前余额: ¥${walletData.balance.toFixed(2)}\n支付后余额: ¥${(walletData.balance - total).toFixed(2)}\n\n📦 收货人：${characterName}`;
             
             if (!confirm(confirmText)) return;
             
-            // 扣款
             const title = `购物消费-为${characterName}购买`;
             if (!handleTransaction('expense', total, title)) {
                 return;
             }
             
-            // 生成订单消息
             createShoppingOrderMessage('buy_for_ta', 'paid', total, orderItems);
             
             // 清空购物车
             shoppingCart = [];
             selectedPaymentMethod = null;
-            saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+            
+            // ★ 直接写数据库清空
+            const transaction = db.transaction(['shoppingCart'], 'readwrite');
+            transaction.objectStore('shoppingCart').put({ id: 1, list: [] });
             
             alert('购买成功！礼物已送出 🎁');
             
-        // 返回聊天页面并刷新
-backToShopping();
-setTimeout(() => {
-    backFromShopping();
-    // ★ 确保消息列表刷新
-    setTimeout(() => {
-        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-            visibleMessagesCount = allMessages.length;
-            renderMessages();
-            scrollToBottom();
-        }
-    }, 200);
-}, 100);
-
+            backToShopping();
+            setTimeout(() => {
+                backFromShopping();
+                setTimeout(() => {
+                    if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+                        visibleMessagesCount = allMessages.length;
+                        renderMessages();
+                        scrollToBottom();
+                    }
+                }, 200);
+            }, 100);
+            
             updateCartBadge();
         });
         
     } else if (selectedPaymentMethod === 'ask_ta_pay') {
-        // ========== 请TA代付 ==========
         const confirmText = `确认请【${characterName}】代付？\n\n🛍️ 商品清单：\n${itemsText}\n💸 代付金额：¥${total.toFixed(2)}\n\n📦 收货人：我\n\n⚠️ 对方需要同意后才会扣款`;
         
         if (!confirm(confirmText)) return;
         
-        // 生成订单消息（待支付状态）
         createShoppingOrderMessage('ask_ta_pay', 'pending', total, orderItems);
         
         // 清空购物车
         shoppingCart = [];
         selectedPaymentMethod = null;
-        saveToDB('shoppingCart', { id: 1, list: shoppingCart });
+        
+        // ★ 直接写数据库清空
+        const transaction = db.transaction(['shoppingCart'], 'readwrite');
+        transaction.objectStore('shoppingCart').put({ id: 1, list: [] });
         
         alert('代付请求已发送！');
         
-   // 返回聊天页面并刷新
-backToShopping();
-setTimeout(() => {
-    backFromShopping();
-    // ★ 确保消息列表刷新
-    setTimeout(() => {
-        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
-            visibleMessagesCount = allMessages.length;
-            renderMessages();
-            scrollToBottom();
-        }
-    }, 200);
-}, 100);
-
+        backToShopping();
+        setTimeout(() => {
+            backFromShopping();
+            setTimeout(() => {
+                if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+                    visibleMessagesCount = allMessages.length;
+                    renderMessages();
+                    scrollToBottom();
+                }
+            }, 200);
+        }, 100);
+        
         updateCartBadge();
     }
 }
+
 // 创建购物订单消息
 function createShoppingOrderMessage(orderType, status, totalPrice, items) {
     if (!currentChatId) return;
@@ -6384,22 +6469,23 @@ async function generateProducts() {
 }
 
       
-// 解析并保存AI生成的商品（修改版：搜索前自动清空旧数据）
+// 解析并保存AI生成的商品 (修复版：ID不再重复)
 function parseAndSaveProducts(aiReply, keyword) {
-    // ★★★ 核心修复：搜索前先清空当前分类下的旧AI商品 ★★★
+    // ★★★ 修复：先记录当前最大ID，再清空 ★★★
+    const maxExistingId = products.length > 0 ? Math.max(...products.map(p => p.id || 0)) : 0;
+    
+    // 清空当前分类下的旧AI商品
     products = products.filter(p => {
-        // 保留手动添加的商品
         if (p.type === 'custom') return true;
-        
-        // 保留其他分类的商品（比如搜外卖时，保留百货商品）
         if (p.categoryType !== currentShoppingType) return true;
-        
-        // 删除当前分类下的旧AI商品
         return false;
     });
 
     // 解析新数据
     const parts = aiReply.split('|||').map(p => p.trim()).filter(p => p.length > 0);
+    
+    // ★★★ 修复：ID从最大值继续递增 ★★★
+    let nextId = maxExistingId + 1;
     
     // 每3个元素为一组（名称、价格、描述）
     for (let i = 0; i < parts.length; i += 3) {
@@ -6412,15 +6498,13 @@ function parseAndSaveProducts(aiReply, keyword) {
         
         if (!name || !price || price <= 0) continue;
         
-        const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-        
         products.push({
-            id: newId,
+            id: nextId++,  // ★ 使用递增ID
             name: name,
             price: price,
             description: description,
-            type: 'ai', // 标记为AI生成
-            categoryType: currentShoppingType, // 标记分类
+            type: 'ai',
+            categoryType: currentShoppingType,
             createTime: getCurrentTime()
         });
     }
@@ -6429,7 +6513,7 @@ function parseAndSaveProducts(aiReply, keyword) {
     saveToDB('products', { id: 1, list: products });
     
     // 刷新显示
-    loadProducts();
+    renderProducts();
 }
 
 
@@ -7397,12 +7481,30 @@ async function receiveAIReply() {
      - *想送用户礼物*：[购物:送礼:物品名]
      - *想让用户买单*：[购物:代付:物品名]
 
+
+  3. **状态监控更新 (Status Update)** - *每次回复必须在末尾附上！*
+      请把自己想象成一个有血有肉的人，你的状态栏是你的**生理体征**和**内心独白**。
+      **严禁**使用“开心”、“难过”、“正在聊天”这种人机词汇！要具体、要生动、要带感！
+      *格式*：[状态更新]心情:xxx|心情值:0-100|心跳:60-200|穿着风格:xxx|穿着单品:a,b,c|行为:xxx|想法:xxx[/状态更新]
+      *写作要求*：
+      - **心情**：拒绝二极管！要用比喻或微表情。如：“嘴角比AK还难压”、“像淋湿的小狗”、“心脏漏了一拍”。比如：刚刚她亲我了，开心的恨不得到处转圈圈
+      - **心跳**：根据撩人程度/紧张程度波动。平淡时60-75，心动/生气/紧张时90-200，激动时保持高心率。
+      - **穿着**：要有画面感，今日的OOTD，如“穿的什么什么样的衣服，领口微微敞开”、“裤子”“鞋子”。
+      - **行为**：要有电影镜头感。如“用手指缠绕头发”、“把脸埋进枕头”、“盯着屏幕傻笑”。比如：坐在电脑面前喝着水，看到消息忍不住笑，高兴的眼睛都眯起来了
+      - **想法 (重点)**：这是你的**潜台词**！写出你**不敢发在聊天框里**的话。可以是疯狂的占有欲、傲娇的吐槽、或者瑟瑟的念头。
+      *示例*：
+      [状态更新]心情:被撩得晕头转向|心情值:95|心跳:118|穿着风格:纯欲风|穿着单品:之前买的情侣卫衣，喇叭裤,choker|行为:咬着下嘴唇打字，忍不住弯起嘴角，脚趾翘起来|想法:救命他怎么这么会...好想现在就顺着网线爬过去咬他一口...[/状态更新]
+
+
+
    ═══════════════════════════════格式非常重要！
 【第四幕：演出格式规范 (Format)】
-1. **消息节奏**：模拟真人打字，**必须输出 6 到 8 条消息**（用 "|||" 分隔）。
-2. **消息长度**：多用短句，每一句话不要太多，需要加上标点符号！
-3. **Show, Don't Tell**：灵活机智，例如可用表情包代替自己想要说的话，知道酸甜苦辣痛苦与幸福，善于表达。
-4. **引用回复**：如果你想针对用户的某句话进行回复，请在单条消息开头加上 [引用:消息ID]。例如：[引用:105]笨蛋，明明是你先说的！
+1. **微信气泡感**：**严禁发送长篇大论！** 必须将回复拆分成 **5到 8 条** 短消息（用 "|||" 分隔）。
+2. **拒绝合并**：不要把所有话挤在一个气泡里。例如：“你好，吃饭了吗？”应拆分为：“你好|||吃饭了吗？”
+3. **口语化**：像在手机上打字一样，多用短句、碎碎念。单条消息尽量不超过 20 个字。
+4. **Show, Don't Tell**：灵活机智，可用表情包代替文字。
+5. **引用回复**：如需针对某句话回复，请在单条消息开头加 [引用:消息ID]。
+
 
 【演出开始】
 请深呼吸，进入角色。现在的每一句话，都是【${chat.name}】的真实人生。
@@ -7537,6 +7639,52 @@ async function receiveAIReply() {
             }
         }
 
+                // ============ 解析并保存状态监控更新 ============
+   const statusUpdateMatch = aiReply.match(/\[状态更新\](.*?)\[\/状态更新\]/s);
+        if (statusUpdateMatch) {
+            const statusStr = statusUpdateMatch[1];
+            
+            // 辅助解析函数
+            const parseField = (field) => {
+                const match = statusStr.match(new RegExp(field + '[:：]([^|]+)'));
+                return match ? match[1].trim() : null;
+            };
+            
+            // 构建新状态对象
+            const newStatus = {
+                mood: parseField('心情') || '平静',
+                moodLevel: parseInt(parseField('心情值')) || 75,
+                heartbeat: parseInt(parseField('心跳')) || 75,
+                clothesStyle: parseField('穿着风格') || '日常',
+                clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
+                action: parseField('行为') || '正在聊天',
+                thoughts: parseField('想法') || '...'
+            };
+            
+            // 保存到数据库
+            loadFromDB('characterInfo', (data) => {
+                const charData = data && data[currentChatId] ? data[currentChatId] : {};
+                // 只有当用户开启了状态监控才更新
+                if (charData.statusMonitorEnabled) {
+                    const allData = data || {};
+                    if (!allData[currentChatId]) allData[currentChatId] = {};
+                    
+                    // 合并旧数据(保留日程等字段)
+                    const oldMonitor = allData[currentChatId].statusMonitor || {};
+                    allData[currentChatId].statusMonitor = { ...oldMonitor, ...newStatus };
+                    
+                    saveToDB('characterInfo', allData);
+                    
+                    // 实时更新悬浮条心跳
+                    const bpmEl = document.getElementById('heartbeatBpm');
+                    if (bpmEl) bpmEl.textContent = newStatus.heartbeat;
+                }
+            });
+            
+            // 从回复中移除这段标签，不让它显示在气泡里
+            aiReply = aiReply.replace(/\[状态更新\].*?\[\/状态更新\]/s, '').trim();
+        }
+
         // 11. 清理回复内容 (移除所有指令标签，只留正文)
              let messageContent = aiReply
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
@@ -7550,11 +7698,20 @@ async function receiveAIReply() {
             .trim()
             .replace(/[\]】]$/, '');
 
-        // 12. 分割消息
+          // 12. 分割消息 (优化版：强制拆分长气泡)
         let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
-        if (messageList.length < 2) {
-            // 兜底分割策略
-            messageList = messageContent.split(/[。！？\n]+/).map(m => m.trim()).filter(m => m.length > 0);
+        
+        // 如果 AI 没有使用 ||| 分隔，或者分段太少且内容太长，启动强制正则拆分
+        if (messageList.length < 2 || messageList.some(m => m.length > 40)) {
+            // 先尝试按 ||| 拆，如果没拆开，就按 换行符、句号、感叹号、问号 强制拆分
+            // 这里的正则意思是：匹配换行符，或者句末标点符号
+            let splitRegex = /\|\|\||[\n\r]+|[。！？.!?]+(?![”"'])/; 
+            
+            // 重新处理 messageContent
+            messageList = messageContent
+                .split(splitRegex)
+                .map(m => m.trim())
+                .filter(m => m.length > 0); // 过滤空消息
         }
 
         // 13. 逐条发送消息
@@ -7810,95 +7967,32 @@ function renderMessages() {
             </div>`;
         }
 
-        // ============ 🛍️ 新增：购物订单渲染逻辑 ============
-        if (msg.type === 'shopping_order') {
-            const data = msg.orderData;
-            
-            // 1. 确定标题和图标
-            let title = '购物订单';
-            let icon = '🛍️';
-            
-            if (data.orderType === 'buy_for_ta') {
-                title = `为 ${data.characterName} 购买`;
-                icon = '🎁';
-            } else if (data.orderType === 'ask_ta_pay') {
-                title = `请 ${data.characterName} 代付`;
-                icon = '💸';
-            } else if (data.orderType === 'ai_buy_for_user') {
-                title = `${data.characterName} 送你的礼物`;
-                icon = '🎁';
-            } else if (data.orderType === 'ai_ask_user_pay') {
-                title = `${data.characterName} 的代付请求`;
-                icon = '💳';
-            }
-            
-            // 2. 确定状态文本
-            let statusText = '待处理';
-            let statusClass = `status-${data.status}`;
-            
-            if (data.status === 'paid') statusText = '已支付';
-            else if (data.status === 'pending') statusText = '待支付';
-            else if (data.status === 'rejected') statusText = '已拒绝';
-            
-            // 3. 生成商品列表 HTML
-            const itemsHtml = data.items.map(item => `
-                <div class="order-item-row">
-                    <span>${item.name} x${item.quantity}</span>
-                    <span>¥${(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-            `).join('');
-            
-            // 4. 生成操作按钮 (仅针对 AI 请求代付且未处理的情况)
-            let actionButtons = '';
-            if (data.orderType === 'ai_ask_user_pay' && data.status === 'pending' && !isMe) {
-                actionButtons = `
-                    <div class="order-divider"></div>
-                    <div style="display:flex; gap:10px;">
-                        <button onclick="confirmAIPayRequest(${msg.id})" style="flex:1; background:#667eea; color:white; border:none; padding:8px; border-radius:8px; cursor:pointer;">同意支付</button>
-                        <button onclick="rejectAIPayRequest(${msg.id})" style="flex:1; background:#f0f0f0; color:#666; border:none; padding:8px; border-radius:8px; cursor:pointer;">拒绝</button>
-                    </div>
-                `;
-            }
+  // ============ 🎁 礼物卡片渲染 (点击弹窗显示小票) ============
+if (msg.type === 'shopping_order') {
+    const data = msg.orderData;
 
-            return `
-                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
-                    ${checkbox}
-                    <div class="shopping-order-card" onclick="toggleOrderDetail(${msg.id})">
-                        <div class="order-card-header">
-                            <div class="order-icon">${icon}</div>
-                            <div class="order-type-text">${title}</div>
-                        </div>
-                        
-                        <div class="order-status-row">
-                            <div class="order-status ${statusClass}">${statusText}</div>
-                            <div class="order-amount">¥${data.totalPrice.toFixed(2)}</div>
-                        </div>
-                        
-                        <div class="order-view-detail">${data.isExpanded ? '收起详情' : '点击查看详情'}</div>
-                        
-                        <div class="order-detail ${data.isExpanded ? 'show' : ''}" onclick="event.stopPropagation()">
-                            <div class="order-detail-title">商品清单</div>
-                            <div class="order-items-list">
-                                ${itemsHtml}
-                            </div>
-                            <div class="order-divider"></div>
-                            <div class="order-total-row">
-                                <span>合计</span>
-                                <span>¥${data.totalPrice.toFixed(2)}</span>
-                            </div>
-                            <div class="order-info-row">
-                                <span>订单号</span>
-                                <span>${data.orderNumber.slice(-8)}</span>
-                            </div>
-                            ${actionButtons}
-                        </div>
+    return `
+        <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+            ${checkbox}
+            <div class="gift-card" onclick="openReceiptModal(${msg.id})">
+                <div class="gift-card-main">
+                    <div class="gift-card-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 12v10H4V12"></path>
+                            <path d="M2 7h20v5H2z"></path>
+                            <path d="M12 22V7"></path>
+                            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                        </svg>
                     </div>
-                    <div class="message-time">${formatMessageTime(msg.time)}</div>
+                    <div class="gift-card-btn">礼物来了喵</div>
                 </div>
-            `;
-        }
-        // ============ 🛍️ 结束 ============
-
+            </div>
+            <div class="message-time">${formatMessageTime(msg.time)}</div>
+        </div>
+    `;
+}
+// ============ 🎁 结束 ============
 
 
 // 语音消息
@@ -8660,6 +8754,566 @@ function toggleVoiceState(element, messageId) {
     toggleVoiceText(messageId);
 }
 
+// ============ 小票弹窗功能 ============
+function openReceiptModal(messageId) {
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message || message.type !== 'shopping_order') return;
+    
+    const data = message.orderData;
+    
+    // 状态
+    let statusText = '待支付';
+    let statusClass = 'pending';
+    if (data.status === 'paid') {
+        statusText = '已支付';
+        statusClass = 'paid';
+    } else if (data.status === 'rejected') {
+        statusText = '已拒绝';
+        statusClass = 'pending';
+    }
+    
+    // 商品列表
+    const itemsHtml = data.items.map(item => `
+        <div class="receipt-item-row">
+            <span style="flex:2;">${item.name}</span>
+            <span style="flex:1; text-align:center;">×${item.quantity}</span>
+            <span style="flex:1; text-align:right;">¥${(item.price * item.quantity).toFixed(2)}</span>
+        </div>
+    `).join('');
+    
+    // 操作按钮（仅AI请求代付且待处理时显示）
+    let actionBtns = '';
+    if (data.orderType === 'ai_ask_user_pay' && data.status === 'pending') {
+        actionBtns = `
+            <div class="receipt-action-btns">
+                <button class="receipt-btn-confirm" onclick="confirmAIPayRequest(${messageId}); closeReceiptModal();">同意支付</button>
+                <button class="receipt-btn-reject" onclick="rejectAIPayRequest(${messageId}); closeReceiptModal();">拒绝</button>
+            </div>
+        `;
+    }
+    
+    // 创建弹窗
+    const modalHtml = `
+        <div class="receipt-modal-overlay" id="receiptModalOverlay" onclick="closeReceiptModal(event)">
+            <div class="receipt-modal" onclick="event.stopPropagation()">
+                <div class="receipt-modal-header">
+                    <button class="receipt-close-btn" onclick="closeReceiptModal()">×</button>
+                    <h3>帽子小猫商城</h3>
+                    <p>购物小票 | 电子凭证</p>
+                </div>
+                
+                <div class="receipt-modal-body">
+                    <div class="receipt-info-section">
+                        <div class="receipt-info-row">
+                            <span class="receipt-info-label">订单编号</span>
+                            <span class="receipt-info-value">${data.orderNumber.slice(-10)}</span>
+                        </div>
+                        <div class="receipt-info-row">
+                            <span class="receipt-info-label">交易时间</span>
+                            <span class="receipt-info-value">${message.time}</span>
+                        </div>
+                        <div class="receipt-info-row">
+                            <span class="receipt-info-label">支付方式</span>
+                            <span class="receipt-info-value">余额支付</span>
+                        </div>
+                        <div class="receipt-info-row">
+                            <span class="receipt-info-label">交易状态</span>
+                            <span class="receipt-status-tag ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="receipt-items-section">
+                        <div class="receipt-items-header">
+                            <span style="flex:2;">商品名称</span>
+                            <span style="flex:1; text-align:center;">数量</span>
+                            <span style="flex:1; text-align:right;">金额</span>
+                        </div>
+                        ${itemsHtml}
+                    </div>
+                    
+                    <div class="receipt-total-section">
+                        <div class="receipt-total-row">
+                            <span>商品总额</span>
+                            <span>¥${data.totalPrice.toFixed(2)}</span>
+                        </div>
+                        <div class="receipt-total-row">
+                            <span>运费</span>
+                            <span>¥0.00</span>
+                        </div>
+                        <div class="receipt-total-row">
+                            <span>优惠券</span>
+                            <span>-¥0.00</span>
+                        </div>
+                        <div class="receipt-grand-total">
+                            <span>实付金额</span>
+                            <span>¥${data.totalPrice.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${actionBtns}
+                
+                <div class="receipt-modal-footer">
+                    <p>感谢您的光临，欢迎再次购物！</p>
+                    <div class="receipt-barcode">|||| ||| ||||| |||| |||</div>
+                    <p>客服电话: 400-123-4567</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 插入到页面
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeReceiptModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const overlay = document.getElementById('receiptModalOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+// ============ 状态监控功能 ============
+
+// 状态监控数据
+let statusMonitorData = {
+    mood: '',
+    moodLevel: 75,
+    clothes: '',
+    clothesTags: [],
+    action: '',
+    thoughts: '',
+    schedule: [],
+    heartbeat: 72
+};
+
+// 处理状态监控开关
+function handleStatusMonitorCheckbox() {
+    const checkbox = document.getElementById('statusMonitorCheckbox');
+    
+    if (checkbox.checked) {
+        // 开启状态监控
+        enableStatusMonitor();
+    } else {
+        // 关闭状态监控
+        disableStatusMonitor();
+    }
+}
+
+// 启用状态监控
+function enableStatusMonitor() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        allData[currentChatId].statusMonitorEnabled = true;
+        saveToDB('characterInfo', allData);
+    });
+}
+
+// 禁用状态监控
+function disableStatusMonitor() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        allData[currentChatId].statusMonitorEnabled = false;
+        saveToDB('characterInfo', allData);
+    });
+}
+
+// 显示/隐藏心电图悬浮条
+function updateHeartbeatBarVisibility() {
+    const bar = document.getElementById('statusHeartbeatBar');
+    if (!bar || !currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        
+        if (charData.statusMonitorEnabled) {
+            bar.style.display = 'flex';
+            // 加载已保存的心跳数据
+            if (charData.statusMonitor && charData.statusMonitor.heartbeat) {
+                document.getElementById('heartbeatBpm').textContent = charData.statusMonitor.heartbeat;
+            }
+        } else {
+            bar.style.display = 'none';
+        }
+    });
+}
+
+// 打开状态监控弹窗
+function openStatusMonitorModal() {
+    document.getElementById('statusMonitorModal').style.display = 'flex';
+    loadStatusMonitorData();
+}
+
+// 关闭状态监控弹窗
+function closeStatusMonitorModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('statusMonitorModal').style.display = 'none';
+}
+
+// 加载状态监控数据
+function loadStatusMonitorData() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const monitor = charData.statusMonitor || {};
+        
+        // 填充数据到弹窗
+        document.getElementById('statusMoodText').textContent = monitor.mood || '今天心情不错~';
+        document.getElementById('statusBpm').textContent = (monitor.heartbeat || 72) + ' BPM';
+        document.getElementById('heartbeatBpm').textContent = monitor.heartbeat || 72;
+        
+        // 心情进度条
+        const moodLevel = monitor.moodLevel || 75;
+        document.getElementById('moodProgressFill').style.width = moodLevel + '%';
+        document.getElementById('moodPercent').textContent = moodLevel;
+        
+        // 穿着
+        document.getElementById('statusClothesText').textContent = monitor.clothesStyle || '简约休闲风';
+        renderClothesTags(monitor.clothesTags || ['白色T恤', '牛仔裤', '运动鞋']);
+        
+        // 行为
+        document.getElementById('statusActionText').textContent = monitor.action || '正在做自己的事情...';
+        
+        // 想法
+        document.getElementById('statusThoughtsText').textContent = monitor.thoughts || '脑子里在想一些事情...';
+        
+        // 日程
+        renderScheduleList(monitor.schedule || [
+            { time: '09:00', task: '起床', status: 'completed' },
+            { time: '12:00', task: '午餐', status: 'current' },
+            { time: '18:00', task: '晚餐', status: 'upcoming' }
+        ]);
+    });
+}
+
+// 渲染穿着标签
+function renderClothesTags(tags) {
+    const container = document.getElementById('statusClothesTags');
+    if (!container) return;
+    
+    container.innerHTML = tags.map(tag => 
+        `<span class="clothes-tag">${tag}</span>`
+    ).join('');
+}
+
+// 渲染日程列表
+function renderScheduleList(schedule) {
+    const container = document.getElementById('statusScheduleList');
+    if (!container) return;
+    
+    if (schedule.length === 0) {
+        container.innerHTML = '<div style="color:#999; font-size:13px;">暂无日程安排</div>';
+        return;
+    }
+    
+    container.innerHTML = schedule.map(item => `
+        <div class="schedule-row ${item.status}">
+            <div class="schedule-dot"></div>
+            <div class="schedule-time">${item.time}</div>
+            <div class="schedule-task">${item.task}</div>
+        </div>
+    `).join('');
+}
+
+// 根据聊天上下文生成状态（AI调用）
+async function generateStatusFromContext() {
+    if (!currentChatId || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        return null;
+    }
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return null;
+    
+    // 获取角色信息
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    // 获取最近的聊天记录
+    const recentMessages = allMessages.slice(-20).map(msg => {
+        const sender = msg.senderId === 'me' ? '用户' : chat.name;
+        return `${sender}: ${msg.content}`;
+    }).join('\n');
+    
+    const today = new Date();
+    const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    
+    const prompt = `你是${chat.name}，请根据以下信息生成你当前的状态。
+
+【角色人设】
+${characterInfo.personality || '无特殊设定'}
+
+【当前时间】
+${timeStr}
+
+【最近聊天记录】
+${recentMessages || '暂无聊天'}
+
+请生成以下状态信息，用|||分隔：
+1. 此刻心情（一句话描述，20字以内）
+2. 心情值（0-100的数字）
+3. 心跳（60-120的数字，根据情绪波动）
+4. 穿着风格（一句话，10字以内）
+5. 穿着单品（3-4个，用逗号分隔）
+6. 当前行为（一句话描述，30字以内）
+7. 内心想法（2-3句话，50字以内）
+8. 今日日程（3-5项，格式：时间-事项-状态，用分号分隔，状态为completed/current/upcoming）
+
+示例输出：
+心情不错，有点期待|||78|||75|||简约休闲风|||白T恤,牛仔裤,帆布鞋|||在房间里听音乐放松|||想着等会要不要出去走走，最近天气挺好的|||09:00-起床-completed;12:00-午餐-completed;15:00-看书-current;19:00-晚餐-upcoming`;
+
+    try {
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        const content = data.choices[0].message.content.trim();
+        
+        // 解析返回内容
+        const parts = content.split('|||').map(s => s.trim());
+        if (parts.length < 8) return null;
+        
+        // 解析日程
+        const scheduleStr = parts[7];
+        const schedule = scheduleStr.split(';').map(item => {
+            const [time, task, status] = item.split('-');
+            return { time: time?.trim(), task: task?.trim(), status: status?.trim() || 'upcoming' };
+        }).filter(item => item.time && item.task);
+        
+        return {
+            mood: parts[0],
+            moodLevel: parseInt(parts[1]) || 75,
+            heartbeat: parseInt(parts[2]) || 72,
+            clothesStyle: parts[3],
+            clothesTags: parts[4].split(',').map(s => s.trim()),
+            action: parts[5],
+            thoughts: parts[6],
+            schedule: schedule
+        };
+        
+    } catch (error) {
+        console.error('生成状态失败:', error);
+        return null;
+    }
+}
+
+// 刷新状态监控数据
+async function refreshStatusMonitor() {
+    if (!currentChatId) return;
+    
+    const newStatus = await generateStatusFromContext();
+    if (!newStatus) {
+        alert('生成状态失败，请检查API配置');
+        return;
+    }
+    
+    // 保存到数据库
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        allData[currentChatId].statusMonitor = newStatus;
+        saveToDB('characterInfo', allData);
+        
+        // 刷新显示
+        loadStatusMonitorData();
+        
+        // 更新悬浮条心跳
+        document.getElementById('heartbeatBpm').textContent = newStatus.heartbeat;
+    });
+}
+
+// 在打开聊天详情时检查并显示心电图条
+const originalOpenChatDetail = openChatDetail;
+openChatDetail = function(chatId) {
+    originalOpenChatDetail(chatId);
+    
+    // 延迟检查，确保页面已渲染
+    setTimeout(() => {
+        updateHeartbeatBarVisibility();
+    }, 100);
+};
+
+// 在加载角色信息时同步状态监控开关
+const originalLoadCharacterInfo = loadCharacterInfo;
+loadCharacterInfo = function(chatId) {
+    originalLoadCharacterInfo(chatId);
+    
+    // 延迟加载状态监控开关状态
+    setTimeout(() => {
+        loadFromDB('characterInfo', (data) => {
+            const charData = data && data[chatId] ? data[chatId] : {};
+            const checkbox = document.getElementById('statusMonitorCheckbox');
+            if (checkbox) {
+                checkbox.checked = charData.statusMonitorEnabled === true;
+            }
+        });
+    }, 300);
+};
+// ============ 悬浮球拖拽逻辑 ============
+
+function initDraggableHeartbeat() {
+    const bar = document.getElementById('statusHeartbeatBar');
+    const screen = document.querySelector('.phone-screen'); // 限制范围在手机屏幕内
+    
+    if (!bar || !screen) return;
+
+    let isDragging = false;
+    let hasMoved = false; // 标记是否发生过移动
+    
+    // 记录偏移量
+    let startX, startY, initialLeft, initialTop;
+
+    // --- 触摸开始 (Mobile) / 鼠标按下 (Desktop) ---
+    const startDrag = (e) => {
+        // 如果是多指触控，不触发拖拽
+        if (e.touches && e.touches.length > 1) return;
+
+        isDragging = true;
+        hasMoved = false; // 重置移动标记
+        
+        // 获取触点位置
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        // 获取元素当前位置
+        const rect = bar.getBoundingClientRect();
+        const screenRect = screen.getBoundingClientRect();
+
+        // 记录鼠标在元素内的相对偏移
+        startX = clientX;
+        startY = clientY;
+        
+        // 计算相对于父容器(.phone-screen)的初始位置
+        // 注意：这里需要减去 screen 的 offset，因为 bar 是 absolute
+        initialLeft = rect.left - screenRect.left;
+        initialTop = rect.top - screenRect.top;
+
+        bar.style.transition = 'none'; // 拖动时移除过渡动画，防止迟滞
+    };
+
+    // --- 移动中 ---
+    const onDrag = (e) => {
+        if (!isDragging) return;
+        
+        e.preventDefault(); // 防止滚动屏幕
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        // 计算移动距离
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        // 如果移动距离极小（防抖），不视为移动
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+            hasMoved = true;
+        }
+
+        // 计算新坐标
+        let newLeft = initialLeft + deltaX;
+        let newTop = initialTop + deltaY;
+
+        // === 边界限制 (不拖出手机屏幕) ===
+        const barRect = bar.getBoundingClientRect();
+        const screenRect = screen.getBoundingClientRect();
+        
+        // 左边界 & 右边界
+        const minLeft = 0;
+        const maxLeft = screenRect.width - barRect.width;
+        
+        // 上边界 & 下边界
+        const minTop = 0;
+        const maxTop = screenRect.height - barRect.height;
+
+        // 限制坐标
+        if (newLeft < minLeft) newLeft = minLeft;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+        if (newTop < minTop) newTop = minTop;
+        if (newTop > maxTop) newTop = maxTop;
+
+        // 应用坐标
+        bar.style.left = newLeft + 'px';
+        bar.style.top = newTop + 'px';
+        bar.style.right = 'auto'; // 清除 right 属性，防止冲突
+    };
+
+    // --- 结束拖拽 ---
+    const endDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        bar.style.transition = 'all 0.3s ease'; // 恢复过渡动画
+
+        // 如果没有发生实质性移动，视为点击
+        if (!hasMoved) {
+            openStatusMonitorModal();
+        } else {
+            // 可选：拖动结束后自动吸附到左右边缘 (类似 iPhone)
+            // snapToEdge(); 
+        }
+    };
+
+    // 绑定事件
+    bar.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+
+    bar.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+}
+
+// 自动吸附边缘 (可选功能，如果你想要可以取消注释)
+/*
+function snapToEdge() {
+    const bar = document.getElementById('statusHeartbeatBar');
+    const screen = document.querySelector('.phone-screen');
+    const barRect = bar.getBoundingClientRect();
+    const screenRect = screen.getBoundingClientRect();
+    
+    // 计算当前中心点
+    const currentLeft = parseFloat(bar.style.left);
+    const centerX = currentLeft + barRect.width / 2;
+    const screenCenterX = screenRect.width / 2;
+    
+    // 判断靠左还是靠右
+    if (centerX < screenCenterX) {
+        bar.style.left = '10px'; // 吸附左边
+    } else {
+        bar.style.left = (screenRect.width - barRect.width - 10) + 'px'; // 吸附右边
+    }
+}
+*/
+
+// 在初始化时启动拖拽监听
+document.addEventListener('DOMContentLoaded', () => {
+    initDraggableHeartbeat();
+});
 
 
 // 初始化，

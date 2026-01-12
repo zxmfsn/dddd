@@ -560,6 +560,18 @@
 </div>
 
 
+<!-- 状态监控悬浮条 (可拖动版) -->
+<!-- 注意：这里删掉了 onclick 属性，将在 JS 中处理点击 -->
+<div class="status-heartbeat-bar" id="statusHeartbeatBar" style="display: none;">
+    <div class="heartbeat-center">
+        <span class="heartbeat-icon">♥</span>
+        <span class="heartbeat-bpm" id="heartbeatBpm">72</span>
+    </div>
+</div>
+
+
+
+
 
      
    
@@ -747,8 +759,18 @@
                     <input type="checkbox" id="cityInfoCheckbox" onclick="handleCityInfoCheckbox()" style="accent-color: #333;">
                 </div>
             </div>
+            <div class="ins-list-item">
+    <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+    <div class="ins-item-label">状态监控</div>
+    <div style="display: flex; align-items: center;">
+        <input type="checkbox" id="statusMonitorCheckbox" onclick="handleStatusMonitorCheckbox()" style="accent-color: #333;">
+    </div>
+</div>
+
         </div>
 
+
+        
         <div class="ins-list-group">
             <div style="padding: 15px 0;">
                 <div style="display: flex; align-items: center; margin-bottom: 8px;">
@@ -1522,6 +1544,103 @@
     </div>
 </div>
 
+<!-- 状态监控弹窗 -->
+<div class="modal-overlay" id="statusMonitorModal" onclick="closeStatusMonitorModal(event)">
+    <div class="status-monitor-panel" onclick="event.stopPropagation()">
+        <div class="status-monitor-header">
+            <div class="status-monitor-title">状态监控</div>
+            <button class="status-close-btn" onclick="closeStatusMonitorModal()">×</button>
+        </div>
+        
+        <div class="status-monitor-scroll">
+            <!-- 此刻心情 -->
+            <div class="status-block">
+                <div class="status-block-header">
+                    <div class="status-block-title">
+                        <span class="status-emoji">💭</span>
+                        此刻心情
+                    </div>
+                    <div class="status-heartbeat-mini">
+                        <svg class="ecg-mini" viewBox="0 0 60 20" preserveAspectRatio="none">
+                            <polyline class="ecg-line-mini" points="0,10 10,10 15,3 20,17 25,10 35,10 40,3 45,17 50,10 60,10"/>
+                        </svg>
+                        <span class="bpm-mini" id="statusBpm">72 BPM</span>
+                    </div>
+                </div>
+                <div class="status-block-content" id="statusMoodText">今天心情不错，阳光正好~</div>
+                <div class="mood-progress">
+                    <div class="mood-progress-fill" id="moodProgressFill" style="width: 75%;"></div>
+                </div>
+                <div class="mood-label"><span id="moodPercent">75</span>% 积极</div>
+            </div>
+            
+            <!-- 今日穿着 -->
+            <div class="status-block">
+                <div class="status-block-header">
+                    <div class="status-block-title">
+                        <span class="status-emoji">👔</span>
+                        今日穿着
+                    </div>
+                </div>
+                <div class="status-block-content" id="statusClothesText">简约休闲风</div>
+                <div class="clothes-tag-list" id="statusClothesTags">
+                    <span class="clothes-tag">白色T恤</span>
+                    <span class="clothes-tag">牛仔裤</span>
+                    <span class="clothes-tag">运动鞋</span>
+                </div>
+            </div>
+            
+            <!-- 当前行为 -->
+            <div class="status-block">
+                <div class="status-block-header">
+                    <div class="status-block-title">
+                        <span class="status-emoji">🚶</span>
+                        当前行为
+                    </div>
+                </div>
+                <div class="status-block-content" id="statusActionText">正在咖啡厅看书，享受午后时光。</div>
+            </div>
+            
+            <!-- 内心想法 -->
+            <div class="status-block">
+                <div class="status-block-header">
+                    <div class="status-block-title">
+                        <span class="status-emoji">💡</span>
+                        内心想法
+                    </div>
+                </div>
+                <div class="status-block-content" id="statusThoughtsText">最近在思考人生的意义，也许应该计划一次旅行放松一下。</div>
+            </div>
+            
+            <!-- 今日日程 -->
+            <div class="status-block">
+                <div class="status-block-header">
+                    <div class="status-block-title">
+                        <span class="status-emoji">📅</span>
+                        今日日程
+                    </div>
+                </div>
+                <div class="schedule-list" id="statusScheduleList">
+                    <div class="schedule-row completed">
+                        <div class="schedule-dot"></div>
+                        <div class="schedule-time">09:00</div>
+                        <div class="schedule-task">晨跑锻炼</div>
+                    </div>
+                    <div class="schedule-row current">
+                        <div class="schedule-dot"></div>
+                        <div class="schedule-time">14:00</div>
+                        <div class="schedule-task">咖啡厅阅读</div>
+                    </div>
+                    <div class="schedule-row upcoming">
+                        <div class="schedule-dot"></div>
+                        <div class="schedule-time">19:00</div>
+                        <div class="schedule-task">与朋友聚餐</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
     <script src="script.js"></script>
