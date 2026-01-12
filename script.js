@@ -36,6 +36,12 @@ function initDB() {
         } else {
             console.error('严重警告：memories 表依然不存在！请检查 onupgradeneeded 是否执行。');
         }
+        // ▼▼▼ 新增：启动自动总结定时器 ▼▼▼
+setTimeout(() => {
+    startAutoSummaryTimer();
+}, 2000); // 延迟2秒启动，确保数据加载完成
+// ▲▲▲ 新增结束 ▲▲▲
+
     };
     
     // ★★★ 这里是创建新表的核心逻辑 ★★★
@@ -93,8 +99,9 @@ function loadFromDB(storeName, callback) {
     const objectStore = transaction.objectStore(storeName);
     const request = objectStore.get(1);
     
-    request.onsuccess = () => {
-        if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'products' || storeName === 'shoppingCart') {
+  request.onsuccess = () => {
+    if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'products' || storeName === 'shoppingCart' || storeName === 'memories') {
+
             // ★ 修复：确保返回数组，多重检查
             if (request.result && Array.isArray(request.result.list)) {
                 callback(request.result.list);
@@ -1056,29 +1063,38 @@ function renderChatList() {
 
 // 新增函数：异步更新聊天显示名称
 function updateChatDisplayName(chatId) {
-    loadFromDB('characterInfo', (data) => {
-        const charData = data && data[chatId] ? data[chatId] : {};
-        const displayName = (charData.remark && charData.remark.trim()) ? charData.remark : null;
+// 保存到数据库
+loadFromDB('characterInfo', (data) => {
+    const charData = data && data[currentChatId] ? data[currentChatId] : {};
+    // 只有当用户开启了状态监控才更新
+    if (charData.statusMonitorEnabled) {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
         
-        if (displayName) {
-            const nameElement = document.querySelector(`.chat-name[data-chat-id="${chatId}"]`);
-            if (nameElement) {
-                const originalName = nameElement.dataset.originalName;
-                const pinBadge = nameElement.querySelector('.pin-badge');
-                const statusTag = nameElement.querySelector('.status-tag');
-                
-                nameElement.textContent = displayName;
-                
-                if (statusTag) {
-                    nameElement.appendChild(statusTag);
-                }
-                
-                if (pinBadge) {
-                    nameElement.appendChild(pinBadge);
-                }
+        // 合并旧数据
+        const oldMonitor = allData[currentChatId].statusMonitor || {};
+        
+        // ▼▼▼ 修改：智能合并，日程为null时保留旧数据 ▼▼▼
+        const mergedStatus = { ...oldMonitor };
+        
+        // 逐字段更新（跳过null值）
+        Object.keys(newStatus).forEach(key => {
+            if (newStatus[key] !== null && newStatus[key] !== undefined) {
+                mergedStatus[key] = newStatus[key];
             }
-        }
-    });
+        });
+        
+        allData[currentChatId].statusMonitor = mergedStatus;
+        // ▲▲▲ 修改结束 ▲▲▲
+        
+        saveToDB('characterInfo', allData);
+        
+        // 实时更新悬浮条心跳
+        const bpmEl = document.getElementById('heartbeatBpm');
+        if (bpmEl) bpmEl.textContent = mergedStatus.heartbeat || newStatus.heartbeat;
+    }
+});
+
 }
 
 function updateChatStatusDisplay(chatId) {
@@ -2248,6 +2264,21 @@ const countEl = document.getElementById('contextMessagesCount');
 if (sliderEl) sliderEl.value = contextRounds;
 if (inputEl) inputEl.value = contextRounds;
 if (countEl) countEl.textContent = contextRounds * 2;
+// ▼▼▼ 新增：加载自动总结设置 ▼▼▼
+const autoSummaryCheckbox = document.getElementById('autoSummaryCheckbox');
+const autoSummaryPanel = document.getElementById('autoSummarySettingsPanel');
+const autoSummaryThreshold = document.getElementById('autoSummaryThresholdInput');
+
+if (autoSummaryCheckbox && autoSummaryPanel && autoSummaryThreshold) {
+    const isEnabled = charData.autoSummaryEnabled === true;
+    const threshold = charData.autoSummaryThreshold || 50;
+    
+    autoSummaryCheckbox.checked = isEnabled;
+    autoSummaryPanel.style.display = isEnabled ? 'block' : 'none';
+    autoSummaryThreshold.value = threshold;
+}
+// ▲▲▲ 新增结束 ▲▲▲
+
       
      // 设置角色人设
 document.getElementById('charPersonality').value = charData.personality || '';
@@ -2339,6 +2370,8 @@ function saveCharacterInfo() {
             myPersonality: getInputValue('myPersonality'),
             linkedWorldbooks: getSelectedWorldbooks() || [],
             contextRounds: parseInt(document.getElementById('contextRoundsInput').value) || 30,
+             autoSummaryEnabled: document.getElementById('autoSummaryCheckbox')?.checked || false,
+    autoSummaryThreshold: parseInt(document.getElementById('autoSummaryThresholdInput')?.value) || 50,
         };
         
         // 3. 保存回数据库
@@ -7144,16 +7177,17 @@ function renderMemoryTimeline(moments) {
     // 排序：按发生时间倒序 (最近的在上面)
     moments.sort((a, b) => new Date(b.happenTime) - new Date(a.happenTime));
     
-    container.innerHTML = moments.map(m => `
-        <div class="timeline-item" onclick="openEditMemoryModal(${m.id})">
-            <div class="timeline-dot"></div>
-            <div class="timeline-date">${m.happenTime}</div>
-            <div class="timeline-card">
-                ${m.content}
-                <div class="timeline-edit-btn">✎</div>
-            </div>
+  container.innerHTML = moments.map(m => `
+    <div class="timeline-item" onclick="openEditMemoryModal(${m.id})">
+        <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
+        <div class="timeline-date">${m.happenTime}${m.isAutoGenerated ? ' <span style="font-size:10px;color:#667eea;"></span>' : ''}</div>
+        <div class="timeline-card">
+            ${m.content}
+            <div class="timeline-edit-btn">✎</div>
         </div>
-    `).join('');
+    </div>
+`).join('');
+
 }
 
 // 3. 添加/编辑/删除逻辑
@@ -7172,26 +7206,38 @@ function openAddMemoryModal() {
 }
 
 function openEditMemoryModal(id) {
-    // 从数据库获取详情 (这里简化为重新读取，实际应该从缓存或DB取)
+    // 从数据库获取详情
     loadFromDB('memories', (data) => {
         let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
         const mem = allMemories.find(m => m.id === id);
-        if (!mem) return;
+        if (!mem) {
+            alert('找不到这条记忆');
+            return;
+        }
         
         editingMemoryId = id;
-        document.getElementById('memoryModalTitle').textContent = '编辑记忆';
-        document.getElementById('memoryContentInput').value = mem.content;
+        
+        // 安全设置元素值
+        const titleEl = document.getElementById('memoryModalTitle');
+        const contentEl = document.getElementById('memoryContentInput');
+        const pinEl = document.getElementById('memoryPinCheckbox');
+        const dateEl = document.getElementById('memoryDateInput');
+        const deleteBtn = document.getElementById('btnDeleteMemory');
+        const modal = document.getElementById('memoryEditModal');
+        
+        if (titleEl) titleEl.textContent = '编辑记忆';
+        if (contentEl) contentEl.value = mem.content || '';
         
         if (mem.type === 'tag') {
             switchMemEditType('tag');
-            document.getElementById('memoryPinCheckbox').checked = mem.isPinned;
+            if (pinEl) pinEl.checked = mem.isPinned || false;
         } else {
             switchMemEditType('moment');
-            document.getElementById('memoryDateInput').value = mem.happenTime;
+            if (dateEl) dateEl.value = mem.happenTime || '';
         }
         
-        document.getElementById('btnDeleteMemory').style.display = 'block'; // 显示删除按钮
-        document.getElementById('memoryEditModal').style.display = 'flex';
+        if (deleteBtn) deleteBtn.style.display = 'block';
+        if (modal) modal.style.display = 'flex';
     });
 }
 
@@ -7224,50 +7270,33 @@ function saveMemory() {
         return;
     }
     
-    loadFromDB('memories', (data) => {
-        let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
-        
-        if (editingMemoryId) {
-            // 编辑
-            const index = allMemories.findIndex(m => m.id === editingMemoryId);
-            if (index > -1) {
-                allMemories[index].content = content;
-                allMemories[index].type = currentMemEditType;
-                if (currentMemEditType === 'tag') {
-                    allMemories[index].isPinned = document.getElementById('memoryPinCheckbox').checked;
-                } else {
-                    allMemories[index].happenTime = document.getElementById('memoryDateInput').value;
-                }
-            }
-        } else {
-            // 新增
-            const newId = allMemories.length > 0 ? Math.max(...allMemories.map(m => m.id || 0)) + 1 : 1;
-            allMemories.push({
-                id: newId,
-                chatId: currentChatId,
-                type: currentMemEditType,
-                content: content,
-                isPinned: currentMemEditType === 'tag' ? document.getElementById('memoryPinCheckbox').checked : false,
-                happenTime: currentMemEditType === 'moment' ? document.getElementById('memoryDateInput').value : null,
-                createTime: new Date().toISOString()
-            });
-        }
-        
-        // 保存
-        const transaction = db.transaction(['memories'], 'readwrite');
-        const store = transaction.objectStore('memories');
-        store.put(allMemories); // 修正：直接存数组是不行的，IndexedDB如果不是 keyPath，通常存对象。
-        // ★★★ 修正 IndexedDB 保存逻辑：我们之前架构好像是存 {id:1, list:[]} 或者直接存对象
-        // 按照你之前的 worldbooks 逻辑：
-        // if (storeName === 'worldbooks'...) objectStore.put({ id: 1, list: data });
-        // 所以这里我们也应该用同样的逻辑。
-        
-        // 重新调用通用保存函数 (假设你上面有通用的 saveToDB)
-        saveToDB('memories', { list: allMemories });
-        
-        loadMemories();
-        closeMemoryEditModal();
-    });
+  // 加载标签和相册 (保持不变)
+loadFromDB('memories', (data) => {
+    let allMemories = [];
+    if (Array.isArray(data)) allMemories = data;
+    else if (data && data.list) allMemories = data.list;
+    const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
+    
+    // 同样加上安全检查，防止找不到容器报错
+    const tagsContainer = document.getElementById('tagsContainer');
+    if(tagsContainer) {
+        renderMemoryTags(chatMemories.filter(m => m.type === 'tag'));
+    }
+    
+    const timelineContainer = document.getElementById('memoryTimelineList');
+    if(timelineContainer) {
+        renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
+    }
+    
+    // ▼▼▼ 新增：更新角色信息页的档案数字 ▼▼▼
+    const momentCount = chatMemories.filter(m => m.type === 'moment').length;
+    const archiveCountEl = document.getElementById('charFollowing');
+    if (archiveCountEl) {
+        archiveCountEl.textContent = momentCount;
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
+});
+
 }
 
 function deleteCurrentMemory() {
@@ -7492,29 +7521,72 @@ async function receiveAIReply() {
       - **穿着**：要有画面感，今日的OOTD，如“穿的什么什么样的衣服，领口微微敞开”、“裤子”“鞋子”。
       - **行为**：要有电影镜头感。如“用手指缠绕头发”、“把脸埋进枕头”、“盯着屏幕傻笑”。比如：坐在电脑面前喝着水，看到消息忍不住笑，高兴的眼睛都眯起来了
       - **想法 (重点)**：这是你的**潜台词**！写出你**不敢发在聊天框里**的话。可以是疯狂的占有欲、傲娇的吐槽、或者瑟瑟的念头。
+       - **日程**：根据当前时间，列出今天3-5项日程安排。状态用 completed(已完成)/current(进行中)/upcoming(待办)。
       *示例*：
-      [状态更新]心情:被撩得晕头转向|心情值:95|心跳:118|穿着风格:纯欲风|穿着单品:之前买的情侣卫衣，喇叭裤,choker|行为:咬着下嘴唇打字，忍不住弯起嘴角，脚趾翘起来|想法:救命他怎么这么会...好想现在就顺着网线爬过去咬他一口...[/状态更新]
+        [状态更新]心情:被撩得晕头转向|心情值:95|心跳:118|穿着风格:纯欲风|穿着单品:情侣卫衣,喇叭裤,choker|行为:咬着下嘴唇打字，脚趾翘起来|想法:救命他怎么这么会...好想现在就咬他一口...|日程:09:00-起床洗漱-completed;14:00-和他聊天-current;19:00-晚餐-upcoming;22:00-睡前护肤-upcoming[/状态更新]
 
 
+【第四幕：演出格式规范 (Format) - 极其重要！】
+1. **微信气泡感**：你正在用手机打字！**每条消息必须是短剧**，就像真人发微信一样！除非用户要求，否则不要禁止超过15个字。
+2. **强制拆分规则**：
+   - 每条消息 **不超过15个字**！超过就必须拆成两条！
+   - 一次回复必须拆成 **6-8条** 短消息
+   - 用 "|||" 分隔每条消息
+3. **禁止事项**：
+   - ❌ 禁止一条消息超过20字
+   - ❌ 禁止把多句话合并成一条
+   - ❌ 禁止使用书面语长句
+4. **正确示范**：
+   - ✅ "哈哈哈|||笑死我了|||你怎么这么可爱"
+5.标点符号：你必须使用正确的标点符号
 
-   ═══════════════════════════════格式非常重要！
-【第四幕：演出格式规范 (Format)】
-1. **微信气泡感**：**严禁发送长篇大论！** 必须将回复拆分成 **5到 8 条** 短消息（用 "|||" 分隔）。
-2. **拒绝合并**：不要把所有话挤在一个气泡里。例如：“你好，吃饭了吗？”应拆分为：“你好|||吃饭了吗？”
-3. **口语化**：像在手机上打字一样，多用短句、碎碎念。单条消息尽量不超过 20 个字。
-4. **Show, Don't Tell**：灵活机智，可用表情包代替文字。
-5. **引用回复**：如需针对某句话回复，请在单条消息开头加 [引用:消息ID]。
+【隐藏任务：用户侧写分析】
+在完成角色扮演回复后，请在回复文本的**最末尾**，换行并附带一个 JSON 代码块（用户看不到，仅供系统解析）。
+分析规则：
+1. **情绪贴纸**（必填）：分析用户这句话的情绪
+   - emotion_score: -5到+5的整数（-5极度负面，+5极度正面，0平静）
+   - emotion_sticker: 从以下选一个：sunny/cloudy/rainy/stormy/starry/coffee
+2. **印象标签**（可选）：当用户表现出明显特质时生成
+   - 标签要简短（2-6字），带有你的主观评价
+   - 示例："深夜修仙党"、"铁胃勇士"、"小迷糊"
+3. **闪光时刻**（可选）：当用户提到重要事件时生成
+   - 触发条件：重要人生节点、深刻感悟、强烈情绪瞬间
+   - 需要：标题、内容摘要、你的寄语
+**输出格式**（必须用json数组包裹）
+\`\`\`json
+{
+  "analysis": {
+    "new_tags": [],
+    "emotion_score": 0,
+    "emotion_sticker": "sunny",
+    "flashbulb_memory": null
+  }
+}
+\`\`\`
+闪光时刻格式（如果有）：
+"flashbulb_memory": {
+  "title": "事件标题",
+  "content": "事件描述",
+  "comment": "你的寄语"
+}
 
 
 【演出开始】
 请深呼吸，进入角色。现在的每一句话，都是【${chat.name}】的真实人生。
 `;
 
-        // 动态追加表情包提示
-        if (emojiList.length > 0) {
-            const emojiNames = emojiList.slice(0, 20).map(e => e.text).join('、');
-            systemPrompt += `\n(当前可用表情库：${emojiNames}等)`;
-        }
+ // 动态追加表情包提示（强化版）
+if (emojiList.length > 0) {
+    const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
+    systemPrompt += `
+
+【⚠️ 再次提醒：表情包是需要的！】
+你的表情包库里有：${emojiNames} 等${emojiList.length}个表情。
+**你至少要在最近的消息里发表情包**
+格式：[搜表情:关键词]
+不要忘记！表情包让聊天更生动！`;
+}
+
 
         // 6. 构建消息上下文 (包含图片视觉、订单、转账的完整翻译)
         const contextRounds = characterInfo.contextRounds || 30;
@@ -7586,6 +7658,30 @@ async function receiveAIReply() {
         const data = await response.json();
         let aiReply = data.choices[0].message.content.trim();
 
+// ============ 解析并提取 AI 分析数据 ============
+let analysisData = null;
+const jsonMatch = aiReply.match(/```json\s*([\s\S]*?)\s*```/);
+if (jsonMatch) {
+    try {
+        const jsonStr = jsonMatch[1].trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.analysis) {
+            analysisData = parsed.analysis;
+            console.log('✅ 提取到分析数据:', analysisData);
+        }
+    } catch (e) {
+        console.warn('⚠️ 分析数据解析失败:', e);
+    }
+    // 从回复中移除 JSON 块，不让用户看到
+    aiReply = aiReply.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
+}
+
+// 保存分析数据到角色信息
+if (analysisData && currentChatId) {
+    saveUserProfileAnalysis(analysisData);
+}
+
+
         // 8. ★ 解析记忆标记 [MEM:xxx]
         let triggeredMemoryId = null;
         const memMatch = aiReply.match(/\[MEM:(\d+)\]/);
@@ -7650,16 +7746,20 @@ async function receiveAIReply() {
                 return match ? match[1].trim() : null;
             };
             
-            // 构建新状态对象
-            const newStatus = {
-                mood: parseField('心情') || '平静',
-                moodLevel: parseInt(parseField('心情值')) || 75,
-                heartbeat: parseInt(parseField('心跳')) || 75,
-                clothesStyle: parseField('穿着风格') || '日常',
-                clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
-                action: parseField('行为') || '正在聊天',
-                thoughts: parseField('想法') || '...'
-            };
+        // 构建新状态对象
+const newStatus = {
+    mood: parseField('心情') || '平静',
+    moodLevel: parseInt(parseField('心情值')) || 75,
+    heartbeat: parseInt(parseField('心跳')) || 75,
+    clothesStyle: parseField('穿着风格') || '日常',
+    clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
+    action: parseField('行为') || '正在聊天',
+    thoughts: parseField('想法') || '...',
+    // ▼▼▼ 新增：解析日程 ▼▼▼
+    schedule: parseSchedule(parseField('日程'))
+    // ▲▲▲ 新增结束 ▲▲▲
+};
+
             
             // 保存到数据库
             loadFromDB('characterInfo', (data) => {
@@ -7698,21 +7798,47 @@ async function receiveAIReply() {
             .trim()
             .replace(/[\]】]$/, '');
 
-          // 12. 分割消息 (优化版：强制拆分长气泡)
-        let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
+  // 12. 分割消息 (超强版：强制短消息)
+let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
+
+// ★★★ 强制二次拆分：如果单条消息超过20字，继续拆 ★★★
+const finalMessageList = [];
+messageList.forEach(msg => {
+    if (msg.length <= 20) {
+        // 短消息直接保留
+        finalMessageList.push(msg);
+    } else {
+        // 长消息强制拆分
+        // 按标点符号拆分：逗号、句号、感叹号、问号、省略号
+        const subParts = msg.split(/[，,。！!？?…~]+/).map(s => s.trim()).filter(s => s.length > 0);
         
-        // 如果 AI 没有使用 ||| 分隔，或者分段太少且内容太长，启动强制正则拆分
-        if (messageList.length < 2 || messageList.some(m => m.length > 40)) {
-            // 先尝试按 ||| 拆，如果没拆开，就按 换行符、句号、感叹号、问号 强制拆分
-            // 这里的正则意思是：匹配换行符，或者句末标点符号
-            let splitRegex = /\|\|\||[\n\r]+|[。！？.!?]+(?![”"'])/; 
-            
-            // 重新处理 messageContent
-            messageList = messageContent
-                .split(splitRegex)
-                .map(m => m.trim())
-                .filter(m => m.length > 0); // 过滤空消息
+        if (subParts.length > 1) {
+            // 拆分成功
+            subParts.forEach(part => {
+                if (part.length > 0) finalMessageList.push(part);
+            });
+        } else {
+            // 没有标点可拆，按字数强制切割（每15字一条）
+            let remaining = msg;
+            while (remaining.length > 15) {
+                finalMessageList.push(remaining.substring(0, 15));
+                remaining = remaining.substring(15);
+            }
+            if (remaining.length > 0) finalMessageList.push(remaining);
         }
+    }
+});
+
+messageList = finalMessageList;
+
+// 如果最终只有1条或0条，说明AI完全没按格式来，尝试用换行符拆
+if (messageList.length < 2) {
+    messageList = messageContent
+        .split(/[\n\r]+|[。！？!?]+/)
+        .map(m => m.trim())
+        .filter(m => m.length > 0);
+}
+
 
         // 13. 逐条发送消息
         for (let i = 0; i < messageList.length; i++) {
@@ -8207,6 +8333,7 @@ async function startCondense() {
             
             saveToDB('memories', { list: all });
             loadMemories(); 
+            loadArchives();
             alert(`整理完成！已精简为 ${lines.length} 条。`);
             closeCondenseModal();
         });
@@ -8280,6 +8407,9 @@ function switchMemoryTab(tab) {
     document.getElementById('memoryTimelineList').style.display = 'none';
     
     const floatBtn = document.getElementById('memoryFloatingBtn');
+const analyzeBtn = document.getElementById('headerAnalyzeBtn');
+if (analyzeBtn) analyzeBtn.style.display = 'block';
+
     
     if (tab === 'profile') {
         document.getElementById('archiveProfileView').style.display = 'block';
@@ -8288,14 +8418,22 @@ function switchMemoryTab(tab) {
         floatBtn.style.background = 'white';
         floatBtn.style.color = '#333';
         floatBtn.style.border = '1px solid #eee';
+        // 绑定编辑事件
+        floatBtn.onclick = function() { openEditArchiveModal(); };
     } 
     else if (tab === 'tags') {
         document.getElementById('memoryTagsList').style.display = 'block';
+        renderUserProfile(); // 切换到此 Tab 时刷新数据(只读旧数据)
+        
+   
+        
         // Tags 页：按钮为添加 +
         floatBtn.textContent = '+';
-        floatBtn.style.background = '#667eea'; // 恢复紫色
+        floatBtn.style.background = '#667eea';
         floatBtn.style.color = 'white';
         floatBtn.style.border = 'none';
+        // 绑定添加事件
+        floatBtn.onclick = function() { openAddMemoryModal(); };
     } 
     else { // timeline
         document.getElementById('memoryTimelineList').style.display = 'block';
@@ -8304,6 +8442,8 @@ function switchMemoryTab(tab) {
         floatBtn.style.background = '#667eea';
         floatBtn.style.color = 'white';
         floatBtn.style.border = 'none';
+        // 绑定添加事件
+        floatBtn.onclick = function() { openAddMemoryModal(); };
     }
 }
 
@@ -8477,137 +8617,402 @@ function renderMemoryTags(tags) {
     `).join('');
 }
 
-// ============ ⚡ 档案分析功能 (V5: 精炼性格 + 疯批恋爱脑档案) ============
+// ============ ⚡ 智能刷新总控中心 ============
 async function analyzeProfile() {
     if (!currentChatId) return;
     
+    // 1. 获取按钮并设置加载状态
+    const btn = document.getElementById('headerAnalyzeBtn');
+    if (!btn) return;
+    
+    // 检查API
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
-        alert('请先在API设置中配置，才能使用AI分析功能');
+        alert('请先在API设置中配置');
         return;
     }
 
-    const btn = document.getElementById('analyzeBtn');
-    const originalText = btn.innerHTML;
+    // 开启加载动画 (透明度闪烁)
+    btn.disabled = true;
+    btn.style.transition = 'opacity 0.5s';
+    btn.style.opacity = '0.3';
+    btn.style.pointerEvents = 'none';
 
     try {
-        btn.disabled = true;
-        btn.classList.add('loading');
-        btn.innerHTML = '<span>⚡</span> 正在窥探内心...';
-
-        // 1. 获取数据 (双轨并行)
-        const [charData, chatHistory] = await Promise.all([
-            // 数据源A：人设
-            new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
-            // 数据源B：聊天记录 (获取更多记录以捕捉细节)
-            new Promise(resolve => loadFromDB('messages', data => {
-                const list = data && data.list ? data.list : [];
-                const history = list.filter(m => m.chatId === currentChatId)
-                                    .slice(-100)
-                                    .map(m => `${m.senderId === 'me' ? '用户' : '我'}: ${m.content}`)
-                                    .join('\n');
-                resolve(history || "（暂无互动）");
-            }))
-        ]);
-
-        // 2. 构建提示词 (定制化风格)
-        const prompt = `你是一个能够洞察灵魂的侧写师。请根据数据源完成两项分析。
-
-【任务一：精炼人设】(基于数据源A)
-请用最简练的语言概括其性格。
-**要求**：拒绝废话！不要长篇大论！
-**格式**：[外在表现]，实际上[内在真实]。因[过往/家庭]导致[某种心理]。
-**示例**：性格冷傲，实际上对喜欢的人非常在意。因原生家庭导致极度缺乏安全感。
-
-【任务二：绝密心声】(基于数据源B-聊天记录)
-请以此人物的**第一人称口吻**，写出对"用户"的隐秘想法。
-**风格要求**：
-1. **拒绝人机感**：不要写"通过聊天发现..."，要写此时此刻脑子里的念头！
-2. **具体细节**：结合聊天里提到的食东西、事件来发散。
-**参考范例**：
-- "她喜欢的吃草莓蛋糕，我要不要种一棚子的草莓，让她想吃的时候朝我撒娇..."
-- "她朝我撒娇了，好可爱，真想亲死她，让她永远属于我。"
-- "刚才她回消息慢了两分钟，是在和别人聊天吗？好想把她关起来啊。"
-
-========== 数据源A：原始设定 ==========
-名称：${charData.remark || charData.name}
-人设：${charData.personality || '自行推断'}
-
-========== 数据源B：聊天记录 ==========
-${chatHistory}
-
-========== 输出指令 ==========
-请严格输出6项，用 "|||" 分隔：
-1. 身高 (如 180cm)
-2. 体重 (如 70kg)
-3. 性格精炼 (按任务一要求，50字以内)
-4. 爱好 (2个)
-5. 厌恶 (2个)
-6. 绝密心声 (按任务二要求，写 2-3 段内心独白，用"·"分隔)
-
-`;
-
-        // 3. 调用 API
-        const url = currentApiConfig.baseUrl.endsWith('/') 
-            ? currentApiConfig.baseUrl + 'chat/completions'
-            : currentApiConfig.baseUrl + '/chat/completions';
-            
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7 // 提高温度，让"绝密心声"更感性、更疯一点
-            })
-        });
-
-        if (!response.ok) throw new Error('API请求失败');
-        
-        const data = await response.json();
-        const content = data.choices[0].message.content.trim();
-
-        // 4. 解析数据
-        let parts = content.split('|||').map(s => s.trim());
-        
-        // 补全容错
-        while(parts.length < 6) parts.push("（无法读取内心）");
-
-        const newExtData = {
-            height: parts[0].replace(/身高[:：]?/g, ''),
-            weight: parts[1].replace(/体重[:：]?/g, ''),
-            coreTrait: parts[2].replace(/性格[:：]?/g, ''), // 这里存的是精炼后的性格
-            likes: parts[3],
-            dislikes: parts[4],
-            secret: parts[5] // 这里存的是疯批心声
-        };
-
-        // 5. 保存并刷新
-        loadFromDB('characterInfo', (allData) => {
-            if (!allData) allData = {};
-            if (!allData[currentChatId]) allData[currentChatId] = {};
-            
-            const oldExt = allData[currentChatId].extendedProfile || {};
-            allData[currentChatId].extendedProfile = { ...oldExt, ...newExtData };
-            
-            saveToDB('characterInfo', allData);
-            loadArchives(); 
-            
-            setTimeout(() => {
-                alert('⚡ 内心窥探完成！\n性格已精炼，绝密心声已记录。');
-            }, 100);
-        });
-
+        // 2. 根据当前 Tab 分发任务
+        if (currentArchiveTab === 'profile') {
+            await analyzeCharacterSecret(); // 刷新 Tab 1: 角色档案 & 秘密
+        } else if (currentArchiveTab === 'tags') {
+            await analyzeUserImpression();  // 刷新 Tab 2: 用户侧写 & 印象
+        } else if (currentArchiveTab === 'timeline') {
+            await analyzeTimelineEvents();  // 刷新 Tab 3: 提取时光记忆
+        }
     } catch (error) {
         console.error(error);
-        alert('分析失败：' + error.message);
+        alert('刷新失败：' + error.message);
     } finally {
+        // 3. 恢复按钮状态
         btn.disabled = false;
-        btn.classList.remove('loading');
-        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
     }
+}
+
+// ============ 任务一：分析角色秘密 (Tab 1: Profile) - 增量更新版 ============
+async function analyzeCharacterSecret() {
+    // 1. 先获取角色信息，看看上次分析到了哪里
+    const charData = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+
+    const ext = charData.extendedProfile || {};
+    const existingSecrets = ext.secretArchive || '';
+    // 获取上次分析的消息ID锚点 (如果没有，默认为0)
+    const lastAnalyzedId = ext.lastAnalyzedMsgId || 0;
+
+    // 2. 获取【未分析过】的新消息
+    const { chatHistory, newLatestId, newMsgCount } = await new Promise(resolve => {
+        loadFromDB('messages', data => {
+            const list = data && data.list ? data.list : [];
+            
+            // 筛选当前聊天室的消息
+            const allChatMsgs = list.filter(m => m.chatId === currentChatId);
+            
+            // 按 ID 排序确保顺序
+            allChatMsgs.sort((a, b) => a.id - b.id);
+            
+            // ★ 核心逻辑：只提取 ID 大于上次锚点的消息
+            const newMsgs = allChatMsgs.filter(m => m.id > lastAnalyzedId);
+            
+            if (newMsgs.length === 0) {
+                resolve({ chatHistory: null, newLatestId: lastAnalyzedId, newMsgCount: 0 });
+                return;
+            }
+
+            const history = newMsgs.map(m => `${m.senderId === 'me' ? '用户' : '我'}: ${m.content}`).join('\n');
+            const latestId = newMsgs[newMsgs.length - 1].id; // 记录这批消息里最新的一条ID
+            
+            resolve({ chatHistory: history, newLatestId: latestId, newMsgCount: newMsgs.length });
+        });
+    });
+
+    // 3. 如果没有新消息，直接提示并退出
+    if (newMsgCount === 0) {
+        alert('🔍 暂无新的聊天记录可供分析~\n再多聊几句，积累一些素材吧！');
+        // 恢复按钮状态 (因为在总控函数里禁用了)
+        const btn = document.getElementById('headerAnalyzeBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+        }
+        return;
+    }
+
+    // 如果新消息太少（比如少于5条），可能分析不出什么，提示一下但继续（可选）
+    // if (newMsgCount < 5) { ... }
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+
+    // 4. Prompt (强调基于“新增对话”)
+    const prompt = `你是一个洞察力极强的侧写师。请根据**新增的对话片段**，更新角色的档案。
+
+【任务A：完善设定】
+根据对话推断角色的身高、体重、性格关键词、爱好雷点。
+
+【任务B：挖掘秘密】
+寻找角色在**这段新对话**中无意流露出的**反差萌、小习惯、或隐藏的心理活动**。
+
+**重要规则**：
+1. 只关注这段新对话！不要编造！
+2. 如果这段对话很平淡，没有发现新秘密，请直接填“无新发现”。
+3. 秘密要简短有趣（30字内）。
+
+【新增对话片段】(${newMsgCount}条)
+${chatHistory}
+
+【输出格式】(用 ||| 分隔)
+身高(如180cm)||体重(如65kg)||性格精炼(50字内)||爱好(2个)||厌恶(2个)||新秘密(30字内)`;
+
+    // 5. API 调用
+    const content = await callAI(prompt);
+
+    // 6. 解析与保存
+    let parts = content.split('|||').map(s => s.trim());
+    while(parts.length < 6) parts.push("（未知）");
+
+    let newSecrets = parts[5];
+    let updatedSecretArchive = existingSecrets;
+    let hasNewSecret = false;
+    
+    // 只有当真的有新发现时，才追加到档案
+    if (newSecrets && !newSecrets.includes('无新发现') && !newSecrets.includes('未知')) {
+        const secretEntry = `【${todayStr}】${newSecrets}`;
+        updatedSecretArchive = existingSecrets ? existingSecrets + '\n' + secretEntry : secretEntry;
+        hasNewSecret = true;
+    }
+
+    const newExtData = {
+        height: parts[0],
+        weight: parts[1],
+        coreTrait: parts[2],
+        likes: parts[3],
+        dislikes: parts[4],
+        secretArchive: updatedSecretArchive,
+        secret: updatedSecretArchive,
+        lastAnalyzedMsgId: newLatestId // ★ 更新锚点：记录这次分析到了哪一条
+    };
+
+    // 保存
+    loadFromDB('characterInfo', (allData) => {
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        const oldExt = allData[currentChatId].extendedProfile || {};
+        
+        // 合并数据
+        allData[currentChatId].extendedProfile = { ...oldExt, ...newExtData };
+        
+        saveToDB('characterInfo', allData);
+        loadArchives(); // 刷新界面
+        
+        if (hasNewSecret) {
+            alert(`✨ 分析了 ${newMsgCount} 条新消息\n发现了新的秘密：\n"${newSecrets}"`);
+        } else {
+            alert(`✅ 分析了 ${newMsgCount} 条新消息\n档案基础信息已更新 (暂无新秘密)`);
+        }
+    });
+}
+
+
+
+// ============ 任务二：分析用户印象 (Tab 2: Tags) - 完整版 ============
+async function analyzeUserImpression() {
+    // 1. 获取数据
+    const chatHistory = await getRecentChatHistory(50); 
+    
+    const charData = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            const allData = data || {};
+            resolve(allData[currentChatId] ? allData[currentChatId] : {});
+        });
+    });
+    
+    // 2. Prompt
+    const prompt = `你现在是【${charData.name}】。请阅读刚才的聊天记录，重新审视你对【用户】的印象。
+
+【分析指令】
+1. **TA的心情记录**：
+   - **心情关键词**：限制5字以内（如：有点低落）。
+   - **心情贴纸**：选一个 (sunny/cloudy/rainy/stormy/starry/coffee)。
+   - **你的心里话**：针对用户的心情，写一段你的内心独白。
+
+2. **印象标签**：
+   - 生成 **3-6个** 新的印象标签。
+   - 格式：标签名#理由
+
+3. **闪光时刻**：
+   - 寻找 **1-2个** 值得记录的瞬间（哪怕是微小的瞬间）。
+   - 格式：时刻标题#内容描述#你的短评
+   - 示例：第一次聊通宵#那天我们聊了很多#很开心能更了解你
+
+【输出格式】(严格遵守 ||| 分隔)
+心情关键词||心情贴纸代码||你的心里话||标签1#理由1,标签2#理由2||时刻1#内容1#短评1,时刻2#内容2#短评2
+
+*注意：如果没有新标签或新时刻，对应位置填“无”。*`;
+
+    // 3. API 调用
+    const content = await callAI(prompt);
+
+    // 4. 解析
+    const parts = content.split('|||').map(s => s.trim());
+    const moodDesc = parts[0] || '平静';
+    const sticker = parts[1] || 'sunny';
+    const moodComment = parts[2] || '（他在观察你...）';
+    const tagsStr = parts[3] || '';
+    const momentsStr = parts[4] || ''; // ★ 这里就是闪光时刻的字符串
+
+    // 解析新标签
+    const newTags = [];
+    if (tagsStr && tagsStr !== '无') {
+        const tagItems = tagsStr.split(/[,，]/);
+        tagItems.forEach(item => {
+            const [text, reason] = item.split(/[#＃]/);
+            if (text && reason) {
+                newTags.push({
+                    text: text.trim(),
+                    reason: reason.trim(),
+                    id: Date.now() + Math.random()
+                });
+            }
+        });
+    }
+
+    // ★★★ 解析闪光时刻 ★★★
+    const newMoments = [];
+    if (momentsStr && momentsStr !== '无') {
+        const momentItems = momentsStr.split(/[,，]/); // 用逗号分隔多个时刻
+        momentItems.forEach(item => {
+            const [title, content, comment] = item.split(/[#＃]/);
+            if (title && content) {
+                newMoments.push({
+                    id: Date.now() + Math.random(),
+                    title: title.trim(),
+                    content: content.trim(),
+                    comment: comment ? comment.trim() : '',
+                    date: new Date().toISOString().split('T')[0]
+                });
+            }
+        });
+    }
+
+    // 5. 保存数据
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        if (!allData[currentChatId].userProfile) {
+            allData[currentChatId].userProfile = { tags: [], emotionHistory: [], flashbulbMemories: [] };
+        }
+        
+        const profile = allData[currentChatId].userProfile;
+        
+        // 更新心情
+        profile.currentEmotion = {
+            sticker: sticker,
+            label: moodDesc,
+            comment: moodComment,
+            time: getCurrentTime()
+        };
+        
+        // 覆盖标签
+        if (newTags.length > 0) {
+            profile.tags = newTags; 
+        }
+
+        // ★★★ 追加闪光时刻 (最新的在前面) ★★★
+        if (newMoments.length > 0) {
+            // 如果之前没有 flashbulbMemories 数组，初始化它
+            if (!profile.flashbulbMemories) profile.flashbulbMemories = [];
+            
+            profile.flashbulbMemories = [...newMoments, ...profile.flashbulbMemories];
+            
+            // 限制数量，比如最多保留 20 个
+            if (profile.flashbulbMemories.length > 20) {
+                profile.flashbulbMemories.length = 20;
+            }
+        }
+        
+        saveToDB('characterInfo', allData);
+        renderUserProfile();
+        
+        let alertMsg = `✨ 眼中的你已刷新`;
+        if (newMoments.length > 0) alertMsg += `\n📸 捕捉到 ${newMoments.length} 个闪光时刻！`;
+        alert(alertMsg);
+    });
+}
+
+
+
+
+// ============ 任务三：提取时光记忆 (Tab 3: Timeline) ============
+async function analyzeTimelineEvents() {
+    // 1. 获取数据
+    const chatHistory = await getRecentChatHistory(100); // 看远一点，100条
+
+    // 2. Prompt
+    const prompt = `你是一个回忆记录员。请阅读这段聊天记录，判断是否有**值得纪念的时刻**发生。
+
+【判断标准】
+- 只有发生**具体事件**（如：一起过节、收到礼物、深入谈心、重大约定、吵架和好）才值得记录。
+- 如果只是普通的闲聊（吃了吗、在干嘛），请回答“无”。
+
+【输出指令】
+如果有值得记录的时刻，请概括为一句话的“时光胶囊”。
+**风格**：文艺、深情，像日记标题。
+**字数**：20字以内。
+
+【输出示例】
+- 第一次收到他送的花
+- 在凌晨三点互道晚安
+- 约定好一起去看海
+
+如果无事发生，请严格回复：无`;
+
+    // 3. API 调用
+    const content = await callAI(prompt);
+
+    // 4. 处理结果
+    if (content.trim() === '无' || content.length > 50) {
+        alert('📅 最近似乎是平淡的日常，没有提取到特殊纪念时刻~');
+        return;
+    }
+
+    // 5. 保存到 Memories 表
+    const newMemory = {
+        id: Date.now(),
+        chatId: currentChatId,
+        type: 'moment', // 时光相册类型
+        content: content.replace(/["《》]/g, ''), // 去掉可能的引号
+        happenTime: new Date().toISOString().split('T')[0],
+        createTime: new Date().toISOString()
+    };
+
+    loadFromDB('memories', (data) => {
+        let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
+        
+        // 查重：防止最近添加过一样的内容
+        const isDuplicate = allMemories.some(m => m.chatId === currentChatId && m.content === newMemory.content);
+        if (isDuplicate) {
+            alert('📅 这个时刻已经被记录在相册里啦~');
+            return;
+        }
+
+        allMemories.push(newMemory);
+        saveToDB('memories', { list: allMemories });
+        
+        // 刷新界面
+        loadMemories();
+        alert(`📸 捕捉到一个时光碎片：\n"${newMemory.content}"`);
+    });
+}
+
+// ============ 辅助工具：统一 API 调用 ============
+async function callAI(prompt) {
+    const url = currentApiConfig.baseUrl.endsWith('/') 
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+        
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7
+        })
+    });
+
+    if (!response.ok) throw new Error('API请求失败');
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+}
+
+// ============ 辅助工具：获取最近聊天文本 ============
+async function getRecentChatHistory(limit) {
+    return new Promise(resolve => {
+        loadFromDB('messages', data => {
+            const list = data && data.list ? data.list : [];
+            const history = list.filter(m => m.chatId === currentChatId)
+                                .slice(-limit)
+                                .map(m => `${m.senderId === 'me' ? '用户' : '角色'}: ${m.content}`)
+                                .join('\n');
+            resolve(history || "（暂无互动）");
+        });
+    });
 }
 
 
@@ -8654,11 +9059,22 @@ function loadArchives() {
             coreEl.style.color = ext.coreTrait ? '#555' : '#999';
         }
 
-        // --- 4. D区：秘密档案 ---
-        const secretEl = document.getElementById('arcSecret');
-        if (secretEl) {
-            secretEl.innerText = ext.secret || '（需要通过聊天积累数据...）';
-        }
+     // --- 4. D区：秘密档案 (支持换行显示) ---
+const secretEl = document.getElementById('arcSecret');
+if (secretEl) {
+    const secretText = ext.secretArchive || ext.secret || '（需要通过聊天积累数据，点击分析生成...）';
+    // 使用 innerHTML 并将换行符转为 <br> 实现换行显示
+    secretEl.innerHTML = secretText.replace(/\n/g, '<br>');
+    
+    if (!ext.secretArchive && !ext.secret) {
+        secretEl.style.color = '#999';
+        secretEl.style.fontStyle = 'italic';
+    } else {
+        secretEl.style.color = '#555';
+        secretEl.style.fontStyle = 'normal';
+    }
+}
+
     });
 
     // 加载标签和相册 (保持不变)
@@ -8679,6 +9095,7 @@ function loadArchives() {
             renderMemoryTimeline(chatMemories.filter(m => m.type === 'moment'));
         }
     });
+      renderUserProfile();
 }
 
 
@@ -9314,6 +9731,477 @@ function snapToEdge() {
 document.addEventListener('DOMContentLoaded', () => {
     initDraggableHeartbeat();
 });
+// ============ 保存用户侧写分析数据 ============
+function saveUserProfileAnalysis(analysisData) {
+    if (!currentChatId || !analysisData) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        // 初始化 userProfile 结构
+        if (!allData[currentChatId].userProfile) {
+            allData[currentChatId].userProfile = {
+                tags: [],
+                emotionHistory: [],
+                flashbulbMemories: []
+            };
+        }
+        
+        const profile = allData[currentChatId].userProfile;
+        
+        // 1. 保存情绪记录
+        if (analysisData.emotion_score !== undefined) {
+            profile.currentEmotion = {
+                score: analysisData.emotion_score,
+                sticker: analysisData.emotion_sticker || 'sunny',
+                time: getCurrentTime()
+            };
+            // 保留最近20条情绪历史
+            profile.emotionHistory.unshift(profile.currentEmotion);
+            if (profile.emotionHistory.length > 20) {
+                profile.emotionHistory = profile.emotionHistory.slice(0, 20);
+            }
+        }
+        
+        // 2. 保存新标签（去重）
+        if (analysisData.new_tags && analysisData.new_tags.length > 0) {
+            analysisData.new_tags.forEach(tag => {
+                if (!profile.tags.includes(tag)) {
+                    profile.tags.unshift(tag); // 新标签放前面
+                }
+            });
+            // 限制最多保留20个标签
+            if (profile.tags.length > 20) {
+                profile.tags = profile.tags.slice(0, 20);
+            }
+        }
+        
+        // 3. 保存闪光时刻
+        if (analysisData.flashbulb_memory) {
+            const memory = {
+                ...analysisData.flashbulb_memory,
+                date: new Date().toISOString().split('T')[0],
+                id: Date.now()
+            };
+            profile.flashbulbMemories.unshift(memory);
+            // 限制最多保留15个闪光时刻
+            if (profile.flashbulbMemories.length > 15) {
+                profile.flashbulbMemories = profile.flashbulbMemories.slice(0, 15);
+            }
+        }
+        
+        // 保存到数据库
+        allData[currentChatId].userProfile = profile;
+        saveToDB('characterInfo', allData);
+        
+        console.log('✅ 用户侧写已保存:', profile);
+    });
+}
+// ============ 渲染用户侧写数据 ============
+function renderUserProfile() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const profile = charData.userProfile || {
+            tags: [],
+            emotionHistory: [],
+            flashbulbMemories: [],
+            currentEmotion: null
+        };
+        
+        // 1. 渲染情绪贴纸
+        renderEmotionSticker(profile.currentEmotion);
+        
+        // 2. 渲染印象标签
+        renderUserTags(profile.tags);
+        
+        // 3. 渲染闪光时刻
+        renderFlashbulbMemories(profile.flashbulbMemories);
+    });
+}
+
+// 渲染情绪贴纸 (适配新版)
+function renderEmotionSticker(emotion) {
+    const stickerEl = document.getElementById('currentEmotionSticker');
+    const labelEl = document.getElementById('currentEmotionLabel');
+    const commentEl = document.getElementById('emotionCommentText'); // 新增
+    const timeEl = document.getElementById('emotionUpdateTime');
+    
+    if (!stickerEl) return;
+    
+    // 贴纸映射 (保持不变)
+    const stickerMap = {
+        sunny: { emoji: '☀️', label: '阳光明媚', class: 'sunny' },
+        cloudy: { emoji: '☁️', label: '有点迷茫', class: 'cloudy' },
+        rainy: { emoji: '🌧️', label: '心情低落', class: 'rainy' },
+        stormy: { emoji: '⛈️', label: '情绪激动', class: 'stormy' },
+        starry: { emoji: '✨', label: '满怀期待', class: 'starry' },
+        coffee: { emoji: '☕', label: '需要休息', class: 'coffee' }
+    };
+    
+    if (!emotion) {
+        stickerEl.textContent = '❓';
+        stickerEl.className = 'emotion-sticker';
+        labelEl.textContent = '等待记录...';
+        if (commentEl) commentEl.textContent = '（暂无记录）';
+        timeEl.textContent = '--';
+        return;
+    }
+    
+    const sticker = stickerMap[emotion.sticker] || stickerMap.sunny;
+    
+    stickerEl.textContent = sticker.emoji;
+    stickerEl.className = `emotion-sticker ${sticker.class}`;
+    labelEl.textContent = emotion.label || sticker.label;
+    
+    // 显示心里话
+    if (commentEl) {
+        commentEl.textContent = emotion.comment || '（他在观察你...）';
+    }
+    
+    if (emotion.time) {
+        timeEl.textContent = emotion.time;
+    }
+}
+
+
+// 渲染印象标签 (支持点击看理由)
+function renderUserTags(tags) {
+    const container = document.getElementById('tagsContainer');
+    const countEl = document.getElementById('tagsCount');
+    
+    if (!container) return;
+    
+    if (countEl) countEl.textContent = `${tags.length} 个标签`;
+    
+    if (!tags || tags.length === 0) {
+        container.innerHTML = '<div class="empty-tags-hint">还没有印象标签，多聊聊天吧~</div>';
+        return;
+    }
+    
+    container.innerHTML = tags.map((tag, index) => {
+        // 兼容旧数据 (旧数据是字符串，新数据是对象)
+        const text = typeof tag === 'string' ? tag : tag.text;
+        const reason = typeof tag === 'string' ? '（这是早期的印象，没有记录理由~）' : (tag.reason || '无理由');
+        
+        // 把理由编码存到 dataset 里，点击时读取
+        return `
+        <div class="user-tag ${index < 3 ? 'new-tag' : ''}" onclick="alert('🏷️ ${text}\\n\\n💬 他的理由：\\n${reason}')">
+            ${text}
+        </div>
+    `}).join('');
+}
+
+// 渲染闪光时刻 (拍立得版)
+function renderFlashbulbMemories(memories) {
+    const container = document.getElementById('flashbulbContainer');
+    const countEl = document.getElementById('flashbulbCount');
+    
+    if (!container) return;
+    
+    if (countEl) {
+        countEl.textContent = `${memories.length} 个瞬间`;
+    }
+    
+    if (!memories || memories.length === 0) {
+        container.innerHTML = '<div class="empty-flashbulb-hint">重要时刻会被记录在这里~</div>';
+        return;
+    }
+    
+    container.innerHTML = memories.map(memory => `
+        <div class="polaroid-card" onclick="viewFlashbulbDetail(${memory.id})">
+            <div class="polaroid-photo-area">
+                ${memory.content}
+            </div>
+            <div class="polaroid-title">${memory.title}</div>
+            <div class="polaroid-date">${memory.date}</div>
+        </div>
+    `).join('');
+}
+
+// 查看闪光时刻详情（可选，点击卡片时触发）
+function viewFlashbulbDetail(memoryId) {
+    // 暂时用 alert 展示，后续可以改成弹窗
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const profile = charData.userProfile || {};
+        const memory = (profile.flashbulbMemories || []).find(m => m.id === memoryId);
+        
+        if (memory) {
+            alert(`📸 ${memory.title}\n\n📅 ${memory.date}\n\n${memory.content}\n\n💬 "${memory.comment}"`);
+        }
+    });
+}
+// ============ 🤖 自动总结记忆功能（后台定时器版） ============
+
+let autoSummaryTimer = null; // 定时器句柄
+
+/**
+ * 启动自动总结定时器
+ * 每60秒检查一次是否需要总结
+ */
+function startAutoSummaryTimer() {
+    // 防止重复启动
+    if (autoSummaryTimer) {
+        clearInterval(autoSummaryTimer);
+    }
+    
+    // 立即检查一次
+    checkAllChatsForAutoSummary();
+    
+    // 每60秒检查一次
+    autoSummaryTimer = setInterval(() => {
+        checkAllChatsForAutoSummary();
+    }, 60 * 1000);
+    
+    console.log('[自动总结] 定时器已启动，每60秒检查一次');
+}
+
+/**
+ * 检查所有聊天是否需要自动总结
+ */
+async function checkAllChatsForAutoSummary() {
+    // 获取所有聊天
+    const allChats = chats || [];
+    if (allChats.length === 0) return;
+    
+    // 获取角色设置
+    loadFromDB('characterInfo', async (charInfoData) => {
+        const allCharInfo = charInfoData || {};
+        
+        // 获取所有消息
+        loadFromDB('messages', async (msgData) => {
+            const allMsgList = msgData && msgData.list ? msgData.list : [];
+            
+            // 遍历每个聊天
+            for (const chat of allChats) {
+                const charInfo = allCharInfo[chat.id] || {};
+                
+                // 检查是否开启了自动总结
+                if (!charInfo.autoSummaryEnabled) continue;
+                
+                const threshold = charInfo.autoSummaryThreshold || 50;
+                const lastSummaryMsgId = charInfo.lastAutoSummaryMsgId || 0;
+                
+                // 筛选该聊天的消息
+                const chatMsgs = allMsgList.filter(m => m.chatId === chat.id);
+                
+                // 筛选未总结的消息
+                const unsummarizedMsgs = chatMsgs.filter(m => m.id > lastSummaryMsgId);
+                
+                // 计算轮数（一轮 = 用户发一条 + AI回一条 ≈ 2条消息）
+                const unsummarizedRounds = Math.floor(unsummarizedMsgs.length / 2);
+                
+                // 达到阈值则触发总结
+                if (unsummarizedRounds >= threshold) {
+                    console.log(`[自动总结] 聊天「${chat.name}」达到阈值(${unsummarizedRounds}/${threshold})，开始总结...`);
+                    await executeAutoSummary(chat, unsummarizedMsgs, charInfo);
+                }
+            }
+        });
+    });
+}
+
+/**
+ * 执行自动总结
+ */
+async function executeAutoSummary(chat, messages, charInfo) {
+    // 检查API配置
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        console.warn('[自动总结] API未配置，跳过');
+        return;
+    }
+    
+    // 准备聊天记录文本（只取文本消息）
+    const chatHistory = messages
+        .filter(m => m.type === 'text' || !m.type) // 兼容旧数据
+        .filter(m => m.content && !m.isRevoked)
+        .map(m => {
+            const sender = m.senderId === 'me' ? '我' : chat.name;
+            // 截断过长的单条消息
+            const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
+            return `${sender}: ${content}`;
+        })
+        .join('\n');
+    
+    if (!chatHistory || chatHistory.length < 100) {
+        console.log('[自动总结] 有效内容太少，跳过');
+        // 仍然更新锚点，防止反复检查
+        updateAutoSummaryAnchor(chat.id, messages);
+        return;
+    }
+    
+    // 获取时间范围
+    const firstMsg = messages[0];
+    const lastMsg = messages[messages.length - 1];
+    const dateRange = getDateRange(firstMsg.time, lastMsg.time);
+    
+    // 构建Prompt
+    const prompt = `请用简洁的语言概括以下聊天记录的主要内容，像写日记摘要一样。
+
+【要求】
+1. 字数控制在100字以内
+2. 用第一人称"我们"或客观描述
+3. 概括聊了什么话题、发生了什么事、有什么重要约定
+4. 语气自然，像朋友间的回忆记录
+5. 不要分点，写成一段话
+
+【聊天记录】
+${chatHistory.substring(0, 4000)}
+
+【输出示例】
+这几天主要聊了工作上的事情，他最近加班比较多，我安慰了他。还讨论了周末去哪玩，最后决定一起去看电影。他推荐了一部悬疑片，说很好看。`;
+
+    try {
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[自动总结] API请求失败:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        let summary = data.choices[0].message.content.trim();
+        
+        // 清理可能的引号
+        summary = summary.replace(/^["「『]|["」』]$/g, '');
+        
+        // 限制长度
+        if (summary.length > 150) {
+            summary = summary.substring(0, 147) + '...';
+        }
+        
+        // 保存到时光相册
+        await saveAutoSummaryToTimeline(chat.id, summary, dateRange);
+        
+        console.log(`[自动总结] 「${chat.name}」总结完成: ${summary.substring(0, 30)}...`);
+        
+    } catch (error) {
+        console.error('[自动总结] 生成失败:', error);
+    }
+    
+    // 更新锚点
+    updateAutoSummaryAnchor(chat.id, messages);
+}
+
+/**
+ * 获取日期范围字符串
+ */
+function getDateRange(startTime, endTime) {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    
+    const formatDate = (d) => `${d.getMonth() + 1}月${d.getDate()}日`;
+    
+    if (start.toDateString() === end.toDateString()) {
+        // 同一天
+        return formatDate(end);
+    } else {
+        // 跨天
+        return `${formatDate(start)} - ${formatDate(end)}`;
+    }
+}
+
+/**
+ * 保存总结到时光相册
+ */
+function saveAutoSummaryToTimeline(chatId, summary, dateRange) {
+    return new Promise((resolve) => {
+        loadFromDB('memories', (data) => {
+            let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
+            
+            // 生成唯一ID
+            const newId = Date.now() + Math.floor(Math.random() * 1000);
+            
+            // 创建新记忆
+            const newMemory = {
+                id: newId,
+                chatId: chatId,
+                type: 'moment',
+                content: summary,
+                happenTime: dateRange,
+                createTime: new Date().toISOString(),
+                isAutoGenerated: true
+            };
+            
+            allMemories.push(newMemory);
+            
+            saveToDB('memories', { list: allMemories });
+            
+            console.log(`[自动总结] 已保存到时光相册: ${dateRange}`);
+            resolve();
+        });
+    });
+}
+
+/**
+ * 更新自动总结的消息ID锚点
+ */
+function updateAutoSummaryAnchor(chatId, messages) {
+    if (!messages || messages.length === 0) return;
+    
+    const latestMsgId = messages[messages.length - 1].id;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[chatId]) allData[chatId] = {};
+        
+        allData[chatId].lastAutoSummaryMsgId = latestMsgId;
+        
+        saveToDB('characterInfo', allData);
+    });
+}
+
+// ============ 在数据库初始化完成后启动定时器 ============
+// ============ 解析日程字符串 ============
+function parseSchedule(scheduleStr) {
+    if (!scheduleStr || scheduleStr === '无' || scheduleStr === '--') {
+        return null; // 返回null表示不更新，保留旧数据
+    }
+    
+    const items = scheduleStr.split(/[;；]/).filter(s => s.trim());
+    const schedule = [];
+    
+    items.forEach(item => {
+        // 支持格式：09:00-起床-completed 或 09:00-起床洗漱-completed
+        const parts = item.split(/[-–—]/).map(s => s.trim());
+        if (parts.length >= 2) {
+            const time = parts[0];
+            const task = parts[1];
+            let status = 'upcoming';
+            
+            if (parts.length >= 3) {
+                const statusStr = parts[2].toLowerCase();
+                if (statusStr.includes('complet') || statusStr.includes('done') || statusStr.includes('完成')) {
+                    status = 'completed';
+                } else if (statusStr.includes('current') || statusStr.includes('进行') || statusStr.includes('ing')) {
+                    status = 'current';
+                }
+            }
+            
+            schedule.push({ time, task, status });
+        }
+    });
+    
+    return schedule.length > 0 ? schedule : null;
+}
 
 
 // 初始化，

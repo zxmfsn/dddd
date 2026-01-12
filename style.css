@@ -1328,29 +1328,80 @@
 /* 输入栏 */
 .chat-input-bar {
     display: flex;
-    align-items: flex-end;
-    padding: 15px 20px;
-    border-top: 0.5px solid #f0f0f0; /* 极细线 */
-    background: #fafafa; /* 淡灰背景 */
-    gap: 12px;
+    align-items: center;
+    padding: 10px 15px;
+    background: #fff;
+    gap: 10px;
 }
 
 .chat-input {
     flex: 1;
-    padding: 12px 16px;
-    border: 0.5px solid #e5e5e5; /* 极细边框 */
-    border-radius: 24px; /* 更圆 */
+    padding: 10px 16px;
+    border: none;
+    border-radius: 20px;
     font-size: 16px;
     resize: none;
     max-height: 72px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     outline: none;
-    transition: all 0.3s;
-    overflow: hidden;
-    overflow-wrap: break-word;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02); /* 微阴影 */
+    background: #f2f2f7;
+    font-family: inherit;
 }
+/* 输入框右侧图标组 */
+.input-icons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid #999;
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.input-icon-btn:active {
+    transform: scale(0.9);
+    background: #f0f0f0;
+}
+
+/* 发送按钮 */
+.send-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #007aff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.send-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: white;
+    transform: rotate(-45deg);
+}
+
+.send-btn:active {
+    transform: scale(0.9);
+}
+
+.send-btn:disabled {
+    background: #ccc;
+}
+
 
 .chat-input:focus {
     border-color: #1a1a1a; /* 聚焦时变深黑 */
@@ -1394,26 +1445,7 @@
     cursor: not-allowed;
 }
 
-.receive-btn {
-    padding: 10px 20px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s;
-    white-space: nowrap;
-}
 
-.receive-btn:hover {
-    background: #5a6fd8;
-}
-
-.receive-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
 /* 新的图标按钮样式 */
 .action-icon-btn {
     background: transparent;
@@ -2073,28 +2105,57 @@
     padding: 20px; /* 给纸张留出边距 */
 }
 
-/* 纸张容器 */
+/* 纸张容器 - 彩色便签纸风格 */
 .diary-paper {
-    background: #fff;
-    padding: 30px 25px;
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    min-height: 80vh; /* 保证纸张足够长 */
+    /* 柔和的淡黄色便签底色（可换成粉色 #ffe4ec、蓝色 #e8f4fc 等） */
+    background: #fffde7;
+    
+    padding: 25px 25px 30px 45px; /* 左侧留出装订线空间 */
+    border-radius: 2px; /* 便签纸几乎是直角 */
+    min-height: 70vh;
     position: relative;
     color: #4a4a4a;
+    
+    /* 便签纸阴影 - 右下角翘起感 */
+    box-shadow: 
+        2px 3px 8px rgba(0,0,0,0.08),
+        5px 8px 20px rgba(0,0,0,0.05);
 }
 
-/* 顶部装饰条（可选，增加设计感） */
+/* 左侧装订线 */
 .diary-paper::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 20px;
-    right: 20px;
-    height: 6px;
-    background: rgba(102, 126, 234, 0.2);
-    border-radius: 0 0 6px 6px;
+    left: 28px;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 150, 150, 0.35); /* 淡红色装订线 */
 }
+
+/* 左侧装订孔装饰 */
+.diary-paper::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 10px;
+    width: 12px;
+    height: 12px;
+    background: #f0f2f5; /* 背景色，模拟打孔 */
+    border-radius: 50%;
+    box-shadow: 
+        0 40px 0 #f0f2f5,
+        0 80px 0 #f0f2f5,
+        0 120px 0 #f0f2f5,
+        0 160px 0 #f0f2f5,
+        0 200px 0 #f0f2f5,
+        0 240px 0 #f0f2f5,
+        0 280px 0 #f0f2f5,
+        0 320px 0 #f0f2f5,
+        0 360px 0 #f0f2f5,
+        0 400px 0 #f0f2f5;
+}
+
 
 /* 日记标题 */
 .diary-detail-title {
@@ -5388,7 +5449,7 @@ input[type=range] {
 
 .memory-tab-item.active {
     color: #333;
-    font-size: 16px;
+  
 }
 
 .memory-tab-item.active::after {
@@ -6461,4 +6522,341 @@ input[type=range] {
 
 #statusMonitorModal.modal-overlay {
     align-items: flex-end;
+}
+/* ============ 眼中的你 - 用户侧写样式 ============ */
+
+/* 情绪贴纸区 */
+.emotion-section {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.emotion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.emotion-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.emotion-time {
+    font-size: 11px;
+    color: #999;
+}
+
+.emotion-display {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.emotion-sticker {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 4px 15px rgba(255, 200, 50, 0.2);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+/* 不同情绪的贴纸背景 */
+.emotion-sticker.sunny {
+    background: linear-gradient(135deg, #fff9e6 0%, #ffe066 100%);
+    box-shadow: 0 4px 15px rgba(255, 200, 50, 0.3);
+}
+
+.emotion-sticker.cloudy {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+    box-shadow: 0 4px 15px rgba(150, 150, 150, 0.2);
+}
+
+.emotion-sticker.rainy {
+    background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%);
+    box-shadow: 0 4px 15px rgba(100, 150, 255, 0.2);
+}
+
+.emotion-sticker.stormy {
+    background: linear-gradient(135deg, #ffebee 0%, #ef9a9a 100%);
+    box-shadow: 0 4px 15px rgba(255, 100, 100, 0.2);
+}
+
+.emotion-sticker.starry {
+    background: linear-gradient(135deg, #ede7f6 0%, #b39ddb 100%);
+    box-shadow: 0 4px 15px rgba(150, 100, 255, 0.2);
+}
+
+.emotion-sticker.coffee {
+    background: linear-gradient(135deg, #efebe9 0%, #bcaaa4 100%);
+    box-shadow: 0 4px 15px rgba(150, 120, 100, 0.2);
+}
+
+.emotion-info {
+    flex: 1;
+}
+
+.emotion-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.emotion-score-bar {
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.emotion-score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease, background 0.5s ease;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 负面情绪时变红 */
+.emotion-score-fill.negative {
+    background: linear-gradient(90deg, #ff6b6b 0%, #ee5a5a 100%);
+}
+
+/* 正面情绪时变绿 */
+.emotion-score-fill.positive {
+    background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
+}
+
+.emotion-score-text {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 印象标签区 */
+.tags-section {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.tags-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.tags-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.tags-count {
+    font-size: 11px;
+    color: #999;
+}
+
+/* 标签云样式 */
+.memory-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+/* 印象标签 (Ins 黑白线条风) */
+.user-tag {
+    padding: 8px 18px;
+    background: white; /* 纯白背景 */
+    border-radius: 30px; /* 大圆角胶囊状 */
+    font-size: 13px;
+    color: #333; /* 深黑文字 */
+    border: 1.5px solid #333; /* 黑色细线条边框 */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* 极淡的阴影 */
+}
+
+/* 悬停效果：反色 (黑底白字) */
+.user-tag:hover {
+    background: #333;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 点击效果 */
+.user-tag:active {
+    transform: scale(0.95);
+}
+
+/* 新标签动画：依然保留，但颜色改为黑白 */
+.user-tag.new-tag {
+    animation: tagPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border-color: #000; /* 新标签边框更黑一点 */
+}
+
+@keyframes tagPop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.empty-tags-hint {
+    width: 100%;
+    text-align: center;
+    color: #ccc;
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+/* 闪光时刻区 */
+.flashbulb-section {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.flashbulb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.flashbulb-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.flashbulb-count {
+    font-size: 11px;
+    color: #999;
+}
+
+.flashbulb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+/* 拍立得卡片 (手写风) */
+.polaroid-card {
+    background: #fff;
+    padding: 15px 15px 40px 15px; /* 底部留白大一点，像拍立得 */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transform: rotate(-2deg); /* 微微倾斜，更自然 */
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 25px; /* 卡片间距 */
+    position: relative;
+    border: 1px solid #eee;
+    width: 90%; /* 稍微窄一点 */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 偶数卡片向右倾斜，制造随意感 */
+.polaroid-card:nth-child(even) {
+    transform: rotate(1deg);
+}
+
+.polaroid-card:hover {
+    transform: scale(1.02) rotate(0deg); /* 悬停摆正放大 */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+/* 黑色方块 (模拟照片区域) */
+.polaroid-photo-area {
+    background: #2c2c2c; /* 深灰/黑底 */
+    height: 140px;
+    width: 100%;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    padding: 20px;
+    text-align: center;
+    font-family: 'Zhi Mang Xing', cursive; /* 手写体 */
+    line-height: 1.6;
+    letter-spacing: 1px;
+}
+
+/* 标题 (手写体) */
+.polaroid-title {
+    font-family: 'Zhi Mang Xing', cursive; /* 手写体 */
+    font-size: 20px;
+    color: #333;
+    text-align: center;
+    margin-bottom: 5px;
+    transform: rotate(-1deg); /* 文字也微微倾斜 */
+}
+
+/* 日期 (印章感) */
+.polaroid-date {
+    font-size: 10px;
+    color: #999;
+    text-align: right;
+    font-family: monospace; /* 打字机字体 */
+    margin-top: 5px;
+    letter-spacing: 1px;
+}
+
+/* 寄语 (隐藏，点击弹窗看，或者作为副标题) */
+.polaroid-comment {
+    display: none; /* 极简风，只显示标题和画面文字 */
+}
+
+
+.empty-flashbulb-hint {
+    width: 100%;
+    text-align: center;
+    color: #ccc;
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+/* 记忆类型切换按钮 */
+.mem-type-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #e1e1e1;
+    background: #f9f9f9;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mem-type-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.mem-type-btn:hover:not(.active) {
+    background: #f0f0f0;
 }

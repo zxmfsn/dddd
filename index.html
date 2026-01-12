@@ -423,10 +423,24 @@
     <div class="memory-header">
         <button class="back-btn" onclick="backToCharacterInfoFromMemory()">←</button>
         <div class="header-title" style="flex: 1; text-align: center; margin-left: 40px; font-weight: 700;">ARCHIVES</div>
-        
-        <div class="memory-header-actions">
-            <button class="memory-icon-btn" onclick="openCondenseModal()" title="整理">✨</button>
-        </div>
+ 
+ 
+<button id="headerAnalyzeBtn" onclick="analyzeProfile()" style="
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    margin-left: auto;
+">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+    </svg>
+</button>
+
+
+
     </div>
 
     <div class="memory-tabs">
@@ -488,10 +502,53 @@
             </div>
         </div>
 
-        <div id="memoryTagsList" style="display: none;">
-            <div class="archive-subtitle">Fragments of you in his mind...</div>
-            <div id="tagsContainer" class="memory-tags-container"></div>
+    <div id="memoryTagsList" style="display: none;">
+    <div class="archive-subtitle">Fragments of you in his mind...</div>
+    
+    <!-- 情绪贴纸区 -->
+    <div class="emotion-section">
+        <div class="emotion-header">
+            <span class="emotion-title">🎭 TA的心情记录</span>
+            <span class="emotion-time" id="emotionUpdateTime">--</span>
         </div>
+        <div class="emotion-display">
+            <div class="emotion-sticker" id="currentEmotionSticker">☀️</div>
+            <div class="emotion-info">
+                <div class="emotion-label" id="currentEmotionLabel">阳光明媚</div>
+                
+                <!-- ▼▼▼ 修改部分开始：原本是进度条，现在改成 TA 的话 ▼▼▼ -->
+                <div class="emotion-comment-box" style="margin-top: 8px; background: #f9f9f9; padding: 8px 12px; border-radius: 8px; font-size: 13px; color: #555; line-height: 1.5; font-style: italic;">
+                    <span id="emotionCommentText">（等待记录...）</span>
+                </div>
+                <!-- ▲▲▲ 修改部分结束 ▲▲▲ -->
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- 印象标签区 -->
+    <div class="tags-section">
+        <div class="tags-header">
+            <span class="tags-title">🏷️ TA 眼中的你</span>
+            <span class="tags-count" id="tagsCount">0 个标签</span>
+        </div>
+        <div id="tagsContainer" class="memory-tags-container">
+            <div class="empty-tags-hint">还没有印象标签，多聊聊天吧~</div>
+        </div>
+    </div>
+    
+    <!-- 闪光时刻区 -->
+    <div class="flashbulb-section">
+        <div class="flashbulb-header">
+            <span class="flashbulb-title">📸 闪光时刻</span>
+            <span class="flashbulb-count" id="flashbulbCount">0 个瞬间</span>
+        </div>
+        <div id="flashbulbContainer" class="flashbulb-list">
+            <div class="empty-flashbulb-hint">重要时刻会被记录在这里~</div>
+        </div>
+    </div>
+</div>
+
         
         <div class="memory-timeline" id="memoryTimelineList" style="display: none;">
             </div>
@@ -733,7 +790,7 @@
 </div>
                 <div class="ins-stat-item">
                     <div class="stat-number ins-stat-num" id="charItinerary">0</div>
-                    <div class="stat-label ins-stat-label">动态</div>
+                    <div class="stat-label ins-stat-label">邮件</div>
                 </div>
             </div>
         </div>
@@ -809,6 +866,32 @@
                     <input type="number" id="contextRoundsInput" value="30" style="width: 50px; border:none; background:#f0f0f0; border-radius:4px; text-align:center;">
                 </div>
                 <input type="range" id="contextRoundsSlider" min="0" max="300" value="30" style="width: 100%;">
+            </div>
+               <!-- 新增：自动总结开关 -->
+            <div style="padding: 15px 0; border-top: 0.5px solid #f5f5f5;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center;">
+                        <!-- 使用星星图标代表智能生成 -->
+                        <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                        </svg>
+                        <div class="ins-item-label">自动总结记忆</div>
+                    </div>
+                    <!-- 开关 -->
+                    <input type="checkbox" id="autoSummaryCheckbox" onchange="document.getElementById('autoSummarySettingsPanel').style.display = this.checked ? 'block' : 'none'" style="accent-color: #333;">
+                </div>
+                
+                <!-- 隐藏的设置面板 -->
+                <div id="autoSummarySettingsPanel" style="display: none; padding-left: 34px;">
+                    <div style="font-size: 12px; color: #999; margin-bottom: 8px; line-height: 1.4;">
+                        聊天每增加一定轮数，自动生成时光相册节点。
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <input type="number" id="autoSummaryThresholdInput" value="50" min="10" step="5" 
+                               style="width: 60px; border: 1px solid #e1e1e1; background: #fff; border-radius: 4px; padding: 6px; text-align: center; margin-right: 8px; font-size: 14px;">
+                        <span style="font-size: 13px; color: #333;">轮触发一次</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1543,6 +1626,32 @@
         </div>
     </div>
 </div>
+
+<!-- 记忆编辑弹窗 -->
+<div class="modal-overlay" id="memoryEditModal" onclick="closeMemoryEditModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title" id="memoryModalTitle">编辑记忆</div>
+        
+        <!-- 内容输入 -->
+        <div class="form-group">
+            <label class="form-label">内容</label>
+            <textarea id="memoryContentInput" class="form-input" rows="4" placeholder="写下这段记忆..."></textarea>
+        </div>
+        
+        <!-- 日期选项 -->
+        <div class="form-group" id="dateOptionGroup">
+            <label class="form-label">发生日期</label>
+            <input type="date" id="memoryDateInput" class="form-input">
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" id="btnDeleteMemory" onclick="deleteCurrentMemory()" style="background: #ff4757; color: white; display: none;">删除</button>
+            <button class="btn btn-cancel" onclick="closeMemoryEditModal()">取消</button>
+            <button class="btn btn-save" onclick="saveMemory()">保存</button>
+        </div>
+    </div>
+</div>
+
 
 <!-- 状态监控弹窗 -->
 <div class="modal-overlay" id="statusMonitorModal" onclick="closeStatusMonitorModal(event)">
