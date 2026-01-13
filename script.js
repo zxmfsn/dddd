@@ -85,9 +85,12 @@ function saveToDB(storeName, data) {
     const transaction = db.transaction([storeName], 'readwrite');
     const objectStore = transaction.objectStore(storeName);
     
-    // ▼▼▼ 修改下面这一行，把 products 和 shoppingCart 加进去 ▼▼▼
     if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'chats' || storeName === 'messages' || storeName === 'products' || storeName === 'shoppingCart') {
         objectStore.put({ id: 1, list: data.list || data });
+    } else if (storeName === 'characterInfo') {
+        // ★ 修复：characterInfo 需要特殊处理，确保保留 id 字段
+        const saveData = data.id ? data : { id: 1, ...data };
+        objectStore.put(saveData);
     } else {
         objectStore.put({ id: 1, ...data });
     }
@@ -7838,8 +7841,8 @@ const newStatus = {
         let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
 
         // ▼▼▼ 修改：只针对“真正的长篇大论”进行兜底拆分 ▼▼▼
-        // 只有当：1. 只有一条消息  AND  2. 字数超过 100 字（防止小作文）
-        if (messageList.length < 2 && messageContent.length > 100) {
+        // 只有当：1. 只有一条消息  AND  2. 字数超过 40字（防止小作文）
+        if (messageList.length < 2 && messageContent.length > 40) {
             
             // 技巧：只在“句号、感叹号、问号”后面切，【绝不切逗号】
             // 这样“早安，昨晚梦到你了。”这种正常句子会保持完整
@@ -8823,27 +8826,31 @@ async function analyzeUserImpression() {
     });
     
     // 2. Prompt
-    const prompt = `你现在是【${charData.name}】。请阅读刚才的聊天记录，重新审视你对【用户】的印象。
-
-【分析指令】
-1. **TA的心情记录**：
-  - **心情关键词**：【绝对禁止废话】严格限制在6个字以内！只写状态词！（如：开心、emo中、很累、兴奋）。
-   - **心情贴纸**：选一个 (sunny/cloudy/rainy/stormy/starry/coffee)。
-   - **你的心里话**：针对用户的心情，写一段你的内心独白。
-
-2. **印象标签**：
-   - 生成 **3-6个** 新的印象标签。
-   - 格式：标签名#理由
-
-3. **闪光时刻**：
-   - 寻找 **1-2个** 值得记录的瞬间（哪怕是微小的瞬间）。
-   - 格式：时刻标题#内容描述#你的短评
-   - 示例：第一次聊通宵#那天我们聊了很多#很开心能更了解你
-
-【输出格式】(严格遵守 ||| 分隔)
-心情关键词||心情贴纸代码||你的心里话||标签1#理由1,标签2#理由2||时刻1#内容1#短评1,时刻2#内容2#短评2
-
-*注意：如果没有新标签或新时刻，对应位置填“无”。*`;
+    const prompt = `你现在是【${chat.name}】。请阅读聊天记录，记录你对【用户】的观察和印象。
+【输出格式】(严格用 ||| 分隔)
+心情关键词||心情贴纸||你的心里话||标签1#理由1,标签2#理由2||时刻1#内容1#短评1
+【字段说明】
+1. 心情关键词：你观察到用户此刻的状态，6字以内（如：有点累、在生气）
+2. 心情贴纸：sunny/cloudy/rainy/stormy/starry/coffee 选一个
+3. 你的心里话：对用户状态的内心独白，要有情感（担心/心疼/开心/无奈）
+   示例："她好像还在生气...我该怎么哄呢？"
+4. 印象标签：3-6个，格式 标签#理由。理由要有画面感，像回忆某个瞬间
+   示例：喜欢甜食#她吃蛋糕像只小花猫，真想亲亲
+5. 闪光时刻：3-6个温馨小事，格式 标题#内容#短评
+   - 标题：2-6字，像拍立得手写字
+   - 内容：描述这个瞬间发生了什么
+   - 短评：40字以上的小日记，写你的联想、回忆、感慨、对未来的期待
+   示例：猫和她#那只猫不理我却喜欢她，她笑起来真好看#突然想起小时候养过的那只橘猫，也是这样软乎乎的，要是以后我们也能一起养一只就好了，每天回家都能看到她抱着猫窝在沙发上等我
+【活人感规则 - 必须遵守】
+1. 你是【${chat.name}】本人，用"我"称呼自己，用"她/他"称呼用户
+2. 心里话要像日记碎碎念：可以纠结、可以有小心思、可以患得患失
+   ✓ "她是不是还在气我？要不要先低头...算了，再等等看"
+3. 标签理由必须关联具体画面或记忆，像在翻相册回忆
+   ✓ "晚睡冠军#每次说睡了三点还在发消息，让人又气又心疼"
+4. 闪光时刻短评要展开写：由这个瞬间联想到什么回忆、触发什么情绪、对未来有什么期待
+   ✓ "想起小时候养的猫，要是以后能一起养一只，每天看她抱着猫等我回家..."
+5. 允许有情绪偏见：吃醋、傲娇、委屈、得意都可以，拒绝客观中立的机器腔
+*没有新标签或新时刻则对应位置填"无"*`;
 
     // 3. API 调用
     const content = await callAI(prompt);
