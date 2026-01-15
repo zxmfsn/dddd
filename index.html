@@ -58,12 +58,13 @@
     </div>
 
     <div class="app-icon-wrapper">
-        <div class="app-icon" onclick="openApp('placeholder1')">
+    <div class="app-icon" onclick="openApp('otherSettings')">
+
             <div class="app-emoji ins-icon-box" id="icon-placeholder1">
                 <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
             </div>
         </div>
-        <div class="app-name">围脖</div>
+        <div class="app-name">其他设置</div>
     </div>
 
     <div class="app-icon-wrapper">
@@ -310,7 +311,229 @@
     </div>
 </div>
 
-      <!-- 聊天页面 -->
+      <!-- 其他设置页面 (新加) -->
+<div class="api-screen" id="otherSettingsScreen">
+    <div class="api-header" style="background: transparent; border: none;">
+        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">OTHERS</div>
+    </div>
+    
+    <div class="api-content">
+        <!-- 第一组：系统与数据 -->
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>🛠 SYSTEM</span>
+                <span>通用设置</span>
+            </div>
+            
+            <div class="ins-list-group" style="margin: 0;">
+                <!-- 1. 字体设置 -->
+                <div class="ins-list-item" onclick="openFontSettings()">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                    <div class="ins-item-label">字体设置</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+
+                <!-- 2. 备份管理 -->
+                <div class="ins-list-item" onclick="openBackupSettings()">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    <div class="ins-item-label">备份管理</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+
+                <!-- 3. 清除缓存 -->
+                <div class="ins-list-item" onclick="clearAppCache()" style="border-bottom: none;">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    <div class="ins-item-label">清除缓存</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二组：个性化与声音 -->
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>🎨 PERSONAL</span>
+                <span>个性化</span>
+            </div>
+
+            <div class="ins-list-group" style="margin: 0;">
+                <!-- 4. 美化设置 -->
+                <div class="ins-list-item" onclick="openBeautifySettings()">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94"/><path d="M9.69 8h11.48"/><path d="M7.38 12l5.74-9.94"/><path d="M9.69 16L3.95 6.06"/><path d="M14.31 16H2.83"/><path d="M16.62 12l-5.74 9.94"/></svg>
+                    <div class="ins-item-label">美化设置</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+
+                <!-- 5. 角色语音 -->
+                <div class="ins-list-item" onclick="openVoiceRoleSettings()">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    <div class="ins-item-label">角色语音</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+
+                <!-- 6. 消息提示音 -->
+                <div class="ins-list-item" onclick="openNotificationSoundSettings()" style="border-bottom: none;">
+                    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <div class="ins-item-label">消息提示音</div>
+                    <div class="ins-arrow">›</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部版本号占位，增加专业感 -->
+        <div style="text-align: center; color: #ccc; font-size: 12px; margin-top: 20px;">
+            Version 1.0.0
+        </div>
+    </div>
+</div>
+
+<!-- 美化设置主页面 (菜单 + 编辑器) -->
+<div class="chat-screen" id="beautifyScreen" style="display: none; background: #f5f7fa; flex-direction: column;">
+    
+    <!-- ============ 第一层：美化菜单 ============ -->
+    <div id="beautifyMenuPanel" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="api-header" style="background: white; border-bottom: 1px solid #eee;">
+            <button class="back-btn" onclick="closeBeautifySettings()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+            <div class="header-title" style="font-weight: 700;">THEME STUDIO</div>
+        </div>
+
+        <div style="padding: 20px; overflow-y: auto;">
+            
+            <!-- 1. 编辑入口 -->
+            <div class="api-card">
+                <div class="api-section-title">
+                    <span>🎨 EDITOR</span>
+                    <span>视觉编辑</span>
+                </div>
+                <div class="ins-list-group" style="margin: 0;">
+                    <div class="ins-list-item" onclick="openThemeEditor('list')">
+                        <div class="ins-item-label">📱 聊天列表美化</div>
+                        <div class="ins-arrow">Go ›</div>
+                    </div>
+                    <div class="ins-list-item" onclick="openThemeEditor('chat')">
+                        <div class="ins-item-label">💬 消息容器页面美化</div>
+                        <div class="ins-arrow">Go ›</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 基础配置 -->
+            <div class="api-card">
+                <div class="api-section-title">
+                    <span>⚙️ CONFIG</span>
+                    <span>基础设置</span>
+                </div>
+                
+                <!-- 导航栏透明 -->
+                <div class="ins-list-item">
+                    <div class="ins-item-label">导航栏透明模式</div>
+                    <input type="checkbox" id="headerTransCheckboxMenu" onchange="toggleHeaderTransparency()" style="accent-color: #333;">
+                </div>
+
+                           <!-- 气泡美化 (入口) -->
+                <div class="ins-list-item" onclick="openBubbleEditor()">
+                    <div class="ins-item-label">气泡美化</div>
+                    <div class="ins-arrow">Go ›</div>
+                </div>
+
+            </div>
+
+            <!-- 3. 预设与管理 -->
+            <div class="api-card">
+                <div class="api-section-title">
+                    <span>💾 DATA</span>
+                    <span>预设管理</span>
+                </div>
+                
+                <!-- 预设切换 -->
+                <div class="ins-list-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <div class="ins-item-label">主题预设</div>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="saveCurrentThemeAsPreset()" style="font-size: 11px; padding: 4px 8px; border: 1px solid #333; background: white; border-radius: 4px;">保存当前</button>
+                            <button onclick="deleteThemePreset()" style="font-size: 11px; padding: 4px 8px; border: 1px solid #ff4757; color: #ff4757; background: white; border-radius: 4px;">删除</button>
+                        </div>
+                    </div>
+                    <select id="themePresetSelect" class="ins-input" onchange="applyThemePreset()" style="font-size: 13px;">
+                        <option value="">选择预设...</option>
+                    </select>
+                </div>
+
+                <!-- 恢复默认 -->
+                <div class="ins-list-item" onclick="resetThemeToDefault()" style="border-bottom: none;">
+                    <div class="ins-item-label" style="color: #ff4757;">↺ 恢复默认主题</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ============ 第二层：全屏编辑器 (默认隐藏) ============ -->
+    <div id="beautifyEditorPanel" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; background: #fff;">
+        
+            <!-- 顶部悬浮条 (干净版) -->
+        <div class="theme-floating-header">
+            <button onclick="closeThemeEditor()" style="border: none; background: transparent; font-size: 16px; font-weight: 600; color: #333; padding: 0 10px; cursor: pointer;">
+                完成
+            </button>
+            <div class="header-title" id="editorTitle" style="font-size: 14px; font-weight: bold;">编辑模式</div>
+            <div style="width: 50px;"></div> <!-- 空白占位，为了让中间标题居中 -->
+        </div>
+
+
+        <!-- TAB 1: 列表页编辑 -->
+        <div id="themeListPanel" class="theme-editor-container" style="display: none; flex-direction: column;">
+            <div style="height: 60px; flex-shrink: 0;"></div> 
+            <div class="chat-header beautify-editable" onclick="editTheme('header')" style="padding-top: 10px;">
+                <button class="back-btn beautify-editable" onclick="event.stopPropagation(); editTheme('backIcon')">
+                    <div id="demoBackIcon"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
+                </button>
+                <div class="header-title">列表页预览</div>
+            </div>
+            <div class="full-screen-bg-trigger beautify-editable" onclick="editTheme('background')">
+                <div class="edit-hint-badge">点击更换背景</div>
+            </div>
+            <div class="chat-bottom-tabs beautify-editable" onclick="editTheme('bottomBar')" style="position: absolute; bottom: 0; left: 0; right: 0; z-index: 50;">
+                <div class="bottom-tab active beautify-editable" onclick="event.stopPropagation(); editTheme('iconSingle')">
+                    <div id="demoIconSingle"><svg class="ins-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></div>
+                </div>
+                <div class="bottom-tab beautify-editable" onclick="event.stopPropagation(); editTheme('iconGroup')">
+                    <div id="demoIconGroup"><svg class="ins-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+                </div>
+                <div class="bottom-tab beautify-editable" onclick="event.stopPropagation(); editTheme('iconWallet')">
+                    <div id="demoIconWallet"><svg class="ins-icon" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: 聊天页编辑 -->
+        <div id="themeChatPanel" class="theme-editor-container mock-chat-detail" style="display: none; flex-direction: column;">
+            <div style="height: 60px; flex-shrink: 0;"></div>
+            <div class="chat-detail-header beautify-editable" onclick="editTheme('chatHeader')">
+                <button class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <div class="chat-detail-title">张三</div>
+                <button class="back-btn">👤</button>
+            </div>
+            <div class="full-screen-bg-trigger beautify-editable" onclick="editTheme('chatBackground')" style="flex-direction: column; justify-content: flex-start; padding-top: 20px;">
+                <div class="edit-hint-badge" style="margin-bottom: 20px;">点击更换聊天背景</div>
+                <div class="chat-msg-demo left">你好呀</div>
+                <div class="chat-msg-demo right">在吗？</div>
+            </div>
+            <div class="chat-input-bar beautify-editable" onclick="editTheme('inputBar')" style="position: absolute; bottom: 0; left: 0; right: 0;">
+                <div style="flex:1; height: 36px; background: white; border-radius: 18px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏文件输入 -->
+    <input type="file" id="themeFileInput" accept="image/*" style="display: none;">
+</div>
+
+
+
+
 <!-- 聊天页面 -->
 <div class="chat-screen" id="chatScreen">
 <div class="chat-header">
@@ -1779,7 +2002,116 @@
         </div>
     </div>
 </div>
+<!-- 字体设置弹窗 -->
+<div class="modal-overlay" id="fontSettingsModal" onclick="closeFontSettingsModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">字体设置</div>
+        
+        <!-- 预设管理 -->
+        <div class="form-group">
+            <label class="form-label">我的预设</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="fontPresetSelect" class="form-input" onchange="applyFontPreset()">
+                    <option value="">选择预设...</option>
+                </select>
+                <button class="btn btn-save" onclick="saveCurrentAsPreset()" style="width: auto; padding: 0 12px; white-space: nowrap;">保存当前</button>
+                <button class="btn btn-cancel" onclick="deleteFontPreset()" style="width: auto; padding: 0 12px; background: #ff4757; color: white; white-space: nowrap;">删除</button>
+            </div>
+        </div>
 
-    <script src="script.js"></script>
+        <!-- 字体 URL -->
+        <div class="form-group">
+            <label class="form-label">字体链接 (URL)</label>
+            <input type="url" id="fontUrlInput" class="form-input" placeholder="输入 .woff2 或 .ttf 字体直链">
+            <div style="font-size: 10px; color: #999; margin-top: 5px;">留空则恢复默认字体。</div>
+        </div>
+
+        <!-- 字体大小 -->
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between;">
+                <label class="form-label">字体大小</label>
+                <span id="fontSizeDisplay" style="font-size: 14px; color: #667eea; font-weight: bold;">14px</span>
+            </div>
+            <input type="range" id="fontSizeInput" class="form-input" min="12" max="20" step="1" value="14" oninput="previewFontSize(this.value)">
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeFontSettingsModal()">取消</button>
+            <button class="btn btn-save" onclick="saveFontSettings()">应用并保存</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 备份管理弹窗 -->
+<div class="modal-overlay" id="backupSettingsModal" onclick="closeBackupSettingsModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">备份管理</div>
+        
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+            ℹ️ <strong>提示：</strong><br>
+            备份文件包含您所有的数据（聊天记录、图片、设置、记忆等）。<br>
+            请妥善保管您的备份文件（.json）。
+        </div>
+
+        <!-- 导出 -->
+        <div class="form-group">
+            <label class="form-label">导出数据</label>
+            <button class="ins-line-btn ins-btn-black" onclick="exportFullBackup()" style="width: 100%; justify-content: center;">
+                <span>📤 立即生成全量备份</span>
+            </button>
+            <div style="font-size: 10px; color: #999; margin-top: 5px; text-align: center;">包含所有图片和聊天记录，文件可能较大</div>
+        </div>
+
+        <div style="height: 1px; background: #eee; margin: 20px 0;"></div>
+
+        <!-- 导入 -->
+        <div class="form-group">
+            <label class="form-label">恢复数据</label>
+            <div class="file-input-area" onclick="document.getElementById('backupFileInput').click()" style="border: 2px dashed #ccc; background: #fafafa;">
+                <div style="font-size: 14px; color: #666;">📥 点击选择备份文件</div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">支持 .json 格式</div>
+                <input type="file" id="backupFileInput" accept=".json" style="display: none;" onchange="handleBackupFileSelect(this)">
+            </div>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeBackupSettingsModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 清除缓存弹窗 -->
+<div class="modal-overlay" id="cleanCacheModal" onclick="closeCleanCacheModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">清除缓存</div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🧹</div>
+            <div style="font-size: 14px; color: #666; line-height: 1.6;">
+                即将清理聊天记录中的<br>
+                <strong>图片</strong> 和 <strong>表情包</strong>
+            </div>
+        </div>
+
+        <div style="background: #fff5f5; border: 1px solid #ffcccc; color: #e11d48; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; text-align: left;">
+            ⚠️ <strong>注意：</strong><br>
+            • 文字聊天记录会被<strong>保留</strong>。<br>
+            • 清理后的图片将无法恢复。<br>
+            • 此操作可显著减少卡顿。
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeCleanCacheModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmClearCache()" style="background: #ff4757; color: white; border: none;">确认清理</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="script.js"></script>
+<script src="extra.js"></script>
+<script src="cat.js"></script>
+
 </body>
 </html>
