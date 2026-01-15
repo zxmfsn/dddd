@@ -1325,27 +1325,19 @@
     white-space: nowrap;
 }
 
-/* 输入栏 */
-.chat-input-bar {
-    display: flex;
-    align-items: center;
-    padding: 10px 15px;
-    background: #fff;
-    gap: 10px;
+
+
+
+
+.chat-input:focus {
+    background: #e8e8e8;
+    box-shadow: none;
 }
 
-.chat-input {
-    flex: 1;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 20px;
-    font-size: 16px;
-    resize: none;
-    max-height: 72px;
-    outline: none;
-    background: #f2f2f7;
-    font-family: inherit;
+.chat-input::placeholder {
+    color: #999;
 }
+
 /* 输入框右侧图标组 */
 .input-icons {
     display: flex;
@@ -1446,53 +1438,145 @@
 }
 
 
-/* 新的图标按钮样式 */
-.action-icon-btn {
-    background: transparent;
-    border: none;
-    width: 40px; /* 稍小一点 */
-    height: 40px;
-    padding: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 6px;
-}
-
-.action-icon-btn:hover {
-    background: #f8f8f8; /* 更淡的悬停色 */
-    transform: scale(1.05); /* 微微放大 */
-}
 
 .action-icon-btn:active {
     transform: scale(0.95);
 }
 
-        /* 鼠标悬停变色 */
-        .action-icon-btn:hover {
-            background: #f5f5f5;
-        }
+.action-icon-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: #666;
+    stroke-width: 1.5;
+    fill: none;
+}
 
-        /* 点击时的缩小效果 */
-        .action-icon-btn:active {
-            transform: scale(0.9);
-        }
 
-        /* 图片样式 */
-        .action-icon-btn img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            opacity: 0.7; /* 默认稍微淡一点，显高级 */
-            transition: opacity 0.3s;
-        }
+/* WhatsApp风格输入框聚焦效果 */
+.chat-input:focus {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
 
-        .action-icon-btn:hover img {
-            opacity: 1;   /* 悬停时完全不透明 */
-        }
+.chat-input::placeholder {
+    color: #999;
+}
+/* ============ 图标与输入栏最终美化 ============ */
+
+/* 1. 上方图标行样式 */
+.emoji-btn-wrapper {
+    padding: 5px 15px;
+    background: transparent; /* 背景透明 */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.emoji-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent; /* 按钮背景透明 */
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.emoji-btn:active {
+    transform: scale(0.9);
+}
+
+.emoji-btn svg {
+    stroke: #333; /* 黑色图标线条 */
+    stroke-width: 1.5;
+}
+
+/* 2. 下方粉色输入栏样式 */
+.chat-input-bar {
+    display: flex;
+    align-items: center;
+   padding: 10px 10px 15px;
+    background: #ffffff;
+    gap: 0px;
+    border-top: none; /* 移除原来的上边框 */
+}
+
+/* 中间白色输入框 */
+.chat-input-bar .chat-input {
+    flex: 1;
+    height: 30px;
+  padding: 10px 10px 15px;
+    border: 1.5px solid #a9a7a7;
+    border-radius: 22px;
+    font-size: 15px;
+      resize: none;
+    resize: none;
+    outline: none;
+    background: #ffffff;
+    font-family: inherit;
+    line-height: 1.4;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.chat-input-bar .chat-input:focus {
+    border-color: #f08080;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 左侧+号 和 右侧发送/接收 按钮的通用样式 */
+.cute-icon-btn,
+.chat-input-bar .action-icon-btn {
+    background: transparent; /* 按钮背景透明 */
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.2s;
+    display: flex;           /* 启用Flex布局 */
+    align-items: center;     /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+    width: 40px;             /* 固定宽度 */
+    height: 40px;            /* 固定高度 (与输入框一致) */
+    flex-shrink: 0;    
+}
+
+.cute-icon-btn:active,
+.chat-input-bar .action-icon-btn:active {
+    transform: scale(0.9);
+}
+
+/* 左侧+号的特定样式 */
+.cute-icon-btn.plus-btn {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 36px;
+    font-weight: 300;
+    color: #000;
+}
+/* 对 + 号按钮进行精确微调 */
+.cute-icon-btn.plus-btn {
+    position: relative;
+    top: -4px; /* 向上微调2像素，你可以改成-3px或-1px来找到最佳位置 */
+}
+/* 右侧发送/接收按钮的SVG图标样式 */
+.chat-input-bar .action-icon-btn svg {
+    width: 28px;
+    height: 28px;
+    stroke: #000; /* 黑色图标线条 */
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* 移除旧图片样式 */
+.chat-input-bar .action-icon-btn img {
+    display: none;
+}
+
+
 /* 系统消息 */
 .system-message {
     text-align: center;
@@ -2314,33 +2398,6 @@
 
 
 
-/* 表情包按钮 */
-.emoji-btn-wrapper {
-    padding: 3px 15px 2px;
-    background: white;
-    display: flex;  /* ← 添加这行 */
-    align-items: center;  /* ← 添加这行 */
-}
-.emoji-btn-wrapper {
-    padding: 3px 15px 2px;
-    background: white;
-    display: flex;
-    align-items: center;
-    gap: 10px;  /* ← 图标间隔距离 */
-}
-
-.emoji-btn {
-    width: 25px;
-    height: 25px;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
 .emoji-btn:active {
     transform: scale(0.9);
@@ -3066,45 +3123,161 @@ color: #333;
     transform: scale(0.95);
 }
 
-/* 输入栏 */
+/* ============ 小窗 (PIP - Picture in Picture) ============ */
+
+/* 右上角小窗容器 */
+.pip-window {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    background: white;
+    border: 2px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+/* 小窗内的头像 */
+.pip-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    overflow: hidden;
+    background: #f0f0f0;
+}
+
+.pip-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 显示小窗按钮 */
+.pip-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    margin-right: 15px;
+}
+
+.pip-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.pip-btn:active {
+    transform: scale(0.95);
+}
+
+
+/* ============ 通话输入栏 - WhatsApp 风格 ============ */
+
 .call-input-bar {
     display: flex;
     align-items: flex-end;
-    padding: 15px;
-    background: rgba(0,0,0,0.3);
-    backdrop-filter: blur(10px);
+    padding: 12px 15px 15px;
+    background: #ffffff;
     gap: 10px;
+    border-top: 1px solid #f0f0f0;
     flex-shrink: 0;
 }
 
+/* 输入框 */
 .call-input-bar .chat-input {
     flex: 1;
-    padding: 10px 12px;
-    border: 1px solid rgba(255,255,255,0.3);
+    height: 36px;
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
     border-radius: 20px;
-    font-size: 16px;
+    font-size: 15px;
     resize: none;
-    max-height: 72px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     outline: none;
-    background: rgba(255,255,255,0.9);
-    transition: border-color 0.3s;
+    background: #ffffff;
+    font-family: inherit;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.call-input-bar .chat-input:focus {
+    border-color: #333;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .call-input-bar .chat-input:disabled {
-    background: rgba(255,255,255,0.5);
+    background: #f5f5f5;
     color: #999;
     cursor: not-allowed;
 }
 
-.call-input-bar .chat-input:focus {
-    border-color: white;
+.call-input-bar .chat-input::placeholder {
+    color: #999;
 }
+
+/* 发送/接收按钮 */
+.call-input-bar .action-icon-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.call-input-bar .action-icon-btn:hover {
+    transform: scale(1.05);
+}
+
+.call-input-bar .action-icon-btn:active {
+    transform: scale(0.95);
+}
+
+.call-input-bar .action-icon-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke: #333;
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.call-input-bar .action-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
  /* 通话设置按钮 */
 .call-settings-btn {
     position: absolute;
     top: 30px;
-    right: 20px;
+    left: 20px; 
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -3127,30 +3300,29 @@ color: #333;
 .call-settings-btn:active {
     transform: scale(0.95);
 }
-/* 通话页面自定义样式变量 */
+/* ============ WhatsApp 风格气泡 + 主题切换 ============ */
+
+/* 默认主题：白底黑字 */
+.call-screen.light-theme .call-message-ai,
+.call-screen.light-theme .call-message-user {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #f0f0f0;
+}
+
+/* 深色主题：黑底白字 */
+.call-screen.dark-theme .call-message-ai,
+.call-screen.dark-theme .call-message-user {
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #333333;
+}
+
+/* 默认应用浅色主题 */
 .call-screen {
-    --call-ai-bubble-color: rgba(255,255,255,0.9);
-    --call-ai-text-color: #333;
-    --call-user-bubble-color: linear-gradient(135deg, #667eea, #764ba2);
-    --call-user-text-color: white;
-    --call-name-color: white;
+    --call-theme: light;
 }
 
-/* 应用角色名颜色 */
-.call-name {
-    color: var(--call-name-color) !important;
-}
-
-/* 应用自定义颜色 */
-.call-message-ai {
-    background: var(--call-ai-bubble-color) !important;
-    color: var(--call-ai-text-color) !important;
-}
-
-.call-message-user {
-    background: var(--call-user-bubble-color) !important;
-    color: var(--call-user-text-color) !important;
-}
   /* 通话设置弹窗内的表单优化 */
 #callSettingsModal .form-group {
     margin-bottom: 15px;
@@ -3180,6 +3352,31 @@ color: #333;
     padding: 10px;
     font-size: 14px;
 }
+/* 用户头像上传区域 */
+#userAvatarArea {
+    position: relative;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+#userAvatarArea .avatar-upload-content {
+    text-align: center;
+    padding: 20px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 8px;
+}
+
+/* 有预览图时隐藏文字 */
+#userAvatarArea.has-preview .avatar-upload-content {
+    display: none;
+}
+
+
 /* ============ 购物功能样式 ============ */
 .shopping-screen {
     height: 100vh;

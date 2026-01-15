@@ -1823,10 +1823,7 @@ function loadMoreMessages() {
 document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
-        chatInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 72) + 'px';
-        });
+       
         
         // 回车发送
         chatInput.addEventListener('keydown', function(e) {
@@ -1901,7 +1898,7 @@ function sendMessage() {
     
     // 清空输入框
     input.value = '';
-    input.style.height = 'auto';
+  
     
     // 重新渲染
     visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
@@ -4790,6 +4787,12 @@ function handleImageUpload(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const imageData = e.target.result;
+        // ★★★ 新增：简单的图片压缩检查 ★★★
+        // 如果 Base64 字符串太长（超过 200万字符，约 1.5MB），可能会导致 API 报错
+        if (imageData.length > 2000000) {
+            alert('这张图片太大了，AI 处理不过来，请发一张小一点的截图试试。');
+            return;
+        }
         
         // 生成新消息ID
         const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
@@ -5096,7 +5099,6 @@ let callSettings = {
       
       // ============ 通话功能 ============
 
-// 打开通话页面
 function openCall() {
     if (!currentChatId) {
         alert('请先打开聊天');
@@ -5115,8 +5117,6 @@ function openCall() {
     document.getElementById('callCharacterName').textContent = chat.name;
     document.getElementById('callStatus').textContent = '正在呼叫...';
     
-
-    
     // 清空对话区域
     document.getElementById('callMessages').innerHTML = '';
     
@@ -5129,19 +5129,29 @@ function openCall() {
     // 隐藏聊天详情页，显示通话页
     document.getElementById('chatDetailScreen').style.display = 'none';
     document.getElementById('callScreen').style.display = 'flex';
-        // 加载并应用通话设置
+    
+    // 应用主题
+    const savedTheme = localStorage.getItem('callTheme') || 'light';
+    applyCallTheme(savedTheme);
+    
+    // ▼▼▼ 加载用户头像 ▼▼▼
+    loadUserAvatarForChat();
+    
+    // 加载并应用通话设置
     loadFromDB('callSettings', (data) => {
         if (data) {
             callSettings = data;
         }
         applyCallSettings();
     });
+    
     // 立即调用AI接听
     setTimeout(() => {
         callAIAnswer();
     }, 100);
 }
-// AI接听电话
+
+
  // AI接听电话 (无缝衔接版)
 async function callAIAnswer() {
     // 检查API配置
@@ -5164,33 +5174,51 @@ async function callAIAnswer() {
     
     const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
     
-    // === 1. 获取并处理最近的聊天记录 (让AI知道刚才聊了啥) ===
-    const contextRounds = characterInfo.contextRounds || 30;
-    const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
-        let content = msg.content;
+// 6. 构建消息上下文 (识图兼容性终极加固版)
+        const contextRounds = characterInfo.contextRounds || 30;
+        const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
+            let content;
 
-        // 处理各种特殊消息，转成文字给AI看
-        if (msg.type === 'image') {
-            if (msg.isSticker) content = `[发送了表情: ${msg.altText || '图片'}]`;
-            else content = `[发送了一张图片]`;
-        } else if (msg.type === 'transfer') {
-            const data = msg.transferData;
-            content = msg.senderId === 'me' ? 
-                `[我给你转账了 ¥${data.amount}]` : `[你给我转账了 ¥${data.amount}]`;
-        } else if (msg.type === 'shopping_order') {
-            const data = msg.orderData;
-            const items = data.items.map(i => i.name).join('、');
-            if (data.orderType === 'buy_for_ta') content = `[我送了你礼物：${items}]`;
-            else if (data.orderType === 'ask_ta_pay') content = `[我请求你代付：${items}]`;
-        } else if (msg.type === 'voice') {
-            content = `[语音消息: ${msg.content}]`;
-        }
-        
-        return {
-            role: msg.senderId === 'me' ? 'user' : 'assistant',
-            content: content
-        };
-    });
+      if (msg.type === 'image') {
+    // ★★★ 修改：所有图片都转为文字描述，不发送真实图片数据 ★★★
+    if (msg.isSticker) {
+        content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
+    } else {
+        content = `[ID:${msg.id}] [发送了一张图片: ${msg.altText || '图片'}]`;
+    }
+}
+
+            // --- 以下部分严禁修改，保持你原有的逻辑完整性 ---
+            else if (msg.type === 'transfer') {
+                const data = msg.transferData;
+                const statusStr = data.status === 'sent' ? '待领取' : '已领取';
+                content = `[ID:${msg.id}] [系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
+            } 
+            else if (msg.type === 'shopping_order') {
+                const data = msg.orderData;
+                const items = data.items.map(i => i.name).join('、');
+                let orderDesc = "";
+                if (data.orderType === 'buy_for_ta') orderDesc = `用户送了你礼物：${items} (¥${data.totalPrice})，你已收下。`;
+                else if (data.orderType === 'ask_ta_pay') orderDesc = `用户请求你代付：${items} (¥${data.totalPrice})，当前状态：${data.status === 'pending'?'待确认':data.status}。`;
+                else if (data.orderType === 'ai_buy_for_user') orderDesc = `你给用户买了：${items}。`;
+                else if (data.orderType === 'ai_ask_user_pay') orderDesc = `你请求用户代付：${items}。`;
+                content = `[ID:${msg.id}] [系统记录] ${orderDesc}`;
+            }
+            else if (msg.type === 'voice') {
+                content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
+            }
+            else if (msg.type === 'system') {
+                content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
+            }
+            else {
+                content = `[ID:${msg.id}] ${msg.content}`;
+            }
+            
+            return {
+                role: msg.senderId === 'me' ? 'user' : 'assistant',
+                content: content
+            };
+        });
 
     // === 2. 构建系统提示词 (加强接听逻辑) ===
     let systemPrompt = `你是${chat.name}。现在是${dateStr} ${timeStr}。
@@ -5281,53 +5309,75 @@ function callConnected() {
     }, 1000);
 }
 
-// 解析并显示AI回复
-// 解析并显示通话回复 (修复版：支持多段旁白)
+// 解析并显示通话回复 (修复版：彻底去除方括号)
 function parseAndShowCallReply(aiReply) {
     const container = document.getElementById('callMessages');
 
     // 1. 预处理：先按 ||| 拆分成独立的片段
-    // 过滤掉空字符串，防止出现空气泡
     let segments = aiReply.split('|||').map(s => s.trim()).filter(s => s.length > 0);
 
     // 2. 逐条处理
     segments.forEach((segment, index) => {
-        // 设置延时，让消息像真人说话一样一条条蹦出来 (每条间隔 800ms)
         setTimeout(() => {
             
-            // === 判断当前片段是动作还是消息 ===
+            let isAction = false;
+            let content = segment;
+
+            // --- 判断逻辑 ---
             
-            // 情况 A：如果是动作/旁白 (以 [动作] 开头)
+            // 1. 显式标记：[动作]xxx
             if (segment.match(/^[\[【](动作|Action)[\]】]/i)) {
-                // 1. 去掉标签文字
-                const content = segment.replace(/^[\[【](动作|Action)[\]】][:：]?\s*/i, '');
+                isAction = true;
+                // 去掉标签
+                content = segment.replace(/^[\[【](动作|Action)[\]】][:：]?\s*/i, '');
+            }
+            // 2. 隐式标记：被 [] 包裹的纯文本
+            else if (segment.startsWith('[') && segment.endsWith(']')) {
+                // 排除指令（如 [搜表情:xxx]）
+                if (!segment.match(/[:：]/)) {
+                    isAction = true;
+                }
+            }
+            // 3. 中文括号兜底：被 【】 包裹
+            else if (segment.startsWith('【') && segment.endsWith('】')) {
+                if (!segment.match(/[:：]/)) {
+                    isAction = true;
+                }
+            }
+
+            // --- 关键修复：如果判定为动作，强制去掉首尾括号 ---
+            if (isAction) {
+                // 去掉开头的 [ 或 【
+                if (content.startsWith('[') || content.startsWith('【')) {
+                    content = content.substring(1);
+                }
+                // 去掉结尾的 ] 或 】
+                if (content.endsWith(']') || content.endsWith('】')) {
+                    content = content.substring(0, content.length - 1);
+                }
                 
-                // 2. 创建中间显示的 DOM
                 const actionDiv = document.createElement('div');
-                actionDiv.className = 'call-action-desc'; // ★ 关键：用这个类名才有中间样式
-                actionDiv.textContent = content;
+                actionDiv.className = 'call-action-desc'; 
+                actionDiv.textContent = content.trim(); // 去掉空格
                 container.appendChild(actionDiv);
             } 
-            
-            // 情况 B：如果是普通消息 (默认，或者以 [消息] 开头)
+            // --- 普通消息 ---
             else {
-                // 1. 去掉可能存在的 [消息] 标签
-                const content = segment.replace(/^[\[【](消息|Message)[\]】][:：]?\s*/i, '');
-                
-                // 2. 创建气泡 DOM
                 const msgDiv = document.createElement('div');
-                msgDiv.className = 'call-message-ai'; // ★ 关键：用这个类名才是气泡
-                msgDiv.textContent = content;
+                msgDiv.className = 'call-message-ai'; 
+                // 去掉可能存在的 [消息] 标签
+                msgDiv.textContent = content.replace(/^[\[【](消息|Message)[\]】][:：]?\s*/i, '');
                 container.appendChild(msgDiv);
             }
 
-            // 3. 每次添加完新消息，自动滚动到底部
+            // 3. 滚动到底部
             const scrollContainer = document.getElementById('callMessagesContainer');
             scrollContainer.scrollTop = scrollContainer.scrollHeight;
 
-        }, index * 800); // 间隔时间
+        }, index * 800); 
     });
 }
+
 
 // 用户发送消息
 function sendCallMessage() {
@@ -5408,8 +5458,8 @@ ${characterInfo.cityInfoEnabled ? `
 【回复格式 - 严格遵守】
 [动作]你的动作描述|||[消息]第一条|||第二条|||第三条
 
-【动作描写】20-40字
-【消息内容】3-8条，每条10-30字，用|||分隔`;
+【动作描写】30-50字
+【消息内容】4-8条，每条10-30字，用|||分隔`;
     
     const receiveBtn = document.getElementById('callReceiveBtn');
     const callInput = document.getElementById('callInput');
@@ -5418,14 +5468,21 @@ ${characterInfo.cityInfoEnabled ? `
         receiveBtn.disabled = true;
         callInput.disabled = true;
         
-
+        // ▼▼▼ 新增：如果摄像头开启，截取画面 ▼▼▼
+        let visionImage = null;
+        if (typeof isCameraOn !== 'undefined' && isCameraOn) {
+            visionImage = captureVideoFrame();
+            console.log("📸 已截取摄像头画面用于识别");
+        }
+        // ▲▲▲ 新增结束 ▲▲▲
+        
         // 获取聊天记录上下文
         const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
         const contextCount = contextRounds * 2;
         const recentMessages = allMessages.slice(-contextCount).map(msg => {
             let content = msg.content;
 
-// ★★★ 核心修复：把购物订单“翻译”成文字给AI看 ★★★
+            // ★★★ 核心修复：把购物订单“翻译”成文字给AI看 ★★★
             if (msg.type === 'shopping_order') {
                 const data = msg.orderData;
                 const itemNames = data.items.map(i => i.name).join('、');
@@ -5433,7 +5490,6 @@ ${characterInfo.cityInfoEnabled ? `
                 
                 // 情况A：AI给用户买了东西
                 if (data.orderType === 'ai_buy_for_user') {
-                    // 加上 [系统记录] 前缀，让 AI 知道这是已经发生的事实
                     content = `[系统记录] 你刚刚给用户买了：${itemNames} (¥${price})，订单已完成。`;
                 } 
                 // 情况B：用户请AI代付
@@ -5449,28 +5505,14 @@ ${characterInfo.cityInfoEnabled ? `
             }
             // ★★★ 结束 ★★★
       
-          // ★★★ 核心修复：用 isSticker 字段精准判断 ★★★
-    if (msg.type === 'image') {
-        if (msg.isSticker === true) {
-            // 情况 A：这是表情包（有 isSticker 标记）
-            content = `[发送了表情: ${msg.altText || '图片'}]`;
-        } else {
-            // 情况 B：这是上传的真实照片（没有 isSticker 标记）
-            content = [
-                {
-                    type: "text",
-                    text: "这是一张用户发送的图片，请仔细观察图片内容，并结合上下文进行回复。"
-                },
-                {
-                    type: "image_url",
-                    image_url: {
-                        url: msg.content
-                    }
+            if (msg.type === 'image') {
+                // ★★★ 修改：所有图片都转为文字描述 ★★★
+                if (msg.isSticker === true) {
+                    content = `[发送了表情: ${msg.altText || '图片'}]`;
+                } else {
+                    content = `[发送了一张图片: ${msg.altText || '图片'}]`;
                 }
-            ];
-        }
-    }
-
+            }
             else if (msg.type === 'transfer') {
                 const amount = msg.transferData.amount;
                 const note = msg.transferData.note ? `，备注：${msg.transferData.note}` : '';
@@ -5488,10 +5530,39 @@ ${characterInfo.cityInfoEnabled ? `
             };
         });
         
+        // ============ 关键修复：构建 finalUserMessage ============
+        
+        // 1. 获取用户刚才说的话
+        let userContent = callMessages.length > 0 
+            ? callMessages[callMessages.length - 1].content 
+            : "（用户正在看着你）";
+
+        // 2. 定义并赋值 finalUserMessage
+        let finalUserMessage;
+
+        if (visionImage) {
+            // 有图：发送图文
+            finalUserMessage = {
+                role: 'user',
+                content: [
+                    { type: "text", text: userContent + "\n[系统提示：这是用户当前摄像头的实时画面，请根据画面内容进行互动]" },
+                    { type: "image_url", image_url: { url: visionImage } }
+                ]
+            };
+        } else {
+            // 没图：发送纯文本
+            finalUserMessage = {
+                role: 'user',
+                content: userContent
+            };
+        }
+        
+        // ============ 补全结束 ============
+        
         const messages = [
             { role: 'system', content: systemPrompt },
             ...recentMessages,
-            ...callMessages
+            finalUserMessage
         ];
 
         
@@ -5533,6 +5604,8 @@ ${characterInfo.cityInfoEnabled ? `
         callInput.disabled = false;
     }
 }
+
+
 // 挂断电话
 function hangupCall() {
     // 停止计时
@@ -5557,7 +5630,7 @@ function hangupCall() {
             id: systemMsgId,
             chatId: currentChatId,
             type: 'system',
-            content: `[📞 视频通话时长 ${duration}]`,
+            content: `📞 视频通话时长 ${duration}`,
             time: getCurrentTime()
         });
         
@@ -5573,55 +5646,41 @@ function hangupCall() {
 }
 // 打开通话设置
 function openCallSettings() {
-    // 加载当前设置
-    loadFromDB('callSettings', (data) => {
-        if (data) {
-            callSettings = data;
-        }
-        
-            // 填充表单
-        document.getElementById('callAiBubbleColor').value = callSettings.aiBubbleColor.replace('rgba(255,255,255,0.9)', '#ffffff');
-        document.getElementById('callAiTextColor').value = callSettings.aiTextColor;
-        document.getElementById('callUserBubbleColor').value = callSettings.userBubbleColor;
-        document.getElementById('callUserTextColor').value = callSettings.userTextColor;
-        document.getElementById('callNameColor').value = callSettings.nameColor;
-        
-        // 更新预览
-        document.getElementById('callAiBubblePreview').style.background = callSettings.aiBubbleColor;
-        document.getElementById('callAiTextPreview').style.background = callSettings.aiTextColor;
-        document.getElementById('callUserBubblePreview').style.background = callSettings.userBubbleColor;
-        document.getElementById('callUserTextPreview').style.background = callSettings.userTextColor;
-        document.getElementById('callNamePreview').style.background = callSettings.nameColor;
-
-    });
-    
     document.getElementById('callSettingsModal').style.display = 'flex';
+    
+    // 加载用户头像预览
+    if (currentChatId) {
+        loadFromDB('characterInfo', (data) => {
+            const charData = data && data[currentChatId] ? data[currentChatId] : {};
+            updateAvatarPreview(charData.userAvatar);
+        });
+    }
+    
+    // 初始化主题选择
+    const savedTheme = localStorage.getItem('callTheme') || 'light';
+    document.querySelectorAll('input[name="callTheme"]').forEach(radio => {
+        radio.checked = (radio.value === savedTheme);
+        radio.addEventListener('change', (e) => {
+            applyCallTheme(e.target.value);
+            localStorage.setItem('callTheme', e.target.value);
+        });
+    });
 }
 
 // 关闭通话设置
 function closeCallSettings(event) {
-    if (event && event.target !== event.currentTarget) return;
+    if (event) event.stopPropagation();
     document.getElementById('callSettingsModal').style.display = 'none';
 }
 
+
 // 保存通话设置
 function saveCallSettings() {
-    callSettings.aiBubbleColor = document.getElementById('callAiBubbleColor').value;
-    callSettings.aiTextColor = document.getElementById('callAiTextColor').value;
-    callSettings.userBubbleColor = document.getElementById('callUserBubbleColor').value;
-    callSettings.userTextColor = document.getElementById('callUserTextColor').value;
-    callSettings.nameColor = document.getElementById('callNameColor').value;
-    
-    // 保存到数据库
-    saveToDB('callSettings', callSettings);
-    
-    // 立即应用样式
-    applyCallSettings();
-    
-    alert('设置已保存');
+    const selectedTheme = document.querySelector('input[name="callTheme"]:checked')?.value || 'light';
+    applyCallTheme(selectedTheme);
+    localStorage.setItem('callTheme', selectedTheme);
     closeCallSettings();
 }
-
 // 应用通话设置
 function applyCallSettings() {
     const callScreen = document.getElementById('callScreen');
@@ -5632,13 +5691,6 @@ function applyCallSettings() {
     } else {
         callScreen.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
     }
-    
-    // 应用颜色
-    callScreen.style.setProperty('--call-ai-bubble-color', callSettings.aiBubbleColor);
-    callScreen.style.setProperty('--call-ai-text-color', callSettings.aiTextColor);
-    callScreen.style.setProperty('--call-user-bubble-color', callSettings.userBubbleColor);
-    callScreen.style.setProperty('--call-user-text-color', callSettings.userTextColor);
-  callScreen.style.setProperty('--call-name-color', callSettings.nameColor);
 }
 
 // 恢复默认壁纸
@@ -5666,31 +5718,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        
-        // 颜色选择器实时预览
-        const colorInputs = [
-            { input: 'callAiBubbleColor', preview: 'callAiBubblePreview' },
-            { input: 'callAiTextColor', preview: 'callAiTextPreview' },
-            { input: 'callUserBubbleColor', preview: 'callUserBubblePreview' },
-            { input: 'callUserTextColor', preview: 'callUserTextPreview' },
-           { input: 'callNameColor', preview: 'callNamePreview' }
-        ];
-        
-colorInputs.forEach(item => {
-    const input = document.getElementById(item.input);
-    const preview = document.getElementById(item.preview);
-    if (input && preview) {
-        input.addEventListener('input', function() {
-            preview.style.background = this.value;
-        });
-        input.addEventListener('change', function() {
-            preview.style.background = this.value;
-        });
-    }
-});
-
     }, 500);
 });
+
 // ============ 购物功能 ============
 let products = [];
       let currentShoppingType = 'goods'; 
@@ -7156,11 +7186,10 @@ function renderMemoryTimeline(moments) {
     // 排序：按发生时间倒序 (最近的在上面)
     moments.sort((a, b) => new Date(b.happenTime) - new Date(a.happenTime));
     
-  container.innerHTML = moments.map(m => `
-    <!-- ★ 修复：添加 style="cursor:pointer" 强制 iOS 识别点击，ID加引号防止报错 -->
-    <div class="timeline-item" style="cursor: pointer;" onclick="openEditMemoryModal('${m.id}')">
-        <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
 
+container.innerHTML = moments.map(m => `
+    <div class="timeline-item" style="cursor: pointer;" onclick="openEditMemoryModal(${m.id || Date.now()})">
+        <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
         <div class="timeline-date">${m.happenTime}${m.isAutoGenerated ? ' <span style="font-size:10px;color:#667eea;"></span>' : ''}</div>
         <div class="timeline-card">
             ${m.content}
@@ -7168,6 +7197,7 @@ function renderMemoryTimeline(moments) {
         </div>
     </div>
 `).join('');
+
 
 }
 
@@ -7231,19 +7261,26 @@ function openEditMemoryModal(id) {
 function switchMemEditType(type) {
     currentMemEditType = type;
     
-    // 按钮样式
-    document.getElementById('btn-type-tag').className = type === 'tag' ? 'mem-type-btn active' : 'mem-type-btn';
-    document.getElementById('btn-type-moment').className = type === 'moment' ? 'mem-type-btn active' : 'mem-type-btn';
+    // 按钮样式 - 添加安全检查
+    const tagBtn = document.getElementById('btn-type-tag');
+    const momentBtn = document.getElementById('btn-type-moment');
     
-    // 字段显示
+    if (tagBtn) tagBtn.className = type === 'tag' ? 'mem-type-btn active' : 'mem-type-btn';
+    if (momentBtn) momentBtn.className = type === 'moment' ? 'mem-type-btn active' : 'mem-type-btn';
+    
+    // 字段显示 - 添加安全检查
+    const pinGroup = document.getElementById('pinOptionGroup');
+    const dateGroup = document.getElementById('dateOptionGroup');
+    
     if (type === 'tag') {
-        document.getElementById('pinOptionGroup').style.display = 'block';
-        document.getElementById('dateOptionGroup').style.display = 'none';
+        if (pinGroup) pinGroup.style.display = 'block';
+        if (dateGroup) dateGroup.style.display = 'none';
     } else {
-        document.getElementById('pinOptionGroup').style.display = 'none';
-        document.getElementById('dateOptionGroup').style.display = 'block';
+        if (pinGroup) pinGroup.style.display = 'none';
+        if (dateGroup) dateGroup.style.display = 'block';
     }
 }
+
 
 function closeMemoryEditModal(event) {
     if (event && event.target !== event.currentTarget) return;
@@ -7556,72 +7593,113 @@ if (emojiList.length > 0) {
 不要忘记！表情包让聊天更生动！`;
 }
 
-
-        // 6. 构建消息上下文 (包含图片视觉、订单、转账的完整翻译)
+// 获取用户设置的上下文轮数（默认30轮，即最近60条消息）
+        // 只要图片在这60条消息里，AI就能看见！
         const contextRounds = characterInfo.contextRounds || 30;
+        
+        // 截取最近的消息
         const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
-            let content = msg.content;
+            let content;
 
-            // ★★★ 视觉系统：完整保留 ★★★
+            // ★★★ 核心逻辑：视觉记忆处理 ★★★
             if (msg.type === 'image') {
                 if (msg.isSticker) {
-                    // 表情包：直接传文字描述
-                    content = `[发送了表情: ${msg.altText || '图片'}]`;
+                    // 如果是表情包，依然转成文字描述
+                    content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
                 } else {
-                    // 真照片：传 Image URL 对象 (Vision 格式)
+                    // ★★★ 重点在这里：无论这张图是刚发的，还是历史记录里的，都必须保留 Base64！★★★
+                    
+                    // 1. 获取并清洗 Base64
+                    let base64Url = msg.content.trim();
+                    // 补全前缀防呆处理
+                    if (!base64Url.startsWith('data:image')) {
+                        base64Url = 'data:image/jpeg;base64,' + base64Url;
+                    }
+
+                    // 2. 构造 Vision 格式 (Gemini/GPT 通用兼容)
+                    // 即使这是 10 条消息前的图片，这里依然会生成 image_url 对象
+                    // 这样 AI 就能通过“翻阅历史”重新看到这张图
                     content = [
-                        { type: "text", text: "这是一张用户发送的图片，请仔细观察图片内容（场景、人物、文字等）并结合上下文回复。" },
-                        { type: "image_url", image_url: { url: msg.content } }
+                        {
+                            type: "text",
+                            text: `[ID:${msg.id}] (这是用户之前发送的图片，请结合上下文理解)`
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: base64Url // 关键：保留完整数据，不替换为文本！
+                            }
+                        }
                     ];
                 }
             }
-            // 处理转账消息
+            // --- 以下是文字、系统、转账等消息的处理 (保持原样) ---
             else if (msg.type === 'transfer') {
                 const data = msg.transferData;
                 const statusStr = data.status === 'sent' ? '待领取' : '已领取';
-                content = msg.senderId === 'me' ? 
-                    `[系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]` : 
-                    `[系统消息：你给我转账了 ¥${data.amount}，备注：${data.note || '无'}]`;
+                content = `[ID:${msg.id}] [系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
             } 
-            // 处理购物订单
             else if (msg.type === 'shopping_order') {
                 const data = msg.orderData;
                 const items = data.items.map(i => i.name).join('、');
-                // 翻译订单状态给AI看
-                if (data.orderType === 'buy_for_ta') content = `[系统记录] 用户送了你礼物：${items} (¥${data.totalPrice})，你已收下。`;
-                else if (data.orderType === 'ask_ta_pay') content = `[系统记录] 用户请求你代付：${items} (¥${data.totalPrice})，当前状态：${data.status === 'pending'?'待确认':data.status}。请决定是否支付。`;
-                else if (data.orderType === 'ai_buy_for_user') content = `[系统记录] 你给用户买了：${items}。`;
-                else if (data.orderType === 'ai_ask_user_pay') content = `[系统记录] 你请求用户代付：${items}。`;
+                let orderDesc = "";
+                if (data.orderType === 'buy_for_ta') orderDesc = `用户送了你礼物：${items} (¥${data.totalPrice})，你已收下。`;
+                else if (data.orderType === 'ask_ta_pay') orderDesc = `用户请求你代付：${items} (¥${data.totalPrice})，当前状态：${data.status === 'pending'?'待确认':data.status}。`;
+                else if (data.orderType === 'ai_buy_for_user') orderDesc = `你给用户买了：${items}。`;
+                else if (data.orderType === 'ai_ask_user_pay') orderDesc = `你请求用户代付：${items}。`;
+                content = `[ID:${msg.id}] [系统记录] ${orderDesc}`;
             }
-            // 处理语音
-            else if (msg.type === 'voice') {
-                content = `[语音消息: ${msg.content}]`;
-            }
-            // 处理系统消息
-            else if (msg.type === 'system') {
-                content = `[系统通知] ${msg.content}`;
-            }
+            else if (msg.type === 'voice') content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
+            else if (msg.type === 'system') content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
+            else content = `[ID:${msg.id}] ${msg.content}`; // 普通文字
             
-            const contentWithId = `[ID:${msg.id}] ${content}`;
-    return {
-        role: msg.senderId === 'me' ? 'user' : 'assistant',
-        content: contentWithId  // <--- 关键修改：把 content 改成 contentWithId
-    };
+            return {
+                role: msg.senderId === 'me' ? 'user' : 'assistant',
+                content: content
+            };
         });
 
+        // 7. API 请求 (带智能日志)
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
+        
+        const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
 
-        // 7. API 请求
-        const url = currentApiConfig.baseUrl.endsWith('/') ? currentApiConfig.baseUrl + 'chat/completions' : currentApiConfig.baseUrl + '/chat/completions';
-        const response = await fetch(url, {
+        // 强制回退保护
+        const modelToUse = currentApiConfig.defaultModel || 'gemini-1.5-pro'; 
+
+        // 🔥 智能调试日志 🔥
+        console.log('====== 🤖 API 请求发送 ======');
+        console.log('👉 模型:', modelToUse);
+        
+        if (hasImageInContext) {
+            console.log('✅ 检测到历史记录中包含图片数据，正在以 Vision 格式发送...');
+            // 检查最后一条是否是图片
+            const lastMsg = messages[messages.length - 1];
+            if (Array.isArray(lastMsg.content)) {
+                console.log('👉 当前发送的最后一条也是图片，格式正常。');
+            } else {
+                console.log('👉 最后一条是文字，但 AI 应该能看到之前的图片。');
+            }
+        } else {
+            console.log('ℹ️ 本次请求纯文本（历史记录里没有图片）。');
+        }
+
+        const response = await fetch(requestUrl, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${currentApiConfig.apiKey}`, 'Content-Type': 'application/json' },
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({
-                model: currentApiConfig.defaultModel,
+                model: modelToUse,
                 messages: messages,
-                temperature: 0.9 // 保持创造力
+                temperature: 0.9,
+                stream: false
             })
         });
+
 
         if (!response.ok) throw new Error('API请求失败');
         const data = await response.json();
@@ -7659,14 +7737,8 @@ if (analysisData && currentChatId) {
             aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim(); // 移除标记不显示
         }
 
-        // 9. 解析表情包 (替换回图片)
-        if (emojiList.length > 0) {
-            const emojiRegex = /[\[【](?:搜表情|表情包|表情)[:：]\s*(.*?)[\]】]/g;
-            aiReply = aiReply.replace(emojiRegex, (match, keyword) => {
-                const found = searchEmojiByKeyword(keyword);
-                return found ? `|||[EMOJI:${found.id}]|||` : '';
-            });
-        }
+   // 9. 禁用表情包功能 - 移除表情包指令
+aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]】]/g, '');
 
 
  // 10. 提取并更新状态 (Status) - 增强版
@@ -10083,6 +10155,231 @@ async function getSmartAnalysisHistory(limitRounds = 20) {
         });
     });
 }
+
+
+// ============ 通话气泡主题切换 ============
+
+function applyCallTheme(theme) {
+    const callScreen = document.getElementById('callScreen');
+    if (callScreen) {
+        callScreen.classList.remove('light-theme', 'dark-theme');
+        callScreen.classList.add(theme + '-theme');
+    }
+}
+// ============ 小窗 (PIP) 功能与用户头像 ============
+
+// 显示/隐藏小窗
+function togglePIPWindow() {
+    const pipWindow = document.getElementById('pipWindow');
+    pipWindow.style.display = pipWindow.style.display === 'none' ? 'flex' : 'none';
+}
+
+// 更新小窗头像
+function updatePIPAvatar(avatarData) {
+    const pipAvatar = document.getElementById('pipAvatar');
+    if (pipAvatar) {
+        if (avatarData) {
+            pipAvatar.innerHTML = `<img src="${avatarData}" alt="用户头像">`;
+        } else {
+            pipAvatar.textContent = '👤';
+        }
+    }
+}
+
+// 更新上传框预览
+function updateAvatarPreview(avatarData) {
+    const userAvatarArea = document.getElementById('userAvatarArea');
+    if (userAvatarArea) {
+        if (avatarData) {
+            userAvatarArea.style.backgroundImage = `url(${avatarData})`;
+            userAvatarArea.classList.add('has-preview');
+        } else {
+            userAvatarArea.style.backgroundImage = '';
+            userAvatarArea.classList.remove('has-preview');
+        }
+    }
+}
+
+// 保存用户头像（保存到 characterInfo 表）
+function saveUserAvatar(avatarData) {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        // 保存到 userAvatar 字段
+        allData[currentChatId].userAvatar = avatarData;
+        
+        saveToDB('characterInfo', allData);
+        updatePIPAvatar(avatarData);
+        updateAvatarPreview(avatarData);
+    });
+}
+
+// 加载用户头像
+function loadUserAvatarForChat() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const avatar = charData.userAvatar;
+        
+        updatePIPAvatar(avatar);
+        updateAvatarPreview(avatar);
+    });
+}
+
+// 监听用户头像文件选择
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const userAvatarFile = document.getElementById('userAvatarFile');
+        if (userAvatarFile) {
+            // 移除旧的监听器，防止重复
+            const newFile = userAvatarFile.cloneNode(true);
+            userAvatarFile.parentNode.replaceChild(newFile, userAvatarFile);
+            
+            newFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const avatarData = event.target.result;
+                        saveUserAvatar(avatarData);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }, 500);
+});
+
+// 通话气泡主题切换
+function applyCallTheme(theme) {
+    const callScreen = document.getElementById('callScreen');
+    if (callScreen) {
+        callScreen.classList.remove('light-theme', 'dark-theme');
+        callScreen.classList.add(theme + '-theme');
+    }
+}
+
+
+// ============ 摄像头与视觉识别 ============
+
+// ============ 摄像头与视觉识别 (升级版：支持切换前后置) ============
+let localStream = null;
+let isCameraOn = false;
+let currentFacingMode = 'user'; // 'user' (前置) 或 'environment' (后置)
+// 1. 点击摄像头按钮
+function toggleCamera() {
+    if (isCameraOn) {
+        stopCamera();
+    } else {
+        document.getElementById('cameraPrivacyModal').style.display = 'flex';
+    }
+}
+// 2. 关闭隐私弹窗
+function closeCameraPrivacyModal() {
+    document.getElementById('cameraPrivacyModal').style.display = 'none';
+}
+// 3. 确认开启摄像头
+async function confirmOpenCamera() {
+    closeCameraPrivacyModal();
+    await startCameraStream();
+}
+// ★★★ 新增：启动/切换摄像头流 ★★★
+async function startCameraStream() {
+    // 如果已有流，先停止
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    try {
+        const pipWindow = document.getElementById('pipWindow');
+        pipWindow.style.display = 'flex';
+        
+        // 请求摄像头
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: currentFacingMode }, 
+            audio: false 
+        });
+        
+        const videoEl = document.getElementById('localVideo');
+        const avatarEl = document.getElementById('pipAvatar');
+        
+        videoEl.srcObject = localStream;
+        videoEl.style.display = 'block';
+        avatarEl.style.display = 'none';
+        
+        // ★★★ 关键：前置镜像，后置不镜像 ★★★
+        if (currentFacingMode === 'user') {
+            videoEl.style.transform = 'scaleX(-1)';
+        } else {
+            videoEl.style.transform = 'none';
+        }
+        
+        isCameraOn = true;
+        
+        // ★★★ 绑定点击切换事件 ★★★
+        // 防止重复绑定
+        videoEl.onclick = null; 
+        videoEl.onclick = switchCameraMode;
+        
+    } catch (err) {
+        console.error("摄像头开启失败:", err);
+        alert("无法开启摄像头，请检查权限。");
+    }
+}
+// ★★★ 新增：切换前后置 ★★★
+async function switchCameraMode() {
+    if (!isCameraOn) return;
+    
+    // 切换模式
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    
+    // 重新启动流
+    await startCameraStream();
+}
+// 4. 关闭摄像头
+function stopCamera() {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+    
+    const videoEl = document.getElementById('localVideo');
+    const avatarEl = document.getElementById('pipAvatar');
+    
+    if (videoEl) {
+        videoEl.srcObject = null;
+        videoEl.style.display = 'none';
+    }
+    if (avatarEl) {
+        avatarEl.style.display = 'flex';
+    }
+    
+    isCameraOn = false;
+    // 重置为前置，方便下次开启
+    currentFacingMode = 'user';
+}
+// 5. 截取当前视频帧 (用于发给 AI)
+function captureVideoFrame() {
+    if (!isCameraOn || !localStream) return null;
+    
+    const video = document.getElementById('localVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; // 压缩尺寸，减少 Token
+    canvas.height = 512;
+    
+    const ctx = canvas.getContext('2d');
+    // 镜像翻转绘制，保持所见即所得
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 返回 Base64 (JPEG 格式，质量 0.7)
+    return canvas.toDataURL('image/jpeg', 0.7);
+}
+
 
 // 初始化，
         initDB();

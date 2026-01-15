@@ -627,12 +627,6 @@
 </div>
 
 
-
-
-
-     
-   
-
     <div class="messages-container" id="messagesContainer">
         <button class="load-more-btn" id="loadMoreBtn" style="display: none;" onclick="loadMoreMessages()">
             点击查看历史消息
@@ -749,6 +743,7 @@
 </div>
 
     <div class="chat-input-bar">
+        <button class="cute-icon-btn plus-btn" onclick="openMoreOptions()">+</button>
         <textarea class="chat-input" id="chatInput" placeholder="打字输入中..." rows="1"></textarea>
       <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;">
@@ -1435,6 +1430,15 @@
 </div>
 <!-- 通话页面 -->
 <div class="call-screen" id="callScreen">
+<!-- 右上角小窗 - 显示用户头像/摄像头 -->
+<div class="pip-window" id="pipWindow" style="display: none;">
+    <div class="pip-avatar" id="pipAvatar">👤</div>
+    <!-- ▼▼▼ 新增：相机画面 ▼▼▼ -->
+    <video id="localVideo" autoplay playsinline muted style="display: none; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+    <!-- ▲▲▲ 新增结束 ▲▲▲ -->
+</div>
+
+
     <!-- 顶部状态区 -->
     <div class="call-header">
         <div class="call-name" id="callCharacterName">张三</div>
@@ -1451,15 +1455,29 @@
         </div>
     </div>
     
-    <!-- 挂断按钮 -->
-    <div class="call-hangup-section">
-        <button class="hangup-btn" onclick="hangupCall()">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                <line x1="1" y1="1" x2="23" y2="23"></line>
-            </svg>
-        </button>
-    </div>
+    <!-- 按钮区域 -->
+<div class="call-hangup-section">
+    <!-- 左边：小窗开关 -->
+    <button class="pip-btn" onclick="togglePIPWindow()" title="显示/隐藏小窗">
+        📱
+    </button>
+    
+    <!-- 中间：挂断 -->
+    <button class="hangup-btn" onclick="hangupCall()">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>
+    </button>
+
+    <!-- ▼▼▼ 右边：相机开关 ▼▼▼ -->
+    <button class="pip-btn" onclick="toggleCamera()" title="开启/关闭摄像头" style="margin-right: 0; margin-left: 15px;">
+        📷
+    </button>
+    <!-- ▲▲▲ 新增结束 ▲▲▲ -->
+</div>
+
+
     
     <!-- 输入栏（复制聊天页的） -->
     <div class="call-input-bar">
@@ -1488,47 +1506,35 @@
             </div>
             <button class="api-btn" onclick="resetCallWallpaper()" style="margin-top: 10px; background: #999;">恢复默认渐变</button>
         </div>
-        
-<!-- AI消息气泡 -->
+
+<!-- 用户头像设置 -->
 <div class="form-group">
-    <label class="form-label">AI消息气泡</label>
-    <div id="callAiBubblePreview" class="color-preview" style="background: #ffffff;">
-        <input type="color" id="callAiBubbleColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+    <label class="form-label">用户头像</label>
+    <div class="file-input-area" id="userAvatarArea" onclick="document.getElementById('userAvatarFile').click()">
+        <div class="avatar-upload-content">
+            <div style="font-size: 12px;">📁 点击选择头像</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">支持 JPG、PNG 格式</div>
+        </div>
+        <input type="file" id="userAvatarFile" accept="image/*" style="display: none;">
     </div>
 </div>
 
-<!-- AI消息字体颜色 -->
+
+
+<!-- 聊天气泡主题选择 -->
 <div class="form-group">
-    <label class="form-label">AI消息字体</label>
-    <div id="callAiTextPreview" class="color-preview" style="background: #333333;">
-        <input type="color" id="callAiTextColor" value="#333333" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+    <label class="form-label">聊天气泡主题</label>
+    <div style="display: flex; gap: 20px; margin-top: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="callTheme" value="light" checked style="cursor: pointer;">
+            <span style="font-size: 13px; color: #333;">白底黑字</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="radio" name="callTheme" value="dark" style="cursor: pointer;">
+            <span style="font-size: 13px; color: #333;">黑底白字</span>
+        </label>
     </div>
 </div>
-
-<!-- 用户消息气泡颜色 -->
-<div class="form-group">
-    <label class="form-label">我的消息气泡</label>
-    <div id="callUserBubblePreview" class="color-preview" style="background: #667eea;">
-        <input type="color" id="callUserBubbleColor" value="#667eea" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
-    </div>
-</div>
-
-<!-- 用户消息字体颜色 -->
-<div class="form-group">
-    <label class="form-label">我的消息字体</label>
-    <div id="callUserTextPreview" class="color-preview" style="background: #ffffff;">
-        <input type="color" id="callUserTextColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
-    </div>
-</div>
-
-<!-- 角色名字体颜色 -->
-<div class="form-group">
-    <label class="form-label">角色名字体</label>
-    <div id="callNamePreview" class="color-preview" style="background: #ffffff;">
-        <input type="color" id="callNameColor" value="#ffffff" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
-    </div>
-</div>
-
 
 
 
@@ -1540,6 +1546,8 @@
     </div>
 </div>
 </div>
+
+
 <!-- ============ 购物页面 ============ -->
 <div class="shopping-screen" id="shoppingScreen">
     <!-- 顶部导航栏 -->
@@ -1751,6 +1759,26 @@
     </div>
 </div>
 
+<!-- 摄像头免责声明弹窗 -->
+<div class="modal-overlay" id="cameraPrivacyModal">
+    <div class="modal" style="width: 300px; text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
+        <div class="modal-title" style="margin-bottom: 10px;">隐私安全提示</div>
+        <div style="font-size: 14px; color: #666; line-height: 1.6; text-align: left; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+            开启摄像头后，画面将用于 AI 视觉识别。<br><br>
+            <strong>免责声明：</strong><br>
+            1. 所有视频数据仅在<strong>本地浏览器</strong>处理。<br>
+            2. 画面截图仅发送给您配置的 API 服务商。<br>
+            3. 作者无法获取您的任何画面或数据。<br>
+            4.请注意您的隐私<br><br>
+            点击“确认开启”即代表您已知晓并同意。
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeCameraPrivacyModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmOpenCamera()">确认开启</button>
+        </div>
+    </div>
+</div>
 
     <script src="script.js"></script>
 </body>
