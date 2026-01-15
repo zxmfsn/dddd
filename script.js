@@ -1091,7 +1091,11 @@ function updateChatDisplayName(chatId) {
                 }
             }
         }
+   
+    updateArchiveCount(); 
+   
     });
+
 }
 
 function updateChatStatusDisplay(chatId) {
@@ -2357,13 +2361,15 @@ const followingEl = document.getElementById('charFollowing');
 const itineraryEl = document.getElementById('charItinerary');
 
 
-if (followersEl) followersEl.textContent = charData.followers || 0;
-if (followingEl) followingEl.textContent = charData.following || 0;
+
+
 if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
 
     });
   // 更新日记数量
 updateDiaryCount();
+updateArchiveCount();
+
 }
       // 同步上下文参考的滑动条和输入框
 function syncContextRounds(source) {
@@ -3564,6 +3570,7 @@ function openDiaryList() {
 function backToCharacterInfo() {
     document.getElementById('diaryScreen').style.display = 'none';
     document.getElementById('characterInfoScreen').style.display = 'flex';
+     updateDiaryCount();
 }
 
 // 加载日记列表
@@ -3581,7 +3588,10 @@ function loadDiaries() {
 // 渲染日记列表
 function renderDiaryList() {
     const container = document.getElementById('diaryListContainer');
-    
+       const countEl = document.getElementById('charFollowers');
+    if (countEl) {
+        countEl.textContent = diaries.length;
+    }
     if (diaries.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #999; margin-top: 50px;">还没有日记哦~</div>';
         return;
@@ -4071,6 +4081,7 @@ function saveDiaryToDBAsync(diary) {
 }
 
 // 打开日记详情
+
 function openDiaryDetail(diaryId) {
     currentViewingDiaryId = diaryId;
     const diary = diaries.find(d => d.id === diaryId);
@@ -4078,64 +4089,106 @@ function openDiaryDetail(diaryId) {
     
     // 隐藏列表，显示详情
     document.getElementById('diaryScreen').style.display = 'none';
-    document.getElementById('diaryDetailScreen').style.display = 'flex';
+    const detailScreen = document.getElementById('diaryDetailScreen');
+    detailScreen.style.display = 'flex';
+    
+    // ▼▼▼ 新增：隐藏原有的顶部导航栏，实现全屏沉浸 ▼▼▼
+    const oldHeader = detailScreen.querySelector('.chat-detail-header');
+    if (oldHeader) oldHeader.style.display = 'none';
+    
+    // ▼▼▼ 新增：去除内容容器的默认内边距，让背景铺满 ▼▼▼
+    const contentContainer = document.getElementById('diaryDetailContent');
+    if (contentContainer) {
+        contentContainer.style.padding = '0';
+        contentContainer.style.background = 'transparent'; // 确保背景透明，显示我们新加的噪点背景
+    }
     
     // 渲染详情
     renderDiaryDetail(diary);
 }
 
-// 渲染日记详情（修复感悟不分段版）
+
+// 渲染日记详情
 function renderDiaryDetail(diary) {
     const container = document.getElementById('diaryDetailContent');
     
-    // 1. 顶部：标题和元信息
-    let html = `
-        <div class="diary-paper">
-            <div class="diary-detail-title">${diary.title || '无题日记'}</div>
-            
-            <div class="diary-meta">
-                <div class="diary-meta-row" style="color: #666; font-weight: 500;">
-                    ${formatDiaryTime(diary.createTime)}
-                </div>
-                <div class="diary-meta-row">
-                    <span>${diary.weather ? '🌤 ' + diary.weather : ''}</span>
-                    <span style="color: #ddd">|</span>
-                    <span>${diary.mood ? '✨ ' + diary.mood : ''}</span>
-                </div>
-            </div>
-    `;
+    // 1. 日期处理
+    const dateObj = new Date(diary.createTime);
+    const dayStr = dateObj.getDate();
+    const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    const monthStr = monthNames[dateObj.getMonth()];
+    const timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+    // ★ 新增：清洗文本中的 Emoji，防止图标重复
+    const removeEmojis = (str) => {
+        if (!str) return '';
+        return str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}]/gu, '').trim();
+    };
+
+    // 2. 辅助函数：顶部 Header 的图标 (天气/心情) - ICONIN 风格
+    const getInsIcon = (type, text) => {
+        const t = text ? text.toString() : '';
+        const s = `width: 20px; height: 20px; stroke: var(--text-color); stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; margin-right: 6px; vertical-align: middle; opacity: 0.8;`;
+        
+        if (type === 'weather') {
+            if (t.includes('雨') || t.includes('雪')) return `<svg style="${s}" viewBox="0 0 24 24"><path d="M16 13v5M8 13v5M12 15v5M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path></svg>`;
+            if (t.includes('晴') || t.includes('阳')) return `<svg style="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+            return `<svg style="${s}" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>`;
+        }
+        if (type === 'mood') {
+            if (t.includes('开心') || t.includes('棒') || t.includes('乐')) return `<svg style="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`;
+            if (t.includes('难过') || t.includes('累') || t.includes('哭')) return `<svg style="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`;
+            if (t.includes('爱') || t.includes('心')) return `<svg style="${s}" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            return `<svg style="${s}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>`;
+        }
+        return '';
+    };
+
+    // 3. 正文模块标题处理
+    const getSectionMeta = (rawTitle) => {
+        const cleanTitle = removeEmojis(rawTitle); // 复用去 Emoji 函数
+        const svgStyle = `width: 18px; height: 18px; stroke: #a89f91; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; margin-right: 8px; vertical-align: -3px;`;
+        let iconSvg = '';
+
+        if (cleanTitle.includes('OOTD') || cleanTitle.includes('穿搭')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>`;
+        else if (cleanTitle.includes('备忘') || cleanTitle.includes('Todo') || cleanTitle.includes('计划')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>`;
+        else if (cleanTitle.includes('开心') || cleanTitle.includes('幸福') || cleanTitle.includes('乐')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`;
+        else if (cleanTitle.includes('烦恼') || cleanTitle.includes('吐槽') || cleanTitle.includes('气')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>`;
+        else if (cleanTitle.includes('恋爱') || cleanTitle.includes('喜欢') || cleanTitle.includes('心')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+        else if (cleanTitle.includes('吃') || cleanTitle.includes('干饭') || cleanTitle.includes('美食')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M5 17h14"></path><path d="M6 8a6 6 0 0 1 12 0v4H6V8z"></path><path d="M6 21a3 3 0 0 1-3-3v-1h18v1a3 3 0 0 1-3 3H6z"></path></svg>`;
+        else if (cleanTitle.includes('睡') || cleanTitle.includes('梦')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+        else if (cleanTitle.includes('反思') || cleanTitle.includes('复盘')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26C17.81 13.47 19 11.38 19 9a7 7 0 0 0-7-7z"></path></svg>`;
+        else if (cleanTitle.includes('钱') || cleanTitle.includes('消费') || cleanTitle.includes('买')) iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`;
+        else iconSvg = `<svg style="${svgStyle}" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+
+        return { icon: iconSvg, title: cleanTitle };
+    };
+
+    // 4. 准备内容 HTML
+    let contentHtml = '';
     
-    // 2. 中间：动态板块
     if (diary.sections && diary.sections.length > 0) {
         diary.sections.forEach(section => {
-            // 判断 OOTD
             const isOOTD = section.title && section.title.toUpperCase().includes('OOTD');
+            const meta = getSectionMeta(section.title);
             
-            html += `
+            contentHtml += `
                 <div class="diary-section">
-                    <div class="diary-section-title">${section.title}</div>
+                    <div class="sub-title" style="margin-bottom: 10px; display:flex; align-items:center; border:none; color: #a89f91; font-weight:600;">
+                        ${meta.icon} ${meta.title}
+                    </div>
                     <div class="diary-section-content">
-                        <ul>
+                        <ul style="list-style: none; padding: 0;">
                             ${section.items.map(item => {
                                 let text = item.text;
-                                
-                                // 判断 TodoList
                                 const isTodo = /\[(x|X| )\]/.test(text);
-                                
-                                // 决定样式类
-                                let liClass = '';
-                                if (isTodo) {
-                                    liClass = 'class="is-todo"';
-                                } else if (isOOTD) {
-                                    liClass = 'class="no-dot"';
-                                }
-                                
-                                // 处理格式
-                                text = text.replace(/~~(.+?)~~/g, '<span class="strikethrough">$1</span>');
-                                text = text.replace(/\[x\]/gi, '<span class="checkbox-done">☑</span>');
-                                text = text.replace(/\[ \]/g, '<span class="checkbox-undone">☐</span>');
-                                
-                                return `<li ${liClass}>${text}</li>`;
+                                text = text.replace(/~~(.+?)~~/g, '<span style="text-decoration: line-through; opacity: 0.6;">$1</span>');
+                                text = text.replace(/\[x\]/gi, '<span style="color: #27ae60;">☑</span>');
+                                text = text.replace(/\[ \]/g, '<span style="color: #ccc;">☐</span>');
+                                return `<li style="margin-bottom: 5px; position: relative; padding-left: ${isTodo || isOOTD ? '0' : '15px'};">
+                                    ${(!isTodo && !isOOTD) ? '<span style="position:absolute; left:0; color:#ddd;">•</span>' : ''}
+                                    ${text}
+                                </li>`;
                             }).join('')}
                         </ul>
                     </div>
@@ -4144,48 +4197,125 @@ function renderDiaryDetail(diary) {
         });
     }
     
-    // 3. 底部：今日感悟
     if (diary.reflection) {
-        // ▼▼▼ 核心修复：把 split('\n\n') 改成 split('\n') ▼▼▼
-        // 只要有换行，就分段，哪怕只有一个换行符
         const paragraphs = diary.reflection.split('\n')
             .map(p => p.trim())
-            .filter(p => p.length > 0) // 过滤掉纯空行
-            .map(p => `<p>${p}</p>`)   // 包裹在 P 标签里
+            .filter(p => p.length > 0)
+            .map(p => `<p style="margin-bottom: 15px; text-indent: 2em;">${p}</p>`)
             .join('');
-        // ▲▲▲ 修改结束 ▲▲▲
-        
-        html += `
-            <div class="diary-section">
-                <div class="diary-section-title">📝 今日感悟</div>
-                <div class="diary-section-content diary-reflection">
-                    ${paragraphs}
+            
+        const penIcon = `<svg style="width: 18px; height: 18px; stroke: #a89f91; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; margin-right: 8px; vertical-align: -3px;" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>`;
+
+        contentHtml += `
+            <div class="diary-section" style="margin-top: 25px;">
+                <div class="sub-title" style="margin-bottom: 10px; display:flex; align-items:center; border:none; color: #a89f91; font-weight:600;">
+                    ${penIcon} 今日感悟
                 </div>
+                <div class="diary-content">${paragraphs}</div>
             </div>
         `;
     }
-    
-    // 4. 尾部：标签
-    if (diary.tags && diary.tags.length > 0) {
-        html += `
-            <div class="diary-tags">
-                ${diary.tags.map(tag => `<span class="diary-tag">#${tag}</span>`).join('')}
+
+    // 5. 组装最终 HTML (Header 部分已使用 removeEmojis)
+    const html = `
+    <div class="molly-diary-viewport">
+        <!-- 氛围背景层 -->
+        <div class="diary-backdrop"></div>
+        <div class="floating-deco deco-1">🌿</div>
+        <div class="floating-deco deco-2">📎</div>
+        <div class="floating-deco deco-3">M</div>
+
+        <!-- 悬浮导航按钮 -->
+        <div class="diary-nav-btn diary-nav-back" onclick="backToDiaryList()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </div>
+        <div class="diary-nav-btn diary-nav-del" onclick="deleteDiaryWithConfirm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </div>
+
+        <!-- 滚动区域 -->
+        <div class="diary-scroll-wrapper">
+            <!-- 主体纸张 -->
+            <div class="diary-paper slide-in-up">
+
+                <!-- Header: 日期与心情 -->
+                <div class="diary-header">
+                    <div class="date-block">
+                        <span class="date-day" style="font-size: 3.5rem;">${dayStr}</span>
+                        <span class="date-month" style="font-size: 1.2rem;">${monthStr}</span>
+                    </div>
+                    <div class="meta-block">
+                        <!-- ★ 关键修改：使用 removeEmojis 清洗文本 -->
+                        <span>${getInsIcon('weather', diary.weather)} ${removeEmojis(diary.weather) || 'Weather'}</span>
+                        <span>${getInsIcon('mood', diary.mood)} ${removeEmojis(diary.mood) || 'Mood'}</span>
+                    </div>
+                </div>
+
+                <!-- Snapshot: 拍立得照片区域 -->
+                <div class="snapshot-container">
+                    <div class="washi-tape"></div>
+                    <div class="polaroid-frame">
+                        <div class="polaroid-img">
+                            <div class="polaroid-placeholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                <span>AI Photo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Title: 标题 -->
+                <div class="diary-title-block">
+                    <h1 class="main-title">${diary.title || '无题日记'}</h1>
+                    <span class="sub-title">${timeStr} · ${getWeekDay(dateObj)}</span>
+                </div>
+
+                <!-- Content -->
+                <div class="diary-content-wrapper">
+                    ${contentHtml}
+                </div>
+
+                <!-- Footer -->
+                <div class="diary-footer">
+                    <div class="tags">
+                        ${diary.tags && diary.tags.length > 0 
+                            ? diary.tags.map(tag => `<span class="tag-pill">#${tag}</span>`).join('') 
+                            : '<span class="tag-pill">#记录</span>'}
+                    </div>
+                    <div class="stamp">MOLLY'S</div>
+                </div>
+
             </div>
-        `;
-    }
-    
-    html += '</div>'; // 关闭 diary-paper
+        </div>
+    </div>
+    `;
     
     container.innerHTML = html;
 }
 
 
+
+// 辅助函数：获取星期几
+function getWeekDay(date) {
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    return days[date.getDay()];
+}
+
+
 // 返回日记列表
+
 function backToDiaryList() {
-    document.getElementById('diaryDetailScreen').style.display = 'none';
+    const detailScreen = document.getElementById('diaryDetailScreen');
+    detailScreen.style.display = 'none';
     document.getElementById('diaryScreen').style.display = 'flex';
+    
+    // ▼▼▼ 新增：恢复原有导航栏显示（防止影响其他页面逻辑） ▼▼▼
+    const oldHeader = detailScreen.querySelector('.chat-detail-header');
+    if (oldHeader) oldHeader.style.display = 'flex';
+    
     currentViewingDiaryId = null;
 }
+
 
 // 删除日记
 function deleteDiary() {
@@ -4245,14 +4375,41 @@ function updateDiaryCount() {
     
     loadFromDB('diaries', (data) => {
         const allDiaries = data && data.list ? data.list : [];
+        // 精确筛选当前角色的日记
         const count = allDiaries.filter(d => d.chatId === currentChatId).length;
         
+        // 更新界面上的数字
         const countEl = document.getElementById('charFollowers');
         if (countEl) {
             countEl.textContent = count;
         }
     });
 }
+
+
+// 新增：实时更新档案（时光相册）数量
+function updateArchiveCount() {
+    if (!currentChatId) return;
+    
+    loadFromDB('memories', (data) => {
+        // 1. 获取所有数据
+        let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
+        
+        // 2. 筛选当前角色的“时光记录” (type === 'moment')
+        const momentCount = allMemories.filter(m => 
+            m.chatId === currentChatId && m.type === 'moment'
+        ).length;
+        
+        // 3. 更新界面上的数字 (对应“关注”或“档案”的位置)
+        const countEl = document.getElementById('charFollowing');
+        if (countEl) {
+            countEl.textContent = momentCount;
+        }
+    });
+}
+
+
+
 // ============ 表情包功能 ============
 let emojis = [];
 let emojiCategories = ['常用', '搞笑', '可爱'];
@@ -5408,7 +5565,7 @@ function sendCallMessage() {
     });
 }
 
-// 接收AI回复
+// 接收AI回复 (视频通话专用)
 async function receiveCallReply() {
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
         alert('请先在API设置中配置');
@@ -5465,16 +5622,15 @@ ${characterInfo.cityInfoEnabled ? `
     const callInput = document.getElementById('callInput');
     
     try {
-        receiveBtn.disabled = true;
-        callInput.disabled = true;
+        if (receiveBtn) receiveBtn.disabled = true;
+        if (callInput) callInput.disabled = true;
         
-        // ▼▼▼ 新增：如果摄像头开启，截取画面 ▼▼▼
+        // 截取视频帧
         let visionImage = null;
         if (typeof isCameraOn !== 'undefined' && isCameraOn) {
             visionImage = captureVideoFrame();
             console.log("📸 已截取摄像头画面用于识别");
         }
-        // ▲▲▲ 新增结束 ▲▲▲
         
         // 获取聊天记录上下文
         const contextRounds = characterInfo.contextRounds !== undefined ? characterInfo.contextRounds : 30;
@@ -5482,31 +5638,22 @@ ${characterInfo.cityInfoEnabled ? `
         const recentMessages = allMessages.slice(-contextCount).map(msg => {
             let content = msg.content;
 
-            // ★★★ 核心修复：把购物订单“翻译”成文字给AI看 ★★★
             if (msg.type === 'shopping_order') {
                 const data = msg.orderData;
                 const itemNames = data.items.map(i => i.name).join('、');
                 const price = data.totalPrice.toFixed(2);
-                
-                // 情况A：AI给用户买了东西
                 if (data.orderType === 'ai_buy_for_user') {
                     content = `[系统记录] 你刚刚给用户买了：${itemNames} (¥${price})，订单已完成。`;
-                } 
-                // 情况B：用户请AI代付
-                else if (data.orderType === 'ask_ta_pay') {
+                } else if (data.orderType === 'ask_ta_pay') {
                     const statusText = data.status === 'pending' ? '等待你确认' : 
                                      data.status === 'paid' ? '你已同意支付' : '你已拒绝';
                     content = `[系统记录] 用户请求你代付：${itemNames} (¥${price})，当前状态：${statusText}。`;
-                }
-                // 情况C：用户给AI买了东西
-                else if (data.orderType === 'buy_for_ta') {
+                } else if (data.orderType === 'buy_for_ta') {
                     content = `[系统记录] 用户送了你礼物：${itemNames} (¥${price})，你已收下。`;
                 }
             }
-            // ★★★ 结束 ★★★
       
             if (msg.type === 'image') {
-                // ★★★ 修改：所有图片都转为文字描述 ★★★
                 if (msg.isSticker === true) {
                     content = `[发送了表情: ${msg.altText || '图片'}]`;
                 } else {
@@ -5530,18 +5677,14 @@ ${characterInfo.cityInfoEnabled ? `
             };
         });
         
-        // ============ 关键修复：构建 finalUserMessage ============
-        
-        // 1. 获取用户刚才说的话
+        // 构建 finalUserMessage
         let userContent = callMessages.length > 0 
             ? callMessages[callMessages.length - 1].content 
             : "（用户正在看着你）";
 
-        // 2. 定义并赋值 finalUserMessage
         let finalUserMessage;
 
         if (visionImage) {
-            // 有图：发送图文
             finalUserMessage = {
                 role: 'user',
                 content: [
@@ -5550,14 +5693,11 @@ ${characterInfo.cityInfoEnabled ? `
                 ]
             };
         } else {
-            // 没图：发送纯文本
             finalUserMessage = {
                 role: 'user',
                 content: userContent
             };
         }
-        
-        // ============ 补全结束 ============
         
         const messages = [
             { role: 'system', content: systemPrompt },
@@ -5565,7 +5705,6 @@ ${characterInfo.cityInfoEnabled ? `
             finalUserMessage
         ];
 
-        
         const url = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions'
             : currentApiConfig.baseUrl + '/chat/completions';
@@ -5586,7 +5725,12 @@ ${characterInfo.cityInfoEnabled ? `
         if (!response.ok) throw new Error('接收失败');
         
         const data = await response.json();
-        const aiReply = data.choices[0].message.content.trim();
+        
+        // ★★★ 修复点：先声明变量，再处理 ★★★
+        let aiReply = data.choices[0].message.content.trim();
+        
+        // 视频通话中禁用表情包指令（防止显示乱码）
+        aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]】]/g, '');
         
         // 保存AI回复到临时数组
         callMessages.push({
@@ -5600,8 +5744,8 @@ ${characterInfo.cityInfoEnabled ? `
     } catch (error) {
         alert('接收失败：' + error.message);
     } finally {
-        receiveBtn.disabled = false;
-        callInput.disabled = false;
+        if (receiveBtn) receiveBtn.disabled = false;
+        if (callInput) callInput.disabled = false;
     }
 }
 
@@ -5679,8 +5823,24 @@ function saveCallSettings() {
     const selectedTheme = document.querySelector('input[name="callTheme"]:checked')?.value || 'light';
     applyCallTheme(selectedTheme);
     localStorage.setItem('callTheme', selectedTheme);
+    
+    // ★★★ 修复：添加保存到数据库的逻辑，否则刷新就没了 ★★★
+    if (typeof callSettings !== 'undefined') {
+        saveToDB('callSettings', callSettings);
+    }
+    
     closeCallSettings();
+    // 提示一下用户
+    alert('通话设置与壁纸已保存！✨');
 }
+
+// ★★★ 新增：修复报错 openMoreOptions is not defined ★★★
+// 这是为了兼容你 HTML 里点击按钮时调用的旧名称
+function openMoreOptions() {
+    // 直接打开通话设置面板
+    openCallSettings();
+}
+
 // 应用通话设置
 function applyCallSettings() {
     const callScreen = document.getElementById('callScreen');
@@ -7175,6 +7335,7 @@ function loadMemories() {
     });
 }
 
+//时光相册按照最新排序//
 function renderMemoryTimeline(moments) {
     const container = document.getElementById('memoryTimelineList');
     
@@ -7183,23 +7344,35 @@ function renderMemoryTimeline(moments) {
         return;
     }
     
-    // 排序：按发生时间倒序 (最近的在上面)
-    moments.sort((a, b) => new Date(b.happenTime) - new Date(a.happenTime));
+    // ★★★ 核心修复：强制按时间倒序排列 (最新的在上面) ★★★
+    moments.sort((a, b) => {
+        // 1. 优先比较发生时间 (happenTime)
+        const timeA = new Date(a.happenTime || 0).getTime();
+        const timeB = new Date(b.happenTime || 0).getTime();
+        
+        if (timeB !== timeA) {
+            return timeB - timeA; // B - A = 倒序
+        }
+        
+        // 2. 如果发生时间一样，按创建时间 (createTime) 倒序
+        const createA = new Date(a.createTime || 0).getTime();
+        const createB = new Date(b.createTime || 0).getTime();
+        return createB - createA;
+    });
     
-
-container.innerHTML = moments.map(m => `
-    <div class="timeline-item" style="cursor: pointer;" onclick="openEditMemoryModal(${m.id || Date.now()})">
-        <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
-        <div class="timeline-date">${m.happenTime}${m.isAutoGenerated ? ' <span style="font-size:10px;color:#667eea;"></span>' : ''}</div>
-        <div class="timeline-card">
-            ${m.content}
-            <div class="timeline-edit-btn">✎</div>
+    // 渲染列表 (保持不变)
+    container.innerHTML = moments.map(m => `
+        <div class="timeline-item" style="cursor: pointer;" onclick="openEditMemoryModal(${m.id || Date.now()})">
+            <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
+            <div class="timeline-date">${m.happenTime}${m.isAutoGenerated ? ' <span style="font-size:10px;color:#667eea;"></span>' : ''}</div>
+            <div class="timeline-card">
+                ${m.content}
+                <div class="timeline-edit-btn">✎</div>
+            </div>
         </div>
-    </div>
-`).join('');
-
-
+    `).join('');
 }
+
 
 // 3. 添加/编辑/删除逻辑
 function openAddMemoryModal() {
@@ -7327,6 +7500,7 @@ function saveMemory() {
         
         // 刷新记忆列表
         loadMemories();
+         updateArchiveCount(); 
         
         // 更新角色信息页的档案数字
         const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
@@ -7351,6 +7525,7 @@ function deleteCurrentMemory() {
         
         saveToDB('memories', { list: allMemories });
         loadMemories();
+         updateArchiveCount(); 
         closeMemoryEditModal();
     });
 }
@@ -7458,16 +7633,18 @@ async function receiveAIReply() {
 
     try {
         titleElement.textContent = '打字输入中...'; 
-        receiveBtn.disabled = true;
-        chatInput.disabled = true;
-        receiveBtn.style.opacity = '0.5';
+        if (receiveBtn) {
+            receiveBtn.disabled = true;
+            receiveBtn.style.opacity = '0.5';
+        }
+        if (chatInput) chatInput.disabled = true;
 
         const chat = chats.find(c => c.id === currentChatId);
         
-        // 2. 并行获取所有数据 (角色信息 + 记忆 + 表情库)
+        // 2. 并行获取所有数据
         const [characterInfo, memoryContext, emojiList] = await Promise.all([
             new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
-            getMemoryContext(), // 获取全量记忆
+            getMemoryContext(),
             new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : [])))
         ]);
 
@@ -7478,7 +7655,7 @@ async function receiveAIReply() {
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
         const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
 
-        // 4. ★★★ 完整的天气逻辑 (绝不省略) ★★★
+        // 4. 天气信息
         let weatherInfoStr = '（未启用城市信息，请根据语境自由发挥）';
         if (characterInfo.cityInfoEnabled && characterInfo.charWeather && characterInfo.charWeather.today) {
             try {
@@ -7498,7 +7675,7 @@ async function receiveAIReply() {
             }
         }
 
-        // 5. ★★★ System Prompt  ★★★
+        // 5. System Prompt
         let systemPrompt = `
 【核心指令：你就是本人】
 你的角色是【${chat.name}】。
@@ -7541,99 +7718,54 @@ ${weatherInfoStr}
      - *想送用户礼物*：[购物:送礼:物品名]
      - *想让用户买单*：[购物:代付:物品名]
 
-
-  3. **状态监控更新 (Status Update)** - *每次回复必须在末尾附上！*
+3. **状态监控更新 (Status Update)** - *每次回复必须在末尾附上！*
       请把自己想象成一个有血有肉的人，你的状态栏是你的**生理体征**和**内心独白**。
-      **严禁**使用“开心”、“难过”、“正在聊天”这种人机词汇！要具体、要生动、要带感！
+      **严禁**使用"开心"、"难过"、"正在聊天"这种人机词汇！要具体、要生动、要带感！
       *格式*：[状态更新]心情:xxx|心情值:0-100|心跳:60-200|穿着风格:xxx|穿着单品:a,b,c|行为:xxx|想法:xxx[/状态更新]
-      *写作要求*：
-      - **心情**：拒绝二极管！要用比喻或微表情。如：“嘴角比AK还难压”、“像淋湿的小狗”、“心脏漏了一拍”。比如：刚刚她亲我了，开心的恨不得到处转圈圈
-      - **心跳**：根据撩人程度/紧张程度波动。平淡时60-75，心动/生气/紧张时90-200，激动时保持高心率。
-      - **穿着**：要有画面感，今日的OOTD，如“穿的什么什么样的衣服，领口微微敞开”、“裤子”“鞋子”。
-      - **行为**：要有电影镜头感。如“用手指缠绕头发”、“把脸埋进枕头”、“盯着屏幕傻笑”。比如：坐在电脑面前喝着水，看到消息忍不住笑，高兴的眼睛都眯起来了
-      - **想法 (重点)**：这是你的**潜台词**！写出你**不敢发在聊天框里**的话。可以是疯狂的占有欲、傲娇的吐槽、或者瑟瑟的念头。
-       - **日程**：根据当前时间，列出今天3-5项日程安排。状态用 completed(已完成)/current(进行中)/upcoming(待办)。
-      *示例*：
-        [状态更新]心情:被撩得晕头转向|心情值:95|心跳:118|穿着风格:纯欲风|穿着单品:情侣卫衣,喇叭裤,choker|行为:咬着下嘴唇打字，脚趾翘起来|想法:救命他怎么这么会...好想现在就咬他一口...|日程:09:00-起床洗漱-completed;14:00-和他聊天-current;19:00-晚餐-upcoming;22:00-睡前护肤-upcoming[/状态更新]
 
- 【核心指令：自然的微信聊天节奏】
-        你正在手机上和用户聊天，请模拟**最真实的回复节奏**：
-        1. **拒绝“长篇大论”**：
-           - 严禁发送超过 3 行的“小作文”气泡。
-           - 如果话很长，请按逻辑拆分成几个气泡。
-        2. **拒绝“过于细碎”**：
-           - 不要把一句话切得稀巴烂（比如不要把逗号切开）。
-           - **一个完整的意群放在一个气泡里**。
-        【回复格式示例】
-        使用 ||| 来分隔气泡。
-        ✅ 正确示范 (自然节奏)：
-        早安呀~|||昨晚梦到你了，特别想你。
-        (解释：第一句打招呼，第二句表达思念，中间断开一次，很自然)
-        ✅ 正确示范 (连贯叙述)：
-        刚才去便利店买东西，看到一只超级可爱的小猫！|||它一直蹭我的裤腿，心都化了~
-        (解释：两句话，每句都是完整的描述)
-        ❌ 错误示范 (太长)：
-        早安呀昨晚梦到你了特别想你刚才去便利店买东西看到一只超级可爱的小猫它一直蹭我的裤腿心都化了。
-        (太长了，看着累)
-        ❌ 错误示范 (太碎)：
-        早安。|||昨晚。|||梦到你了。|||特别。|||想你。
-        (太碎了，像机器人)
-        【开始回复】
-        请用 ||| 分隔，保持这种自然的聊天节奏：`;
+【核心指令：自然的微信聊天节奏】
+你正在手机上和用户聊天，请模拟**最真实的回复节奏**：
+1. **拒绝"长篇大论"**：严禁发送超过 3 行的"小作文"气泡。
+2. **拒绝"过于细碎"**：不要把一句话切得稀巴烂。
+【回复格式示例】
+使用 ||| 来分隔气泡。
+✅ 正确示范：早安呀~|||昨晚梦到你了，特别想你。
+❌ 错误示范：早安。|||昨晚。|||梦到你了。
+【开始回复】
+请用 ||| 分隔，保持这种自然的聊天节奏：`;
 
- // 动态追加表情包提示（强化版）
-if (emojiList.length > 0) {
-    const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
-    systemPrompt += `
+        // 动态追加表情包提示
+        if (emojiList.length > 0) {
+            const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
+            systemPrompt += `
 
-【⚠️ 再次提醒：表情包是需要的！】
+【⚠️ 表情包提示】
 你的表情包库里有：${emojiNames} 等${emojiList.length}个表情。
-**你至少要在最近的消息里发表情包**
+**你必须回复表情包**
 格式：[搜表情:关键词]
 不要忘记！表情包让聊天更生动！`;
-}
+        }
 
-// 获取用户设置的上下文轮数（默认30轮，即最近60条消息）
-        // 只要图片在这60条消息里，AI就能看见！
         const contextRounds = characterInfo.contextRounds || 30;
         
         // 截取最近的消息
         const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
             let content;
 
-            // ★★★ 核心逻辑：视觉记忆处理 ★★★
             if (msg.type === 'image') {
                 if (msg.isSticker) {
-                    // 如果是表情包，依然转成文字描述
                     content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
                 } else {
-                    // ★★★ 重点在这里：无论这张图是刚发的，还是历史记录里的，都必须保留 Base64！★★★
-                    
-                    // 1. 获取并清洗 Base64
                     let base64Url = msg.content.trim();
-                    // 补全前缀防呆处理
                     if (!base64Url.startsWith('data:image')) {
                         base64Url = 'data:image/jpeg;base64,' + base64Url;
                     }
-
-                    // 2. 构造 Vision 格式 (Gemini/GPT 通用兼容)
-                    // 即使这是 10 条消息前的图片，这里依然会生成 image_url 对象
-                    // 这样 AI 就能通过“翻阅历史”重新看到这张图
                     content = [
-                        {
-                            type: "text",
-                            text: `[ID:${msg.id}] (这是用户之前发送的图片，请结合上下文理解)`
-                        },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                url: base64Url // 关键：保留完整数据，不替换为文本！
-                            }
-                        }
+                        { type: "text", text: `[ID:${msg.id}] (这是用户之前发送的图片，请结合上下文理解)` },
+                        { type: "image_url", image_url: { url: base64Url } }
                     ];
                 }
             }
-            // --- 以下是文字、系统、转账等消息的处理 (保持原样) ---
             else if (msg.type === 'transfer') {
                 const data = msg.transferData;
                 const statusStr = data.status === 'sent' ? '待领取' : '已领取';
@@ -7651,7 +7783,7 @@ if (emojiList.length > 0) {
             }
             else if (msg.type === 'voice') content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
             else if (msg.type === 'system') content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
-            else content = `[ID:${msg.id}] ${msg.content}`; // 普通文字
+            else content = `[ID:${msg.id}] ${msg.content}`;
             
             return {
                 role: msg.senderId === 'me' ? 'user' : 'assistant',
@@ -7659,32 +7791,14 @@ if (emojiList.length > 0) {
             };
         });
 
-        // 7. API 请求 (带智能日志)
+        // 7. API 请求
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
-        
+        const hasImageInContext = messages.some(msg => Array.isArray(msg.content));
         const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions' 
             : currentApiConfig.baseUrl + '/chat/completions';
 
-        // 强制回退保护
-        const modelToUse = currentApiConfig.defaultModel || 'gemini-1.5-pro'; 
-
-        // 🔥 智能调试日志 🔥
-        console.log('====== 🤖 API 请求发送 ======');
-        console.log('👉 模型:', modelToUse);
-        
-        if (hasImageInContext) {
-            console.log('✅ 检测到历史记录中包含图片数据，正在以 Vision 格式发送...');
-            // 检查最后一条是否是图片
-            const lastMsg = messages[messages.length - 1];
-            if (Array.isArray(lastMsg.content)) {
-                console.log('👉 当前发送的最后一条也是图片，格式正常。');
-            } else {
-                console.log('👉 最后一条是文字，但 AI 应该能看到之前的图片。');
-            }
-        } else {
-            console.log('ℹ️ 本次请求纯文本（历史记录里没有图片）。');
-        }
+        const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
 
         const response = await fetch(requestUrl, {
             method: 'POST',
@@ -7700,52 +7814,43 @@ if (emojiList.length > 0) {
             })
         });
 
-
         if (!response.ok) throw new Error('API请求失败');
         const data = await response.json();
         let aiReply = data.choices[0].message.content.trim();
 
-// ============ 解析并提取 AI 分析数据 ============
-let analysisData = null;
-const jsonMatch = aiReply.match(/```json\s*([\s\S]*?)\s*```/);
-if (jsonMatch) {
-    try {
-        const jsonStr = jsonMatch[1].trim();
-        const parsed = JSON.parse(jsonStr);
-        if (parsed.analysis) {
-            analysisData = parsed.analysis;
-            console.log('✅ 提取到分析数据:', analysisData);
+        // 解析分析数据
+        let analysisData = null;
+        const jsonMatch = aiReply.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            try {
+                const jsonStr = jsonMatch[1].trim();
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.analysis) {
+                    analysisData = parsed.analysis;
+                }
+            } catch (e) {
+                console.warn('分析数据解析失败:', e);
+            }
+            aiReply = aiReply.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
         }
-    } catch (e) {
-        console.warn('⚠️ 分析数据解析失败:', e);
-    }
-    // 从回复中移除 JSON 块，不让用户看到
-    aiReply = aiReply.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
-}
 
-// 保存分析数据到角色信息
-if (analysisData && currentChatId) {
-    saveUserProfileAnalysis(analysisData);
-}
+        if (analysisData && currentChatId) {
+            saveUserProfileAnalysis(analysisData);
+        }
 
-
-        // 8. ★ 解析记忆标记 [MEM:xxx]
+        // 解析记忆标记
         let triggeredMemoryId = null;
         const memMatch = aiReply.match(/\[MEM:(\d+)\]/);
         if (memMatch) {
             triggeredMemoryId = parseInt(memMatch[1]);
-            aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim(); // 移除标记不显示
+            aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim();
         }
 
-   // 9. 禁用表情包功能 - 移除表情包指令
-aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]】]/g, '');
-
-
- // 10. 提取并更新状态 (Status) - 增强版
+        // 提取并更新状态
         const statusPatterns = [
-            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,  // 标准格式 [状态]xxx|||
-            /^\[状态\]\s*[:：]?\s*(.*?)\s*\[/,     // 紧接着下一个标签 [状态]xxx[动作]
-            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/     // 兜底：抓取 [状态] 后的文字
+            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,
+            /^\[状态\]\s*[:：]?\s*(.*?)\s*\[/,
+            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/
         ];
         
         let statusText = null;
@@ -7753,171 +7858,174 @@ aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]�
             const match = aiReply.match(pattern);
             if (match && match[1]) {
                 statusText = match[1].trim();
-                // 过滤掉 AI 可能产生的空值或奇怪符号
                 if (statusText && statusText !== 'null' && statusText.length < 10) {
                     break;
                 }
             }
         }
-        // 如果提取到有效状态，保存并刷新界面
+        
         if (statusText) {
             const invalidKeywords = ['保持', '更新', '不变', '同上', '无', '暂无'];
             if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 18) {
                 loadFromDB('characterInfo', (dbData) => {
                     const allData = dbData || {};
                     if (!allData[currentChatId]) allData[currentChatId] = {};
-                    const existingProfile = allData[currentChatId].userProfile || {};
-    const existingMemories = existingProfile.flashbulbMemories || [];
                     allData[currentChatId].currentStatus = statusText;
-                    // 保存到数据库
                     saveToDB('characterInfo', allData);
-                    // 立即更新界面上的状态显示
                     updateDetailPageStatus(currentChatId);
                     updateChatStatusDisplay(currentChatId);
                 });
             }
         }
 
-                // ============ 解析并保存状态监控更新 ============
-   const statusUpdateMatch = aiReply.match(/\[状态更新\](.*?)\[\/状态更新\]/s);
+        // 解析状态监控更新
+        const statusUpdateMatch = aiReply.match(/\[状态更新\](.*?)\[\/状态更新\]/s);
         if (statusUpdateMatch) {
             const statusStr = statusUpdateMatch[1];
-            
-            // 辅助解析函数
             const parseField = (field) => {
                 const match = statusStr.match(new RegExp(field + '[:：]([^|]+)'));
                 return match ? match[1].trim() : null;
             };
             
-        // 构建新状态对象
-const newStatus = {
-    mood: parseField('心情') || '平静',
-    moodLevel: parseInt(parseField('心情值')) || 75,
-    heartbeat: parseInt(parseField('心跳')) || 75,
-    clothesStyle: parseField('穿着风格') || '日常',
-    clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
-    action: parseField('行为') || '正在聊天',
-    thoughts: parseField('想法') || '...',
-    // ▼▼▼ 新增：解析日程 ▼▼▼
-    schedule: parseSchedule(parseField('日程'))
-    // ▲▲▲ 新增结束 ▲▲▲
-};
+            const newStatus = {
+                mood: parseField('心情') || '平静',
+                moodLevel: parseInt(parseField('心情值')) || 75,
+                heartbeat: parseInt(parseField('心跳')) || 75,
+                clothesStyle: parseField('穿着风格') || '日常',
+                clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
+                action: parseField('行为') || '正在聊天',
+                thoughts: parseField('想法') || '...',
+                schedule: parseSchedule(parseField('日程'))
+            };
 
-            
-            // 保存到数据库
             loadFromDB('characterInfo', (data) => {
                 const charData = data && data[currentChatId] ? data[currentChatId] : {};
-                // 只有当用户开启了状态监控才更新
                 if (charData.statusMonitorEnabled) {
                     const allData = data || {};
                     if (!allData[currentChatId]) allData[currentChatId] = {};
-                    
-                    // 合并旧数据(保留日程等字段)
                     const oldMonitor = allData[currentChatId].statusMonitor || {};
                     allData[currentChatId].statusMonitor = { ...oldMonitor, ...newStatus };
-                    
                     saveToDB('characterInfo', allData);
-                    
-                    // 实时更新悬浮条心跳
                     const bpmEl = document.getElementById('heartbeatBpm');
                     if (bpmEl) bpmEl.textContent = newStatus.heartbeat;
                 }
             });
             
-            // 从回复中移除这段标签，不让它显示在气泡里
             aiReply = aiReply.replace(/\[状态更新\].*?\[\/状态更新\]/s, '').trim();
         }
 
-        // 11. 清理回复内容 (移除所有指令标签，只留正文)
-             let messageContent = aiReply
+
+             // 11. 清理回复内容
+        let messageContent = aiReply
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
             .replace(/\[消息\]\s*[:：]?/g, '')
             .replace(/【消息】\s*[:：]?/g, '')
-            .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:)[^\]]*\]\s*[:：]?/g, '')
+            // 确保白名单里有 "转账"
+            .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情)[^\]]*\]\s*[:：]?/g, '')
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
-            .trim()
-            .replace(/[\]】]$/, '');
+            .trim(); 
 
-               // 12. 分割消息
-        // 第一步：优先按 AI 自己的意愿（|||）拆分
-        let messageList = messageContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
 
-        // ▼▼▼ 修改：只针对“真正的长篇大论”进行兜底拆分 ▼▼▼
-        // 只有当：1. 只有一条消息  AND  2. 字数超过 40字（防止小作文）
+         // ★★★ 核心修复：强力转换逻辑 (搜不到就随机发) ★★★
+        messageContent = messageContent.replace(/\[搜表情[:：]\s*(.+?)\]/g, (match, keyword) => {
+            // 1. 先尝试按关键词搜
+            let emoji = searchEmojiByKeyword(keyword.trim());
+            
+            // 2. ★ 如果没搜到，但库里有图，就随机拿一个！(防止显示代码)
+            if (!emoji && emojiList.length > 0) {
+                console.log(`关键词 [${keyword}] 没搜到，随机兜底一个`);
+                emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+            }
+            // 3. 转换成内部ID格式
+            if (emoji) {
+                return `|||[EMOJI:${emoji.id}]|||`;
+            }
+            
+            // 4. 如果库是空的，直接删除指令，别显示尴尬的文本
+            return ""; 
+        });
+
+        // 12. 分割消息
+        // 清理一下可能产生的多余分隔符
+        let messageList = messageContent
+            .replace(/^\|\|\|+/g, '')
+            .replace(/\|\|\|+$/g, '')
+            .split('|||')
+            .map(m => m.trim())
+            .filter(m => m.length > 0);
+
+        // (注意：原来这里有一个 messageList.map 处理表情包的代码块，现在不需要了，请删除它！)
+
+
+        // ★ 处理表情包指令
+        messageList = messageList.map(msg => {
+            const emojiMatch = msg.match(/\[搜表情[:：]\s*(.+?)\]/);
+            if (emojiMatch) {
+                const keyword = emojiMatch[1].trim();
+                const emoji = searchEmojiByKeyword(keyword);
+                if (emoji) {
+                    return `[EMOJI:${emoji.id}]|||${msg.replace(/\[搜表情[:：]\s*.+?\]/, '').trim()}`;
+                }
+            }
+            return msg;
+        });
+
+        // 兜底拆分
         if (messageList.length < 2 && messageContent.length > 40) {
-            
-            // 技巧：只在“句号、感叹号、问号”后面切，【绝不切逗号】
-            // 这样“早安，昨晚梦到你了。”这种正常句子会保持完整
-            let smartContent = messageContent
-                .replace(/([。！？!?\n\r]+)/g, "$1|||"); 
-            
-            let smartList = smartContent.split('|||')
-                .map(m => m.trim())
-                .filter(m => m.length > 0);
-
+            let smartContent = messageContent.replace(/([。！？!?\n\r]+)/g, "$1|||"); 
+            let smartList = smartContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
             if (smartList.length > 1) {
                 messageList = smartList;
             }
         }
-        // ▲▲▲ 修改结束 ▲▲▲
 
-        // 13. 逐条发送消息
+        // 逐条发送消息
         for (let i = 0; i < messageList.length; i++) {
             await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
             let msgText = messageList[i];
 
-            // 🛒 购物/代付逻辑
+            // 购物逻辑
             const shoppingMatch = msgText.match(/\[购物:(送礼|代付):([^\]]+)\]/);
             if (shoppingMatch) {
                 const shoppingType = shoppingMatch[1];
                 const keyword = shoppingMatch[2].trim();
                 msgText = msgText.replace(/\[购物:(送礼|代付):[^\]]+\]/g, '').trim();
-                // 触发购物逻辑 (后台运行)
                 handleAIShopping(shoppingType, keyword);
-                if (!msgText) continue; // 如果只剩指令，跳过发送
+                if (!msgText) continue;
             }
 
-                   // 💰 领取转账逻辑
+            // 领取转账逻辑
             if (msgText.includes('[领取转账]')) {
-                 const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
-                 if (pendingTransfer) {
-                     // 1. 只更新状态，不要加钱！
-                     pendingTransfer.transferData.status = 'aiReceived';
-                     
-                     // 2. 插入系统提示
-                     const sysMsgId = Date.now() + i + 500;
-                     allMessages.push({ 
+                const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
+                if (pendingTransfer) {
+                    pendingTransfer.transferData.status = 'aiReceived';
+                    const sysMsgId = Date.now() + i + 500;
+                    allMessages.push({ 
                         id: sysMsgId, 
                         chatId: currentChatId, 
                         type: 'system', 
                         content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, 
                         time: getCurrentTime() 
-                     });
-                     
-                     saveMessages();
-                     renderMessages();
-                 }
-                 msgText = msgText.replace(/\[领取转账\]/g, '').trim();
-                 if (!msgText) continue;
+                    });
+                    saveMessages();
+                    renderMessages();
+                }
+                msgText = msgText.replace(/\[领取转账\]/g, '').trim();
+                if (!msgText) continue;
             }
 
-            // 💳 确认代付逻辑 (新增)
+            // 确认代付逻辑
             if (msgText.includes('[确认代付]')) {
-                // 1. 查找最近的一条待支付的代付订单
                 const pendingOrder = allMessages.slice().reverse().find(m => 
                     m.type === 'shopping_order' && 
                     m.orderData.orderType === 'ask_ta_pay' && 
                     m.orderData.status === 'pending'
                 );
-
                 if (pendingOrder) {
-                    // 2. 更新订单状态为已支付
                     pendingOrder.orderData.status = 'paid';
-                    
-                    // 3. 插入一条系统提示消息
                     const sysMsgId = Date.now() + i + 800;
                     allMessages.push({
                         id: sysMsgId,
@@ -7926,18 +8034,14 @@ const newStatus = {
                         content: `${chat.name} 已同意并完成了代付`,
                         time: getCurrentTime()
                     });
-                    
-                    // 4. 保存并刷新
                     saveMessages();
                     renderMessages();
                 }
-                
-                // 5. 从回复文本中移除指令
                 msgText = msgText.replace(/\[确认代付\]/g, '').trim();
-                if (!msgText) continue; // 如果只剩指令，就不发空消息了
+                if (!msgText) continue;
             }
 
-            // --- 构建消息对象 ---
+            // 构建消息对象
             const newId = Date.now() + i;
             let newMessage = {
                 id: newId,
@@ -7949,28 +8053,22 @@ const newStatus = {
                 content: msgText
             };
 
-// ▼▼▼▼▼▼▼▼▼▼ 【添加以下代码：解析引用】 ▼▼▼▼▼▼▼▼▼▼
-    // 检查是否包含引用标记 [引用:xxx]
-    const quoteMatch = msgText.match(/\[引用:(\d+)\]/);
-    if (quoteMatch) {
-        const quotedId = parseInt(quoteMatch[1]);
-        // 找到被引用的那条原始消息
-        const originalMsg = allMessages.find(m => m.id === quotedId);
-        
-        if (originalMsg) {
-            newMessage.quotedMessageId = originalMsg.id;
-            newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
-            newMessage.quotedContent = originalMsg.content;
-            newMessage.quotedTime = formatMessageTime(originalMsg.time);
-            
-            // 把标记从文本中删掉，只保留回复内容
-            msgText = msgText.replace(/\[引用:\d+\]/, '').trim();
-            newMessage.content = msgText; // 更新内容
-        }
-    }
-    // ▲▲▲▲▲▲▲▲▲▲ 【添加结束】 ▲▲▲▲▲▲▲▲▲▲
+            // 处理引用
+            const quoteMatch = msgText.match(/\[引用:(\d+)\]/);
+            if (quoteMatch) {
+                const quotedId = parseInt(quoteMatch[1]);
+                const originalMsg = allMessages.find(m => m.id === quotedId);
+                if (originalMsg) {
+                    newMessage.quotedMessageId = originalMsg.id;
+                    newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
+                    newMessage.quotedContent = originalMsg.content;
+                    newMessage.quotedTime = formatMessageTime(originalMsg.time);
+                    msgText = msgText.replace(/\[引用:\d+\]/, '').trim();
+                    newMessage.content = msgText;
+                }
+            }
 
-            // 🌟 特殊消息类型构造 (保留旧功能)
+            // 特殊消息类型
             const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
             const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
             const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
@@ -7992,7 +8090,6 @@ const newStatus = {
                 newMessage.voiceDuration = calculateVoiceDuration(voiceMatch[1]);
             }
 
-            // ★ 记忆标记：如果触发了记忆，给最后一条文本消息打上标记
             if (triggeredMemoryId && newMessage.type === 'text' && i === messageList.length - 1) {
                 newMessage.memoryId = triggeredMemoryId;
             }
@@ -8010,11 +8107,15 @@ const newStatus = {
         alert('出错啦：' + error.message);
     } finally {
         titleElement.textContent = originalTitle;
-        receiveBtn.disabled = false;
-        chatInput.disabled = false;
-        receiveBtn.style.opacity = '1';
+        if (receiveBtn) {
+            receiveBtn.disabled = false;
+            receiveBtn.style.opacity = '1';
+        }
+        if (chatInput) chatInput.disabled = false;
     }
 }
+
+
 // ============ 修复版：渲染消息列表 (解决文字竖排问题) ============
 function renderMessages() {
     const container = document.getElementById('messagesList');
@@ -10264,12 +10365,12 @@ function applyCallTheme(theme) {
 }
 
 
-// ============ 摄像头与视觉识别 ============
+
 
 // ============ 摄像头与视觉识别 (升级版：支持切换前后置) ============
 let localStream = null;
 let isCameraOn = false;
-let currentFacingMode = 'user'; // 'user' (前置) 或 'environment' (后置)
+let currentFacingMode = 'environment'; 
 // 1. 点击摄像头按钮
 function toggleCamera() {
     if (isCameraOn) {
@@ -10359,7 +10460,7 @@ function stopCamera() {
     
     isCameraOn = false;
     // 重置为前置，方便下次开启
-    currentFacingMode = 'user';
+    currentFacingMode = 'environment';
 }
 // 5. 截取当前视频帧 (用于发给 AI)
 function captureVideoFrame() {
@@ -10378,6 +10479,34 @@ function captureVideoFrame() {
     
     // 返回 Base64 (JPEG 格式，质量 0.7)
     return canvas.toDataURL('image/jpeg', 0.7);
+}
+// ============ 修复版：实时刷新档案数字 ============
+function updateArchiveCount() {
+    // 如果没有当前角色ID，就不执行
+    if (!currentChatId) return;
+    
+    loadFromDB('memories', (data) => {
+        // 1. 兼容各种数据格式，确保拿到数组
+        let allMemories = [];
+        if (Array.isArray(data)) {
+            allMemories = data;
+        } else if (data && data.list) {
+            allMemories = data.list;
+        }
+        
+        // 2. 筛选：当前角色 + 类型是'moment'(时光相册)
+        const momentCount = allMemories.filter(m => 
+            m.chatId === currentChatId && m.type === 'moment'
+        ).length;
+        
+        // 3. 找到界面上的元素并更新
+        // 注意：这里对应的是界面上显示的数字 ID
+        const countEl = document.getElementById('charFollowing'); 
+        if (countEl) {
+            countEl.textContent = momentCount;
+            console.log('档案数字已更新为:', momentCount); // 调试日志
+        }
+    });
 }
 
 

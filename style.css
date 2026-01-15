@@ -7222,4 +7222,297 @@ input[type=range] {
     margin-top: 5px;
 }
 
+/* =========================================
+   ▼▼▼ 新增：Molly 日记详情页专用样式 ▼▼▼
+   ========================================= */
+
+/* 1. 视口容器：覆盖原有的 flex 布局，改为相对定位 */
+.molly-diary-viewport {
+    --bg-color: #fdfbf7; /* 暖白纸张色 */
+    --text-color: #2c3e50; /* 深蓝灰墨水色 */
+    --accent-color: #a89f91; /* 咖啡渍/旧纸张色 */
+    --line-color: #e0e0e0;
+
+    position: relative;
+    width: 100%;
+    height: 100%; /* 占满屏幕 */
+    font-family: 'Lato', sans-serif;
+    overflow: hidden;
+    color: var(--text-color);
+    background-color: #f0f0f2; /* 桌面背景色 */
+}
+
+/* 2. 背景与氛围层 */
+.diary-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* 噪点纹理 */
+    background-image:
+        radial-gradient(#d3d3d3 1px, transparent 1px),
+        radial-gradient(#d3d3d3 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    opacity: 0.6;
+    z-index: 0;
+    pointer-events: none; /* 让点击穿透到下面 */
+}
+
+/* 漂浮装饰物 */
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(5deg); }
+}
+.floating-deco {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.7;
+    font-size: 2rem;
+    animation: float 8s ease-in-out infinite;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.1));
+}
+.deco-1 { top: 12%; right: 5%; animation-delay: 0s; font-size: 1.5rem; } 
+.deco-2 { bottom: 15%; left: -10px; animation-delay: 2s; font-size: 2.5rem; transform: rotate(-15deg); }
+.deco-3 { top: 30%; left: -10px; animation-delay: 4s; opacity: 0.2; font-family: serif; font-size: 5rem; color: #000; }
+
+/* 3. 核心：可滚动的纸张容器 */
+.diary-scroll-wrapper {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow-y: auto; /* 只有纸张区域滚动 */
+    overflow-x: hidden;
+    padding: 80px 0 40px; /* 顶部留出空间给悬浮按钮 */
+    z-index: 2;
+    /* 隐藏滚动条 */
+    scrollbar-width: none;
+}
+.diary-scroll-wrapper::-webkit-scrollbar { display: none; }
+
+.diary-paper {
+    position: relative;
+    width: 88%;
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: var(--bg-color);
+    /* 真实的纸张阴影 */
+    box-shadow:
+        0 2px 2px rgba(0,0,0,0.05),
+        0 4px 4px rgba(0,0,0,0.05),
+        0 8px 8px rgba(0,0,0,0.05),
+        0 16px 16px rgba(0,0,0,0.05);
+    padding: 30px 25px;
+    /* Ins风边框 */
+    border: 1px solid white;
+    outline: 1px solid var(--line-color);
+    outline-offset: -8px;
+    min-height: 80vh;
+}
+
+/* 进场动画 */
+.slide-in-up { animation: slideInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes slideInUp {
+    from { transform: translateY(60px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* 4. 悬浮导航按钮 (替代原导航栏) */
+.diary-nav-btn {
+    position: absolute;
+    top: 20px; /* 距离顶部 */
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.8); /* 半透明磨砂白 */
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100; /* 最顶层 */
+    transition: all 0.2s;
+}
+.diary-nav-btn:active { transform: scale(0.9); background: #fff; }
+.diary-nav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+
+/* 左侧返回 */
+.diary-nav-back { left: 20px; color: #333; }
+/* 右侧删除 */
+.diary-nav-del { right: 20px; color: #ff4757; }
+
+/* 5. 内部模块：Header */
+.diary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--text-color);
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+.date-block { font-family: serif; line-height: 1; }
+.date-day { font-size: 3rem; font-weight: 700; display: block; color: var(--text-color); }
+.date-month { font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-color); }
+.meta-block { text-align: right; display: flex; flex-direction: column; gap: 4px; font-size: 1.2rem;}
+.mood-stars { color: #f1c40f; font-size: 0.8rem; letter-spacing: 2px; }
+
+/* 6. 内部模块：Snapshot (拍立得占位) */
+.snapshot-container {
+    position: relative;
+    width: 85%;
+    margin: 0 auto 30px auto;
+    transform: rotate(-2deg);
+    transition: transform 0.3s ease;
+}
+.snapshot-container:hover { transform: rotate(0deg) scale(1.02); z-index: 5; }
+
+.polaroid-frame {
+    background: #fff;
+    padding: 10px 10px 35px 10px; /* 底部留白 */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.polaroid-img {
+    width: 100%;
+    height: 180px; /* 固定高度 */
+    background-color: #f4f4f4; /* 占位灰底 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+.polaroid-img img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 占位符状态 */
+.polaroid-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #ccc;
+}
+.polaroid-placeholder svg { width: 32px; height: 32px; margin-bottom: 5px; stroke: #ccc;}
+.polaroid-placeholder span { font-size: 12px; font-family: cursive; }
+
+/* 和纸胶带 */
+.washi-tape {
+    position: absolute;
+    top: -12px; left: 50%; transform: translateX(-50%);
+    width: 90px; height: 25px;
+    background-color: rgba(220, 200, 180, 0.85);
+    opacity: 0.9;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    /* 胶带纹理 */
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.3) 5px, rgba(255,255,255,0.3) 10px);
+}
+
+/* 7. 内部模块：Title & Content */
+.diary-title-block { text-align: center; margin-bottom: 20px; }
+.main-title { font-family: serif; font-size: 1.6rem; font-weight: 700; color: var(--text-color); margin: 0; line-height: 1.2; }
+.sub-title { 
+    font-family: sans-serif; font-size: 0.7rem; 
+    text-transform: uppercase; letter-spacing: 0.2em; 
+    color: var(--accent-color); margin-top: 5px; 
+    display: inline-block; border-top: 1px solid var(--accent-color); padding-top: 4px; 
+}
+
+.diary-content {
+    font-family: 'PingFang SC', 'Noto Serif SC', serif;
+    font-size: 15px;
+    line-height: 1.8;
+    text-align: justify;
+    color: #4a4a4a;
+    white-space: pre-wrap;
+}
+/* 首字下沉 */
+.diary-content::first-letter {
+    font-family: serif; font-size: 3rem; float: left;
+    line-height: 0.8; padding-right: 8px; padding-top: 4px;
+    color: var(--text-color);
+}
+
+/* 8. 内部模块：Footer */
+.diary-footer {
+    margin-top: 30px; padding-top: 15px;
+    border-top: 1px dashed var(--line-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag-pill {
+    background-color: #f2f2f2; color: #888;
+    font-size: 0.7rem; padding: 3px 8px;
+    border-radius: 4px;
+}
+.stamp {
+    border: 2px double #d14d4d; color: #d14d4d;
+    padding: 2px 6px; font-family: serif; font-weight: bold;
+    font-size: 0.7rem; transform: rotate(-12deg); opacity: 0.7;
+}
+/* ▼▼▼ 强制修复：去除旧版日记的红色装订线和打孔 ▼▼▼ */
+.diary-paper::before,
+.diary-paper::after {
+    display: none !important;
+    content: none !important;
+}
+/* =========================================
+   ▼▼▼ 修正：日记信纸全屏铺满样式 ▼▼▼
+   ========================================= */
+
+/* 1. 去掉滚动容器的上下留白 */
+.diary-scroll-wrapper {
+    padding: 0 !important; 
+}
+
+/* 2. 让信纸占满整个屏幕 */
+.diary-paper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100vh !important; /* 强制高度至少填满屏幕 */
+    margin: 0 !important;
+    
+    /* 去掉悬浮卡片感的装饰 */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    
+    /* ★ 关键：顶部增加内边距，防止内容被左上角的返回按钮挡住 */
+    padding-top: 80px !important; 
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+}
+
+/* 3. 彻底隐藏旧版样式的红色装订线和打孔 */
+.diary-paper::before,
+.diary-paper::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* 4. 微调背景层（既然纸张铺满了，背景层其实看不见了，但为了保险起见） */
+.diary-backdrop {
+    display: none; 
+}
+/* Ins风线条图标通用样式 */
+.ins-icon-svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-color); /* 跟随文字颜色 */
+    stroke-width: 1.5;         /* 极细线条 */
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vertical-align: middle;    /* 文字居中对齐 */
+    margin-right: 4px;         /* 图标和文字的间距 */
+    opacity: 0.8;
+}
+
+/* 调整元数据块的对齐 */
+.meta-block span {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* 靠右对齐 */
+    margin-bottom: 4px;
+    font-size: 14px;
+}
 
