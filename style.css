@@ -1189,18 +1189,25 @@
     background: #f8f8f8 !important;
 }
 
-/* 隐藏右边按钮内的所有内容（图标、图片等） */
-.chat-detail-header button:last-child > *,
-.chat-detail-header .action-icon-btn:last-child > * {
-    display: none !important;
+/* 右上角按钮：显示 SVG 图标（无基底） */
+.chat-detail-header button:last-child {
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
-/* 显示"更多"文字 */
-.chat-detail-header button:last-child::before,
-.chat-detail-header .action-icon-btn:last-child::before {
-    content: "更多" !important;
-    display: block !important;
+.chat-detail-header button:last-child:hover {
+    background: transparent !important;
 }
+
+.chat-detail-header button:last-child svg {
+    stroke: #333;
+    stroke-width: 2.5;
+}
+
 
 
 
@@ -1875,6 +1882,8 @@
     display: none;
     flex-direction: column;
 }
+
+
 
 /* 召唤卡片 */
 
@@ -7807,4 +7816,12 @@ select,
 /* 确保自定义图标只有一个能显示 (万一JS删漏了，CSS只显示最后一个) */
 .custom-icon ~ .custom-icon {
     display: none !important;
+}
+
+/* 去除返回按钮的圆形背景和悬停效果 */
+.back-btn, 
+.back-btn:hover, 
+.back-btn:active {
+    background: transparent !important; /* 强制背景透明 */
+    box-shadow: none !important;        /* 去除阴影 */
 }

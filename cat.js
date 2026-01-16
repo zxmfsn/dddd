@@ -42,6 +42,21 @@ function openBeautifySettings() {
         const transCheckbox = document.getElementById('headerTransCheckboxMenu');
         if (transCheckbox) transCheckbox.checked = theme.isHeaderTransparent || false;
         
+ // 导航栏字体颜色回显
+        const headerTextColorInput = document.getElementById('headerTextColorInput');
+        if (headerTextColorInput) headerTextColorInput.value = theme.headerTextColor || '#000000';
+
+ // 底部透明度开关回显
+        const bottomTransCheckbox = document.getElementById('bottomTransCheckboxMenu');
+        if (bottomTransCheckbox) bottomTransCheckbox.checked = theme.isBottomTransparent || false;
+
+         // 底部图标大小回显
+        const bottomIconSizeSlider = document.getElementById('bottomIconSizeSlider');
+        const bottomIconSizeDisplay = document.getElementById('bottomIconSizeDisplay');
+        const currentIconSize = theme.bottomIconSize || 24; // 默认24px
+        if (bottomIconSizeSlider) bottomIconSizeSlider.value = currentIconSize;
+        if (bottomIconSizeDisplay) bottomIconSizeDisplay.textContent = currentIconSize + 'px';
+
         // 气泡颜色
         const leftColor = document.getElementById('bubbleLeftColorMenu');
         const rightColor = document.getElementById('bubbleRightColorMenu');
@@ -568,6 +583,65 @@ function toggleHeaderTransparency() {
     });
 }
 
+// 更新导航栏字体颜色 (仅文字)
+function updateHeaderTextColor(color) {
+    loadFromDB('userInfo', (data) => {
+        const newData = data || {};
+        if (!newData.theme) newData.theme = {};
+        
+        newData.theme.headerTextColor = color;
+        
+        saveToDB('userInfo', newData);
+        applyThemeStyles(newData.theme);
+    });
+}
+
+//切换底部导航栏透明度
+function toggleBottomBarTransparency() {
+    const checkbox = document.getElementById('bottomTransCheckboxMenu');
+    if (!checkbox) return;
+    
+    const isTransparent = checkbox.checked;
+    
+    loadFromDB('userInfo', (data) => {
+        const newData = data || {};
+        if (!newData.theme) newData.theme = {};
+        
+        newData.theme.isBottomTransparent = isTransparent;
+        
+        saveToDB('userInfo', newData);
+        applyThemeStyles(newData.theme);
+    });
+}
+
+
+// 更新底部图标大小 (修复版：实时生效)
+function updateBottomIconSize(val) {
+    // 1. 实时更新显示的数值
+    const display = document.getElementById('bottomIconSizeDisplay');
+    if (display) display.textContent = val + 'px';
+    
+    // 2. 【关键修正】直接修改页面上的图标样式，不等待数据库
+    // 选中底部导航栏里的所有 SVG 图标和自定义图片
+    const icons = document.querySelectorAll('.chat-bottom-tabs .bottom-tab svg, .chat-bottom-tabs .bottom-tab img');
+    
+    icons.forEach(el => {
+        // 使用 important 确保覆盖原有的 CSS 样式
+        el.style.setProperty('width', val + 'px', 'important');
+        el.style.setProperty('height', val + 'px', 'important');
+    });
+    
+    // 3. 后台静默保存设置 (防止刷新后恢复原样)
+    // 这里的回调不用管，因为上面已经修改了视觉效果
+    loadFromDB('userInfo', (data) => {
+        const newData = data || {};
+        if (!newData.theme) newData.theme = {};
+        newData.theme.bottomIconSize = val;
+        saveToDB('userInfo', newData);
+    });
+}
+
+
 // 核心：将配置应用到 CSS 变量
 function applyThemeStyles(theme) {
     if (!theme) return;
@@ -598,14 +672,46 @@ function applyThemeStyles(theme) {
         root.style.setProperty('--header-border', '1px solid #f0f0f0');
     }
     
-    // 3. 底部导航栏
-    if (theme.bottomBar) {
-        root.style.setProperty('--bottom-bg', `url(${theme.bottomBar})`);
+  // ▼▼▼ 添加下方代码 ▼▼▼
+    // 导航栏字体颜色 (仅修改标题文字)
+    if (theme.headerTextColor) {
+        // 针对标题类名应用颜色
+        document.querySelectorAll('.header-title, .chat-detail-title').forEach(el => {
+            el.style.color = theme.headerTextColor;
+        });
     } else {
-        // 如果没图，也给个默认白，防止意外
-        root.style.setProperty('--bottom-bg', '#ffffff');
+        // 恢复默认 (移除内联样式)
+        document.querySelectorAll('.header-title, .chat-detail-title').forEach(el => {
+            el.style.color = '';
+        });
+    }
+    // ▲▲▲ 添加结束 ▲▲▲
+
+    // 3. 底部导航栏
+    if (theme.isBottomTransparent) {
+        // 开启透明：背景设为透明
+        root.style.setProperty('--bottom-bg', 'transparent');
+        // 如果有底部边框变量也可以在这里去除，目前主要处理背景
+    } else {
+        // 关闭透明 (保留原有逻辑)：有图显示图，没图显示白
+        if (theme.bottomBar) {
+            root.style.setProperty('--bottom-bg', `url(${theme.bottomBar})`);
+        } else {
+            root.style.setProperty('--bottom-bg', '#ffffff');
+        }
     }
     
+
+    // 底部图标大小
+    const iconSize = theme.bottomIconSize || 24; // 默认24px
+    // 强制设置所有底部图标的宽高 (包括原生SVG和自定义图片)
+    document.querySelectorAll('.bottom-tab svg, .bottom-tab img.custom-icon').forEach(el => {
+        el.style.width = iconSize + 'px';
+        el.style.height = iconSize + 'px';
+    });
+
+
+
     // 4. 更换图标
     updateIconDisplay('demoBackIcon', theme.backIcon, '.back-btn svg');
     updateIconDisplay('demoIconSingle', theme.iconSingle, '.bottom-tab[data-tab="single"] svg');
@@ -875,4 +981,22 @@ function deleteThemePreset() {
 function openBubbleEditor() {
     alert('气泡美化新页面准备中...');
     // 后续在这里写跳转逻辑
+}
+
+// 打开清除数据弹窗
+function openClearDataModal() {
+    document.getElementById('clearDataModal').style.display = 'flex';
+}
+
+// 关闭清除数据弹窗
+function closeClearDataModal(event) {
+    if (event && event.target.id !== 'clearDataModal') return;
+    document.getElementById('clearDataModal').style.display = 'none';
+}
+
+// 确认清除所有数据
+function confirmClearAllData() {
+    localStorage.clear();
+    sessionStorage.clear();
+    location.reload();
 }
