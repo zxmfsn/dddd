@@ -15,34 +15,52 @@ function initDB() {
         alert('数据库打开失败，请尝试清除浏览器缓存或刷新页面');
     };
     
-    request.onsuccess = (event) => {
-        db = event.target.result;
-        console.log('数据库连接成功，版本:', db.version);
-        
-        // 连接成功后加载所有数据
-        loadUserInfo();
-        loadWallpaper();
-        loadWorldbooks();
-        loadApiConfig();
-        loadApiSchemes();
-        loadAppIcons();
-        loadWalletData();
-        loadWidgetSettings();
-         loadFontSettings();
+request.onsuccess = (event) => {
+    db = event.target.result;
+    console.log('数据库连接成功，版本:', db.version);
     
-        
-        // ★ 尝试加载记忆，检查是否正常
-        if (db.objectStoreNames.contains('memories')) {
-            loadMemories();
-        } else {
-            console.error('严重警告：memories 表依然不存在！请检查 onupgradeneeded 是否执行。');
-        }
-        // ▼▼▼ 新增：启动自动总结定时器 ▼▼▼
-setTimeout(() => {
-    startAutoSummaryTimer();
-}, 2000); 
+    // ★ 立即隐藏所有页面，显示主屏幕
+    document.getElementById('wallpaperScreen').style.display = 'none';
+    document.getElementById('worldbookScreen').style.display = 'none';
+    document.getElementById('apiScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'none';
+    document.getElementById('chatDetailScreen').style.display = 'none';
+    document.getElementById('characterInfoScreen').style.display = 'none';
+    document.getElementById('memoryScreen').style.display = 'none';
+    document.getElementById('diaryScreen').style.display = 'none';
+    document.getElementById('diaryDetailScreen').style.display = 'none';
+    document.getElementById('callScreen').style.display = 'none';
+    document.getElementById('shoppingScreen').style.display = 'none';
+    document.getElementById('shoppingCartScreen').style.display = 'none';
+    
+    const otherScreen = document.getElementById('otherSettingsScreen');
+    if (otherScreen) otherScreen.style.display = 'none';
+    
+    const beautifyScreen = document.getElementById('beautifySettingsScreen');
+    if (beautifyScreen) beautifyScreen.style.display = 'none';
+    
+    document.getElementById('mainScreen').style.display = 'flex';
+    
+    // 连接成功后加载所有数据
+    loadUserInfo();
+    loadWallpaper();
+    loadWorldbooks();
+    loadApiConfig();
+    loadApiSchemes();
+    loadAppIcons();
+    loadWalletData();
+    loadWidgetSettings();
+    loadFontSettings();
+    
+    if (db.objectStoreNames.contains('memories')) {
+        loadMemories();
+    }
+    
+    setTimeout(() => {
+        startAutoSummaryTimer();
+    }, 2000);
+};
 
-    };
     
     // ★★★ 这里是创建新表的核心逻辑 ★★★
     request.onupgradeneeded = (event) => {
@@ -84,31 +102,7 @@ setTimeout(() => {
             store.createIndex('chatId', 'chatId', { unique: false });
         }
     };
-    // 页面加载完成后，强制显示主屏幕
-window.addEventListener('load', function() {
-    // 隐藏所有页面
-    document.getElementById('wallpaperScreen').style.display = 'none';
-    document.getElementById('worldbookScreen').style.display = 'none';
-    document.getElementById('apiScreen').style.display = 'none';
-    document.getElementById('chatScreen').style.display = 'none';
-    document.getElementById('chatDetailScreen').style.display = 'none';
-    document.getElementById('characterInfoScreen').style.display = 'none';
-    document.getElementById('memoryScreen').style.display = 'none';
-    document.getElementById('diaryScreen').style.display = 'none';
-    document.getElementById('diaryDetailScreen').style.display = 'none';
-    document.getElementById('callScreen').style.display = 'none';
-    document.getElementById('shoppingScreen').style.display = 'none';
-    document.getElementById('shoppingCartScreen').style.display = 'none';
-    
-    const otherScreen = document.getElementById('otherSettingsScreen');
-    if (otherScreen) otherScreen.style.display = 'none';
-    
-    const beautifyScreen = document.getElementById('beautifySettingsScreen');
-    if (beautifyScreen) beautifyScreen.style.display = 'none';
-    
-    // 显示主屏幕
-    document.getElementById('mainScreen').style.display = 'flex';
-});
+
 
 }
 

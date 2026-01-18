@@ -2154,11 +2154,18 @@ function playNotificationSound() {
                 audio.volume = 1;
                 audio.muted = false;
                 
+                // 手机需要用户交互才能播放，这里添加重试机制
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise
                         .then(() => console.log('提示音播放成功'))
-                        .catch(err => console.log('提示音播放失败:', err));
+                        .catch(err => {
+                            console.log('提示音播放失败，尝试重新播放:', err);
+                            // 延迟后重试
+                            setTimeout(() => {
+                                audio.play().catch(e => console.log('重试失败:', e));
+                            }, 100);
+                        });
                 }
             }
         } catch (error) {
@@ -2166,4 +2173,5 @@ function playNotificationSound() {
         }
     });
 }
+
 
