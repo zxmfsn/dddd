@@ -8,7 +8,7 @@ let currentViewingDiaryId = null;
 // ============ 强制修复版：数据库初始化 (版本号 25) ============
 function initDB() {
     // ★★★ 重点：版本号改成 25，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 26);
+    const request = indexedDB.open('phoneData', 28);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
@@ -71,6 +71,10 @@ setTimeout(() => {
         if (!db.objectStoreNames.contains('gameConsole')) db.createObjectStore('gameConsole', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('widgetSettings')) db.createObjectStore('widgetSettings', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('voiceConfig')) db.createObjectStore('voiceConfig', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('fontSettings')) db.createObjectStore('fontSettings', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('notificationSound')) db.createObjectStore('notificationSound', { keyPath: 'id' });
+
+
 
         
         // ★★★ 记忆功能表 (本次修复的主角) ★★★

@@ -3020,6 +3020,7 @@ function createShoppingOrderMessage(orderType, status, totalPrice, items) {
     visibleMessagesCount = allMessages.length;
     renderMessages();
     scrollToBottom();
+     playNotificationSound();
 }
 
 

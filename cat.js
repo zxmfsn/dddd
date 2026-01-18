@@ -273,15 +273,12 @@ function saveFontSettings() {
     const fontSize = document.getElementById('fontSizeInput').value;
     
     const fontSettings = {
-        id: 1,
         fontUrl: fontUrl,
         fontSize: parseInt(fontSize) || 14
     };
     
     // 保存到数据库
-    const transaction = db.transaction(['fontSettings'], 'readwrite');
-    const objectStore = transaction.objectStore('fontSettings');
-    objectStore.put(fontSettings);
+    saveToDB('fontSettings', fontSettings);
     
     // 立即应用字体
     if (fontUrl) {
@@ -305,6 +302,7 @@ function saveFontSettings() {
     alert('字体设置已保存');
     closeFontSettingsModal();
 }
+
 
 function loadFontSettings() {
     loadFromDB('fontSettings', (data) => {
@@ -2132,3 +2130,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 500);
 });
+
+let lastNotificationTime = 0;
+
+function playNotificationSound() {
+    const now = Date.now();
+    
+    // 如果距离上次播放不足1秒，就不播放
+    if (now - lastNotificationTime < 1000) {
+        return;
+    }
+    
+    lastNotificationTime = now;
+    
+    loadFromDB('notificationSound', (data) => {
+        if (!data || !data.enabled) return;
+        
+        try {
+            if (data.customSound) {
+                const audio = new Audio(data.customSound);
+                audio.play().catch(err => console.log('播放音效失败:', err));
+            }
+        } catch (error) {
+            console.error('播放提示音失败:', error);
+        }
+    });
+}
+
