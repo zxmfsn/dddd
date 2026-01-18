@@ -2046,7 +2046,8 @@ function syncCreatorControlsFromCss(css) {
 let voiceConfig = {
     enabled: false,
     apiKey: '',
-    groupId: ''
+    groupId: '',
+    voiceCharacterId: 'female-tianmei'
 };
 
 function openVoiceRoleSettings() {
@@ -2066,24 +2067,35 @@ function loadVoiceConfig() {
             document.getElementById('voiceEnabled').checked = voiceConfig.enabled;
             document.getElementById('minimaxApiKey').value = voiceConfig.apiKey || '';
             document.getElementById('minimaxGroupId').value = voiceConfig.groupId || '';
+            document.getElementById('voiceCharacterId').value = voiceConfig.voiceCharacterId || '';
             document.getElementById('voiceConfigPanel').style.display = voiceConfig.enabled ? 'block' : 'none';
         }
     });
 }
 
+
 function saveVoiceConfig() {
+    const voiceCharacterId = document.getElementById('voiceCharacterId').value.trim();
+    
     voiceConfig = {
         enabled: document.getElementById('voiceEnabled').checked,
         apiKey: document.getElementById('minimaxApiKey').value.trim(),
-        groupId: document.getElementById('minimaxGroupId').value.trim()
+        groupId: document.getElementById('minimaxGroupId').value.trim(),
+        voiceCharacterId: voiceCharacterId
     };
+    
+    console.log('保存的voiceConfig:', voiceConfig);
     
     if (voiceConfig.enabled && (!voiceConfig.apiKey || !voiceConfig.groupId)) {
         alert('请填写API Key和Group ID');
         return;
     }
     
-    saveToDB('voiceConfig', voiceConfig);
+    const transaction = db.transaction(['voiceConfig'], 'readwrite');
+    const objectStore = transaction.objectStore('voiceConfig');
+    objectStore.put({ id: 1, ...voiceConfig });
+    
+    console.log('已保存到数据库');
     alert('已保存');
     closeVoiceRoleModal();
 }
@@ -2094,30 +2106,63 @@ async function playVoiceMessage(text) {
         return;
     }
     
+    console.log('开始调用MiniMax TTS API...');
+    
     try {
-        const response = await fetch('https://api.minimax.chat/v1/tts', {
+        const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
+        
+        const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${voiceConfig.apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                group_id: voiceConfig.groupId,
+                model: 'speech-2.6-hd',
                 text: text,
-                speed: 1.0
+                stream: false,
+                output_format: 'url',
+                voice_setting: {
+                    voice_id: voiceId,
+                    speed: 1,
+                    vol: 1,
+                    pitch: 0,
+                    emotion: 'calm'
+                },
+                audio_setting: {
+                    sample_rate: 32000,
+                    bitrate: 128000,
+                    format: 'mp3',
+                    channel: 1
+                }
             })
         });
         
-        if (!response.ok) throw new Error('API调用失败');
+        console.log('API响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('API错误:', errorData);
+            throw new Error(`API错误 ${response.status}`);
+        }
         
         const data = await response.json();
-        const audio = new Audio(data.audio_url);
-        audio.play();
+        console.log('API返回成功');
+        
+        if (data.data && data.data.audio) {
+            const audio = new Audio(data.data.audio);
+            audio.play();
+            console.log('语音播放成功');
+        } else {
+            throw new Error('未获取到音频数据');
+        }
         
     } catch (error) {
+        console.error('完整错误信息:', error);
         alert('语音播放失败：' + error.message);
     }
 }
+
 
 // 开关切换事件
 document.addEventListener('DOMContentLoaded', () => {
