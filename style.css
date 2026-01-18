@@ -1,23 +1,4 @@
-:root {
-    /* === 全局美化变量 === */
-    --chat-bg: #f5f7fa;                  /* 聊天列表背景 */
-    --header-bg: #ffffff;                /* 顶部导航栏背景 */
-    --bottom-bg: #ffffff;                /* 底部导航栏背景 */
-    
-    /* 图标变量 (默认使用 SVG data URI 或 url) */
-    /* 注意：这里只定义变量名，具体值由 JS 控制，默认值在 CSS 类里兜底 */
-    
-    /* 导航栏透明度控制 */
-    --header-border: 1px solid #f0f0f0;  /* 默认有边框 */
-    --detail-bg: #f5f5f5;        /* 聊天详情页背景 */
-    --detail-header-bg: #f5f5f5; /* 聊天详情页头部背景 */
-    --input-bar-bg: #f5f5f5;     /* 输入栏背景 */
-  --header-text-color: #333333;
-}
-
-
-
-/* 1. 重置基础样式 */
+  /* 1. 重置基础样式 */
 
    @font-face {
     font-family: 'CustomCute';
@@ -761,27 +742,18 @@
 }
 /* 聊天页面样式 */
 .chat-screen {
+    height: 100vh;
+    background: #f8f9fa; 
+    color: #333;
     display: none;
     flex-direction: column;
-    height: 100%;
-    /* ★ 核心修改： */
-    /* 1. 去掉 fixed (防止移动端视口抖动导致背景错位) */
-    /* 2. 改 cover 为 100% 100% (强制拉伸填满，不再裁剪/放大) */
-    background: var(--chat-bg) center/100% 100% no-repeat; 
-    position: relative;
 }
-
 
 .chat-header {
     display: flex;
     align-items: center;
-    padding: 15px 20px;
-    background: var(--header-bg) center/cover no-repeat; /* ★ 修改这里 */
-    border-bottom: var(--header-border); /* ★ 修改这里 */
-    flex-shrink: 0;
-    z-index: 10;
-    transition: background 0.3s;
-     color: var(--header-text-color);
+    padding: 20px;
+    border-bottom: 1px solid #eee;
 }
 
 /* 朋友圈入口卡片 */
@@ -849,15 +821,34 @@
 }
 /* 底部分组栏 */
 .chat-bottom-tabs {
+    position: absolute;
+    /* 距离底部悬浮 25px */
+    bottom: 25px;
+    /* 左右留空，居中 */
+    left: 20px;
+    right: 20px;
+    max-width: 335px; /* 375 - 40 */
+    margin: 0 auto;
+    
+    /* 高级毛玻璃背景 */
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
+    /* 去掉顶部边框，改用四周圆角 */
+    border-top: none;
+    border-radius: 30px; /* 全圆角胶囊状 */
+    
+    /* 强烈的悬浮投影 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    
     display: flex;
-    justify-content: space-around;
-    align-items: center;
-    height: 60px;
-    background: var(--bottom-bg) center/cover no-repeat; /* ★ 修改这里 */
-    border-top: 1px solid rgba(0,0,0,0.05);
-    flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom);
+    justify-content: space-around; /* 图标分散对齐 */
+    padding: 10px 10px;
+    z-index: 101;
+    border: 1px solid rgba(255,255,255,0.5); /* 极细内发光边框 */
 }
+
 .bottom-tab {
     filter: none !important; 
 }
@@ -1189,33 +1180,24 @@
     background: #f8f8f8 !important;
 }
 
-/* 右上角按钮：显示 SVG 图标（无基底） */
-.chat-detail-header button:last-child {
-    width: auto !important;
-    height: auto !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
+/* 隐藏右边按钮内的所有内容（图标、图片等） */
+.chat-detail-header button:last-child > *,
+.chat-detail-header .action-icon-btn:last-child > * {
+    display: none !important;
 }
 
-.chat-detail-header button:last-child:hover {
-    background: transparent !important;
+/* 显示"更多"文字 */
+.chat-detail-header button:last-child::before,
+.chat-detail-header .action-icon-btn:last-child::before {
+    content: "更多" !important;
+    display: block !important;
 }
-
-.chat-detail-header button:last-child svg {
-    stroke: #333;
-    stroke-width: 2.5;
-}
-
 
 
 
 /* 聊天页面的返回按钮特殊处理：透明背景，SVG适配 */
 .chat-detail-header .back-btn {
     margin-right: 5px;
-     color: var(--header-text-color);  /* ★ 直接加这一行 */
-    stroke: var(--header-text-color); /* ★ 直接加这一行 (控制SVG描边) */
 }
 
 .header-avatar {
@@ -1568,11 +1550,12 @@
 
 /* 左侧+号的特定样式 */
 .cute-icon-btn.plus-btn {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 36px;
-    font-weight: 300;
-    color: #000;
+    background-image: var(--chat-icon-plus-bg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
 }
+
 /* 对 + 号按钮进行精确微调 */
 .cute-icon-btn.plus-btn {
     position: relative;
@@ -1882,8 +1865,6 @@
     display: none;
     flex-direction: column;
 }
-
-
 
 /* 召唤卡片 */
 
@@ -7560,268 +7541,331 @@ select,
     font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", sans-serif !important;
 }
 
+/* ============ 导航栏透明模式 ============ */
+body.transparent-nav-mode .chat-header,
+body.transparent-nav-mode .chat-detail-header {
+    background: transparent !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
 
-/* ============ 美化设置编辑页样式 ============ */
-/* 编辑区域的高亮提示 */
-.beautify-editable {
+/* 底部标签栏透明 */
+body.transparent-nav-mode .chat-bottom-tabs {
+    background: rgba(255, 255, 255, 0.3) !important; /* 微微透一点白，防止完全看不见 */
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+/* 聊天页面：表情栏 & 输入栏透明 */
+body.transparent-nav-mode .emoji-btn-wrapper,
+body.transparent-nav-mode .chat-input-bar {
+    background: transparent !important;
+    border-top: none !important;
+    box-shadow: none !important;
+}
+
+/* 输入框本体：给一点半透明背景，否则字看不清 */
+body.transparent-nav-mode .chat-input {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* 输入框聚焦时稍微实一点 */
+body.transparent-nav-mode .chat-input:focus {
+    background: rgba(255, 255, 255, 0.8) !important;
+}
+/* ============ 角色列表美化变量支持 (修复版) ============ */
+:root {
+    /* 定义两套变量，分别控制颜色和图片 */
+    --cl-global-bg-color: #f8f9fa;
+    --cl-global-bg-img: none;
+    
+    --cl-header-bg-color: rgba(255, 255, 255, 0.95);
+    --cl-header-bg-img: none;
+    
+    --cl-bottom-bg-color: rgba(255, 255, 255, 0.85);
+    --cl-bottom-bg-img: none;
+    
+    --cl-icon-color: #999;
+    --cl-icon-scale: 1;
+}
+
+/* 1. 全局背景 (应用到 .chat-screen) */
+.chat-screen {
+    background-color: var(--cl-global-bg-color) !important;
+    background-image: var(--cl-global-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important; /* 防止背景随滚动条移动 */
+}
+
+/* 2. 导航栏背景 */
+.chat-header {
+    background-color: var(--cl-header-bg-color) !important;
+    background-image: var(--cl-header-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+    /* 确保文字颜色适配深色背景，这里暂时保持深色字，若需反色需额外逻辑 */
+}
+
+/* 3. 底部栏背景 */
+.chat-bottom-tabs {
+    background-color: var(--cl-bottom-bg-color) !important;
+    background-image: var(--cl-bottom-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+/* ============ 底部图标美化 (支持自定义图片) ============ */
+:root {
+    /* 定义3个图标的背景图变量，默认为 none */
+    --cl-icon1-bg: none;
+    --cl-icon2-bg: none;
+    --cl-icon3-bg: none;
+}
+
+/* 通用：应用大小缩放 */
+.bottom-tab .ins-icon {
+    transform: scale(var(--cl-icon-scale));
+    transition: all 0.3s;
+    /* 关键：设置背景图属性 */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* 激活状态放大 */
+.bottom-tab.active .ins-icon {
+    transform: scale(calc(var(--cl-icon-scale) * 1.1));
+}
+
+/* --- 图标 1 (聊天) --- */
+.bottom-tab[data-tab="single"] .ins-icon {
+    background-image: var(--cl-icon1-bg);
+}
+/* 如果设置了背景图，把原来的 SVG 线条隐藏 (设为透明) */
+.bottom-tab[data-tab="single"] .ins-icon[style*="--cl-icon1-bg: url"] {
+    stroke: transparent !important;
+}
+
+/* --- 图标 2 (联系人) --- */
+.bottom-tab[data-tab="group"] .ins-icon {
+    background-image: var(--cl-icon2-bg);
+}
+
+/* --- 图标 3 (钱包) --- */
+.bottom-tab[data-tab="wallet"] .ins-icon {
+    background-image: var(--cl-icon3-bg);
+}
+
+/* ============ 导航栏字体颜色自定义 ============ */
+:root {
+    --nav-custom-text-color: #333333; /* 默认黑色 */
+}
+
+/* 1. 角色列表页头部 (.chat-header) */
+.chat-header .back-btn svg,
+.chat-header .header-title,
+.chat-header .action-icon-btn svg, /* 假设有图标按钮 */
+.chat-header button {
+    stroke: var(--nav-custom-text-color) !important;
+    color: var(--nav-custom-text-color) !important;
+}
+
+/* 2. 聊天详情页头部 (.chat-detail-header) */
+.chat-detail-header .back-btn svg,
+.chat-detail-header .chat-detail-title,
+.chat-detail-header .character-status,
+.chat-detail-header .action-icon-btn, /* 右上角更多按钮 */
+.chat-detail-header button {
+    stroke: var(--nav-custom-text-color) !important;
+    color: var(--nav-custom-text-color) !important;
+    border-color: var(--nav-custom-text-color) !important; /* 更多按钮的边框 */
+}
+
+/* 修正：更多按钮内的文字颜色 */
+.chat-detail-header button:last-child::before,
+.chat-detail-header .action-icon-btn:last-child::before {
+    color: var(--nav-custom-text-color) !important;
+}
+
+/* ============ 对话页面美化变量 (独立) ============ */
+:root {
+    --chat-global-bg-img: none;
+    --chat-header-bg-img: none;
+    --chat-input-bg-img: none;
+    
+    --chat-icon-plus-bg: none;
+    --chat-icon-send-bg: none;
+    --chat-icon-receive-bg: none;
+}
+
+/* 1. 全局背景 (.chat-detail-screen) */
+/* 注意：这里使用 ID 选择器提高权重，确保覆盖默认背景 */
+#chatDetailScreen {
+    background-image: var(--chat-global-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important;
+    /* 如果设置了图片，背景色设为透明，否则保持原样 */
+}
+#chatDetailScreen[style*="--chat-global-bg-img: url"] {
+    background-color: transparent !important;
+}
+
+/* 2. 导航栏背景 */
+.chat-detail-header {
+    background-image: var(--chat-header-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+.chat-detail-header[style*="--chat-header-bg-img: url"] {
+    background-color: transparent !important;
+}
+
+/* 3. 底部栏背景 */
+.chat-input-bar {
+    background-image: var(--chat-input-bg-img) !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+.chat-input-bar[style*="--chat-input-bg-img: url"] {
+    background-color: transparent !important;
+}
+
+/* 4. 图标自定义 (+号) */
+.cute-icon-btn.plus-btn {
+    background-image: var(--chat-icon-plus-bg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* 5. 发送按钮 */
+.action-icon-btn[onclick="sendMessage()"] {
+    background-image: var(--chat-icon-send-bg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* 6. 接收按钮 */
+#receiveBtn {
+    background-image: var(--chat-icon-receive-bg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* ============ 强制修复：工具栏永远透明 ============ */
+.emoji-btn-wrapper {
+    /* 1. 强制背景色透明 */
+    background-color: transparent !important;
+    
+    /* 2. 强制移除任何背景图片 (防止误应用) */
+    background-image: none !important;
+    
+    /* 3. 去除边框和阴影 */
+    border: none !important;
+    box-shadow: none !important;
+    
+    /* 4. 确保层级正确 */
     position: relative;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-/* 鼠标悬停或点击时的遮罩效果 */
-.beautify-editable::after {
-    content: '🖊 点击更换';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    opacity: 0;
-    border-radius: inherit;
-    pointer-events: none; /* 让点击穿透到底层元素 */
-    transition: opacity 0.2s;
-}
-
-.beautify-editable:active::after {
-    opacity: 1;
-}
-
-/* 专门给背景编辑用的遮罩 */
-.beautify-bg-mask {
-    position: absolute;
-    top: 60px; /* 避开头部 */
-    bottom: 60px; /* 避开底部 */
-    left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-}
-
-.beautify-hint-btn {
-    background: rgba(0,0,0,0.6);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 13px;
-    backdrop-filter: blur(5px);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-/* 透明度开关样式 */
-.transparency-toggle {
-    position: absolute;
-    right: 20px;
-    top: 70px;
-    z-index: 20;
-    background: white;
-    padding: 8px 12px;
-    border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-}
-
-/* ============ 美化设置 (全屏沉浸版) ============ */
-
-/* 1. 编辑模式容器 */
-.theme-editor-container {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    /* ★ 确保编辑页也是 100% 100% 不放大 */
-    background: var(--chat-bg) center/100% 100% no-repeat; 
-}
-
-/* 2. 顶部悬浮控制条 (强制纯白，不透明) */
-.theme-floating-header {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 15px;
-    z-index: 100;
-    /* ★ 修改点：改成纯白，去掉半透明和毛玻璃，防止透出壁纸颜色 */
-    background: #ffffff; 
-    border-bottom: 1px solid #eee;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-/* 3. 顶部 Tab 切换器 (背景固定灰色) */
-.theme-tab-switch {
-    display: flex;
-    background: #f0f0f0; /* 固定灰色背景 */
-    border-radius: 18px;
-    padding: 3px;
-}
-
-/* Tab 按钮样式 */
-.theme-tab-btn {
-    padding: 6px 16px;
-    border-radius: 15px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #999; /* 未选中颜色 */
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-/* 选中状态 (纯白背景，黑字) */
-.theme-tab-btn.active {
-    background: #ffffff;
-    color: #333;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* 4. 编辑提示遮罩 (更轻量化) */
-.beautify-editable {
-    position: relative;
-    cursor: pointer;
-}
-
-.beautify-editable::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    border: 2px dashed rgba(0,0,0,0.1); /* 虚线框提示 */
-    background: rgba(255,255,255,0.1);
-    pointer-events: none;
-    z-index: 50;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.beautify-editable:active::after {
-    opacity: 1;
-    border-color: #333;
-    background: rgba(0,0,0,0.05);
-}
-
-/* 5. 背景点击区域 (全屏) */
-.full-screen-bg-trigger {
-    position: absolute;
-    top: 60px; /* 避开顶部条 */
-    bottom: 60px; /* 避开底部条 */
-    left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 10;
 }
-
-.edit-hint-badge {
-    background: rgba(0,0,0,0.6);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    backdrop-filter: blur(4px);
-    pointer-events: none; /* 让点击穿透 */
-    opacity: 0.6;
+/* ============ 修复：让消息区域透明，露出全局背景 ============ */
+.messages-container {
+    background: transparent !important; /* 去掉默认的灰色背景 */
 }
 
-/* 6. 底部悬浮工具栏 (用于气泡颜色等) */
-.theme-bottom-tools {
-    position: absolute;
-    bottom: 80px; /* 在输入框上方 */
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(10px);
-    padding: 10px 20px;
-    border-radius: 30px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    display: flex;
-    gap: 15px;
-    z-index: 90;
-    align-items: center;
-}
-/* ============ 修复：美化设置交互与尺寸 ============ */
+/* ============ 修复：聊天详情页右上角图标 ============ */
 
-/* 1. 修复返回按钮点不到的问题 */
-/* 让编辑页面的头部层级高于背景点击层 */
-#themeListPanel .chat-header,
-#themeChatPanel .chat-detail-header {
-    position: relative;
-    z-index: 50; /* 必须大于背景层的 10 */
-    pointer-events: auto; /* 确保能接收点击 */
-}
-
-/* 2. 底部导航栏图标放大 */
-.chat-bottom-tabs .bottom-tab svg,
-.chat-bottom-tabs .bottom-tab img,
-.chat-bottom-tabs .bottom-tab .custom-icon {
-    width: 32px !important;  /* 原来是24px，加大到32px */
-    height: 32px !important;
-    display: block;
-    margin: 0 auto; /* 居中 */
-}
-
-/* 微调底部 Tab 的布局，防止图标变大后挤压 */
-.chat-bottom-tabs .bottom-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0; /* 去掉内边距，给图标腾空间 */
-}
-/* ============ 修复：返回按钮图标尺寸暴走 ============ */
-
-/* 1. 锁死返回按钮本身的大小 */
-.back-btn {
-    width: 40px !important;   /* 固定宽度 */
-    height: 40px !important;  /* 固定高度 */
+/* 1. 选中该按钮 (使用多重选择器提高权重) */
+.chat-detail-header button:last-child,
+.chat-detail-header .action-icon-btn:last-child {
+    /* 强制重置尺寸和背景 */
+    width: 40px !important;
+    height: 40px !important;
+    background: transparent !important; /* 无基底 */
+    border: none !important;            /* 无边框 */
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 50% !important;      /* 圆形触控区 */
+    
+    /* 布局 */
     display: flex !important;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden !important; /* 超出部分强制切掉 */
+    align-items: center !important;
+    justify-content: center !important;
+    margin-left: auto !important;
 }
 
-/* 2. 锁死里面的图片和SVG图标大小 */
-.back-btn img,
-.back-btn svg,
-#demoBackIcon img,
-#demoBackIcon svg {
+/* 2. 隐藏之前的 "更多" 文字 (伪元素) */
+.chat-detail-header button:last-child::before,
+.chat-detail-header .action-icon-btn:last-child::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* 3. 强制显示 SVG 图标 */
+.chat-detail-header button:last-child > svg,
+.chat-detail-header .action-icon-btn:last-child > svg {
+    display: block !important;
     width: 24px !important;
     height: 24px !important;
-    max-width: 24px !important;
-    max-height: 24px !important;
-    object-fit: contain !important; /* 保持比例缩放 */
-    display: block !important;
-    margin: 0 auto !important;
-}
-/* ============ 终极修复：图标防重复 ============ */
-
-/* 如果容器里同时有 SVG 和 .custom-icon，强制隐藏 SVG */
-.back-btn:has(.custom-icon) svg,
-.bottom-tab:has(.custom-icon) svg,
-#demoBackIcon:has(img) svg,
-#demoIconSingle:has(img) svg,
-#demoIconGroup:has(img) svg,
-#demoIconWallet:has(img) svg {
-    display: none !important;
+    stroke: #333 !important; /* 线条颜色：黑 */
+    stroke-width: 2px !important;
+    opacity: 1 !important;
 }
 
-/* 确保自定义图标只有一个能显示 (万一JS删漏了，CSS只显示最后一个) */
-.custom-icon ~ .custom-icon {
-    display: none !important;
+/* 4. 悬停微动效果 */
+.chat-detail-header button:last-child:active {
+    transform: scale(0.9);
+    background: rgba(0,0,0,0.05) !important; /* 点击时极淡的反馈 */
+}
+/* ============ 强制去除聊天页头部按钮的背景基底 ============ */
+.chat-detail-header .back-btn:hover,
+.chat-detail-header .back-btn:active,
+.chat-detail-header button:last-child:hover,
+.chat-detail-header button:last-child:active {
+    background: transparent !important; /* 去除灰色背景 */
+    box-shadow: none !important;
+}
+/* ============ 角色信息页返回按钮美化 ============ */
+#characterInfoScreen .back-btn:hover,
+#characterInfoScreen .back-btn:active {
+    background: transparent !important; /* 去除悬停背景 */
+    box-shadow: none !important;
 }
 
-/* 去除返回按钮的圆形背景和悬停效果 */
-.back-btn, 
-.back-btn:hover, 
-.back-btn:active {
-    background: transparent !important; /* 强制背景透明 */
-    box-shadow: none !important;        /* 去除阴影 */
+/* 确保 SVG 样式一致 */
+#characterInfoScreen .back-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke: #333; /* 默认黑色，会跟随导航栏字体颜色设置变色 */
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
+
+/* ============ 档案页返回按钮美化 ============ */
+#memoryScreen .back-btn:hover,
+#memoryScreen .back-btn:active {
+    background: transparent !important; /* 去除悬停背景 */
+    box-shadow: none !important;
+}
+
+/* 确保 SVG 样式一致 */
+#memoryScreen .back-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke: #333; /* 默认黑色 */
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+

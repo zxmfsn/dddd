@@ -29,7 +29,6 @@ function initDB() {
         loadWalletData();
         loadWidgetSettings();
          loadFontSettings();
-         loadThemeSettings();
     
         
         // ★ 尝试加载记忆，检查是否正常

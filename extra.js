@@ -4559,6 +4559,11 @@ ${weatherInfoStr}
             allMessages.push(newMessage);
             saveMessages();
             updateChatLastMessage(currentChatId, newMessage.type === 'text' ? msgText : `[${newMessage.type}]`);
+             // ★★★ 新增：播放消息提示音 ★★★
+            if (typeof playIncomingSound === 'function') {
+                playIncomingSound();
+            }
+            // ★★★ 结束 ★★★
             visibleMessagesCount = allMessages.length;
             renderMessages();
             scrollToBottom();
