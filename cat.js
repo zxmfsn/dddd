@@ -2136,7 +2136,6 @@ let lastNotificationTime = 0;
 function playNotificationSound() {
     const now = Date.now();
     
-    // 如果距离上次播放不足1秒，就不播放
     if (now - lastNotificationTime < 1000) {
         return;
     }
@@ -2144,12 +2143,23 @@ function playNotificationSound() {
     lastNotificationTime = now;
     
     loadFromDB('notificationSound', (data) => {
-        if (!data || !data.enabled) return;
+        if (!data || !data.enabled) {
+            console.log('提示音未启用');
+            return;
+        }
         
         try {
             if (data.customSound) {
                 const audio = new Audio(data.customSound);
-                audio.play().catch(err => console.log('播放音效失败:', err));
+                audio.volume = 1;
+                audio.muted = false;
+                
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => console.log('提示音播放成功'))
+                        .catch(err => console.log('提示音播放失败:', err));
+                }
             }
         } catch (error) {
             console.error('播放提示音失败:', error);
