@@ -4567,6 +4567,7 @@ ${weatherInfoStr}
             visibleMessagesCount = allMessages.length;
             renderMessages();
             scrollToBottom();
+             playNotificationSound();
         }
 
     } catch (error) {
@@ -4735,7 +4736,8 @@ if (msg.type === 'voice') {
             ${checkbox}
             <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
                 ${voiceQuoteHtml}
-                <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id})">
+                <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id}); playVoiceMessage('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+>
                     <div class="voice-play-btn"><i class="fa fa-play"></i></div>
                     <div class="voice-wave">
                         <span class="wave-bar"></span>

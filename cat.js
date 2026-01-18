@@ -168,6 +168,8 @@ function saveNotificationSoundSettings() {
     });
 }
 
+
+
 // 7. 全局播放函数 (供 script.js 调用)
 function playIncomingSound() {
     loadFromDB('userInfo', (data) => {
@@ -266,37 +268,70 @@ function applyFontLogic(url, size) {
     }
 }
 
-// 保存所有设置
 function saveFontSettings() {
-    const url = document.getElementById('fontUrlInput').value.trim();
-    const size = document.getElementById('fontSizeInput').value;
+    const fontUrl = document.getElementById('fontUrlInput').value.trim();
+    const fontSize = document.getElementById('fontSizeInput').value;
     
-    loadFromDB('userInfo', (data) => {
-        const newData = data || {};
-        
-        // 更新数据
-        newData.customFontUrl = url;
-        newData.customFontSize = size;
-        
-        // 保存到数据库
-        saveToDB('userInfo', newData);
-        
-        // 应用效果
-        applyFontLogic(url, size);
-        
-        closeFontSettingsModal();
-        // alert('字体设置已保存'); // 保持静默流畅
-    });
+    const fontSettings = {
+        id: 1,
+        fontUrl: fontUrl,
+        fontSize: parseInt(fontSize) || 14
+    };
+    
+    // 保存到数据库
+    const transaction = db.transaction(['fontSettings'], 'readwrite');
+    const objectStore = transaction.objectStore('fontSettings');
+    objectStore.put(fontSettings);
+    
+    // 立即应用字体
+    if (fontUrl) {
+        const style = document.createElement('style');
+        style.textContent = `
+            @font-face {
+                font-family: 'CustomFont';
+                src: url('${fontUrl}') format('woff2');
+            }
+            body, * {
+                font-family: 'CustomFont', sans-serif !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    if (fontSize) {
+        document.documentElement.style.fontSize = fontSize + 'px';
+    }
+    
+    alert('字体设置已保存');
+    closeFontSettingsModal();
 }
 
-// 开机加载字体
 function loadFontSettings() {
-    loadFromDB('userInfo', (data) => {
+    loadFromDB('fontSettings', (data) => {
         if (data) {
-            applyFontLogic(data.customFontUrl, data.customFontSize || 14);
+            // 应用字体
+            if (data.fontUrl) {
+                const style = document.createElement('style');
+                style.textContent = `
+                    @font-face {
+                        font-family: 'CustomFont';
+                        src: url('${data.fontUrl}') format('woff2');
+                    }
+                    body, * {
+                        font-family: 'CustomFont', sans-serif !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // 应用字体大小
+            if (data.fontSize) {
+                document.documentElement.style.fontSize = data.fontSize + 'px';
+            }
         }
     });
 }
+
 
 // ============ 预设管理系统 ============
 
@@ -2008,3 +2043,92 @@ function syncCreatorControlsFromCss(css) {
         if (el) el.value = textMatch[1];
     }
 }
+
+// ============ 角色语音功能 ============
+let voiceConfig = {
+    enabled: false,
+    apiKey: '',
+    groupId: ''
+};
+
+function openVoiceRoleSettings() {
+    loadVoiceConfig();
+    document.getElementById('voiceRoleModal').style.display = 'flex';
+}
+
+function closeVoiceRoleModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('voiceRoleModal').style.display = 'none';
+}
+
+function loadVoiceConfig() {
+    loadFromDB('voiceConfig', (data) => {
+        if (data) {
+            voiceConfig = data;
+            document.getElementById('voiceEnabled').checked = voiceConfig.enabled;
+            document.getElementById('minimaxApiKey').value = voiceConfig.apiKey || '';
+            document.getElementById('minimaxGroupId').value = voiceConfig.groupId || '';
+            document.getElementById('voiceConfigPanel').style.display = voiceConfig.enabled ? 'block' : 'none';
+        }
+    });
+}
+
+function saveVoiceConfig() {
+    voiceConfig = {
+        enabled: document.getElementById('voiceEnabled').checked,
+        apiKey: document.getElementById('minimaxApiKey').value.trim(),
+        groupId: document.getElementById('minimaxGroupId').value.trim()
+    };
+    
+    if (voiceConfig.enabled && (!voiceConfig.apiKey || !voiceConfig.groupId)) {
+        alert('请填写API Key和Group ID');
+        return;
+    }
+    
+    saveToDB('voiceConfig', voiceConfig);
+    alert('已保存');
+    closeVoiceRoleModal();
+}
+
+async function playVoiceMessage(text) {
+    if (!voiceConfig.enabled || !voiceConfig.apiKey || !voiceConfig.groupId) {
+        alert('请先启用并配置角色语音');
+        return;
+    }
+    
+    try {
+        const response = await fetch('https://api.minimax.chat/v1/tts', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${voiceConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                group_id: voiceConfig.groupId,
+                text: text,
+                speed: 1.0
+            })
+        });
+        
+        if (!response.ok) throw new Error('API调用失败');
+        
+        const data = await response.json();
+        const audio = new Audio(data.audio_url);
+        audio.play();
+        
+    } catch (error) {
+        alert('语音播放失败：' + error.message);
+    }
+}
+
+// 开关切换事件
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const toggle = document.getElementById('voiceEnabled');
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                document.getElementById('voiceConfigPanel').style.display = this.checked ? 'block' : 'none';
+            });
+        }
+    }, 500);
+});

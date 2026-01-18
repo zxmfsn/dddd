@@ -8,7 +8,7 @@ let currentViewingDiaryId = null;
 // ============ 强制修复版：数据库初始化 (版本号 25) ============
 function initDB() {
     // ★★★ 重点：版本号改成 25，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 25);
+    const request = indexedDB.open('phoneData', 26);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
@@ -40,8 +40,7 @@ function initDB() {
         // ▼▼▼ 新增：启动自动总结定时器 ▼▼▼
 setTimeout(() => {
     startAutoSummaryTimer();
-}, 2000); // 延迟2秒启动，确保数据加载完成
-// ▲▲▲ 新增结束 ▲▲▲
+}, 2000); 
 
     };
     
@@ -71,6 +70,8 @@ setTimeout(() => {
         if (!db.objectStoreNames.contains('wallet')) db.createObjectStore('wallet', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('gameConsole')) db.createObjectStore('gameConsole', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('widgetSettings')) db.createObjectStore('widgetSettings', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('voiceConfig')) db.createObjectStore('voiceConfig', { keyPath: 'id' });
+
         
         // ★★★ 记忆功能表 (本次修复的主角) ★★★
         if (!db.objectStoreNames.contains('memories')) {
@@ -79,6 +80,32 @@ setTimeout(() => {
             store.createIndex('chatId', 'chatId', { unique: false });
         }
     };
+    // 页面加载完成后，强制显示主屏幕
+window.addEventListener('load', function() {
+    // 隐藏所有页面
+    document.getElementById('wallpaperScreen').style.display = 'none';
+    document.getElementById('worldbookScreen').style.display = 'none';
+    document.getElementById('apiScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'none';
+    document.getElementById('chatDetailScreen').style.display = 'none';
+    document.getElementById('characterInfoScreen').style.display = 'none';
+    document.getElementById('memoryScreen').style.display = 'none';
+    document.getElementById('diaryScreen').style.display = 'none';
+    document.getElementById('diaryDetailScreen').style.display = 'none';
+    document.getElementById('callScreen').style.display = 'none';
+    document.getElementById('shoppingScreen').style.display = 'none';
+    document.getElementById('shoppingCartScreen').style.display = 'none';
+    
+    const otherScreen = document.getElementById('otherSettingsScreen');
+    if (otherScreen) otherScreen.style.display = 'none';
+    
+    const beautifyScreen = document.getElementById('beautifySettingsScreen');
+    if (beautifyScreen) beautifyScreen.style.display = 'none';
+    
+    // 显示主屏幕
+    document.getElementById('mainScreen').style.display = 'flex';
+});
+
 }
 
 
