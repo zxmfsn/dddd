@@ -8,6 +8,24 @@
 
     <title>冻梨小手机</title>
     <link rel="stylesheet" href="style.css">
+    <!-- ★★★ 修复：防止贴纸撑大页面导致左右晃动 ★★★ -->
+    <style>
+        /* 强制禁止全局横向滚动 */
+        html, body {
+            overflow-x: hidden !important;
+            width: 100%;
+            position: fixed; /* 防止橡皮筋效果 */
+        }
+        
+        /* 强制禁止聊天列表和详情页横向滚动 */
+        #chatDetailScreen, 
+        #messagesContainer,
+        .phone-screen {
+            overflow-x: hidden !important;
+            width: 100%;
+            max-width: 100%;
+        }
+    </style>
 
 </head>
 <body>
@@ -636,7 +654,7 @@
         <!-- 2. 我的预设库 -->
         <div class="api-section-title" style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
             <span>🔖 我的预设库</span>
-            <span style="font-size: 10px; color: #999;">长按可删除</span>
+            <span style="font-size: 10px; color: #999;">预设可滑动</span>
         </div>
         
         <div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 2px 15px 2px; scrollbar-width: none; flex-shrink: 0;" id="bubblePresetList">
@@ -674,30 +692,22 @@
                 </div>
             </div>
             
-            <!-- 圆角 -->
+                       <!-- 圆角 (无数字版) -->
             <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;">
-                    <span>圆角大小</span>
-                    <span id="creatorRadiusVal">18px</span>
-                </div>
+                <div style="font-size: 11px; margin-bottom: 5px; color: #666;">圆角大小</div>
+                <!-- 注意：oninput 里去掉了更新文字的代码 -->
                 <input type="range" id="creatorRadius" min="0" max="30" value="18" style="width: 100%; accent-color: #667eea;" oninput="generateBubbleCSS()">
             </div>
 
-                    <!-- 内边距 (必须添加，否则无法刷新预览) -->
+            <!-- 内边距 (无数字版) -->
             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                 <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;">
-                        <span>水平边距</span>
-                        <span id="creatorPadXVal">12px</span>
-                    </div>
-                    <input type="range" id="creatorPadX" min="0" max="40" value="12" style="width: 100%; accent-color: #667eea;" oninput="generateBubbleCSS(); document.getElementById('creatorPadXVal').innerText = this.value + 'px'">
+                    <div style="font-size: 11px; margin-bottom: 5px; color: #666;">水平胖瘦</div>
+                    <input type="range" id="creatorPadX" min="5" max="40" value="12" style="width: 100%; accent-color: #667eea;" oninput="generateBubbleCSS()">
                 </div>
                 <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px;">
-                        <span>垂直边距</span>
-                        <span id="creatorPadYVal">8px</span>
-                    </div>
-                    <input type="range" id="creatorPadY" min="0" max="40" value="8" style="width: 100%; accent-color: #667eea;" oninput="generateBubbleCSS(); document.getElementById('creatorPadYVal').innerText = this.value + 'px'">
+                    <div style="font-size: 11px; margin-bottom: 5px; color: #666;">垂直高矮</div>
+                    <input type="range" id="creatorPadY" min="5" max="40" value="8" style="width: 100%; accent-color: #667eea;" oninput="generateBubbleCSS()">
                 </div>
             </div>
 
@@ -2446,7 +2456,8 @@
             <div class="file-input-area" onclick="document.getElementById('soundFileInput').click()" style="padding: 15px; border: 2px dashed #eee; background: #fff;">
                 <div id="soundFileName" style="font-size: 13px; color: #333; font-weight: bold;">使用默认音效</div>
                 <div style="font-size: 11px; color: #999; margin-top: 5px;">点击上传自定义音效</div>
-                <input type="file" id="soundFileInput" accept="audio/*" style="display: none;" onchange="handleSoundUpload(this)">
+               <input type="file" id="soundFileInput" accept=".mp3,.wav,audio/*" style="display: none;" onchange="handleSoundUpload(this)">
+
             </div>
             
             <!-- 试听与重置 -->

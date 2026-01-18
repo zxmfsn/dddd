@@ -94,8 +94,9 @@ function handleSoundUpload(input) {
     const file = input.files[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) { // 限制 2MB
-        alert('音频文件太大啦！请上传 2MB 以内的文件。');
+ // 放宽到 5MB，防止稍微长一点的提示音传不上去
+    if (file.size > 5 * 1024 * 1024) { 
+        alert('音频文件太大啦！请上传 5MB 以内的文件。');
         return;
     }
 
@@ -1404,6 +1405,7 @@ function openBubbleBeautify() {
         
         updateBubblePreview();
     });
+    switchBubbleTab('ai');
 }
 
 // 2. 渲染预设列表
@@ -1567,15 +1569,34 @@ function backToBeautifySettings_Bubble() {
     document.getElementById('beautifySettingsScreen').style.display = 'flex';
 }
 
-// 切换 Tab 函数
+// 切换 Tab 函数 (修复版：切换时立刻归位滑块)
 function switchBubbleTab(type) {
+    // 1. 更新按钮高亮
     const btns = document.querySelectorAll('#bubbleBeautifyScreen .ins-tab-btn');
-    btns.forEach(b => b.classList.remove('active'));
-    if(event && event.target) event.target.classList.add('active');
+    btns.forEach(b => {
+        b.classList.remove('active');
+        if (type === 'ai' && b.textContent.includes('左侧')) b.classList.add('active');
+        if (type === 'user' && b.textContent.includes('右侧')) b.classList.add('active');
+    });
     
+    // 2. 切换编辑区显示
     document.getElementById('aiBubbleEditor').style.display = type === 'ai' ? 'block' : 'none';
-    document.getElementById('userBubbleEditor').style.display = type === 'user' ? 'block' : 'none';
+    document.getElementById('userBubbleEditor').style.display = 'user' === type ? 'block' : 'none';
+
+    // 3. ★★★ 核心修复：立刻读取当前文本框里的 CSS ★★★
+    const targetInputId = type === 'ai' ? 'aiBubbleCssInput' : 'userBubbleCssInput';
+    const targetCss = document.getElementById(targetInputId).value;
+    
+    // 4. ★★★ 强制滑块归位 (把 CSS 里的 11px 填回滑块) ★★★
+    syncCreatorControlsFromCss(targetCss);
+
+    // 5. 重置贴纸图层 (防止左边的贴纸显示在右边的编辑器里)
+    activeStickerLayers = [];
+    renderLayerList();
+    document.getElementById('stickerEditorControls').style.display = 'none';
 }
+
+
 
 // ===========================================
 // ★★★ 可视化气泡制作器逻辑 (支持外部贴纸版) ★★★
@@ -1938,4 +1959,52 @@ function deleteThemeScheme(index) {
             renderThemeSchemes();
         }
     });
+}
+
+// ★★★ 修复版：同步滑块位置 + 同步数字显示 ★★★
+function syncCreatorControlsFromCss(css) {
+    if (!css) return;
+
+    // 辅助函数：同时更新滑块和旁边的文字
+    const updateControl = (id, val) => {
+        // 1. 更新滑块位置
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = val;
+        }
+        
+        // 2. 更新旁边的数字显示 (ID通常是 滑块ID + "Val")
+        const label = document.getElementById(id + 'Val');
+        if (label) {
+            label.innerText = val + 'px';
+        }
+    };
+
+    // 1. 同步内边距 (匹配 padding: 垂直px 水平px;)
+    // 例如: padding: 8px 12px; -> 垂直=8, 水平=12
+    const padMatch = css.match(/padding:\s*(\d+)px\s+(\d+)px/);
+    if (padMatch) {
+        updateControl('creatorPadY', padMatch[1]); // 垂直
+        updateControl('creatorPadX', padMatch[2]); // 水平
+    }
+
+    // 2. 同步圆角 (匹配 border-radius: 18px;)
+    const rMatch = css.match(/border-radius:\s*(\d+)px/);
+    if (rMatch) {
+        updateControl('creatorRadius', rMatch[1]);
+    }
+
+    // 3. 同步背景色
+    const bgMatch = css.match(/background(?:-color)?:\s*(#[0-9a-fA-F]{6})/);
+    if (bgMatch) {
+        const el = document.getElementById('creatorBgColor');
+        if (el) el.value = bgMatch[1];
+    }
+
+    // 4. 同步文字色
+    const textMatch = css.match(/[\s;]color:\s*(#[0-9a-fA-F]{6})/);
+    if (textMatch) {
+        const el = document.getElementById('creatorTextColor');
+        if (el) el.value = textMatch[1];
+    }
 }
