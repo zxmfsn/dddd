@@ -1855,10 +1855,20 @@ ${characterInfo.personality || '一个友好、真诚的角色。'}
 * **严禁**像刚认识一样打招呼（如“你好”），因为你们刚刚就在聊天！
 
 【回复格式 - 严格遵守】
-[动作]你的动作描述|||[消息]第一句回应|||第二句回应
+必须严格按照以下格式返回，不能有任何偏差：
+[动作]你的动作描述|||[消息]第一条|||第二条|||第三条
 
-* **动作描写**：20-40字，描述你接电话时的状态（正在擦头发？躺在床上？凑近屏幕？）。
-* **消息内容**：3-5条，口语化，短促自然。
+【格式示例】
+[动作]靠近屏幕，眼睛闪闪发光，嘴角带着温暖的笑容|||[消息]嘿，看到你了~|||你今天过得怎么样？|||我一直在想你呢。
+
+【严格要求】
+1. 必须以 [动作] 开头，描述你的动作（30-50字）
+2. 然后是 ||| 分隔符
+3. 然后是 [消息] 标记
+4. 每句话用 ||| 分隔，不能合并
+5. 每句话 10-30 字
+6. 总共 4-8 条消息
+
 
 请现在接听电话。`;
     
@@ -2027,7 +2037,6 @@ function sendCallMessage() {
     });
 }
 
-// 接收AI回复 (视频通话专用)
 async function receiveCallReply() {
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
         alert('请先在API设置中配置');
@@ -2073,12 +2082,34 @@ ${characterInfo.cityInfoEnabled ? `
 
 【视频通话模式】
 你正在和对方视频通话，你能看到对方。
+【视频通话严格限制】
+⚠️ 视频通话中只能发送纯文字对话，严禁：
+- 发送表情包指令 [搜表情:xxx]
+- 发送图片、语音、转账等非文字内容
+- 使用 [购物:xxx] 指令
+- 只能用自然的文字交流，就像打电话一样说话
+
+【重要：根据聊天历史回复】
+你必须：
+1. 参考之前的聊天记录，理解对话的上下文
+2. 根据角色人设和对方人设来思考如何回复
+3. 回复要符合角色的性格、语气和说话习惯
+4. 不要忽视之前说过的话，保持对话的连贯性
+5. 思考对方说了什么，然后给出有意义的回复，而不是随意应答
+6. 视频通话刚开始时，自然延续刚才的对话话题，不要突然转换话题
 
 【回复格式 - 严格遵守】
+必须严格按照以下格式返回，不能有任何偏差：
 [动作]你的动作描述|||[消息]第一条|||第二条|||第三条
-
-【动作描写】30-50字
-【消息内容】4-8条，每条10-30字，用|||分隔`;
+【格式示例】
+[动作]靠近屏幕，眼睛闪闪发光，嘴角带着温暖的笑容|||[消息]嘿，看到你了~|||你今天过得怎么样？|||我一直在想你呢。
+【严格要求】
+1. 必须以 [动作] 开头，描述你的动作（30-50字）
+2. 然后是 ||| 分隔符
+3. 然后是 [消息] 标记
+4. 每句话用 ||| 分隔，不能合并
+5. 每句话 10-30 字
+6. 总共 4-8 条消息`;
     
     const receiveBtn = document.getElementById('callReceiveBtn');
     const callInput = document.getElementById('callInput');
@@ -2188,7 +2219,6 @@ ${characterInfo.cityInfoEnabled ? `
         
         const data = await response.json();
         
-        // ★★★ 修复点：先声明变量，再处理 ★★★
         let aiReply = data.choices[0].message.content.trim();
         
         // 视频通话中禁用表情包指令（防止显示乱码）
@@ -2210,6 +2240,7 @@ ${characterInfo.cityInfoEnabled ? `
         if (callInput) callInput.disabled = false;
     }
 }
+
 
 
 // 挂断电话
@@ -2994,7 +3025,7 @@ function createShoppingOrderMessage(orderType, status, totalPrice, items) {
         id: newId,
         chatId: currentChatId,
         type: 'shopping_order',
-        senderId: 'me',
+        senderId: orderType.startsWith('ai_') ? chat.name : 'me',
         time: getCurrentTime(),
         orderData: {
             orderType: orderType,
@@ -3807,17 +3838,48 @@ function renderMemoryTimeline(moments) {
         return;
     }
     
-    // ★★★ 核心修复：强制按时间倒序排列 (最新的在上面) ★★★
-    moments.sort((a, b) => {
-        // 1. 优先比较发生时间 (happenTime)
-        const timeA = new Date(a.happenTime || 0).getTime();
-        const timeB = new Date(b.happenTime || 0).getTime();
+    // 内部辅助函数：安全解析日期 (兼容中文和无年份格式)
+    const parseDateSafe = (dateStr) => {
+        if (!dateStr) return 0;
+        // 转为字符串以防万一
+        let str = String(dateStr).trim();
         
+        // 1. 尝试直接解析标准格式 (如 "2024-05-20")
+        let timestamp = new Date(str).getTime();
+        if (!isNaN(timestamp)) return timestamp;
+        
+        // 2. 处理中文格式 "2024年5月20日" -> "2024/5/20" (斜杠兼容性更好)
+        let cleanStr = str.replace(/年|月/g, '/').replace(/日/g, '').trim();
+        timestamp = new Date(cleanStr).getTime();
+        if (!isNaN(timestamp)) return timestamp;
+        
+        // 3. 处理无年份格式 (如 "05-20" 或 "5/20") -> 补全当前年份
+        const currentYear = new Date().getFullYear();
+        // 尝试拼上年份再解析
+        let withYear = `${currentYear}/${cleanStr}`;
+        timestamp = new Date(withYear).getTime();
+        if (!isNaN(timestamp)) return timestamp;
+        
+        // 4. 如果还是不行，尝试用 - 连接再试一次
+        withYear = `${currentYear}-${str.replace(/\//g, '-')}`;
+        timestamp = new Date(withYear).getTime();
+        if (!isNaN(timestamp)) return timestamp;
+
+        return 0; // 实在解析不了，视为最旧
+    };
+
+    // ★★★ 核心修复：增强版排序 (最新的在上面) ★★★
+    moments.sort((a, b) => {
+        // 使用增强解析器获取时间戳
+        const timeA = parseDateSafe(a.happenTime);
+        const timeB = parseDateSafe(b.happenTime);
+        
+        // 优先按发生时间倒序 (大的在前)
         if (timeB !== timeA) {
-            return timeB - timeA; // B - A = 倒序
+            return timeB - timeA; 
         }
         
-        // 2. 如果发生时间一样，按创建时间 (createTime) 倒序
+        // 如果发生时间完全一样，按创建时间倒序
         const createA = new Date(a.createTime || 0).getTime();
         const createB = new Date(b.createTime || 0).getTime();
         return createB - createA;
@@ -3835,6 +3897,7 @@ function renderMemoryTimeline(moments) {
         </div>
     `).join('');
 }
+
 
 
 // 3. 添加/编辑/删除逻辑
@@ -4079,7 +4142,7 @@ async function getMemoryContext() {
     });
 }
 
-// ============ 最终极·无阉割版：聊天核心逻辑 ============
+// ============ 单人聊天核心逻辑 ============
 async function receiveAIReply() {
     isReceiving = true;
     
@@ -4158,6 +4221,21 @@ ${getBirthdayPrompt(characterInfo.birthday)}
 【天气情况】
 ${weatherInfoStr}
 
+【关于互动】
+自然表达情感，尊重彼此的节奏。拥抱就是拥抱；牵手就是牵手，不要自作聪明地往更深的地方走。
+
+【关于交流】
+记住，对方是一个完整的、有独立思想的人。不是为了满足欲望而存在的。真诚的陪伴、理解和情感连接，比任何表达都更珍贵。人是复杂的，不能只用"喜欢"或"不喜欢"来定义一切。
+
+【关于相处】
+尊重对方的个人空间和边界。但不要说教、不要试图控制。像朋友一样相处，像伴侣一样理解。
+
+回复前你需要注意的事情：
+- 你需要回顾一下现在的事情，知道上次聊天距离现在过了多久，并且做出相应的回答。
+- 如果你知道天气情况，可以主动根据天气情况做出相应的话题。
+
+
+
 1. **状态系统 (Status)**
      - 你当前状态：【${characterInfo.currentStatus || '在线'}】。
            - **必须执行**：每次回复若心情或行为发生变化，必须在开头更新状态。
@@ -4177,9 +4255,11 @@ ${weatherInfoStr}
     - *回应用户的代付请求*：
        - 若同意支付：回复中必须包含 [确认代付]
        - 若拒绝支付：直接用语言拒绝，不要包含指令。
-   - **购物/代付**：
-     - *想送用户礼物*：[购物:送礼:物品名]
-     - *想让用户买单*：[购物:代付:物品名]
+   - **购物/代付**：如果想送用户礼物或让用户代付，返回 JSON 格式：
+     送礼物：{"action": "send_gift", "product_name": "礼物名称", "price": 价格数字}
+     代付：{"action": "ask_user_pay", "product_name": "物品名称", "price": 价格数字}
+     例如：{"action": "send_gift", "product_name": "顶配手机", "price": 3999}
+     否则正常回复。
 
 3. **状态监控更新 (Status Update)** - *每次回复必须在末尾附上！*
       请把自己想象成一个有血有肉的人，你的状态栏是你的**生理体征**和**内心独白**。
@@ -4256,7 +4336,6 @@ ${weatherInfoStr}
 
         // 7. API 请求
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
-        const hasImageInContext = messages.some(msg => Array.isArray(msg.content));
         const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions' 
             : currentApiConfig.baseUrl + '/chat/completions';
@@ -4280,6 +4359,19 @@ ${weatherInfoStr}
         if (!response.ok) throw new Error('API请求失败');
         const data = await response.json();
         let aiReply = data.choices[0].message.content.trim();
+
+        // ★ 新增：提取礼物信息（一次API调用方案）
+        let giftData = null;
+        const giftJsonMatch = aiReply.match(/\{[\s\S]*?"action"\s*:\s*"(?:send_gift|ask_user_pay)"[\s\S]*?\}/);
+        if (giftJsonMatch) {
+            try {
+                giftData = JSON.parse(giftJsonMatch[0]);
+                aiReply = aiReply.replace(giftJsonMatch[0], '').trim();
+                console.log('✅ 提取到礼物信息:', giftData);
+            } catch (e) {
+                console.warn('礼物数据解析失败:', e);
+            }
+        }
 
         // 解析分析数据
         let analysisData = null;
@@ -4377,42 +4469,31 @@ ${weatherInfoStr}
             aiReply = aiReply.replace(/\[状态更新\].*?\[\/状态更新\]/s, '').trim();
         }
 
-
-             // 11. 清理回复内容
+        // 11. 清理回复内容
         let messageContent = aiReply
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
             .replace(/\[消息\]\s*[:：]?/g, '')
             .replace(/【消息】\s*[:：]?/g, '')
-            // 确保白名单里有 "转账"
             .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情)[^\]]*\]\s*[:：]?/g, '')
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
-            .trim(); 
+            .trim();
 
-
-         // ★★★ 核心修复：强力转换逻辑 (搜不到就随机发) ★★★
         messageContent = messageContent.replace(/\[搜表情[:：]\s*(.+?)\]/g, (match, keyword) => {
-            // 1. 先尝试按关键词搜
             let emoji = searchEmojiByKeyword(keyword.trim());
-            
-            // 2. ★ 如果没搜到，但库里有图，就随机拿一个！(防止显示代码)
             if (!emoji && emojiList.length > 0) {
                 console.log(`关键词 [${keyword}] 没搜到，随机兜底一个`);
                 emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
             }
-            // 3. 转换成内部ID格式
             if (emoji) {
                 return `|||[EMOJI:${emoji.id}]|||`;
             }
-            
-            // 4. 如果库是空的，直接删除指令，别显示尴尬的文本
             return ""; 
         });
 
         // 12. 分割消息
-        // 清理一下可能产生的多余分隔符
         let messageList = messageContent
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
@@ -4420,10 +4501,6 @@ ${weatherInfoStr}
             .map(m => m.trim())
             .filter(m => m.length > 0);
 
-        // (注意：原来这里有一个 messageList.map 处理表情包的代码块，现在不需要了，请删除它！)
-
-
-        // ★ 处理表情包指令
         messageList = messageList.map(msg => {
             const emojiMatch = msg.match(/\[搜表情[:：]\s*(.+?)\]/);
             if (emojiMatch) {
@@ -4450,7 +4527,24 @@ ${weatherInfoStr}
             await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
             let msgText = messageList[i];
 
-            // 购物逻辑
+            // ★ 修改：购物逻辑（支持送礼物和代付两种情况）
+            if (giftData && i === 0) {
+                if (giftData.action === 'send_gift') {
+                    createShoppingOrderMessage('ai_buy_for_user', 'paid', giftData.price, [{
+                        name: giftData.product_name,
+                        quantity: 1,
+                        price: giftData.price
+                    }]);
+                } else if (giftData.action === 'ask_user_pay') {
+                    createShoppingOrderMessage('ai_ask_user_pay', 'pending', giftData.price, [{
+                        name: giftData.product_name,
+                        quantity: 1,
+                        price: giftData.price
+                    }]);
+                }
+                giftData = null;
+            }
+            
             const shoppingMatch = msgText.match(/\[购物:(送礼|代付):([^\]]+)\]/);
             if (shoppingMatch) {
                 const shoppingType = shoppingMatch[1];
@@ -4560,15 +4654,13 @@ ${weatherInfoStr}
             allMessages.push(newMessage);
             saveMessages();
             updateChatLastMessage(currentChatId, newMessage.type === 'text' ? msgText : `[${newMessage.type}]`);
-             // ★★★ 新增：播放消息提示音 ★★★
             if (typeof playIncomingSound === 'function') {
                 playIncomingSound();
             }
-            // ★★★ 结束 ★★★
             visibleMessagesCount = allMessages.length;
             renderMessages();
             scrollToBottom();
-             playNotificationSound();
+            playNotificationSound();
         }
 
     } catch (error) {
@@ -4583,6 +4675,7 @@ ${weatherInfoStr}
         if (chatInput) chatInput.disabled = false;
     }
 }
+
 
 
 // ============ 修复版：渲染消息列表 (解决文字竖排问题) ============
@@ -4737,7 +4830,9 @@ if (msg.type === 'voice') {
             ${checkbox}
             <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
                 ${voiceQuoteHtml}
-                <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id}); playVoiceMessage('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+             <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id});${msg.senderId !== 'me' ? `playVoiceMessage('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')` : ''}"
+>
+
 >
                     <div class="voice-play-btn"><i class="fa fa-play"></i></div>
                     <div class="voice-wave">
@@ -5881,13 +5976,13 @@ ${timeStr}
 ${recentMessages || '暂无聊天'}
 
 请生成以下状态信息，用|||分隔：
-1. 此刻心情（一句话描述，20字以内）
+1. 此刻心情（一句话描述，20字以内），比如：高兴地恨不得原地转圈圈，嘴角就没下来过
 2. 心情值（0-100的数字）
 3. 心跳（60-120的数字，根据情绪波动）
 4. 穿着风格（一句话，10字以内）
 5. 穿着单品（3-4个，用逗号分隔）
-6. 当前行为（一句话描述，30字以内）
-7. 内心想法（2-3句话，50字以内）
+6. 当前行为（一句话描述，50字以内），比如：翘着二郎腿听这个，忍不住打了个哈欠，亮晶晶的盯着手机，手指快速打字，忍不住嘟囔出声
+7. 内心想法（2-3句话，50-100字以内）
 8. 今日日程（3-5项，格式：时间-事项-状态，用分号分隔，状态为completed/current/upcoming）
 
 示例输出：
@@ -5920,19 +6015,15 @@ ${recentMessages || '暂无聊天'}
         const parts = content.split('|||').map(s => s.trim());
         if (parts.length < 8) return null;
         
-        // 解析日程
-        const scheduleStr = parts[7];
-        const schedule = scheduleStr.split(';').map(item => {
-            const [time, task, status] = item.split('-');
-            return { time: time?.trim(), task: task?.trim(), status: status?.trim() || 'upcoming' };
-        }).filter(item => item.time && item.task);
+        // ★★★ 核心修复：调用增强版解析器，而不是自己硬解析 ★★★
+        const schedule = parseSchedule(parts[7]);
         
         return {
             mood: parts[0],
             moodLevel: parseInt(parts[1]) || 75,
             heartbeat: parseInt(parts[2]) || 72,
             clothesStyle: parts[3],
-            clothesTags: parts[4].split(',').map(s => s.trim()),
+            clothesTags: parts[4].split(/[,，、]/).map(s => s.trim()).filter(s => s), // 增强分隔符支持
             action: parts[5],
             thoughts: parts[6],
             schedule: schedule
@@ -5943,6 +6034,7 @@ ${recentMessages || '暂无聊天'}
         return null;
     }
 }
+
 
 // 刷新状态监控数据
 async function refreshStatusMonitor() {
@@ -6448,7 +6540,7 @@ async function executeAutoSummary(chat, messages, charInfo) {
     const prompt = `请以【第三人称旁白】的视角，客观概括以下聊天记录的主要内容。
 
 【要求】
-1. 字数控制在100字以内
+1. 字数控制在60字以内
 2. **视角严格限制**：必须使用第三人称！请用"${chat.name}"和"用户"来描述互动。
 3. **严禁**使用"我"、"我们"、"你"这种第一/第二人称代词。
 4. 内容概括：聊了什么话题、发生了什么事、有什么重要约定。
@@ -6576,29 +6668,43 @@ function updateAutoSummaryAnchor(chatId, messages) {
     });
 }
 
-// ============ 在数据库初始化完成后启动定时器 ============
-// ============ 解析日程字符串 ============
+// ============ 解析日程字符串 (增强版) ============
 function parseSchedule(scheduleStr) {
     if (!scheduleStr || scheduleStr === '无' || scheduleStr === '--') {
         return null; // 返回null表示不更新，保留旧数据
     }
     
+    // 1. 先按分号分割多条日程
     const items = scheduleStr.split(/[;；]/).filter(s => s.trim());
     const schedule = [];
     
     items.forEach(item => {
-        // 支持格式：09:00-起床-completed 或 09:00-起床洗漱-completed
-        const parts = item.split(/[-–—]/).map(s => s.trim());
+        // 2. 尝试多种分隔符：支持 - — – 和空格
+        // 优先级：先尝试横线，如果没有横线，再尝试空格
+        let parts = [];
+        
+        if (item.match(/[-–—]/)) {
+            parts = item.split(/[-–—]/).map(s => s.trim());
+        } else {
+            // 如果没有横线，尝试按空格分割 (限制分割次数，防止任务名里有空格被切断)
+            // 例如 "09:00 起床" -> ["09:00", "起床"]
+            const spaceParts = item.trim().split(/\s+/);
+            if (spaceParts.length >= 2) {
+                parts = [spaceParts[0], spaceParts.slice(1).join(' ')];
+            }
+        }
+
         if (parts.length >= 2) {
             const time = parts[0];
             const task = parts[1];
             let status = 'upcoming';
             
+            // 如果有第三部分 (状态)
             if (parts.length >= 3) {
                 const statusStr = parts[2].toLowerCase();
-                if (statusStr.includes('complet') || statusStr.includes('done') || statusStr.includes('完成')) {
+                if (statusStr.includes('complet') || statusStr.includes('done') || statusStr.includes('完成') || statusStr.includes('已')) {
                     status = 'completed';
-                } else if (statusStr.includes('current') || statusStr.includes('进行') || statusStr.includes('ing')) {
+                } else if (statusStr.includes('current') || statusStr.includes('进行') || statusStr.includes('ing') || statusStr.includes('在')) {
                     status = 'current';
                 }
             }
@@ -6609,6 +6715,9 @@ function parseSchedule(scheduleStr) {
     
     return schedule.length > 0 ? schedule : null;
 }
+
+
+
 // ============ ❤️ 心率模拟系统 (新增) ============
 function initHeartbeatSimulation() {
     console.log('心率模拟器已启动');
