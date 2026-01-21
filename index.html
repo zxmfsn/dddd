@@ -818,26 +818,7 @@
         <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         <div class="header-title">聊天</div>
     </div>
-    
-    <!-- 朋友圈入口卡片 -->
-    <div class="moments-card" onclick="openMoments()">
-        <div class="moments-left">
-              <svg class="ins-icon" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="14.31" y1="8" x2="20.05" y2="17.94"></line>
-        <line x1="9.69" y1="8" x2="21.17" y2="8"></line>
-        <line x1="7.38" y1="12" x2="13.12" y2="2.06"></line>
-        <line x1="9.69" y1="16" x2="3.95" y2="6.06"></line>
-        <line x1="14.31" y1="16" x2="2.83" y2="16"></line>
-        <line x1="16.62" y1="12" x2="10.88" y2="21.94"></line>
-    </svg>
-            <div class="moments-text">
-                <div class="moments-title">朋友圈</div>
-                <div class="moments-desc">看看大家在干什么~</div>
-            </div>
-        </div>
-        <div class="moments-arrow">→</div>
-    </div>
+
     
     <!-- 聊天列表 -->
     <div class="chat-list-container" id="chatListContainer">
@@ -889,6 +870,49 @@
 
  
 </div>
+
+<!-- 朋友圈容器 -->
+<div class="moments-container" id="momentsContainer" style="display: none;">
+    <!-- 隐藏的文件输入框 (保持功能) -->
+    <input type="file" id="momentsCoverInput" accept="image/*" style="display: none;" onchange="handleCoverSelect(this)">
+    
+    <div class="moments-scroll-content" onscroll="handleMomentsScroll(this)">
+        
+        <div class="social-combined-wrapper">
+            <!-- 1. 顶部个人资料卡片 -->
+            <div class="profile-header-card">
+                <!-- 顶部背景图 (点击更换) -->
+             <div class="ph-banner" id="momentsCover" onclick="document.getElementById('momentsCoverInput').click()">
+    <!-- 图标已移除，只保留背景图点击换封面功能 -->
+</div>
+
+                
+          <div class="ph-content">
+    <!-- 头像 (点击编辑) -->
+    <div class="ph-avatar-ring" onclick="openEditMomentsProfile()">
+        <div class="ph-avatar-img" id="momentsUserAvatar">👤</div>
+    </div>
+    
+    <!-- 名字 -->
+    <div class="ph-name" id="momentsUserName" onclick="openEditMomentsProfile()">User</div>
+</div>
+
+            </div>
+
+            <!-- 2. 动态流列表 -->
+            <div class="feed-list" id="momentsList">
+                <!-- JS 动态生成 -->
+            </div>
+            
+            <div class="moments-footer">
+                <div class="loading-line"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
     <!-- 悬浮添加按钮 -->
  <button class="add-btn" onclick="openAddChatMenu()">+</button>
     
@@ -901,15 +925,19 @@
             </svg>
         </div>
 
-        <!-- 2. 群聊/联系人 Tab -->
-        <div class="bottom-tab" data-tab="group" onclick="switchChatTab('group')">
-            <svg class="ins-icon" viewBox="0 0 24 24">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        </div>
+      <!-- 2. 朋友圈 Tab -->
+<div class="bottom-tab" data-tab="moments" onclick="switchChatTab('moments')">
+    <svg class="ins-icon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="14.31" y1="8" x2="20.05" y2="17.94"></line>
+        <line x1="9.69" y1="8" x2="21.17" y2="8"></line>
+        <line x1="7.38" y1="12" x2="13.12" y2="2.06"></line>
+        <line x1="9.69" y1="16" x2="3.95" y2="6.06"></line>
+        <line x1="14.31" y1="16" x2="2.83" y2="16"></line>
+        <line x1="16.62" y1="12" x2="10.88" y2="21.94"></line>
+    </svg>
+</div>
+
 
         <!-- 3. 钱包 Tab -->
         <div class="bottom-tab" data-tab="wallet" onclick="switchChatTab('wallet')">
@@ -920,6 +948,123 @@
         </div>
         </div>
 </div>
+
+<!-- 朋友圈页面 -->
+<div class="moments-screen" id="momentsScreen" style="display: none;">
+    <!-- 顶部导航栏 (滚动变色) -->
+    <div class="moments-nav-bar" id="momentsNavBar">
+        <button class="back-btn" onclick="backToChatFromMoments()" style="color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="nav-title" style="opacity: 0; color: #333; font-weight: 700;">朋友圈</div>
+        <button class="camera-btn" onclick="openPostMomentModal()">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="white" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+        </button>
+    </div>
+
+    <!-- 滚动内容区域 -->
+    <div class="moments-scroll-area" id="momentsScrollArea" onscroll="handleMomentsScroll(this)">
+        <!-- 朋友圈头部 (封面+头像) -->
+        <div class="moments-header">
+            <div class="moments-cover" id="momentsCover" onclick="document.getElementById('momentsCoverInput').click()">
+                <!-- 封面图将通过 CSS/JS 设置 -->
+            </div>
+            <div class="moments-user-row">
+                <div class="moments-user-name" id="momentsUserName">我的名字</div>
+                <div class="moments-user-avatar" id="momentsUserAvatar" onclick="openEditMomentsProfile()">👤</div>
+            </div>
+            <!-- 隐藏的封面上传 -->
+            <input type="file" id="momentsCoverInput" accept="image/*" style="display: none;" onchange="handleCoverSelect(this)">
+        </div>
+
+        <!-- 朋友圈列表 -->
+        <div class="moments-list" id="momentsList">
+            <!-- 动态内容将在这里生成 -->
+        </div>
+        
+        <div class="moments-footer">
+            <div class="loading-line"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 发布动态弹窗 (美化版) -->
+<div class="modal-overlay" id="postMomentModal" onclick="closePostMomentModal(event)">
+    <div class="modal post-modal-card" onclick="event.stopPropagation()">
+        
+        <!-- 顶部栏 -->
+        <div class="post-header">
+            <button class="post-btn-cancel" onclick="closePostMomentModal()">取消</button>
+            <div class="post-title">新动态</div>
+            <button class="post-btn-publish" onclick="publishMoment()">发布</button>
+        </div>
+        
+        <!-- 内容区域 -->
+        <div class="post-body">
+            <!-- 文本输入 -->
+            <textarea id="momentContent" class="post-textarea" placeholder="分享此刻的想法..."></textarea>
+            
+            <!-- 图片网格 -->
+            <div class="post-media-area">
+                <div class="post-grid" id="momentImgGrid">
+                    <!-- 上传按钮 -->
+                    <div class="post-add-box" onclick="document.getElementById('momentImgInput').click()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 隐藏的输入框 -->
+            <input type="file" id="momentImgInput" accept="image/*" multiple style="display: none;" onchange="handleMomentImgSelect(this)">
+            
+            <!-- 选项列表 -->
+            <div class="post-options-list">
+                <div class="post-option-item">
+                    <span class="opt-icon"></span>
+                    <span class="opt-label">所在位置</span>
+                    <span class="opt-arrow">›</span>
+                </div>
+                <div class="post-option-item">
+                    <span class="opt-icon"></span>
+                    <span class="opt-label">提醒谁看</span>
+                    <span class="opt-arrow">›</span>
+                </div>
+                <div class="post-option-item">
+                    <span class="opt-icon"></span>
+                    <span class="opt-label">谁可以看</span>
+                    <span class="opt-value">公开</span>
+                    <span class="opt-arrow">›</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 朋友圈资料编辑弹窗 -->
+<div class="modal-overlay" id="momentsProfileModal" onclick="closeEditMomentsProfile(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">朋友圈资料</div>
+        <div class="form-group">
+            <label class="form-label">昵称</label>
+            <input type="text" id="momentsProfileName" class="form-input" placeholder="设置朋友圈昵称">
+        </div>
+        <div class="form-group">
+            <label class="form-label">头像</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div id="momentsProfileAvatarPreview" style="width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">👤</div>
+                <button class="api-btn" onclick="document.getElementById('momentsAvatarInput').click()">更换头像</button>
+                <input type="file" id="momentsAvatarInput" accept="image/*" style="display: none;" onchange="handleMomentsAvatarSelect(this)">
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeEditMomentsProfile()">取消</button>
+            <button class="btn btn-save" onclick="saveMomentsProfile()">保存</button>
+        </div>
+    </div>
+</div>
+
+
 
 <div class="memory-screen" id="memoryScreen">
     <div class="memory-header">
@@ -1180,6 +1325,19 @@
         </svg>
     </button>
 
+ <!-- ▼▼▼ 新增：文字图按钮 (SVG 线条风格) ▼▼▼ -->
+    <button class="emoji-btn" onclick="openTextImageModal()" title="发送文字图">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <!-- 外框卡片 -->
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <!-- 里面的文字线条 -->
+            <line x1="7" y1="8" x2="17" y2="8"></line>
+            <line x1="7" y1="12" x2="17" y2="12"></line>
+            <line x1="7" y1="16" x2="13" y2="16"></line>
+        </svg>
+    </button>
+    <!-- ▲▲▲ 新增结束 ▲▲▲ -->
+
     <button class="emoji-btn" onclick="document.getElementById('imageInput').click()" title="发送图片">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -1255,7 +1413,7 @@
 </div>
 
     <div class="chat-input-bar">
-        <button class="cute-icon-btn plus-btn" onclick="openMoreOptions()">+</button>
+    
         <textarea class="chat-input" id="chatInput" placeholder="打字输入中..." rows="1"></textarea>
       <button class="action-icon-btn" onclick="sendMessage()" title="发送消息">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;">
@@ -2529,6 +2687,42 @@
     </div>
 </div>
 
+<!-- 文字图输入弹窗 -->
+<div class="modal-overlay" id="textImageModal" onclick="closeTextImageModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">发送文字图</div>
+        <div class="form-group">
+            <textarea id="textImageContent" class="form-input" rows="5" placeholder="描述画面内容...&#10;例如：午后的阳光洒在书桌上，一杯咖啡冒着热气。" style="resize: none;"></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeTextImageModal()">取消</button>
+            <button class="btn btn-save" onclick="sendTextImage()">发送</button>
+        </div>
+    </div>
+</div>
+<!-- 文字图详情弹窗 -->
+<div class="modal-overlay" id="textImageDetailModal" onclick="closeTextImageDetailModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 80%; max-width: 300px;">
+        <div class="modal-title" style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+            画面描述
+        </div>
+        <div id="textImageDetailContent" style="
+            font-size: 15px; 
+            color: #333; 
+            line-height: 1.6; 
+            padding: 15px; 
+            background: #f9f9f9; 
+            border-radius: 8px; 
+            min-height: 60px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        "></div>
+        <div class="modal-buttons" style="margin-top: 15px;">
+            <button class="btn btn-save" onclick="closeTextImageDetailModal()" style="width: 100%;">关闭</button>
+        </div>
+    </div>
+</div>
 
 
 <script src="script.js"></script>

@@ -5,43 +5,86 @@
 let diaries = [];
 let currentViewingDiaryId = null;
 
-// ============ 强制修复版：数据库初始化 (版本号 25) ============
+// ============ 强制修复版：数据库初始化 (版本号 30) ============
 function initDB() {
-    // ★★★ 重点：版本号改成 25，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 28);
+    // ★★★ 重点：版本号改成 50，强制触发更新！ ★★★
+    const request = indexedDB.open('phoneData', 30);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
-        alert('数据库打开失败，请尝试清除浏览器缓存或刷新页面');
+        // 如果打开失败，尝试提示用户
+        alert('数据库打开失败。请尝试：\n1. 关闭所有其他打开了本网页的标签页\n2. 清除浏览器缓存\n3. 刷新页面');
     };
     
-request.onsuccess = (event) => {
-    db = event.target.result;
-    console.log('数据库连接成功，版本:', db.version);
+    request.onblocked = (event) => {
+        // 当有其他标签页打开了旧版本数据库时触发
+        alert('请关闭其他打开了本网页的标签页，然后刷新本页以完成更新！');
+    };
     
+    request.onsuccess = (event) => {
+        db = event.target.result;
+        console.log('数据库连接成功，版本:', db.version);
+        
+        // 数据库连接成功后的初始化逻辑
+        initializeApp();
+    };
+    
+    // ★★★ 这里是创建新表的核心逻辑 ★★★
+    request.onupgradeneeded = (event) => {
+        console.log('正在升级数据库...');
+        db = event.target.result; 
+        
+        // 依次检查并创建所有表，缺哪个补哪个
+        const storeNames = [
+            'userInfo', 'wallpaper', 'worldbooks', 'categories', 
+            'apiConfig', 'apiSchemes', 'chats', 'messages', 
+            'characterInfo', 'appIcons', 'diaries', 'emojis', 
+            'emojiCategories', 'callSettings', 'products', 
+            'shoppingCart', 'shoppingCategories', 'wallet', 
+            'gameConsole', 'widgetSettings', 'voiceConfig', 
+            'fontSettings', 'notificationSound', 
+            'memories', 'moments', 'momentsProfile' // 确保包含朋友圈相关表
+        ];
+
+        storeNames.forEach(name => {
+            if (!db.objectStoreNames.contains(name)) {
+                if (name === 'momentsProfile') {
+                    db.createObjectStore(name, { keyPath: 'userId' });
+                } else {
+                    // 大部分表使用 id 自增或指定 id
+                    db.createObjectStore(name, { keyPath: 'id', autoIncrement: true });
+                }
+            }
+        });
+        
+        // 特殊索引处理 (如果有)
+        const transaction = event.target.transaction;
+        const memoriesStore = transaction.objectStore('memories');
+        if (!memoriesStore.indexNames.contains('chatId')) {
+            memoriesStore.createIndex('chatId', 'chatId', { unique: false });
+        }
+    };
+}
+
+// 提取出来的初始化逻辑，方便管理
+function initializeApp() {
     // ★ 立即隐藏所有页面，显示主屏幕
-    document.getElementById('wallpaperScreen').style.display = 'none';
-    document.getElementById('worldbookScreen').style.display = 'none';
-    document.getElementById('apiScreen').style.display = 'none';
-    document.getElementById('chatScreen').style.display = 'none';
-    document.getElementById('chatDetailScreen').style.display = 'none';
-    document.getElementById('characterInfoScreen').style.display = 'none';
-    document.getElementById('memoryScreen').style.display = 'none';
-    document.getElementById('diaryScreen').style.display = 'none';
-    document.getElementById('diaryDetailScreen').style.display = 'none';
-    document.getElementById('callScreen').style.display = 'none';
-    document.getElementById('shoppingScreen').style.display = 'none';
-    document.getElementById('shoppingCartScreen').style.display = 'none';
+    const screens = [
+        'wallpaperScreen', 'worldbookScreen', 'apiScreen', 'chatScreen', 
+        'chatDetailScreen', 'characterInfoScreen', 'memoryScreen', 
+        'diaryScreen', 'diaryDetailScreen', 'callScreen', 'shoppingScreen', 
+        'shoppingCartScreen', 'otherSettingsScreen', 'beautifySettingsScreen',
+        'momentsScreen' // 确保隐藏朋友圈页面
+    ];
     
-    const otherScreen = document.getElementById('otherSettingsScreen');
-    if (otherScreen) otherScreen.style.display = 'none';
-    
-    const beautifyScreen = document.getElementById('beautifySettingsScreen');
-    if (beautifyScreen) beautifyScreen.style.display = 'none';
+    screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
     
     document.getElementById('mainScreen').style.display = 'flex';
     
-    // 连接成功后加载所有数据
+    // 加载所有数据
     loadUserInfo();
     loadWallpaper();
     loadWorldbooks();
@@ -51,6 +94,7 @@ request.onsuccess = (event) => {
     loadWalletData();
     loadWidgetSettings();
     loadFontSettings();
+    loadChats(); // 加载聊天列表
     
     if (db.objectStoreNames.contains('memories')) {
         loadMemories();
@@ -59,90 +103,92 @@ request.onsuccess = (event) => {
     setTimeout(() => {
         startAutoSummaryTimer();
     }, 2000);
-};
-
-    
-    // ★★★ 这里是创建新表的核心逻辑 ★★★
-    request.onupgradeneeded = (event) => {
-        console.log('正在升级数据库...');
-        db = event.target.result; 
-        
-        // 依次检查并创建所有表，缺哪个补哪个
-        if (!db.objectStoreNames.contains('userInfo')) db.createObjectStore('userInfo', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('wallpaper')) db.createObjectStore('wallpaper', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('worldbooks')) db.createObjectStore('worldbooks', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('categories')) db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('apiConfig')) db.createObjectStore('apiConfig', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('apiSchemes')) db.createObjectStore('apiSchemes', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('chats')) db.createObjectStore('chats', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('messages')) db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('characterInfo')) db.createObjectStore('characterInfo', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('appIcons')) db.createObjectStore('appIcons', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('diaries')) db.createObjectStore('diaries', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('emojis')) db.createObjectStore('emojis', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('emojiCategories')) db.createObjectStore('emojiCategories', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('callSettings')) db.createObjectStore('callSettings', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('shoppingCart')) db.createObjectStore('shoppingCart', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('shoppingCategories')) db.createObjectStore('shoppingCategories', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('wallet')) db.createObjectStore('wallet', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('gameConsole')) db.createObjectStore('gameConsole', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('widgetSettings')) db.createObjectStore('widgetSettings', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('voiceConfig')) db.createObjectStore('voiceConfig', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('fontSettings')) db.createObjectStore('fontSettings', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('notificationSound')) db.createObjectStore('notificationSound', { keyPath: 'id' });
-
-
-
-        
-        // ★★★ 记忆功能表 (本次修复的主角) ★★★
-        if (!db.objectStoreNames.contains('memories')) {
-            console.log('正在创建 memories 表...');
-            const store = db.createObjectStore('memories', { keyPath: 'id', autoIncrement: true });
-            store.createIndex('chatId', 'chatId', { unique: false });
-        }
-    };
-
-
 }
 
 
 function saveToDB(storeName, data) {
-    const transaction = db.transaction([storeName], 'readwrite');
-    const objectStore = transaction.objectStore(storeName);
-    
-    if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'chats' || storeName === 'messages' || storeName === 'products' || storeName === 'shoppingCart') {
-        objectStore.put({ id: 1, list: data.list || data });
-    } else if (storeName === 'characterInfo') {
-        // ★ 修复：characterInfo 需要特殊处理，确保保留 id 字段
-        const saveData = data.id ? data : { id: 1, ...data };
-        objectStore.put(saveData);
-    } else {
-        objectStore.put({ id: 1, ...data });
+    if (!db) {
+        console.warn('数据库未连接，无法保存:', storeName);
+        return;
+    }
+
+    try {
+        const transaction = db.transaction([storeName], 'readwrite');
+        const objectStore = transaction.objectStore(storeName);
+        
+        if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments'].includes(storeName)) {
+            // 列表类数据
+            objectStore.put({ id: 1, list: data.list || data });
+        } else if (storeName === 'characterInfo') {
+            // 角色信息
+            const saveData = data.id ? data : { id: 1, ...data };
+            objectStore.put(saveData);
+        } else if (storeName === 'momentsProfile') {
+            // ★★★ 核心修复：朋友圈资料必须有 userId ★★★
+            // 如果 data 是 null 或 undefined，初始化为空对象
+            let profileData = data || {};
+            
+            // 强制检查并补全 userId
+            if (!profileData.userId) {
+                profileData.userId = 'me';
+                console.log('自动补全朋友圈 userId');
+            }
+            
+            objectStore.put(profileData);
+        } else {
+            // 其他配置类数据
+            objectStore.put({ id: 1, ...data });
+        }
+    } catch (e) {
+        console.error(`保存数据失败 [${storeName}]:`, e);
     }
 }
 
 
 function loadFromDB(storeName, callback) {
-    const transaction = db.transaction([storeName], 'readonly');
-    const objectStore = transaction.objectStore(storeName);
-    const request = objectStore.get(1);
-    
-  request.onsuccess = () => {
-    if (storeName === 'worldbooks' || storeName === 'categories' || storeName === 'products' || storeName === 'shoppingCart' || storeName === 'memories') {
+    // ★★★ 新增：如果数据库没连接成功，直接返回 ★★★
+    if (!db) {
+        console.warn('数据库未连接，无法读取:', storeName);
+        if (callback) callback(null); // 给个空回调防止卡死
+        return;
+    }
 
-            // ★ 修复：确保返回数组，多重检查
-            if (request.result && Array.isArray(request.result.list)) {
-                callback(request.result.list);
-            } else if (request.result && Array.isArray(request.result)) {
-                callback(request.result);
-            } else {
-                callback([]);
-            }
-        } else {
-            callback(request.result);
+    try {
+        // 检查表是否存在，防止读取不存在的表报错
+        if (!db.objectStoreNames.contains(storeName)) {
+            console.warn(`表 ${storeName} 不存在`);
+            if (callback) callback([]);
+            return;
         }
-    };
+
+        const transaction = db.transaction([storeName], 'readonly');
+        const objectStore = transaction.objectStore(storeName);
+        
+        // momentsProfile 使用 userId 查询，其他一般查 id:1
+        const request = (storeName === 'momentsProfile') ? objectStore.get('me') : objectStore.get(1);
+        
+        request.onsuccess = () => {
+            if (['worldbooks', 'categories', 'products', 'shoppingCart', 'memories', 'moments'].includes(storeName)) {
+                if (request.result && Array.isArray(request.result.list)) {
+                    callback(request.result.list);
+                } else if (request.result && Array.isArray(request.result)) {
+                    callback(request.result);
+                } else {
+                    callback([]);
+                }
+            } else {
+                callback(request.result);
+            }
+        };
+        
+        request.onerror = (e) => {
+            console.error('读取数据失败:', e);
+            if (callback) callback(null);
+        };
+    } catch (e) {
+        console.error('读取事务创建失败:', e);
+        if (callback) callback(null);
+    }
 }
 
 
@@ -989,53 +1035,76 @@ function loadChats() {
     });
 }
 
-// 切换聊天/钱包 Tab
+// 切换聊天/朋友圈/钱包 Tab
 function switchChatTab(tab) {
     // 1. 更新底部按钮状态
     document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.bottom-tab[data-tab="${tab}"]`).classList.add('active');
     
-    // 获取需要控制的元素
+    // 获取元素
     const chatList = document.getElementById('chatListContainer');
     const walletContainer = document.getElementById('walletContainer');
+    const momentsContainer = document.getElementById('momentsContainer');
     const addBtn = document.querySelector('.chat-screen .add-btn');
     const headerTitle = document.querySelector('.chat-screen .header-title');
-    const momentsCard = document.querySelector('.moments-card'); // ★ 找到朋友圈卡片
     
-    // 2. 界面切换逻辑
+    // 2. 重置状态
+    chatList.style.display = 'none';
+    walletContainer.style.display = 'none';
+    momentsContainer.style.display = 'none';
+    
+    // 重置按钮样式（移除相机模式）
+    addBtn.classList.remove('camera-mode');
+    addBtn.innerHTML = '+';
+    addBtn.onclick = openAddChatMenu; // 默认点击事件
+    addBtn.style.display = 'block';
+
+    // 3. 界面切换逻辑
     if (tab === 'wallet') {
-        // === 进入钱包模式 ===
-        chatList.style.display = 'none';
+        // === 钱包模式 ===
         walletContainer.style.display = 'block';
-        addBtn.style.display = 'none';      // 隐藏加号
-        momentsCard.style.display = 'none'; // ★ 隐藏朋友圈
-        
+        addBtn.style.display = 'none'; // 钱包页不显示加号
         headerTitle.textContent = '我的钱包';
-        
-        // 刷新钱包数据
         renderWallet();
         
-    } else {
-        // === 进入聊天模式 (单聊/群聊/偷看) ===
-        chatList.style.display = 'block';
-        walletContainer.style.display = 'none';
-        addBtn.style.display = 'block';     // 显示加号
-        momentsCard.style.display = 'flex'; // ★ 显示朋友圈
+    } else if (tab === 'moments') {
+        // === 朋友圈模式 ===
+        momentsContainer.style.display = 'flex'; // 使用 flex 布局
+        headerTitle.textContent = '朋友圈';
         
+        // 将加号按钮改为相机按钮
+        addBtn.innerHTML = '📷';
+        addBtn.classList.add('camera-mode');
+        addBtn.onclick = openPostMomentModal; // 点击发布动态
+        
+        // 加载朋友圈数据
+        loadMomentsProfile();
+        loadMoments();
+        
+    } else {
+        // === 聊天列表模式 (合并单聊和群聊) ===
+        chatList.style.display = 'block';
         headerTitle.textContent = '聊天';
         
         // 恢复之前的逻辑
-        currentChatTab = tab;
+        currentChatTab = 'all'; // 显示所有聊天
         renderChatList();
     }
 }
+
 
 // 渲染聊天列表
 function renderChatList() {
     const container = document.getElementById('chatListContainer');
     
-    // 根据当前分组筛选
-    let filtered = chats.filter(chat => chat.type === currentChatTab);
+    // 修改这里：如果是 'all'，则显示所有非 peek 类型的聊天；否则按类型筛选
+    let filtered;
+    if (currentChatTab === 'all' || currentChatTab === 'single') {
+        // 显示单聊和群聊，但不显示偷看模式
+        filtered = chats.filter(chat => chat.type !== 'peek');
+    } else {
+        filtered = chats.filter(chat => chat.type === currentChatTab);
+    }
     
     // 排序：置顶的在前，其他按时间排序
     filtered.sort((a, b) => {
@@ -3523,7 +3592,7 @@ function importChatHistory(event) {
     reader.readAsText(file, 'UTF-8');
 }
 
-// 清除聊天记录
+// 清除聊天记录 (标准版：只清空对话，保留记忆)
 function clearChatHistory() {
     if (!currentChatId) {
         alert('请先打开角色信息页面');
@@ -3533,45 +3602,440 @@ function clearChatHistory() {
     const chat = chats.find(c => c.id === currentChatId);
     if (!chat) return;
     
-    // 二次确认
-    if (!confirm(`确定要清除与"${chat.name}"的所有聊天记录吗？\n此操作无法撤销！`)) {
+    // 简单的确认提示
+    if (!confirm(`确定要清空与"${chat.name}"的聊天记录吗？`)) {
         return;
     }
     
-    // 再次确认（双重保险）
-    if (!confirm('最后确认：真的要删除吗？删除后无法恢复！')) {
-        return;
-    }
-    
-    // 从数据库删除当前角色的所有消息
+    // 从数据库删除当前角色的消息
     loadFromDB('messages', (data) => {
+        // 1. 获取并过滤消息
         const allData = data && data.list ? data.list : [];
-        
-        // 过滤掉当前角色的消息
         const remainingMessages = allData.filter(m => m.chatId !== currentChatId);
         
-        // 保存到数据库
-        const transaction = db.transaction(['messages'], 'readwrite');
-        const objectStore = transaction.objectStore('messages');
-        objectStore.put({ id: 1, list: remainingMessages });
+        // 2. 保存回数据库
+        const transaction = db.transaction(['messages', 'chats'], 'readwrite');
         
-        // 清空内存中的消息
-        allMessages = [];
-        visibleMessagesCount = 30;
+        // 更新消息表
+        transaction.objectStore('messages').put({ id: 1, list: remainingMessages });
         
-        // 更新聊天列表的最后一条消息
+        // 更新聊天列表状态 (清空预览和未读)
         chat.lastMessage = '';
         chat.lastMessageTime = getCurrentTime();
         chat.time = '刚刚';
-        saveToDB('chats', { list: chats });
+        chat.unread = 0;
+        transaction.objectStore('chats').put({ id: 1, list: chats });
         
-        alert('聊天记录已清除');
+        // 3. 关键：清空当前运行内存中的消息
+        // 这样 AI 在下一次回复时，读取到的上下文就是空的了
+        allMessages = [];
+        visibleMessagesCount = 30;
         
-        // 如果当前在聊天详情页，刷新显示
+        alert('聊天记录已清空');
+        
+        // 4. 刷新界面
         if (document.getElementById('chatDetailScreen').style.display === 'flex') {
             renderMessages();
         }
     });
+}
+
+
+// ============ 朋友圈功能模块 (适配版) ============
+let moments = [];
+let momentsProfile = { userId: 'me', name: '我的名字', avatar: null, cover: null };
+let newMomentImages = [];
+
+// 滚动监听 (可选：如果你想做标题栏透明渐变效果，可以在这里加逻辑)
+function handleMomentsScroll(el) {
+    // 暂时不需要特殊处理，保留接口
+}
+
+function loadMomentsProfile() {
+    loadFromDB('momentsProfile', (data) => {
+        // 如果读取失败，或者读取的数据没有名字，就重新初始化
+        if (!data || !data.name) {
+            const mainName = document.getElementById('mainUserId').textContent || '我的名字';
+            const mainAvatar = document.querySelector('#mainAvatar img')?.src || null;
+            
+            momentsProfile = {
+                userId: 'me', // ★ 关键字段
+                name: mainName,
+                avatar: mainAvatar,
+                cover: null
+            };
+            // 既然读不到，就顺便保存一份初始化的进去
+            saveToDB('momentsProfile', momentsProfile);
+        } else {
+            momentsProfile = data;
+            // 双重保险：读取出来的如果没 userId，也补上
+            if (!momentsProfile.userId) {
+                momentsProfile.userId = 'me';
+            }
+        }
+        renderMomentsHeader();
+    });
+}
+
+function renderMomentsHeader() {
+    // 名字
+    document.getElementById('momentsUserName').textContent = momentsProfile.name || 'User';
+    
+    // 头像
+    const avatarEl = document.getElementById('momentsUserAvatar');
+    if (momentsProfile.avatar) {
+        avatarEl.innerHTML = `<img src="${momentsProfile.avatar}">`;
+    } else {
+        avatarEl.textContent = momentsProfile.name ? momentsProfile.name[0] : '👤';
+    }
+    
+    // 封面
+    const coverEl = document.getElementById('momentsCover');
+    if (momentsProfile.cover) {
+        coverEl.style.backgroundImage = `url(${momentsProfile.cover})`;
+    } else {
+        // 默认背景
+        coverEl.style.backgroundImage = 'radial-gradient(#ffffff 20%, transparent 20%), linear-gradient(#e6e6e6, #e6e6e6)';
+    }
+}
+
+
+
+// 加载动态列表 (修复版：正确处理数据格式)
+function loadMoments() {
+    loadFromDB('moments', (data) => {
+        // loadFromDB 已经帮我们提取了 list，所以 data 本身就是数组
+        if (Array.isArray(data)) {
+            moments = data;
+        } else if (data && Array.isArray(data.list)) {
+            // 兼容旧数据的保险逻辑
+            moments = data.list;
+        } else {
+            moments = [];
+        }
+        
+        // 按时间倒序排列
+        moments.sort((a, b) => b.timestamp - a.timestamp);
+        renderMomentsList();
+    });
+}
+
+
+function renderMomentsList() {
+    const container = document.getElementById('momentsList');
+    if (moments.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:#999; font-size:13px;">暂无动态，点击右上角相机发布</div>`;
+        return;
+    }
+    
+    container.innerHTML = moments.map(m => {
+        // 1. 构建图片 HTML
+        let imagesHtml = '';
+        if (m.images && m.images.length > 0) {
+            const imgClass = m.images.length === 1 ? 'fc-img-single' : 'fc-img-grid';
+            imagesHtml = `<div class="fc-images">
+                ${m.images.map(img => `<img src="${img}" class="${imgClass}" onclick="viewImage('${img}')">`).join('')}
+            </div>`;
+        }
+        
+        // 2. 头像处理
+        let avatarHtml = m.authorAvatar ? `<img src="${m.authorAvatar}">` : (m.authorName ? m.authorName[0] : '👤');
+
+        // 3. 删除按钮逻辑
+        const deleteBtn = m.authorId === 'me' ? `<span onclick="deleteMoment(${m.id})" style="margin-left:auto; color:#ff4757;">🗑</span>` : '';
+
+        // 4. 返回新版卡片 HTML
+        return `
+        <div class="feed-card">
+            <!-- 头部 -->
+            <div class="fc-header">
+                <div class="fc-avatar">${avatarHtml}</div>
+                <div class="fc-user-info">
+                    <div class="fc-name">${m.authorName}</div>
+                    <div class="fc-time">${formatTimeAgo(m.timestamp)}</div>
+                </div>
+                <div class="fc-more" onclick="deleteMoment(${m.id})">${m.authorId === 'me' ? '删除' : '•••'}</div>
+            </div>
+            
+            <!-- 内容 -->
+            <div class="fc-content">${m.content}</div>
+            ${imagesHtml}
+            
+            <!-- 底部互动 -->
+            <div class="fc-actions">
+                <div class="fc-action-item ${m.isLiked ? 'active' : ''}" onclick="toggleLike(${m.id})">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    ${m.likes || 0}
+                </div>
+                <div class="fc-action-item">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    ${m.comments || 0}
+                </div>
+                <div class="fc-action-item" style="margin-left:auto;">
+                   <svg class="icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+
+// 辅助：时间格式化
+function formatTimeAgo(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const min = 60 * 1000;
+    const hour = 60 * min;
+    const day = 24 * hour;
+    if (diff < min) return '刚刚';
+    if (diff < hour) return Math.floor(diff / min) + '分钟前';
+    if (diff < day) return Math.floor(diff / hour) + '小时前';
+    return new Date(timestamp).toLocaleDateString();
+}
+
+// 发布功能
+function openPostMomentModal() {
+    newMomentImages = [];
+    document.getElementById('momentContent').value = '';
+    renderUploadGrid();
+    document.getElementById('postMomentModal').style.display = 'flex';
+}
+
+function closePostMomentModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('postMomentModal').style.display = 'none';
+}
+
+function handleMomentImgSelect(input) {
+    const files = Array.from(input.files);
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            newMomentImages.push(e.target.result);
+            renderUploadGrid();
+        };
+        reader.readAsDataURL(file);
+    });
+    input.value = '';
+}
+
+// 重新渲染图片网格 (修复版：彻底重绘，防止图标错乱)
+function renderUploadGrid() {
+    const grid = document.getElementById('momentImgGrid');
+    if (!grid) return;
+
+    // 1. 清空当前网格
+    grid.innerHTML = '';
+
+    // 2. 遍历图片数组，生成图片预览框
+    newMomentImages.forEach((img, index) => {
+        const div = document.createElement('div');
+        div.className = 'uploaded-img-box';
+        div.innerHTML = `
+            <img src="${img}">
+            <div class="remove-img-btn" onclick="removeNewMomentImg(${index})">×</div>
+        `;
+        grid.appendChild(div);
+    });
+
+    // 3. 最后追加“添加按钮”
+    // (只有当图片少于9张时才显示添加按钮，防止溢出，可选)
+    if (newMomentImages.length < 9) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'post-add-box';
+        addBtn.onclick = function() {
+            document.getElementById('momentImgInput').click();
+        };
+        // 保持和 HTML 里一致的 SVG 图标
+        addBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        `;
+        grid.appendChild(addBtn);
+    }
+}
+
+
+function removeNewMomentImg(index) {
+    newMomentImages.splice(index, 1);
+    renderUploadGrid();
+}
+
+function publishMoment() {
+    const content = document.getElementById('momentContent').value.trim();
+    if (!content && newMomentImages.length === 0) {
+        alert('说点什么吧...');
+        return;
+    }
+    
+    const newMoment = {
+        id: Date.now(),
+        authorId: 'me',
+        authorName: momentsProfile.name,
+        authorAvatar: momentsProfile.avatar,
+        content: content,
+        images: [...newMomentImages],
+        likes: 0,
+        isLiked: false,
+        comments: 0,
+        timestamp: Date.now(),
+        type: 'user'
+    };
+    
+    moments.unshift(newMoment);
+    saveToDB('moments', { list: moments });
+    renderMomentsList();
+    closePostMomentModal();
+}
+
+function deleteMoment(id) {
+    if (confirm('确定删除这条动态吗？')) {
+        moments = moments.filter(m => m.id !== id);
+        saveToDB('moments', { list: moments });
+        renderMomentsList();
+    }
+}
+
+function toggleLike(id) {
+    const m = moments.find(item => item.id === id);
+    if (m) {
+        if (m.isLiked) { m.likes--; m.isLiked = false; }
+        else { m.likes++; m.isLiked = true; }
+        saveToDB('moments', { list: moments });
+        renderMomentsList();
+    }
+}
+
+// 资料编辑
+function openEditMomentsProfile() {
+    document.getElementById('momentsProfileName').value = momentsProfile.name;
+    const preview = document.getElementById('momentsProfileAvatarPreview');
+    if (momentsProfile.avatar) preview.innerHTML = `<img src="${momentsProfile.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('momentsProfileModal').style.display = 'flex';
+}
+
+function closeEditMomentsProfile(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('momentsProfileModal').style.display = 'none';
+}
+
+
+function handleCoverSelect(input) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            // ★★★ 修复：确保 momentsProfile 对象存在且有 userId ★★★
+            if (!momentsProfile) {
+                momentsProfile = { userId: 'me', name: '我的名字', avatar: null };
+            }
+            if (!momentsProfile.userId) {
+                momentsProfile.userId = 'me';
+            }
+
+            // 更新封面
+            momentsProfile.cover = e.target.result;
+            
+            // 保存
+            saveToDB('momentsProfile', momentsProfile);
+            renderMomentsHeader();
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+
+function handleMomentsAvatarSelect(input) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('momentsProfileAvatarPreview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+            input.dataset.tempAvatar = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function saveMomentsProfile() {
+    const newName = document.getElementById('momentsProfileName').value.trim();
+    const avatarInput = document.getElementById('momentsAvatarInput');
+    const tempAvatar = avatarInput.dataset.tempAvatar;
+    if (newName) momentsProfile.name = newName;
+    if (tempAvatar) momentsProfile.avatar = tempAvatar;
+    saveToDB('momentsProfile', momentsProfile);
+    renderMomentsHeader();
+    closeEditMomentsProfile();
+}
+
+// ============ 文字图功能模块 ============
+
+function openTextImageModal() {
+    document.getElementById('textImageContent').value = '';
+    document.getElementById('textImageModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('textImageContent').focus(), 100);
+}
+
+function closeTextImageModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('textImageModal').style.display = 'none';
+}
+
+function sendTextImage() {
+    const content = document.getElementById('textImageContent').value.trim();
+    if (!content) {
+        alert('请填写内容');
+        return;
+    }
+    
+    const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+    
+    const newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        type: 'text_image',
+        // ★★★ 修改这里：使用 [图片：...] 格式，这是最通用的 RP 格式 ★★★
+        // 这样 AI 就会明白：方括号里的内容是对图片的描述，而不是你在说话
+        content: `[图片：${content}]`, 
+        senderId: 'me',
+        time: getCurrentTime(),
+        isRevoked: false
+    };
+    
+    allMessages.push(newMessage);
+    saveMessages();
+    updateChatLastMessage(currentChatId, '[文字图]');
+    
+    visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+    renderMessages();
+    scrollToBottom();
+    
+    closeTextImageModal();
+}
+
+
+// ============ 文字图详情展示 (适配新格式) ============
+function showTextImageDetail(encodedContent) {
+    // 1. 解码
+    let content = decodeURIComponent(encodedContent);
+    
+    // 2. ★★★ 去掉新的外壳 ★★★
+    // 去掉开头的 "[图片：" 和结尾的 "]"
+    content = content.replace(/^\[图片：/, '').replace(/\]$/, '');
+    
+    // 3. 显示
+    document.getElementById('textImageDetailContent').innerText = content;
+    document.getElementById('textImageDetailModal').style.display = 'flex';
+}
+
+
+
+function closeTextImageDetailModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('textImageDetailModal').style.display = 'none';
 }
 
 
