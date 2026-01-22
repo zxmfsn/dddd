@@ -1519,7 +1519,7 @@ let swipeCurrentX = 0;
 let isSwiping = false;
 let currentSwipedId = null;
 
-// 添加滑动事件
+
 // 添加滑动事件
 function addSwipeEvent(chatId) {
     const wrapper = document.getElementById(`wrapper-${chatId}`);
@@ -2056,54 +2056,49 @@ function updateChatLastMessage(chatId, content) {
 let longPressTimer = null;
 let selectedMessageId = null;
 
-// 添加长按事件
+// 添加长按事件 (修复版：兼容文字图点击)
 function addLongPressEvent(element, messageId) {
-    let isPressed = false;
+    let longPressTimer = null;
+    let isLongPress = false;
     
-
-    
-    // 移动端长按
+    // 移动端
     element.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        isPressed = true;
+        isLongPress = false;
         longPressTimer = setTimeout(() => {
-            if (isPressed) {
-                openMessageMenu(messageId);
-            }
+            isLongPress = true;
+            openMessageMenu(messageId);
         }, 500);
-    });
+    }, { passive: true }); // 不阻止默认行为
     
-    element.addEventListener('touchend', () => {
-        isPressed = false;
+    element.addEventListener('touchend', (e) => {
         clearTimeout(longPressTimer);
+        // 如果是长按触发了菜单，阻止后续 click
+        if (isLongPress) {
+            e.preventDefault();
+        }
     });
     
     element.addEventListener('touchmove', () => {
-        isPressed = false;
         clearTimeout(longPressTimer);
-    });
+        isLongPress = false;
+    }, { passive: true });
     
-    // 桌面端长按
-    element.addEventListener('mousedown', (e) => {
-   
-        isPressed = true;
+    // 桌面端
+    element.addEventListener('mousedown', () => {
+        isLongPress = false;
         longPressTimer = setTimeout(() => {
-       
-            if (isPressed) {
-                openMessageMenu(messageId);
-            }
+            isLongPress = true;
+            openMessageMenu(messageId);
         }, 500);
     });
     
     element.addEventListener('mouseup', () => {
-  
-        isPressed = false;
         clearTimeout(longPressTimer);
     });
     
     element.addEventListener('mouseleave', () => {
-        isPressed = false;
         clearTimeout(longPressTimer);
+        isLongPress = false;
     });
 }
 
@@ -3626,17 +3621,16 @@ function clearChatHistory() {
         chat.unread = 0;
         transaction.objectStore('chats').put({ id: 1, list: chats });
         
-        // 3. 关键：清空当前运行内存中的消息
-        // 这样 AI 在下一次回复时，读取到的上下文就是空的了
+          // 3. 清空内存中的消息
         allMessages = [];
         visibleMessagesCount = 30;
         
-        alert('聊天记录已清空');
-        
-        // 4. 刷新界面
-        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+        // 4. 事务完成后刷新界面
+        transaction.oncomplete = () => {
             renderMessages();
-        }
+            renderChatList();
+            alert('聊天记录已清空');
+        };
     });
 }
 

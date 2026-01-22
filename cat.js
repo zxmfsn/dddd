@@ -2100,6 +2100,21 @@ function saveVoiceConfig() {
     closeVoiceRoleModal();
 }
 
+// ★ 修正：未勾选时直接转文字，勾选时才调用minimax
+function checkAndPlayVoice(text) {
+    const voiceEnabled = document.getElementById('voiceEnabled')?.checked || false;
+    
+    if (!voiceEnabled) {
+        // 未勾选：什么都不做，让 toggleVoiceState 自己展开文字
+        return;
+    }
+    
+    // 已勾选：调用minimax播放语音
+    playVoiceMessage(text);
+}
+
+
+
 async function playVoiceMessage(text) {
     if (!voiceConfig.enabled || !voiceConfig.apiKey || !voiceConfig.groupId) {
         alert('请先启用并配置角色语音');
