@@ -1274,7 +1274,7 @@
 </div>
 
 
-<!-- 状态监控悬浮条 (可拖动版) -->
+<!-- 心声悬浮条 (可拖动版) -->
 <!-- 注意：这里删掉了 onclick 属性，将在 JS 中处理点击 -->
 <div class="status-heartbeat-bar" id="statusHeartbeatBar" style="display: none;">
     <div class="heartbeat-center">
@@ -1486,7 +1486,7 @@
             </div>
             <div class="ins-list-item">
     <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-    <div class="ins-item-label">状态监控</div>
+    <div class="ins-item-label">心声</div>
     <div style="display: flex; align-items: center;">
         <input type="checkbox" id="statusMonitorCheckbox" onclick="handleStatusMonitorCheckbox()" style="accent-color: #333;">
     </div>
@@ -2334,11 +2334,11 @@
 </div>
 
 
-<!-- 状态监控弹窗 -->
+<!-- 心声弹窗 -->
 <div class="modal-overlay" id="statusMonitorModal" onclick="closeStatusMonitorModal(event)">
     <div class="status-monitor-panel" onclick="event.stopPropagation()">
         <div class="status-monitor-header">
-            <div class="status-monitor-title">状态监控</div>
+            <div class="status-monitor-title">心声</div>
             <button class="status-close-btn" onclick="closeStatusMonitorModal()">×</button>
         </div>
         

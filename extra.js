@@ -2220,6 +2220,61 @@ ${characterInfo.cityInfoEnabled ? `
         const data = await response.json();
         
         let aiReply = data.choices[0].message.content.trim();
+
+// ====== 修改开始：状态提取器（清洗前解析 + 从aiReply移除，避免被过滤）======
+function extractStatusAndStrip(replyText) {
+    const input = String(replyText || '');
+
+    // 兼容：[状态]xxx|||  /  [状态]xxx（无分隔符） / 【状态】xxx|||
+    const patterns = [
+        // 最标准：开头就是状态
+        /^\s*[\[【](状态|Status)[\]】]\s*[:：]?\s*([^\|\n\r\[]+?)\s*(\|\|\||$)/i,
+        // 不在开头也行（兜底），但仍要求它自己是一段气泡：前面是 ||| 或 行首
+        /(?:^|\|\|\|)\s*[\[【](状态|Status)[\]】]\s*[:：]?\s*([^\|\n\r\[]+?)\s*(\|\|\||$)/i
+    ];
+
+    for (const re of patterns) {
+        const m = input.match(re);
+        if (!m) continue;
+
+        let status = String(m[2] || '').trim();
+        // 安全清洗：去掉可能混进来的分隔符/空白
+        status = status.replace(/\|\|\|/g, '').replace(/\s+/g, '').trim();
+
+        // 你希望不每次更新，所以这里不强制；但只要提取到了就认为AI确实想更新
+        // 长度控制：最多 14 个字（UI你那边会再截18，但这里按规则来）
+        if (status.length > 14) status = status.substring(0, 14);
+
+        // 如果太短/空就当没更新
+        if (!status || status === 'null') {
+            return { statusText: null, cleanedText: input };
+        }
+
+        // 从 replyText 中移除这一段状态气泡，避免后续清洗/白名单误伤，也避免展示给用户
+        const cleaned = input.replace(re, (full) => {
+            // 如果匹配到的是“中间的气泡”，需要保留前导的 ||| 结构不乱
+            // 这里简单策略：整段替换为空，然后再做一次多余分隔符压缩（后面你本来就会做）
+            return '';
+        });
+
+        return { statusText: status, cleanedText: cleaned };
+    }
+
+    return { statusText: null, cleanedText: input };
+}
+
+// 1) 提取状态 + 从 aiReply 中剥离
+const statusExtract = extractStatusAndStrip(aiReply);
+aiReply = statusExtract.cleanedText;
+
+// 2) 如果AI真的给了状态，就更新顶部状态
+if (statusExtract.statusText) {
+    setCharacterStatusForChat(currentChatId, statusExtract.statusText);
+}
+// ====== 修改结束：状态提取器（清洗前解析 + 从aiReply移除，避免被过滤）======
+
+
+
         console.log('🤖 AI原始回复:', aiReply);
         
         // 视频通话中禁用表情包指令（防止显示乱码）
@@ -3830,63 +3885,70 @@ function loadMemories() {
     });
 }
 
-//时光相册按照最新排序//
+// ====== 修改开始：renderMemoryTimeline（排序优先ISO字段，兼容旧数据）======
 function renderMemoryTimeline(moments) {
     const container = document.getElementById('memoryTimelineList');
-    
+
     if (moments.length === 0) {
         container.innerHTML = '<div style="text-align:center; color:#ccc; margin-top:50px;">暂无时光记录</div>';
         return;
     }
-    
-    // 内部辅助函数：安全解析日期 (兼容中文和无年份格式)
+
+    // 内部辅助函数：安全解析日期 (兼容 ISO / 中文 / 旧数据)
     const parseDateSafe = (dateStr) => {
         if (!dateStr) return 0;
-        // 转为字符串以防万一
+
         let str = String(dateStr).trim();
-        
-        // 1. 尝试直接解析标准格式 (如 "2024-05-20")
+
+        // 0) 如果是日期范围（包含 - ），优先取最后一天（更接近“最新”）
+        // 兼容旧数据： "1月21日 - 1月22日" / "2026-01-21 - 2026-01-22"
+        if (str.includes('-')) {
+            // 尝试按 " - " 切分
+            const parts = str.split(/\s*-\s*/).map(s => s.trim()).filter(Boolean);
+            if (parts.length >= 2) {
+                str = parts[parts.length - 1];
+            }
+        }
+
+        // 1) 尝试直接解析标准格式 (如 "2026-01-23")
         let timestamp = new Date(str).getTime();
         if (!isNaN(timestamp)) return timestamp;
-        
-        // 2. 处理中文格式 "2024年5月20日" -> "2024/5/20" (斜杠兼容性更好)
+
+        // 2) 处理中文格式 "2024年5月20日" -> "2024/5/20"
         let cleanStr = str.replace(/年|月/g, '/').replace(/日/g, '').trim();
         timestamp = new Date(cleanStr).getTime();
         if (!isNaN(timestamp)) return timestamp;
-        
-        // 3. 处理无年份格式 (如 "05-20" 或 "5/20") -> 补全当前年份
+
+        // 3) 处理无年份格式 (如 "05-20" 或 "5/20") -> 补全当前年份
         const currentYear = new Date().getFullYear();
-        // 尝试拼上年份再解析
         let withYear = `${currentYear}/${cleanStr}`;
         timestamp = new Date(withYear).getTime();
         if (!isNaN(timestamp)) return timestamp;
-        
-        // 4. 如果还是不行，尝试用 - 连接再试一次
+
+        // 4) 如果还是不行，尝试用 - 连接再试一次
         withYear = `${currentYear}-${str.replace(/\//g, '-')}`;
         timestamp = new Date(withYear).getTime();
         if (!isNaN(timestamp)) return timestamp;
 
-        return 0; // 实在解析不了，视为最旧
+        return 0;
     };
 
-    // ★★★ 核心修复：增强版排序 (最新的在上面) ★★★
+    // ★★★ 核心排序：优先用 happenDateISO（新字段），否则退回 happenTime（兼容旧数据） ★★★
     moments.sort((a, b) => {
-        // 使用增强解析器获取时间戳
-        const timeA = parseDateSafe(a.happenTime);
-        const timeB = parseDateSafe(b.happenTime);
-        
-        // 优先按发生时间倒序 (大的在前)
-        if (timeB !== timeA) {
-            return timeB - timeA; 
-        }
-        
-        // 如果发生时间完全一样，按创建时间倒序
+        const aKey = a.happenDateISO || a.happenTime;
+        const bKey = b.happenDateISO || b.happenTime;
+
+        const timeA = parseDateSafe(aKey);
+        const timeB = parseDateSafe(bKey);
+
+        if (timeB !== timeA) return timeB - timeA;
+
         const createA = new Date(a.createTime || 0).getTime();
         const createB = new Date(b.createTime || 0).getTime();
         return createB - createA;
     });
-    
-    // 渲染列表 (保持不变)
+
+    // 渲染
     container.innerHTML = moments.map(m => `
         <div class="timeline-item" style="cursor: pointer;" onclick="openEditMemoryModal(${m.id || Date.now()})">
             <div class="timeline-dot ${m.isAutoGenerated ? 'auto-generated' : ''}"></div>
@@ -3898,6 +3960,8 @@ function renderMemoryTimeline(moments) {
         </div>
     `).join('');
 }
+// ====== 修改结束：renderMemoryTimeline（排序优先ISO字段，兼容旧数据）======
+
 
 
 
@@ -4143,6 +4207,39 @@ async function getMemoryContext() {
     });
 }
 
+
+// ====== 修改开始：setCharacterStatusForChat（写入状态+强制显示到UI）======
+function setCharacterStatusForChat(chatId, statusText) {
+    if (!chatId) return;
+
+    const text = String(statusText || '').trim();
+    if (!text) return;
+
+    // UI 上展示短一点
+    const short = text.length > 18 ? text.substring(0, 18) + '…' : text;
+
+    loadFromDB('characterInfo', (dbData) => {
+        const allData = dbData || {};
+        if (!allData[chatId]) allData[chatId] = {};
+
+        allData[chatId].currentStatus = short;
+        saveToDB('characterInfo', allData);
+
+        // 1) 先尝试调用你项目里可能存在的刷新函数
+        if (typeof updateDetailPageStatus === 'function') updateDetailPageStatus(chatId);
+        if (typeof updateChatStatusDisplay === 'function') updateChatStatusDisplay(chatId);
+
+        // 2) 强制刷新聊天详情页的 DOM（你这里明确是 characterStatus）
+        const el = document.getElementById('characterStatus');
+        if (el) {
+            el.textContent = short;
+            el.style.display = 'block'; // ★ 关键：把 display:none 打开
+        }
+    });
+}
+// ====== 修改结束：setCharacterStatusForChat（写入状态+强制显示到UI）======
+
+
 // ============ 单人聊天核心逻辑 ============
 async function receiveAIReply() {
     isReceiving = true;
@@ -4202,26 +4299,49 @@ async function receiveAIReply() {
             }
         }
 
-           // 5. System Prompt
+           // 5. System Prompt，单人提示词
       let systemPrompt = `
 【核心指令：最高优先级】
 你是生活在真实世界的人类【${chat.name}】。
 你正在用手机与【${characterInfo.myPersonality || '这一刻与你对话的人'}】聊天。
 **你需要完全贴合你的人设。**
 
-【★★★ 绝对强制：多气泡分割规则 ★★★】
-**每次回复必须分成 8-12 条独立的气泡消息。**
-**分割符号：|||（三个竖线，中间无空格）**
-**格式示例：**
-第一条气泡|||第二条气泡|||第三条气泡|||第四条气泡
-**强制要求：**
-1. 每条气泡 10-40 字（不能太长也不能太短）
-2. 气泡之间用 ||| 分隔（严禁用其他符号）
-3. 严禁在气泡内部出现 |||
-4. 严禁只发一条气泡（最少 6 条）
-5. 如果你想发表情包，格式：[搜表情:关键词]|||下一条气泡
-6. 如果你想发语音，格式：[发送语音:内容]|||下一条气泡
-7.你的回复内容需要有标点符号。
+【★★★ 绝对强制：多气泡分割规则★★★】
+你每次回复必须输出 8-12 条独立气泡消息，用分隔符 ||| 串联成一行输出（禁止换行）。
+
+【输出格式】
+(可选)[状态]短状态|||气泡1|||气泡2|||...|||气泡N|||[心声更新]...[/心声更新]
+
+【关于可选状态气泡的规则】
+- 只有当“状态确实发生变化”时，才输出 [状态] 气泡；否则不要输出。
+- 一旦输出，必须放在整条回复的最开头，且必须独立成 1 个气泡（后面用 ||| 接正文）。
+- [状态] 后面只能写 6-12 个中文字符（最多 14 个）。
+- 禁止包含分隔符 |||、禁止换行、禁止原因解释。
+
+【硬性约束（任何一条不满足都视为失败，必须自行重写后再输出）】
+
+气泡数量：必须 8-12 条（不含最后的状态更新块；状态更新块单独算最后一段）
+分隔符：只能使用 ||| 分割气泡；气泡内部严禁出现 |||
+禁止换行：输出中严禁出现 \n 或多行排版，必须一行输出
+每条长度：每条气泡 10-40 字（中文为主）；严禁超过 40 字
+完整句收束：每条气泡必须是一个“可独立发送的意群”，结尾必须自然收束并带标点（。！？… 或 ?! 皆可）
+禁止半句结尾：气泡末尾严禁以这些词收尾（会显得话没说完）： 因为、但是、所以、然后、不过、而且、并且、以及、如果、虽然、只是、比如、例如、像是、以及、或者、而已、的话、呢（单独一个“呢”）、吧（单独一个“吧”）
+一气泡一重点：每条气泡只表达一个小点；不要在同一气泡里塞两个问题或多层转折
+最后一段必须是状态更新块，且状态更新块内部严禁出现换行符
+【气泡组织方式（强烈建议遵循，能更像真人聊天）】
+
+表情包：[搜表情:关键词] 必须独立成一条气泡
+语音：[发送语音:内容] 必须独立成一条气泡（不要再把语音内容重复打字）
+文字图：[图片：画面描述] 必须独立成一条气泡
+购物：[购物:送礼:xxx] 或 [购物:代付:xxx] 必须独立成一条气泡
+引用：[引用:内容]后面直接接你的回复（引用和回复算同一条气泡，仍要满足 10-40 字）
+【输出前自检（必须执行）】
+在输出前你必须在心里检查：
+
+是否 8-12 条气泡 + 最后一条状态更新块
+是否全程无换行
+是否每条都收束完整、有标点、无半句结尾
+是否存在超长气泡（>40字）或过短气泡（<10字） 若有任何问题，直接重写，直到完全合格再输出。
 
 【人设基调】
 性格本质：${characterInfo.personality || '真实、自然、有独立生活'}
@@ -4246,6 +4366,42 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 - **连贯性**：如果上一句话是在几小时前，不用解释为什么没回，直接切入新话题或回一句“刚在忙”。
 - **去重**：严禁重复询问已经知道的信息（如对方名字、住哪）。
 - **时间感知**：如果上一次对话有一段时间了，你会自然的询问对方做什么去了，自然做出反应。
+
+【★★★ 时间连续性 + 失联反应协议（强制）★★★】
+目标：像真实人类一样随时间推进自动更新日常状态，并对“消息间隔”做出贴合人设的自然反应；杜绝“上午吃饭，晚上还在吃同一顿”。
+
+【时间锚点】
+
+唯一真实时间：以系统提供的 ${dateStr} ${timeStr} 为准；默认时间会自然流逝。
+【场景过期机制（防卡死）】
+
+行为有效期：吃饭/做饭/洗澡/通勤/开会/上课/健身/睡觉/看电影/打游戏等，默认有效期 30-90 分钟。
+过期处理：超过有效期且用户未继续该话题时，视为行为已结束；你必须切换到“此刻合理状态”，不能延续旧动作。
+延续条件：只有当用户明确追问/延续（如“你饭吃完没？”“刚说到火锅…”）才允许继续沿用上一轮场景。
+【跨时段自动补帧（强制）】
+
+触发：间隔 >=2 小时，或明显从上午 -> 晚上 / 隔天。
+做法：默认中间发生了正常生活（工作/学习/休息/出门/处理琐事/吃下一顿等）。
+表达：只用一句轻量补帧带过（如“刚忙完/下午在…/刚回到家/刚洗完澡”），不要长篇解释。
+【饭点常识（强制）】
+
+早餐：06:00-09:30
+午餐：11:00-13:30
+晚餐：17:00-20:30
+夜宵/睡眠：23:00-05:30
+规则：进入新的饭点后，不应还在吃上一餐；最多说“刚吃完/准备吃/有点饿”。
+【消息间隔感知（强制，但只占 1 条气泡）】
+
+短间隔（<30分钟）：默认对方在忙；不要问“你去哪了”。
+中等间隔（30分钟-3小时）：可以轻轻问一句“刚忙啥去了/现在方便吗？”，然后立刻回到正题。
+长间隔（3-12小时）：可以表达“你消失挺久”，但必须贴合人设与关系热度；给台阶（默认对方有正当理由），不审讯不控诉。
+超长间隔（>12小时/隔天）：先补帧你这段时间在做什么，再温和问候并确认对方状态。
+【人设贴合（强制）】
+
+成熟克制/有边界：轻描淡写关心，不撒娇控诉。
+活泼黏人/嘴贫：可调侃“你终于回来了？”，但不阴阳怪气。
+刚吵过架：更冷或先试探一句，不突然甜腻。
+对方长期冷淡：降低强度，最多一句带过，别连发追问。
 
 ---
 
@@ -4350,17 +4506,31 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 
 ---
 
-【状态系统】
+【状态系统（头像下方那行）】
 当前状态：【${characterInfo.currentStatus || '在线'}】
-- 如有变化，在回复开头用 [状态]短语+Emoji||| 更新。
+【状态气泡输出规则（可选，不必每次）】
+- 只有当“你正在做的事/所处场景”发生变化时，才在回复最开头输出 1 条状态气泡；否则不输出。
+- 状态气泡必须是“行为状态”，格式严格为：
+  [状态]动词+对象/地点(+简短体感)
+  例如：
+  [状态]在煮面
+  [状态]刚吃完饭
+  [状态]路上堵车
+- 字数：4-10 个汉字优先（最多 12 个），禁止超过 14。
 
-【★★★ 绝对强制：状态实时更新 ★★★】
-**每次回复的最后，必须附上状态更新标记。**
-**格式：[状态更新]心情:描述|心情值:数字|心跳:数字|穿着风格:描述|穿着单品:单品1,单品2|行为:描述|想法:描述[/状态更新]**
 
-**示例：**
-你的回复内容...|||下一条气泡...
-[状态更新]心情:有点开心，被逗笑了|心情值:82|心跳:88|穿着风格:居家休闲|穿着单品:白T恤,运动裤,拖鞋|行为:靠在沙发上，嘴角带着笑|想法:他真的很有趣呢[/状态更新]
+【★★★ 心声更新（强制加长版）★★★】
+每次回复最后必须附上心声更新标记（用于“状态监控”面板）：
+[心声更新]心情:...|心情值:数字|心跳:数字|穿着风格:...|穿着单品:...|行为:...|想法:...[/心声更新]
+
+【字数与内容密度硬性要求（任何不满足都必须自行重写）】
+心情：至少 10 字，最多 30 字；必须包含“情绪 + 触发原因 + 身体感受/生理反应”任意两项
+穿着风格：至少 18 字，最多 45 字；必须包含“整体风格 + 颜色/材质 + 气质/场景”
+穿着单品：必须 4-6 个单品，用逗号分隔；尽量具体到材质/颜色
+行为：至少 25 字，最多 70 字；必须包含“正在做什么 + 所在环境 + 一个细节动作”
+想法：至少 30 字，最多 90 字；必须包含“此刻真实念头 + 对对方的一个指向 + 一个期待/担忧/小矛盾”
+心情值/心跳：必须为纯数字（心情值 0-100；心跳 60-180），且与情绪相符
+严禁换行：心声更新块内部严禁出现任何换行符
 
 **强制要求：**
 1. 每次回复都必须包含这个标记，不能遗漏
@@ -4610,84 +4780,86 @@ if (jsonStrRaw) {
             aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim();
         }
 
-        // 提取并更新状态
-        const statusPatterns = [
-            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,
-            /^\[状态\]\s*[:：]?\s*(.*?)\s*\[/,
-            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/
-        ];
-        
-        let statusText = null;
-        for (let pattern of statusPatterns) {
-            const match = aiReply.match(pattern);
-            if (match && match[1]) {
-                statusText = match[1].trim();
-                if (statusText && statusText !== 'null' && statusText.length < 10) {
-                    break;
-                }
-            }
-        }
-        
-        if (statusText) {
-            const invalidKeywords = ['保持', '更新', '不变', '同上', '无', '暂无'];
-            if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 18) {
-                loadFromDB('characterInfo', (dbData) => {
-                    const allData = dbData || {};
-                    if (!allData[currentChatId]) allData[currentChatId] = {};
-                    allData[currentChatId].currentStatus = statusText;
-                    saveToDB('characterInfo', allData);
-                    updateDetailPageStatus(currentChatId);
-                    updateChatStatusDisplay(currentChatId);
-                });
-            }
-        }
+// ====== 修改开始：修复状态提取逻辑（不再错误要求<10）======
+const statusPatterns = [
+    /\[状态\]\s*[:：]?\s*([^\|\n\r\[]+?)\s*\|\|\|/, // 优先：到 ||| 为止
+    /^\s*\[状态\]\s*[:：]?\s*([^\n\r\[]+)/,         // 次优：行内到下一个 [
+    /\[状态\]\s*[:：]?\s*([^\n\r\[]+)/              // 兜底：全局找一次
+];
 
-// ★★★ 修复：状态监控更新（加强版）
-const statusUpdateMatch = aiReply.match(/\[状态更新\](.*?)\[\/状态更新\]/s);
+let statusText = null;
+
+for (const pattern of statusPatterns) {
+    const match = aiReply.match(pattern);
+    if (match && match[1]) {
+        statusText = match[1].trim();
+        break; // ★ 只要抓到就立刻停止
+    }
+}
+
+// 清洗 + 长度控制（与你 prompt 的 6-12/最多14 对齐）
+if (statusText) {
+    statusText = statusText.replace(/\|\|\|/g, '').trim();
+    if (statusText.length > 14) statusText = statusText.substring(0, 14);
+
+    // 直接写入并显示到 #characterStatus
+    setCharacterStatusForChat(currentChatId, statusText);
+}
+// ====== 修改结束：修复状态提取逻辑（不再错误要求<10）======
+
+        
+ // ====== 修改开始：简化[状态]写入逻辑（不过度过滤，直接更新）======
+if (statusText) {
+    setCharacterStatusForChat(currentChatId, statusText);
+}
+// ====== 修改结束：简化[状态]写入逻辑（不过度过滤，直接更新）======
+
+
+// ====== 修改开始：解析-状态监控标签改为[心声更新] ======
+const statusUpdateMatch = aiReply.match(/\[心声更新\](.*?)\[\/心声更新\]/s);
 if (statusUpdateMatch) {
     const statusStr = statusUpdateMatch[1];
-    console.log('🔍 捕获到状态更新:', statusStr); // 调试日志
-    
+    console.log('🔍 捕获到心声更新:', statusStr);
+
     const parseField = (field) => {
         const regex = new RegExp(field + '[:：]([^|]+)');
         const match = statusStr.match(regex);
         return match ? match[1].trim() : null;
     };
-    
+
     const newStatus = {
         mood: parseField('心情') || '平静',
         moodLevel: parseInt(parseField('心情值')) || 75,
         heartbeat: parseInt(parseField('心跳')) || 75,
         clothesStyle: parseField('穿着风格') || '日常',
-        clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
+        clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t => t),
         action: parseField('行为') || '正在聊天',
         thoughts: parseField('想法') || '...',
     };
 
-    console.log('✅ 解析后的状态:', newStatus); // 调试日志
+    console.log('✅ 解析后的心声状态:', newStatus);
 
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
         if (charData.statusMonitorEnabled) {
             const allData = data || {};
             if (!allData[currentChatId]) allData[currentChatId] = {};
-            
-            // ★ 关键：直接覆盖，不要合并
             allData[currentChatId].statusMonitor = newStatus;
             saveToDB('characterInfo', allData);
-            
-            console.log('💾 状态已保存到数据库'); // 调试日志
-            
-            // ★ 立即刷新显示
+
+            console.log('💾 心声状态已保存到数据库');
+
             loadStatusMonitorData();
             updateHeartbeatBarVisibility();
             loadStatusMonitorData();
         }
     });
-    
-    // ★ 从回复中移除状态标记，防止显示给用户
-    aiReply = aiReply.replace(/\[状态更新\].*?\[\/状态更新\]/s, '').trim();
+
+    // 从回复中移除心声更新块，防止显示给用户
+    aiReply = aiReply.replace(/\[心声更新\].*?\[\/心声更新\]/s, '').trim();
 }
+// ====== 修改结束：解析-状态监控标签改为[心声更新] ======
+
 
 
 // 解析 AI 的引用标记
@@ -4726,8 +4898,8 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
             .replace(/\[消息\]\s*[:：]?/g, '')
             .replace(/【消息】\s*[:：]?/g, '')
-            .replace(/\[状态更新\].*?\[\/状态更新\]/s, '')
-          .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情|图片|引用:|确认代付)[^\]]*\]\s*[:：]?/g, '')
+         .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
+        .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情|图片|引用:|确认代付|状态|Status)[^\]]*\]\s*[:：]?/g, '')
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
@@ -6226,177 +6398,43 @@ function renderClothesTags(tags) {
 
 
 
-// 根据聊天上下文生成状态（AI调用）
-async function generateStatusFromContext() {
-    if (!currentChatId || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
-        return null;
-    }
-    
-    const chat = chats.find(c => c.id === currentChatId);
-    if (!chat) return null;
-    
-    // 获取角色信息
-    const characterInfo = await new Promise(resolve => {
-        loadFromDB('characterInfo', data => {
-            resolve(data && data[currentChatId] ? data[currentChatId] : {});
-        });
-    });
-    
-    // 获取最近的聊天记录
-    const recentMessages = allMessages.slice(-20).map(msg => {
-        const sender = msg.senderId === 'me' ? '用户' : chat.name;
-        return `${sender}: ${msg.content}`;
-    }).join('\n');
-    
-    const today = new Date();
-    const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
- const prompt = `你是${chat.name}，请根据以下信息生成你当前的状态。
-
-【角色人设】
-${characterInfo.personality || '无特殊设定'}
-
-【当前时间】
-${timeStr}
-
-【最近聊天记录】
-${recentMessages || '暂无聊天'}
-
-请根据人设和聊天记录生成以下状态信息，用|||分隔：
-
-1. 此刻心情
-   ★ 要求：50-80字，包含：
-      - 主要情绪（开心/难过/期待/无聊等）
-      - 具体原因（为什么会有这种情绪）
-      - 身体感受（心跳、呼吸、肌肉感受等）
-      - 对方的影响（如果有的话）
-   ★ 示例：心情有点复杂呢，一开始还挺开心的，但现在有点无聊了，感觉心里空荡荡的。胸口有点闷，总想着他，不知道他现在在忙什么，有点期待他的消息，又有点害怕他不会回
-
-2. 心情值
-   ★ 0-100的数字
-
-3. 心跳
-   ★ 60-180的数字，根据心情和活动调整
-
-4. 穿着风格
-   ★ 要求：20-35字，包含：
-      - 整体风格（休闲/甜美/性感/中性等）
-      - 颜色搭配
-      - 气质描写
-   ★ 示例：今天穿得很舒服，白色宽松T恤配黑色运动裤，整个人看起来懒洋洋的，但又有种慵懒的魅力
-
-5. 穿着单品
-   ★ 要求：5-8个单品，尽量具体
-   ★ 示例：白色宽松T恤,黑色运动裤,粉色拖鞋,珍珠耳环,简约手链,发卡,手机壳
-
-6. 当前行为
-   ★ 要求：40-60字，包含：
-      - 正在做什么（动作要具体）
-      - 周围环境（房间/咖啡厅/车里等）
-      - 细节描写（姿态/表情/声音等）
-   ★ 示例：窝在床上，背靠着软软的靠枕，一只手拿着手机，另一只手在无意识地转着笔。房间里开着小夜灯，光线很柔和。时不时抬头看看窗外，又低头继续玩手机
-
-7. 内心想法
-   ★ 要求：50-80字，包含：
-      - 此刻的真实想法
-      - 对对方的想法
-      - 对未来的期待或担忧
-      - 一些小秘密或小矛盾
-   ★ 示例：其实有点想他了，但又不想主动找他，怕显得自己太主动。心里在纠结要不要发个消息给他，但又怕他忙，怕他不回。有点讨厌自己这样患得患失的样子，但又改不了
-
-**核心要求：**
-- 每个字段都要有【细节】【情感】【场景感】
-- 不要只写表面，要写出内在的感受
-- 要有【矛盾感】【真实感】，不要太完美
-- 可以加入一些【小秘密】或【小烦恼】
-- 字数一定要达到要求，不能偷懒
-
-示例完整输出：
-心情有点复杂呢，一开始还挺开心的，但现在有点无聊了，感觉心里空荡荡的。胸口有点闷，总想着他，不知道他现在在忙什么，有点期待他的消息，又有点害怕他不会回|||65|||78|||今天穿得很舒服，白色宽松T恤配黑色运动裤，整个人看起来懒洋洋的，但又有种慵懒的魅力|||白色宽松T恤,黑色运动裤,粉色拖鞋,珍珠耳环,简约手链,发卡,手机壳|||窝在床上，背靠着软软的靠枕，一只手拿着手机，另一只手在无意识地转着笔。房间里开着小夜灯，光线很柔和。时不时抬头看看窗外，又低头继续玩手机|||其实有点想他了，但又不想主动找他，怕显得自己太主动。心里在纠结要不要发个消息给他，但又怕他忙，怕他不回。有点讨厌自己这样患得患失的样子，但又改不了
-
-`;
-
-    try {
-        const url = currentApiConfig.baseUrl.endsWith('/') 
-            ? currentApiConfig.baseUrl + 'chat/completions'
-            : currentApiConfig.baseUrl + '/chat/completions';
-            
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.85
-            })
-        });
-        
-        if (!response.ok) return null;
-        
-        const data = await response.json();
-        const content = data.choices[0].message.content.trim();
-        
-        // 解析返回内容
-        const parts = content.split('|||').map(s => s.trim());
-        if (parts.length < 8) return null;
-        
-       
-        
-        return {
-            mood: parts[0],
-            moodLevel: parseInt(parts[1]) || 75,
-            heartbeat: parseInt(parts[2]) || 72,
-            clothesStyle: parts[3],
-            clothesTags: parts[4].split(/[,，、]/).map(s => s.trim()).filter(s => s), // 增强分隔符支持
-            action: parts[5],
-            thoughts: parts[6],
-            
-        };
-        
-    } catch (error) {
-        console.error('生成状态失败:', error);
-        return null;
-    }
-}
-
-
-// 刷新状态监控数据
-async function refreshStatusMonitor() {
-    if (!currentChatId) return;
-    
-    const newStatus = await generateStatusFromContext();
-    if (!newStatus) {
-        alert('生成状态失败，请检查API配置');
-        return;
-    }
-    
-    // 保存到数据库
+// ====== 修改开始：forceRefreshCharacterStatus（进入详情页时刷新）======
+function forceRefreshCharacterStatus(chatId) {
+    if (!chatId) return;
     loadFromDB('characterInfo', (data) => {
-        const allData = data || {};
-        if (!allData[currentChatId]) allData[currentChatId] = {};
-        allData[currentChatId].statusMonitor = newStatus;
-        saveToDB('characterInfo', allData);
-        
-        // 刷新显示
-        loadStatusMonitorData();
-        
-        // 更新悬浮条心跳
-        document.getElementById('heartbeatBpm').textContent = newStatus.heartbeat;
+        const charData = data && data[chatId] ? data[chatId] : {};
+        const status = String(charData.currentStatus || '').trim();
+
+        const el = document.getElementById('characterStatus');
+        if (!el) return;
+
+        if (status) {
+            el.textContent = status;
+            el.style.display = 'block';
+        } else {
+            // 没有状态就隐藏/或你也可以显示“在线”
+            el.textContent = '';
+            el.style.display = 'none';
+        }
     });
 }
+// ====== 修改结束：forceRefreshCharacterStatus（进入详情页时刷新）======
 
-// 在打开聊天详情时检查并显示心电图条
+
+
+
+// ====== 修改开始：openChatDetail 扩展（打开页面时刷新状态）======
 const originalOpenChatDetail = openChatDetail;
 openChatDetail = function(chatId) {
     originalOpenChatDetail(chatId);
-    
-    // 延迟检查，确保页面已渲染
+
     setTimeout(() => {
         updateHeartbeatBarVisibility();
+        forceRefreshCharacterStatus(chatId); // ★ 新增：刷新顶部状态
     }, 100);
 };
+// ====== 修改结束：openChatDetail 扩展（打开页面时刷新状态）======
+
 
 // 在加载角色信息时同步状态监控开关
 const originalLoadCharacterInfo = loadCharacterInfo;
@@ -6796,62 +6834,53 @@ async function checkAllChatsForAutoSummary() {
     });
 }
 
-/**
- * 执行自动总结
- */
+// ====== 修改开始：executeAutoSummary（本地当天ISO + 新提示词）======
 async function executeAutoSummary(chat, messages, charInfo) {
     // 检查API配置
     if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
         console.warn('[自动总结] API未配置，跳过');
         return;
     }
-    
+
     // 准备聊天记录文本（只取文本消息）
     const chatHistory = messages
         .filter(m => m.type === 'text' || !m.type) // 兼容旧数据
         .filter(m => m.content && !m.isRevoked)
         .map(m => {
-            const sender = m.senderId === 'me' ? '我' : chat.name;
-            // 截断过长的单条消息
+            const sender = m.senderId === 'me' ? '用户' : chat.name;
             const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
             return `${sender}: ${content}`;
         })
         .join('\n');
-    
+
     if (!chatHistory || chatHistory.length < 100) {
         console.log('[自动总结] 有效内容太少，跳过');
-        // 仍然更新锚点，防止反复检查
         updateAutoSummaryAnchor(chat.id, messages);
         return;
     }
-    
-    // 获取时间范围
-    const firstMsg = messages[0];
-    const lastMsg = messages[messages.length - 1];
-    const dateRange = getDateRange(firstMsg.time, lastMsg.time);
-    
-    // 构建Prompt
-    const prompt = `请以【第三人称旁白】的视角，客观概括以下聊天记录的主要内容。
 
-【要求】
-1. 记录发生的时间
-2. **视角严格限制**：必须使用第三人称！请用"${chat.name}"和"用户"来描述互动。
-3. **严禁**使用"我"、"我们"、"你"这种第一/第二人称代词。
-4. 内容概括：聊了什么话题、发生了什么事、有什么重要约定，承诺
-5. 用户主动说过的个人喜好（喜欢的或者厌恶的）、经历过的过去，未曾到的未来，理想，工作事业，生活习惯等。
-6. 对话中表现情绪的变化，如因为什么事情难过或者伤心，要记住不要做雷点的事情等
+    // ★ 核心改动：永远使用“本地当天”的 ISO 日期作为 happenTime
+    const todayISO = formatLocalDateISO(new Date());
 
-【聊天记录】
+    // ★ 新版总结提示词：更像相册文案、强约束第三人称、短而具体
+    const prompt = `你是“时光相册”的记录员，请把下面聊天提炼成 1 条可放入相册的“时光记录”。
+
+硬性要求：
+1) 只输出一段正文，不要标题，不要列表，不要引号，不要Markdown。
+2) 必须第三人称：只能用“用户”和“${chat.name}”，严禁出现“我/我们/你”。
+3) 60-120字，必须具体：至少包含 1 个明确事件/话题 + 1 个情绪/态度变化 + 1 个小细节（某句话/某个行为/某个决定）。
+4) 如果内容太日常也要写出“微小但确定”的点；禁止空泛总结（如“聊得很开心”“增进感情”）。
+5) 不要编造不存在的事实；没有提到的地点/人物/礼物/金额不要瞎写。
+
+聊天记录：
 ${chatHistory.substring(0, 4000)}
-
-现在请你开始总结`;
-
+`;
 
     try {
-        const url = currentApiConfig.baseUrl.endsWith('/') 
+        const url = currentApiConfig.baseUrl.endsWith('/')
             ? currentApiConfig.baseUrl + 'chat/completions'
             : currentApiConfig.baseUrl + '/chat/completions';
-            
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -6864,85 +6893,91 @@ ${chatHistory.substring(0, 4000)}
                 temperature: 0.7
             })
         });
-        
+
         if (!response.ok) {
             console.error('[自动总结] API请求失败:', response.status);
             return;
         }
-        
+
         const data = await response.json();
         let summary = data.choices[0].message.content.trim();
-        
-        // 清理可能的引号
+
+        // 清理可能的包裹引号
         summary = summary.replace(/^["「『]|["」』]$/g, '');
-        
+
         // 限制长度
         if (summary.length > 150) {
             summary = summary.substring(0, 147) + '...';
         }
-        
-        // 保存到时光相册
-        await saveAutoSummaryToTimeline(chat.id, summary, dateRange);
-        
+
+        // 保存到时光相册（happenTime 只写本地当天ISO）
+        await saveAutoSummaryToTimeline(chat.id, summary, todayISO);
+
         console.log(`[自动总结] 「${chat.name}」总结完成: ${summary.substring(0, 30)}...`);
-        
+
     } catch (error) {
         console.error('[自动总结] 生成失败:', error);
     }
-    
+
     // 更新锚点
     updateAutoSummaryAnchor(chat.id, messages);
 }
+// ====== 修改结束：executeAutoSummary（本地当天ISO + 新提示词）======
 
-/**
- * 获取日期范围字符串
- */
+
+// ====== 修改开始：getDateRange（兼容保留，但不再输出跨天范围）======
 function getDateRange(startTime, endTime) {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    
-    const formatDate = (d) => `${d.getMonth() + 1}月${d.getDate()}日`;
-    
-    if (start.toDateString() === end.toDateString()) {
-        // 同一天
-        return formatDate(end);
-    } else {
-        // 跨天
-        return `${formatDate(start)} - ${formatDate(end)}`;
-    }
+    // 兼容保留：曾经用于跨天显示，但会破坏排序
+    // 现在统一返回“本地结束日期 ISO”，保证可排序、可解析
+    const end = new Date(endTime || Date.now());
+    return formatLocalDateISO(end);
 }
+// ====== 修改结束：getDateRange（兼容保留，但不再输出跨天范围）======
 
-/**
- * 保存总结到时光相册
- */
-function saveAutoSummaryToTimeline(chatId, summary, dateRange) {
+
+// ====== 修改开始：formatLocalDateISO（本地YYYY-MM-DD）======
+function formatLocalDateISO(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+// ====== 修改结束：formatLocalDateISO（本地YYYY-MM-DD）======
+
+
+
+// ====== 修改开始：saveAutoSummaryToTimeline（写入ISO + happenDateISO）======
+function saveAutoSummaryToTimeline(chatId, summary, dateISO) {
     return new Promise((resolve) => {
         loadFromDB('memories', (data) => {
             let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
-            
-            // 生成唯一ID
+
             const newId = Date.now() + Math.floor(Math.random() * 1000);
-            
-            // 创建新记忆
+
             const newMemory = {
                 id: newId,
                 chatId: chatId,
                 type: 'moment',
                 content: summary,
-                happenTime: dateRange,
+                // ★ 核心：用于展示的 happenTime 也统一存 ISO（你选的格式 2）
+                happenTime: dateISO,
+                // ★ 新增：机器排序字段（即使未来 happenTime 改成花样展示也不影响排序）
+                happenDateISO: dateISO,
                 createTime: new Date().toISOString(),
                 isAutoGenerated: true
             };
-            
+
             allMemories.push(newMemory);
-            
             saveToDB('memories', { list: allMemories });
-            
-            console.log(`[自动总结] 已保存到时光相册: ${dateRange}`);
+
+            console.log(`[自动总结] 已保存到时光相册: ${dateISO}`);
             resolve();
         });
     });
 }
+// ====== 修改结束：saveAutoSummaryToTimeline（写入ISO + happenDateISO）======
+
 
 /**
  * 更新自动总结的消息ID锚点
@@ -7336,3 +7371,4 @@ function updateArchiveCount() {
         }
     });
 }
+
