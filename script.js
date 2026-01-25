@@ -8,7 +8,7 @@ let currentViewingDiaryId = null;
 // ============ 强制修复版：数据库初始化 (版本号 30) ============
 function initDB() {
     // ★★★ 重点：版本号改成 50，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 30);
+    const request = indexedDB.open('phoneData', 34);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
@@ -27,6 +27,7 @@ function initDB() {
         
         // 数据库连接成功后的初始化逻辑
         initializeApp();
+       
     };
     
     // ★★★ 这里是创建新表的核心逻辑 ★★★
@@ -43,7 +44,7 @@ function initDB() {
             'shoppingCart', 'shoppingCategories', 'wallet', 
             'gameConsole', 'widgetSettings', 'voiceConfig', 
             'fontSettings', 'notificationSound', 
-            'memories', 'moments', 'momentsProfile' // 确保包含朋友圈相关表
+          'moments', 'momentsProfile', 'chatGroups', 'momentsSettings'
         ];
 
         storeNames.forEach(name => {
@@ -95,6 +96,7 @@ function initializeApp() {
     loadWidgetSettings();
     loadFontSettings();
     loadChats(); // 加载聊天列表
+    loadMomentsSettings();
     
     if (db.objectStoreNames.contains('memories')) {
         loadMemories();
@@ -1040,19 +1042,25 @@ function switchChatTab(tab) {
     // 1. 更新底部按钮状态
     document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.bottom-tab[data-tab="${tab}"]`).classList.add('active');
-    
+
     // 获取元素
     const chatList = document.getElementById('chatListContainer');
     const walletContainer = document.getElementById('walletContainer');
     const momentsContainer = document.getElementById('momentsContainer');
     const addBtn = document.querySelector('.chat-screen .add-btn');
     const headerTitle = document.querySelector('.chat-screen .header-title');
-    
+
+    // 新增：朋友圈顶部右侧按钮
+    const momentsHeaderActions = document.getElementById('momentsHeaderActions');
+
     // 2. 重置状态
     chatList.style.display = 'none';
     walletContainer.style.display = 'none';
     momentsContainer.style.display = 'none';
-    
+
+    // 新增：默认隐藏朋友圈右侧按钮
+    if (momentsHeaderActions) momentsHeaderActions.style.display = 'none';
+
     // 重置按钮样式（移除相机模式）
     addBtn.classList.remove('camera-mode');
     addBtn.innerHTML = '+';
@@ -1066,31 +1074,34 @@ function switchChatTab(tab) {
         addBtn.style.display = 'none'; // 钱包页不显示加号
         headerTitle.textContent = '我的钱包';
         renderWallet();
-        
+
     } else if (tab === 'moments') {
         // === 朋友圈模式 ===
-        momentsContainer.style.display = 'flex'; // 使用 flex 布局
+        momentsContainer.style.display = 'flex';
         headerTitle.textContent = '朋友圈';
-        
+
+        // 只在朋友圈显示右侧按钮
+        if (momentsHeaderActions) momentsHeaderActions.style.display = 'flex';
+
         // 将加号按钮改为相机按钮
         addBtn.innerHTML = '📷';
         addBtn.classList.add('camera-mode');
-        addBtn.onclick = openPostMomentModal; // 点击发布动态
-        
+        addBtn.onclick = openPostMomentModal;
+
         // 加载朋友圈数据
         loadMomentsProfile();
         loadMoments();
-        
+
     } else {
-        // === 聊天列表模式 (合并单聊和群聊) ===
+        // === 聊天列表模式 ===
         chatList.style.display = 'block';
         headerTitle.textContent = '聊天';
-        
-        // 恢复之前的逻辑
-        currentChatTab = 'all'; // 显示所有聊天
+
+        currentChatTab = 'all';
         renderChatList();
     }
 }
+
 
 
 // 渲染聊天列表
@@ -1437,11 +1448,30 @@ function closeSelectMembersModal(event) {
 
 // 确认成员选择
 function confirmMemberSelection() {
+    const modal = document.getElementById('selectMembersModal');
+    const mode = modal && modal.dataset ? modal.dataset.mode : '';
+
+    // === 新增：朋友圈分组成员选择模式 ===
+    if (mode === 'momentsGroup') {
+        if (typeof momentsGroupOnConfirm === 'function') {
+            const selected = Array.isArray(momentsGroupSelectedChatIds) ? [...momentsGroupSelectedChatIds] : [];
+            momentsGroupOnConfirm(selected);
+        }
+
+        // 清理状态并关闭
+        momentsGroupSelectedChatIds = [];
+        momentsGroupOnConfirm = null;
+        if (modal) modal.dataset.mode = '';
+        closeSelectMembersModal(); // 复用你原来的关闭函数
+        return;
+    }
+
+    // === 你原来的群聊/偷看逻辑保持不变 ===
     if (selectedMembers.length < 2) {
         alert('请至少选择2人');
         return;
     }
-    
+
     if (selectingForType === 'group') {
         createGroupChat();
     } else if (selectingForType === 'peek') {
@@ -3635,10 +3665,43 @@ function clearChatHistory() {
 }
 
 
+// ============ 朋友圈分组功能 (仅管理 + 选择成员) ============
+let chatGroups = []; // 自定义分组列表（不包含系统默认“全员”）
+let momentsGroupPendingName = ''; // 新建分组时临时保存名字
+let momentsGroupEditingId = null; // 当前正在编辑成员的分组ID（null 表示新建流程）
+
+// ====== 用户评论状态 START ======
+let currentCommentMomentId = null;
+let currentCommentReplyToName = null; // null 表示评论动态；非 null 表示回复某人
+// ====== 用户评论状态 END ======
+
+
+// ====== Moments Settings Data START ======
+let momentsSettings = {
+    subApiSchemeId: null,
+    publisherMode: 'all',          // 'all' | 'specified' | 'random'
+    specifiedChatIds: [],
+    randomCount: 1,
+    autoPublishEnabled: false,
+    autoPublishIntervalValue: 30,
+    autoPublishIntervalUnit: 'minutes', // 'minutes' | 'hours'
+  
+};
+let momentsAutoPublishing = false;
+let momentsAutoPublishTimerId = null;
+// ====== Moments Settings Data END ======
+
+
 // ============ 朋友圈功能模块 (适配版) ============
 let moments = [];
-let momentsProfile = { userId: 'me', name: '我的名字', avatar: null, cover: null };
+let momentsProfile = { userId: 'me', name: '我的名字', avatar: null, cover: null, nameColor: '#ffffff' };
 let newMomentImages = [];
+
+// ====== 评论按钮加载态 START ======
+let currentCommentBtnEl = null;
+// ====== 评论按钮加载态 END ======
+
+
 
 // 滚动监听 (可选：如果你想做标题栏透明渐变效果，可以在这里加逻辑)
 function handleMomentsScroll(el) {
@@ -3647,34 +3710,42 @@ function handleMomentsScroll(el) {
 
 function loadMomentsProfile() {
     loadFromDB('momentsProfile', (data) => {
-        // 如果读取失败，或者读取的数据没有名字，就重新初始化
         if (!data || !data.name) {
             const mainName = document.getElementById('mainUserId').textContent || '我的名字';
             const mainAvatar = document.querySelector('#mainAvatar img')?.src || null;
-            
+
             momentsProfile = {
-                userId: 'me', // ★ 关键字段
+                userId: 'me',
                 name: mainName,
                 avatar: mainAvatar,
-                cover: null
+                cover: null,
+                nameColor: '#ffffff'
             };
-            // 既然读不到，就顺便保存一份初始化的进去
+
             saveToDB('momentsProfile', momentsProfile);
         } else {
             momentsProfile = data;
-            // 双重保险：读取出来的如果没 userId，也补上
+
             if (!momentsProfile.userId) {
                 momentsProfile.userId = 'me';
             }
+
+            if (!momentsProfile.nameColor) {
+                momentsProfile.nameColor = '#ffffff';
+            }
         }
+
         renderMomentsHeader();
     });
 }
 
+
 function renderMomentsHeader() {
     // 名字
-    document.getElementById('momentsUserName').textContent = momentsProfile.name || 'User';
-    
+    const nameEl = document.getElementById('momentsUserName');
+    nameEl.textContent = momentsProfile.name || 'User';
+    nameEl.style.color = momentsProfile.nameColor || '#ffffff';
+
     // 头像
     const avatarEl = document.getElementById('momentsUserAvatar');
     if (momentsProfile.avatar) {
@@ -3682,13 +3753,12 @@ function renderMomentsHeader() {
     } else {
         avatarEl.textContent = momentsProfile.name ? momentsProfile.name[0] : '👤';
     }
-    
+
     // 封面
     const coverEl = document.getElementById('momentsCover');
     if (momentsProfile.cover) {
         coverEl.style.backgroundImage = `url(${momentsProfile.cover})`;
     } else {
-        // 默认背景
         coverEl.style.backgroundImage = 'radial-gradient(#ffffff 20%, transparent 20%), linear-gradient(#e6e6e6, #e6e6e6)';
     }
 }
@@ -3714,16 +3784,16 @@ function loadMoments() {
     });
 }
 
-
+// ====== Moments Render List (With Comments) START ======
 function renderMomentsList() {
     const container = document.getElementById('momentsList');
-    if (moments.length === 0) {
+    if (!moments || moments.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px; color:#999; font-size:13px;">暂无动态，点击右上角相机发布</div>`;
         return;
     }
     
     container.innerHTML = moments.map(m => {
-        // 1. 构建图片 HTML
+        // 1. 图片
         let imagesHtml = '';
         if (m.images && m.images.length > 0) {
             const imgClass = m.images.length === 1 ? 'fc-img-single' : 'fc-img-grid';
@@ -3732,16 +3802,29 @@ function renderMomentsList() {
             </div>`;
         }
         
-        // 2. 头像处理
+        // 2. 头像
         let avatarHtml = m.authorAvatar ? `<img src="${m.authorAvatar}">` : (m.authorName ? m.authorName[0] : '👤');
 
-        // 3. 删除按钮逻辑
-        const deleteBtn = m.authorId === 'me' ? `<span onclick="deleteMoment(${m.id})" style="margin-left:auto; color:#ff4757;">🗑</span>` : '';
+        // 3. 评论区 HTML 生成
+        let commentsHtml = '';
+        if (m.commentsList && m.commentsList.length > 0) {
+            const rows = m.commentsList.map(c => {
+                // 格式：A：内容  或者  A 回复 B：内容
+                let contentHtml = '';
+                if (c.replyToName) {
+                    contentHtml = `<span class="fc-comment-name" onclick="replyToComment(${m.id}, '${c.id}', '${c.senderName}')">${c.senderName}</span> <span style="color:#999;font-size:12px;">回复</span> <span class="fc-comment-name">${c.replyToName}</span>：<span class="fc-reply-text">${c.content}</span>`;
+                } else {
+                    contentHtml = `<span class="fc-comment-name" onclick="replyToComment(${m.id}, '${c.id}', '${c.senderName}')">${c.senderName}</span>：<span class="fc-reply-text">${c.content}</span>`;
+                }
+                return `<div class="fc-comment-row">${contentHtml}</div>`;
+            }).join('');
+            
+            commentsHtml = `<div class="fc-comments-box">${rows}</div>`;
+        }
 
-        // 4. 返回新版卡片 HTML
+        // 4. 返回完整卡片
         return `
-        <div class="feed-card">
-            <!-- 头部 -->
+        <div class="feed-card" id="moment-${m.id}">
             <div class="fc-header">
                 <div class="fc-avatar">${avatarHtml}</div>
                 <div class="fc-user-info">
@@ -3751,28 +3834,46 @@ function renderMomentsList() {
                 <div class="fc-more" onclick="deleteMoment(${m.id})">${m.authorId === 'me' ? '删除' : '•••'}</div>
             </div>
             
-            <!-- 内容 -->
-            <div class="fc-content">${m.content}</div>
-            ${imagesHtml}
+       <div class="fc-content">${m.content}</div>
+${imagesHtml}
+${renderMomentVisibilityTag(m)}
             
-            <!-- 底部互动 -->
             <div class="fc-actions">
-                <div class="fc-action-item ${m.isLiked ? 'active' : ''}" onclick="toggleLike(${m.id})">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    ${m.likes || 0}
+                <!-- 灯泡：生成评论 (AI氛围组) -->
+                <div class="fc-action-item" onclick="generateAiComments(${m.id}, this)">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9 18h6"></path>
+                        <path d="M10 22h4"></path>
+                        <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path>
+                    </svg>
+                    <span style="font-size:12px; margin-left:4px;">互动</span>
                 </div>
-                <div class="fc-action-item">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                    ${m.comments || 0}
+                
+                <!-- 铅笔：用户评论 -->
+            <div class="fc-action-item" id="commentBtn-${m.id}" onclick="openCommentInput(${m.id})">
+
+
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                    </svg>
+                    <span style="font-size:12px; margin-left:4px;">评论</span>
                 </div>
-                <div class="fc-action-item" style="margin-left:auto;">
-                   <svg class="icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </div>
+                
+                <!-- 纸飞机 -->
+              <div class="fc-action-item" style="margin-left:auto;" onclick="openMomentForwardModal(${m.id})">
+   <svg class="icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+</div>
+
             </div>
+
+            <!-- 挂载评论区 -->
+            ${commentsHtml}
         </div>
         `;
     }).join('');
 }
+// ====== Moments Render List (With Comments) END ======
+
 
 
 // 辅助：时间格式化
@@ -3790,6 +3891,10 @@ function formatTimeAgo(timestamp) {
 
 // 发布功能
 function openPostMomentModal() {
+    // 中文注释：每次打开发布弹窗默认“公开”
+draftMomentVisibility = { mode: 'public', groupId: null };
+if (document.getElementById('momentVisibilityValue')) document.getElementById('momentVisibilityValue').textContent = '公开';
+
     newMomentImages = [];
     document.getElementById('momentContent').value = '';
     renderUploadGrid();
@@ -3858,13 +3963,20 @@ function removeNewMomentImg(index) {
     renderUploadGrid();
 }
 
+// ====== 用户发布动态（含可见性）START ======
 function publishMoment() {
     const content = document.getElementById('momentContent').value.trim();
     if (!content && newMomentImages.length === 0) {
         alert('说点什么吧...');
         return;
     }
-    
+
+    // 中文注释：分组可见必须选分组
+    if (draftMomentVisibility.mode === 'group' && !draftMomentVisibility.groupId) {
+        alert('请选择一个分组');
+        return;
+    }
+
     const newMoment = {
         id: Date.now(),
         authorId: 'me',
@@ -3875,15 +3987,24 @@ function publishMoment() {
         likes: 0,
         isLiked: false,
         comments: 0,
+        commentsList: [], // 中文注释：初始化评论列表
         timestamp: Date.now(),
-        type: 'user'
+        type: 'user',
+
+        // 中文注释：新增可见性字段（老动态没有则默认public）
+        visibility: {
+            mode: draftMomentVisibility.mode,
+            groupId: draftMomentVisibility.groupId
+        }
     };
-    
+
     moments.unshift(newMoment);
     saveToDB('moments', { list: moments });
     renderMomentsList();
     closePostMomentModal();
 }
+// ====== 用户发布动态（含可见性）END ======
+
 
 function deleteMoment(id) {
     if (confirm('确定删除这条动态吗？')) {
@@ -3905,9 +4026,16 @@ function toggleLike(id) {
 
 // 资料编辑
 function openEditMomentsProfile() {
-    document.getElementById('momentsProfileName').value = momentsProfile.name;
+    document.getElementById('momentsProfileName').value = momentsProfile.name || '';
+    document.getElementById('momentsProfileNameColor').value = momentsProfile.nameColor || '#ffffff';
+
     const preview = document.getElementById('momentsProfileAvatarPreview');
-    if (momentsProfile.avatar) preview.innerHTML = `<img src="${momentsProfile.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+    if (momentsProfile.avatar) {
+        preview.innerHTML = `<img src="${momentsProfile.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+        preview.textContent = '👤';
+    }
+
     document.getElementById('momentsProfileModal').style.display = 'flex';
 }
 
@@ -3956,14 +4084,27 @@ function handleMomentsAvatarSelect(input) {
 
 function saveMomentsProfile() {
     const newName = document.getElementById('momentsProfileName').value.trim();
+    const newColor = document.getElementById('momentsProfileNameColor').value || '#ffffff';
+
     const avatarInput = document.getElementById('momentsAvatarInput');
     const tempAvatar = avatarInput.dataset.tempAvatar;
+
     if (newName) momentsProfile.name = newName;
-    if (tempAvatar) momentsProfile.avatar = tempAvatar;
+    momentsProfile.nameColor = newColor;
+
+    if (tempAvatar) {
+        momentsProfile.avatar = tempAvatar;
+        delete avatarInput.dataset.tempAvatar;
+    }
+
     saveToDB('momentsProfile', momentsProfile);
     renderMomentsHeader();
     closeEditMomentsProfile();
 }
+
+
+
+
 
 // ============ 文字图功能模块 ============
 
@@ -4031,6 +4172,2178 @@ function closeTextImageDetailModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('textImageDetailModal').style.display = 'none';
 }
+
+function openMomentsGroupPanel() {
+   openMomentsGroupModal();
+}
+
+function openMomentsSettingsPanel() {
+    openMomentsSettingsModal();
+}
+
+
+
+//分组新增函数
+function loadChatGroups(callback) {
+    loadFromDB('chatGroups', (data) => {
+        if (Array.isArray(data)) {
+            chatGroups = data;
+        } else if (data && Array.isArray(data.list)) {
+            chatGroups = data.list;
+        } else {
+            chatGroups = [];
+        }
+        if (callback) callback(chatGroups);
+    });
+}
+
+function saveChatGroups() {
+    saveToDB('chatGroups', { list: chatGroups });
+}
+
+function loadChatGroups(callback) {
+    loadFromDB('chatGroups', (data) => {
+        if (Array.isArray(data)) {
+            chatGroups = data;
+        } else if (data && Array.isArray(data.list)) {
+            chatGroups = data.list;
+        } else {
+            chatGroups = [];
+        }
+        if (callback) callback(chatGroups);
+    });
+}
+
+function saveChatGroups() {
+    saveToDB('chatGroups', { list: chatGroups });
+}
+
+function openMomentsGroupModal() {
+    document.getElementById('momentsNewGroupName').value = '';
+    loadChatGroups(() => {
+        renderMomentsGroupList();
+        document.getElementById('momentsGroupModal').style.display = 'flex';
+    });
+}
+
+function closeMomentsGroupModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('momentsGroupModal').style.display = 'none';
+}
+
+// ====== Moments Group List Render (With Toggle) START ======
+function renderMomentsGroupList() {
+    const container = document.getElementById('momentsGroupList');
+    if (!container) return;
+
+    // 1. 获取全员开关状态 (默认 true)
+    const isGlobalEnabled = (momentsSettings.enableGlobalGroup !== false); // undefined 视为 true
+
+    // 2. 计算全员人数
+    const allSingles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    const allCount = allSingles.length;
+
+    // 3. 构建全员行 (带开关)
+    const systemRow = `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="font-size: 15px; font-weight: 700; color: #333;">全员 (默认分组)</div>
+                <div style="font-size: 12px; color: #999;">${allCount} 人 · 开启后允许全员互动</div>
+            </div>
+            <div>
+                <input type="checkbox" 
+                       ${isGlobalEnabled ? 'checked' : ''} 
+                       onchange="toggleGlobalGroup(this)" 
+                       style="accent-color: #333; transform: scale(1.2); cursor: pointer;">
+            </div>
+        </div>
+    `;
+
+    // 4. 自定义分组列表
+    let listHtml = '';
+    if (!chatGroups || chatGroups.length === 0) {
+        listHtml = `<div style="text-align:center; color:#999; padding: 20px 0; font-size: 13px;">暂无自定义分组</div>`;
+    } else {
+        listHtml = chatGroups.map(g => {
+            const count = Array.isArray(g.memberChatIds) ? g.memberChatIds.length : 0;
+            return `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0;">
+                        <div style="font-size: 15px; font-weight: 700; color: #333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            ${escapeHtml(g.name)}
+                        </div>
+                        <div style="font-size: 12px; color: #999;">${count} 人</div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-shrink:0;">
+                        <button class="ins-line-btn" onclick="editMomentsGroupMembers(${g.id})" style="padding: 6px 10px; font-size: 12px; border-radius: 14px; flex: none;">成员</button>
+                        <button class="ins-line-btn" onclick="renameMomentsGroup(${g.id})" style="padding: 6px 10px; font-size: 12px; border-radius: 14px; flex: none;">改名</button>
+                        <button class="ins-line-btn ins-btn-red-line" onclick="deleteMomentsGroup(${g.id})" style="padding: 6px 10px; font-size: 12px; border-radius: 14px; flex: none;">删除</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    container.innerHTML = systemRow + listHtml;
+}
+
+// 新增：切换全员开关的函数
+function toggleGlobalGroup(checkbox) {
+    momentsSettings.enableGlobalGroup = checkbox.checked;
+    saveMomentsSettings();
+}
+// ====== Moments Group List Render (With Toggle) END ======
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function createMomentsGroup() {
+    const name = document.getElementById('momentsNewGroupName').value.trim();
+    if (!name) {
+        alert('请输入分组名称');
+        return;
+    }
+    if (name === '全员') {
+        alert('该名称为系统默认分组，不能使用');
+        return;
+    }
+    if (chatGroups.some(g => g.name === name)) {
+        alert('该分组已存在');
+        return;
+    }
+
+    momentsGroupPendingName = name;
+    momentsGroupEditingId = null; // null 表示新建流程
+
+    // 立刻进入成员选择
+    openMomentsGroupMemberSelector({
+        selectedChatIds: [],
+        onConfirm: (selectedChatIds) => {
+            const newId = chatGroups.length > 0 ? Math.max(...chatGroups.map(g => g.id || 0)) + 1 : 1;
+            const newGroup = {
+                id: newId,
+                name: momentsGroupPendingName,
+                memberChatIds: selectedChatIds,
+                createTime: getCurrentTime()
+            };
+
+            chatGroups.push(newGroup);
+            saveChatGroups();
+
+            momentsGroupPendingName = '';
+            momentsGroupEditingId = null;
+
+            renderMomentsGroupList();
+            alert('分组已创建');
+        }
+    });
+}
+
+function renameMomentsGroup(groupId) {
+    const group = chatGroups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const newName = prompt('请输入新的分组名称', group.name);
+    if (newName === null) return;
+
+    const name = newName.trim();
+    if (!name) {
+        alert('分组名称不能为空');
+        return;
+    }
+    if (name === '全员') {
+        alert('该名称为系统默认分组，不能使用');
+        return;
+    }
+    if (chatGroups.some(g => g.id !== groupId && g.name === name)) {
+        alert('该分组名称已存在');
+        return;
+    }
+
+    group.name = name;
+    saveChatGroups();
+    renderMomentsGroupList();
+}
+
+function deleteMomentsGroup(groupId) {
+    const group = chatGroups.find(g => g.id === groupId);
+    if (!group) return;
+
+    if (!confirm(`确定删除分组 "${group.name}" 吗？`)) return;
+
+    chatGroups = chatGroups.filter(g => g.id !== groupId);
+    saveChatGroups();
+    renderMomentsGroupList();
+}
+
+function editMomentsGroupMembers(groupId) {
+    const group = chatGroups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const selected = Array.isArray(group.memberChatIds) ? [...group.memberChatIds] : [];
+
+    openMomentsGroupMemberSelector({
+        selectedChatIds: selected,
+        onConfirm: (selectedChatIds) => {
+            group.memberChatIds = selectedChatIds;
+            saveChatGroups();
+            renderMomentsGroupList();
+            alert('成员已更新');
+        }
+    });
+}
+
+let momentsGroupSelectedChatIds = [];
+let momentsGroupOnConfirm = null;
+
+function openMomentsGroupMemberSelector(opts) {
+    const selectedChatIds = (opts && Array.isArray(opts.selectedChatIds)) ? opts.selectedChatIds : [];
+    momentsGroupSelectedChatIds = [...selectedChatIds];
+    momentsGroupOnConfirm = opts && typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
+
+    const singleChats = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    if (singleChats.length === 0) {
+        alert('暂无单聊联系人可选');
+        return;
+    }
+
+    const membersList = document.getElementById('membersList');
+    const selectedCountEl = document.getElementById('selectedCount');
+    if (!membersList || !selectedCountEl) return;
+
+    membersList.innerHTML = singleChats.map(chat => {
+        const avatarHtml = chat.avatarImage
+            ? `<img src="${chat.avatarImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+            : (chat.avatar || '👤');
+
+        const checked = momentsGroupSelectedChatIds.includes(chat.id);
+
+        return `
+            <div class="member-item" onclick="toggleMomentsGroupMember(${chat.id})">
+                <input type="checkbox" class="member-checkbox" id="mg-member-${chat.id}" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleMomentsGroupMember(${chat.id})">
+                <div class="member-avatar">${avatarHtml}</div>
+                <div class="member-name">${escapeHtml(chat.name)}</div>
+            </div>
+        `;
+    }).join('');
+
+    selectedCountEl.textContent = String(momentsGroupSelectedChatIds.length);
+
+    // 标记当前 selectMembersModal 是“分组成员选择模式”
+    const modal = document.getElementById('selectMembersModal');
+    if (modal) {
+        modal.dataset.mode = 'momentsGroup';
+        modal.style.display = 'flex';
+    }
+}
+
+function toggleMomentsGroupMember(chatId) {
+    const idx = momentsGroupSelectedChatIds.indexOf(chatId);
+    if (idx >= 0) momentsGroupSelectedChatIds.splice(idx, 1);
+    else momentsGroupSelectedChatIds.push(chatId);
+
+    const checkbox = document.getElementById(`mg-member-${chatId}`);
+    if (checkbox) checkbox.checked = momentsGroupSelectedChatIds.includes(chatId);
+
+    const selectedCountEl = document.getElementById('selectedCount');
+    if (selectedCountEl) selectedCountEl.textContent = String(momentsGroupSelectedChatIds.length);
+}
+
+
+// ====== Moments Settings DB START ======
+function loadMomentsSettings(callback) {
+    loadFromDB('momentsSettings', (data) => {
+        if (data) {
+            momentsSettings = {
+                ...momentsSettings,
+                ...data
+            };
+        }
+        if (callback) callback(momentsSettings);
+    });
+}
+
+function saveMomentsSettings() {
+    saveToDB('momentsSettings', momentsSettings);
+}
+// ====== Moments Settings DB END ======
+
+// ====== Moments Settings UI START ======
+function openMomentsSettingsModal() {
+    loadMomentsSettings(() => {
+        renderMomentsSettingsModal();
+        document.getElementById('momentsSettingsModal').style.display = 'flex';
+    });
+}
+
+function closeMomentsSettingsModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('momentsSettingsModal').style.display = 'none';
+}
+
+function renderMomentsSettingsModal() {
+    // 1) 副API方案下拉
+    const schemeSelect = document.getElementById('momentsSubApiSchemeSelect');
+    if (schemeSelect) {
+        schemeSelect.innerHTML = '<option value="">请选择副API方案...</option>';
+
+        // apiSchemes 已在你代码里全局存在
+        const list = Array.isArray(apiSchemes) ? apiSchemes : [];
+        list.forEach(s => {
+            schemeSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.name || ('方案' + s.id))}</option>`;
+        });
+
+        schemeSelect.value = momentsSettings.subApiSchemeId ? String(momentsSettings.subApiSchemeId) : '';
+    }
+
+    // 2) 发布者模式 radio
+    const radios = document.querySelectorAll('input[name="momentsPublisherMode"]');
+    radios.forEach(r => {
+        r.checked = (r.value === momentsSettings.publisherMode);
+    });
+
+    // 3) 指定/随机面板显示
+    const specifiedPanel = document.getElementById('momentsSpecifiedPanel');
+    const randomPanel = document.getElementById('momentsRandomPanel');
+    if (specifiedPanel) specifiedPanel.style.display = (momentsSettings.publisherMode === 'specified') ? 'block' : 'none';
+    if (randomPanel) randomPanel.style.display = (momentsSettings.publisherMode === 'random') ? 'flex' : 'none';
+
+    // 指定角色预览
+    renderMomentsSpecifiedPreview();
+
+    // 随机人数
+    const randomCountInput = document.getElementById('momentsRandomCountInput');
+    if (randomCountInput) {
+        randomCountInput.value = momentsSettings.randomCount || 1;
+    }
+
+    // 4) 自动发布开关与间隔面板
+    const autoToggle = document.getElementById('momentsAutoPublishToggle');
+    const autoPanel = document.getElementById('momentsAutoPublishPanel');
+    if (autoToggle) autoToggle.checked = momentsSettings.autoPublishEnabled === true;
+    if (autoPanel) autoPanel.style.display = momentsSettings.autoPublishEnabled ? 'block' : 'none';
+
+    const intervalVal = document.getElementById('momentsAutoPublishIntervalValue');
+    const intervalUnit = document.getElementById('momentsAutoPublishIntervalUnit');
+    if (intervalVal) intervalVal.value = momentsSettings.autoPublishIntervalValue || 30;
+    if (intervalUnit) intervalUnit.value = momentsSettings.autoPublishIntervalUnit || 'minutes';
+
+  
+
+    // 6) 根据当前配置更新定时器（随时保存）
+    restartMomentsAutoPublishTimer();
+}
+
+function renderMomentsSpecifiedPreview() {
+    const preview = document.getElementById('momentsSpecifiedPreview');
+    if (!preview) return;
+
+    const ids = Array.isArray(momentsSettings.specifiedChatIds) ? momentsSettings.specifiedChatIds : [];
+    if (ids.length === 0) {
+        preview.textContent = '未选择';
+        return;
+    }
+
+    const singleChats = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    const names = ids
+        .map(id => singleChats.find(c => c.id === id))
+        .filter(Boolean)
+        .map(c => c.name);
+
+    preview.textContent = names.length > 0 ? names.join('、') : '未选择';
+}
+
+function handleMomentsPublisherModeChange() {
+    const checked = document.querySelector('input[name="momentsPublisherMode"]:checked');
+    if (!checked) return;
+
+    momentsSettings.publisherMode = checked.value;
+    saveMomentsSettings();
+    renderMomentsSettingsModal();
+}
+
+function handleMomentsSettingsChange() {
+    // 副API
+    const schemeSelect = document.getElementById('momentsSubApiSchemeSelect');
+    momentsSettings.subApiSchemeId = schemeSelect && schemeSelect.value ? parseInt(schemeSelect.value, 10) : null;
+
+    // 随机人数
+    const randomCountInput = document.getElementById('momentsRandomCountInput');
+    if (randomCountInput) {
+        const v = parseInt(randomCountInput.value, 10);
+        momentsSettings.randomCount = Number.isFinite(v) && v > 0 ? v : 1;
+        randomCountInput.value = momentsSettings.randomCount;
+    }
+
+    // 自动发布
+    const autoToggle = document.getElementById('momentsAutoPublishToggle');
+    momentsSettings.autoPublishEnabled = autoToggle ? autoToggle.checked : false;
+
+    const intervalVal = document.getElementById('momentsAutoPublishIntervalValue');
+    const intervalUnit = document.getElementById('momentsAutoPublishIntervalUnit');
+
+    if (intervalVal) {
+        const v = parseInt(intervalVal.value, 10);
+        momentsSettings.autoPublishIntervalValue = Number.isFinite(v) && v > 0 ? v : 30;
+        intervalVal.value = momentsSettings.autoPublishIntervalValue;
+    }
+
+    if (intervalUnit) {
+        momentsSettings.autoPublishIntervalUnit = intervalUnit.value === 'hours' ? 'hours' : 'minutes';
+    }
+
+   
+
+    saveMomentsSettings();
+    renderMomentsSettingsModal();
+}
+// ====== Moments Settings UI END ======
+
+// ====== Moments Publisher Selector START ======
+function openMomentsPublisherSelector() {
+    const selected = Array.isArray(momentsSettings.specifiedChatIds) ? [...momentsSettings.specifiedChatIds] : [];
+
+    openMomentsGroupMemberSelector({
+        selectedChatIds: selected,
+        onConfirm: (selectedChatIds) => {
+            momentsSettings.specifiedChatIds = selectedChatIds;
+            saveMomentsSettings();
+            renderMomentsSpecifiedPreview();
+        }
+    });
+}
+// ====== Moments Publisher Selector END ======
+
+// ====== Moments Auto Publish Timer START ======
+function getMomentsIntervalMs() {
+    const v = momentsSettings.autoPublishIntervalValue || 30;
+    const unit = momentsSettings.autoPublishIntervalUnit || 'minutes';
+    const minutes = unit === 'hours' ? v * 60 : v;
+    return minutes * 60 * 1000;
+}
+
+function restartMomentsAutoPublishTimer() {
+    if (momentsAutoPublishTimerId) {
+        clearInterval(momentsAutoPublishTimerId);
+        momentsAutoPublishTimerId = null;
+    }
+
+    if (!momentsSettings.autoPublishEnabled) return;
+
+    const ms = getMomentsIntervalMs();
+    if (!ms || ms < 60 * 1000) {
+        // 最小限制 1 分钟
+        return;
+    }
+
+    momentsAutoPublishTimerId = setInterval(() => {
+        runAutoPublishOnce({ manual: false });
+    }, ms);
+}
+
+function triggerMomentsPublishNow() {
+    // 1. 关闭设置弹窗
+    closeMomentsSettingsModal();
+    // 2. 触发发布（传 manual: true）
+    runAutoPublishOnce({ manual: true });
+}
+
+
+function resolveMomentsPublisherChatIds() {
+    const singleChats = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    const allIds = singleChats.map(c => c.id);
+
+    if (momentsSettings.publisherMode === 'all') {
+        return allIds;
+    }
+
+    if (momentsSettings.publisherMode === 'specified') {
+        const ids = Array.isArray(momentsSettings.specifiedChatIds) ? momentsSettings.specifiedChatIds : [];
+        return ids.filter(id => allIds.includes(id));
+    }
+
+    if (momentsSettings.publisherMode === 'random') {
+        const count = Math.max(1, parseInt(momentsSettings.randomCount || 1, 10));
+        // 打乱抽样
+        const shuffled = [...allIds].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+
+    return allIds;
+}
+
+function getSubApiScheme() {
+    if (!momentsSettings.subApiSchemeId) return null;
+    const scheme = Array.isArray(apiSchemes) ? apiSchemes.find(s => s.id == momentsSettings.subApiSchemeId) : null;
+    return scheme || null;
+}
+
+// ====== Moments Auto Publish Core (Loading + Clean) START ======
+async function runAutoPublishOnce(opts) {
+    if (momentsAutoPublishing) return;
+    
+    // 显示 Loading
+    const loadingEl = document.getElementById('momentsPublishLoading');
+    if (loadingEl) loadingEl.style.display = 'block';
+    
+    momentsAutoPublishing = true;
+
+    try {
+        const scheme = getSubApiScheme();
+        if (!scheme) {
+            if (opts && opts.manual) alert('请先在朋友圈设置里选择副API方案');
+            return;
+        }
+        if (!scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
+            if (opts && opts.manual) alert('副API方案配置不完整');
+            return;
+        }
+
+        const publisherIds = resolveMomentsPublisherChatIds();
+        if (!publisherIds || publisherIds.length === 0) {
+            if (opts && opts.manual) alert('没有可发布的角色（请检查发布者设置）');
+            return;
+        }
+
+        // 阶段B限制：每次最多生成 5 条
+        const MAX_PER_RUN = 5;
+        const targetChatIds = publisherIds.slice(0, MAX_PER_RUN);
+
+        // 串行生成
+        const generatedMoments = [];
+        for (let i = 0; i < targetChatIds.length; i++) {
+            const chatId = targetChatIds[i];
+            const momentObj = await generateMomentForChatId(chatId, scheme);
+            if (momentObj) {
+                generatedMoments.push(momentObj);
+            }
+        }
+
+        if (generatedMoments.length === 0) {
+            if (opts && opts.manual) {
+                alert('本次未生成成功的动态（接口返回空或解析失败）');
+            }
+            return;
+        }
+
+        // 写入 moments
+        moments = Array.isArray(moments) ? moments : [];
+        for (let j = generatedMoments.length - 1; j >= 0; j--) {
+            moments.unshift(generatedMoments[j]);
+        }
+
+        saveToDB('moments', { list: moments });
+        renderMomentsList();
+
+        if (opts && opts.manual) {
+            // 可选：生成完给个轻提示，或者什么都不弹（既然看到动态出来了）
+            // alert(`已发布 ${generatedMoments.length} 条动态`);
+        }
+    } catch (err) {
+        console.error('runAutoPublishOnce error:', err);
+        if (opts && opts.manual) {
+            alert('发布失败：' + (err && err.message ? err.message : '未知错误'));
+        }
+    } finally {
+        momentsAutoPublishing = false;
+        // 隐藏 Loading
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+// ====== Moments Auto Publish Core (Loading + Clean) END ======
+
+
+// ====== Moments Generate One (Env+Gap+Birthday) START ======
+async function generateMomentForChatId(chatId, scheme) {
+    const chat = Array.isArray(chats) ? chats.find(c => c.id === chatId) : null;
+    if (!chat) return null;
+
+    // 角色资料
+    const charInfoAll = await loadCharacterInfoAllSafe();
+    const charData = charInfoAll && charInfoAll[chatId] ? charInfoAll[chatId] : {};
+
+    // 显示名：备注优先
+    const displayName = (charData.remark && String(charData.remark).trim())
+        ? String(charData.remark).trim()
+        : (chat.name || '角色');
+
+    // ===== 环境碎片：时间段 / 星期 / 当前时间 =====
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const hhmm = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+    let timeDesc = '白天';
+    if (hour >= 5 && hour < 9) timeDesc = '清晨';
+    else if (hour >= 9 && hour < 12) timeDesc = '上午';
+    else if (hour >= 12 && hour < 14) timeDesc = '中午';
+    else if (hour >= 14 && hour < 18) timeDesc = '下午';
+    else if (hour >= 18 && hour < 23) timeDesc = '晚上';
+    else timeDesc = '深夜';
+
+    const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const weekDesc = weekDays[now.getDay()];
+
+    // ===== 天气信息（有则注入，无则跳过）=====
+    let cityName = '';
+    let todayWeather = '';
+    let tomorrowWeather = '';
+
+    if (charData.cityInfoEnabled && charData.charWeather) {
+        cityName = charData.charVirtualAddress || charData.charRealAddress || '';
+
+        if (charData.charWeather.today) {
+            const t = charData.charWeather.today;
+            todayWeather = `${t.condition || ''} ${t.temp || ''}`.trim();
+        }
+        if (charData.charWeather.tomorrow) {
+            const tm = charData.charWeather.tomorrow;
+            tomorrowWeather = `${tm.condition || ''} ${tm.temp || ''}`.trim();
+        }
+    }
+
+    // ===== 节奏感：距离上次聊天多久 =====
+    const lastChatGapDesc = await getLastChatGapDesc(chatId);
+
+    // ===== 生日短提示 =====
+    const birthdayHintShort = getBirthdayHintShort(charData.birthday);
+
+    // ===== 历史消息（固定 100 条）=====
+    const historyText = await getChatHistoryForPrompt(chatId, 100);
+
+    // 构建最终提示词
+    const prompt = buildMomentPrompt({
+        displayName,
+        personality: charData.personality || '',
+        myPersonality: charData.myPersonality || '',
+        historyText,
+
+        timeDesc,
+        hhmm,
+        weekDesc,
+
+        cityName,
+        todayWeather,
+        tomorrowWeather,
+
+        lastChatGapDesc,
+        birthdayHintShort
+    });
+
+    const content = await callSubApiGenerateMoment({
+        baseUrl: scheme.baseUrl,
+        apiKey: scheme.apiKey,
+        model: scheme.defaultModel,
+        prompt
+    });
+
+    if (!content) return null;
+
+    const newMoment = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        authorId: chatId,
+        authorName: displayName,
+        authorAvatar: chat.avatarImage || null,
+        content: content,
+        images: [],
+        likes: 0,
+        isLiked: false,
+        comments: 0,
+        timestamp: Date.now(),
+        type: 'character'
+    };
+
+    return newMoment;
+}
+// ====== Moments Generate One (Env+Gap+Birthday) END ======
+
+
+// ====== Moments CharacterInfo Loader START ======
+function loadCharacterInfoAllSafe() {
+    return new Promise((resolve) => {
+        loadFromDB('characterInfo', (data) => {
+            // 你 current 的 characterInfo 是对象：{ [chatId]: {...} }
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+                resolve(data);
+                return;
+            }
+            resolve({});
+        });
+    });
+}
+// ====== Moments CharacterInfo Loader END ======
+
+// ====== Moments History Prompt DEBUG START ======
+async function getChatHistoryForPrompt(chatId, limit) {
+    const maxCount = Number.isFinite(limit) && limit > 0 ? limit : 100;
+
+    const allMsgs = await new Promise((resolve) => {
+        loadFromDB('messages', (data) => {
+            let list = [];
+            if (data && Array.isArray(data.list)) list = data.list;
+            else if (Array.isArray(data)) list = data;
+            resolve(list);
+        });
+    });
+
+    const filtered = allMsgs.filter(m => m && m.chatId === chatId && !m.isRevoked);
+
+    filtered.sort((a, b) => {
+        const ta = Date.parse(a.time || '') || 0;
+        const tb = Date.parse(b.time || '') || 0;
+        return ta - tb;
+    });
+
+    const last = filtered.slice(Math.max(0, filtered.length - maxCount));
+
+    const lines = [];
+    for (let i = 0; i < last.length; i++) {
+        const msg = last[i];
+        const who = msg.senderId === 'me' ? '我' : 'TA';
+
+        let text = '';
+        if (msg.type === 'text') {
+            text = String(msg.content || '').trim();
+        } else if (msg.type === 'text_image') {
+            text = String(msg.content || '').trim();
+        } else if (msg.type === 'image') {
+            text = '【图片】';
+        } else if (msg.type === 'voice') {
+            text = '【语音】';
+        } else if (msg.type === 'transfer') {
+            text = '【转账】';
+        } else if (msg.type === 'shopping_order') {
+            text = '【订单】';
+        } else {
+            text = String(msg.content || '').trim();
+        }
+
+        if (!text) continue;
+        if (text.length > 200) text = text.slice(0, 200) + '...';
+        lines.push(`${who}：${text}`);
+    }
+
+    console.log('[moments] history lines:', lines.length);
+
+    if (lines.length === 0) return '（无有效聊天记录）';
+    return lines.join('\n');
+}
+// ====== Moments History Prompt DEBUG END ======
+
+// ====== Moments Last Chat Gap START ======
+async function getLastChatGapDesc(chatId) {
+    const allMsgs = await new Promise((resolve) => {
+        loadFromDB('messages', (data) => {
+            let list = [];
+            if (data && Array.isArray(data.list)) list = data.list;
+            else if (Array.isArray(data)) list = data;
+            resolve(list);
+        });
+    });
+
+    const filtered = allMsgs
+        .filter(m => m && m.chatId === chatId && !m.isRevoked)
+        .sort((a, b) => (Date.parse(a.time || '') || 0) - (Date.parse(b.time || '') || 0));
+
+    if (filtered.length === 0) return '很久了';
+
+    const last = filtered[filtered.length - 1];
+    const lastTime = Date.parse(last.time || '');
+    if (!lastTime) return '刚刚';
+
+    const diffMs = Date.now() - lastTime;
+    if (diffMs < 60 * 1000) return '刚刚';
+    if (diffMs < 60 * 60 * 1000) return `${Math.floor(diffMs / (60 * 1000))}分钟`;
+    if (diffMs < 24 * 60 * 60 * 1000) return `${Math.floor(diffMs / (60 * 60 * 1000))}小时`;
+    return `${Math.floor(diffMs / (24 * 60 * 60 * 1000))}天`;
+}
+// ====== Moments Last Chat Gap END ======
+
+// ====== Moments Birthday Hint Short START ======
+function getBirthdayHintShort(birthdayStr) {
+    if (!birthdayStr) return '';
+
+    const days = getDaysToBirthday(birthdayStr);
+    if (days === null || days === undefined) return '';
+
+    const b = new Date(birthdayStr);
+    const m = b.getMonth() + 1;
+    const d = b.getDate();
+
+    if (days === 0) return `今天生日（${m}/${d}）`;
+    if (days > 0 && days <= 7) return `生日快到了（还有${days}天）`;
+    // 你原来的 getDaysToBirthday 不会返回负数（它会滚到明年），所以这里不写“刚过去”
+    return '';
+}
+// ====== Moments Birthday Hint Short END ======
+
+
+
+// ====== Moments Prompt Builder (Final) START ======
+function buildMomentPrompt(opts) {
+    const displayName = (opts && opts.displayName) ? String(opts.displayName) : '角色';
+    const personality = (opts && opts.personality) ? String(opts.personality) : '（未提供）';
+    const myPersonality = (opts && opts.myPersonality) ? String(opts.myPersonality) : '（未提供）';
+    const historyText = (opts && opts.historyText) ? String(opts.historyText) : '（无）';
+
+    const timeDesc = opts && opts.timeDesc ? String(opts.timeDesc) : '未知时间';
+    const hhmm = opts && opts.hhmm ? String(opts.hhmm) : '';
+    const weekDesc = opts && opts.weekDesc ? String(opts.weekDesc) : '';
+
+    const cityName = opts && opts.cityName ? String(opts.cityName) : '';
+    const todayWeather = opts && opts.todayWeather ? String(opts.todayWeather) : '';
+    const tomorrowWeather = opts && opts.tomorrowWeather ? String(opts.tomorrowWeather) : '';
+
+    const lastChatGapDesc = opts && opts.lastChatGapDesc ? String(opts.lastChatGapDesc) : '未知';
+    const birthdayHintShort = opts && opts.birthdayHintShort ? String(opts.birthdayHintShort) : '';
+
+    // 环境块（按你要求：没数据就跳过）
+    let envLines = [];
+    envLines.push(`- 时间段：${timeDesc}${hhmm ? `（${hhmm}）` : ''}`);
+    if (weekDesc) envLines.push(`- 星期：${weekDesc}`);
+    if (cityName) envLines.push(`- 你所在：${cityName}`);
+    if (todayWeather) envLines.push(`- 今天天气：${todayWeather}`);
+    if (tomorrowWeather) envLines.push(`- 明天天气：${tomorrowWeather}`);
+
+    let rhythmLines = [];
+    rhythmLines.push(`- 距离上次和“你”聊天：${lastChatGapDesc}`);
+    if (birthdayHintShort) rhythmLines.push(`- 生日提示：${birthdayHintShort}`);
+
+    return `
+你正在扮演：${displayName}。你要发一条朋友圈动态（第一人称），像真实人在生活里随手发的。
+
+【人设】
+${personality}
+
+【我在你眼中】
+${myPersonality}
+
+【此刻环境碎片】
+${envLines.join('\n')}
+
+【节奏感】
+${rhythmLines.join('\n')}
+
+【最近聊天摘录（旧->新）】
+${historyText}
+
+【写作要求（非常重要）】
+1) 先在心里判断你此刻的心境（不需要输出心境标签）。
+2) 只选 1-2 个“细节/情绪线索”暗示最近发生的事：不要复述对话，不要引用长句。
+3) 风格：生活日常为主 + 交际互动（可以直接提“你/你呀/某人(你)”），可小撒娇/小嘴硬/小想念
+4) 允许计划感：可以顺带提一句“明天想…”“等天气好点…”“改天…”。
+5) 字数：10-50 个汉字；允许少量颜文字（如(>_<)、(._.)、(ง •_•)ง），禁止emoji。
+6) 禁止输出图片描述（禁止出现[图片]、image等）。
+7) 避免AI味：不要“总的来说/我认为/我意识到/作为AI”等；不要每次都用“今天/突然/刚刚”开头。
+8) 只输出严格 JSON（不要多余文字）：
+{"content":"..."}
+`.trim();
+}
+// ====== Moments Prompt Builder (Final) END ======
+
+// ====== Moments SubAPI Call DEBUG START ======
+async function callSubApiGenerateMoment(params) {
+    const baseUrl = (params.baseUrl || '').trim();
+    const apiKey = (params.apiKey || '').trim();
+    const model = (params.model || '').trim();
+    const prompt = params.prompt || '';
+
+    if (!baseUrl || !apiKey || !model) return null;
+
+    const url = baseUrl.endsWith('/')
+        ? baseUrl + 'chat/completions'
+        : baseUrl + '/chat/completions';
+
+    const body = {
+        model: model,
+        temperature: 0.8,
+        max_tokens: 2000,
+        messages: [
+            { role: 'system', content: '你是一个会写朋友圈动态的角色扮演助手。' },
+            { role: 'user', content: prompt }
+        ]
+    };
+
+    console.log('[moments] POST', url, { model, hasKey: !!apiKey, promptLen: String(prompt || '').length });
+
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    console.log('[moments] status:', resp.status);
+
+    if (!resp.ok) {
+        const t = await resp.text().catch(() => '');
+        console.error('SubAPI error:', resp.status, t);
+        return null;
+    }
+
+    const data = await resp.json();
+    const raw = data && data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : '';
+
+    console.log('[moments] raw:', raw);
+
+    if (!raw) return null;
+
+    const parsed = safeParseJsonFromText(raw);
+    console.log('[moments] parsed:', parsed);
+
+    if (!parsed || !parsed.content) return null;
+
+    let content = String(parsed.content).trim();
+
+    // 最终保险：去换行、截断到50字（严格执行你要求）
+    content = content.replace(/\s+/g, ' ').trim();
+    if (content.length > 50) content = content.slice(0, 50);
+
+    // 太短丢弃（你要求10-50）
+    if (content.length < 10) {
+        console.log('[moments] content too short:', content);
+        return null;
+    }
+
+    return content;
+}
+// ====== JSON Parse Ultimate Fix START ======
+function safeParseJsonFromText(text) {
+    let s = String(text || '').trim();
+    if (!s) return null;
+
+    // 1. 去掉 Markdown 代码块包裹
+    s = s.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+    // 2. 尝试直接解析
+    try {
+        return JSON.parse(s);
+    } catch (e) {
+        // 3. 提取第一个 {...}
+        const match = s.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (e2) {
+                // 4. 尝试补全截断的 JSON (最常见错误)
+                // 如果结尾缺了 " 或 }，尝试补上
+                let fixed = match[0];
+                if (!fixed.endsWith('}')) {
+                    if (!fixed.endsWith('"')) fixed += '"';
+                    fixed += '}';
+                }
+                try {
+                    return JSON.parse(fixed);
+                } catch (e3) {
+                    console.error('JSON fix failed:', fixed);
+                }
+            }
+        }
+    }
+    return null;
+}
+// ====== JSON Parse Ultimate Fix END ======
+
+//朋友圈-角色同组或者朋友评论//
+
+// ====== 氛围评论入口（用户动态 + 角色动态双模式）START ======
+async function generateAiComments(momentId, btnEl) {
+    const moment = moments.find(m => m.id === momentId);
+    if (!moment) return;
+
+    const originalContent = btnEl.innerHTML;
+    btnEl.innerHTML = `<span class="comment-loading"></span> 生成中...`;
+    btnEl.style.pointerEvents = 'none';
+
+    try {
+        // ====== 分支A：用户动态（顶层评论，每人一条，不楼中楼） ======
+        if (moment.authorId === 'me') {
+            const pool = getVisibleChatPoolForUserMoment(moment);
+            if (!pool || pool.length === 0) {
+                alert('当前可见范围内没有角色，无法生成评论');
+                return;
+            }
+
+            const commentedIds = new Set(
+                (moment.commentsList || [])
+                    .filter(c => c && typeof c.senderId === 'number' && c.senderId > 0)
+                    .map(c => c.senderId)
+            );
+
+            const fresh = pool.filter(id => !commentedIds.has(id));
+            let candidateIds = fresh.length > 0 ? fresh : pool;
+
+            const count = Math.min(candidateIds.length, 1 + Math.floor(Math.random() * 4));
+            candidateIds = candidateIds.sort(() => 0.5 - Math.random()).slice(0, count);
+
+            const scheme = getSubApiScheme();
+            if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
+                alert('请先在朋友圈设置里选择副API方案');
+                return;
+            }
+
+            const commentsArr = await callApiToGenUserMomentComments(moment, candidateIds, scheme);
+            if (!commentsArr || commentsArr.length === 0) {
+                alert('生成失败，AI 未返回有效内容。');
+                return;
+            }
+
+            if (!moment.commentsList) moment.commentsList = [];
+
+            const newItems = commentsArr.map(x => ({
+                id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                senderId: x.roleId,
+                senderName: x.roleName,
+                replyToId: null,
+                replyToName: null,
+                content: sanitizeCommentText(x.content),
+                time: Date.now(),
+                isAiGenerated: true
+            })).filter(c => c.content && c.content.trim().length > 0);
+
+            moment.commentsList.push(...newItems);
+            moment.comments = moment.commentsList.length;
+
+            saveToDB('moments', { list: moments });
+            renderMomentsList();
+            return;
+        }
+
+        // ====== 分支B：角色动态（沿用原有：同组+关系网，可楼中楼，可续聊） ======
+        const threadInfo = extractMomentThreadsForContinuation(moment, 2);
+        const mode = threadInfo.hasThread ? 'continue' : 'new';
+
+        const actors = await selectCommentActors(moment);
+        const commentsData = await callApiToGenComments(moment, actors, {
+            mode,
+            threadContext: threadInfo.contextText,
+            minCount: 3,
+            maxCount: 6
+        });
+
+        if (!commentsData || !Array.isArray(commentsData) || commentsData.length === 0) {
+            alert('生成失败，AI 未返回有效内容。');
+            return;
+        }
+
+        if (!moment.commentsList) moment.commentsList = [];
+
+        const newComments = commentsData.map(item => {
+            const roleId = typeof item.roleId === 'number' ? item.roleId : -9999;
+            const roleName = String(item.roleName || '未知');
+            const replyToName = item.replyToName ? String(item.replyToName) : null;
+
+            return {
+                id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+                senderId: roleId,
+                senderName: roleName,
+                replyToId: null,
+                replyToName: replyToName,
+                content: sanitizeCommentText(item.content),
+                time: Date.now(),
+                isAiGenerated: true
+            };
+        }).filter(c => c.content && c.content.trim().length > 0);
+
+        moment.commentsList.push(...newComments);
+        moment.comments = moment.commentsList.length;
+
+        saveToDB('moments', { list: moments });
+        renderMomentsList();
+
+    } catch (e) {
+        console.error('generateAiComments error:', e);
+        alert('生成出错：' + (e && e.message ? e.message : '未知错误'));
+    } finally {
+        btnEl.innerHTML = originalContent;
+        btnEl.style.pointerEvents = 'auto';
+    }
+}
+// ====== 氛围评论入口（用户动态 + 角色动态双模式）END ======
+
+
+// ====== 氛围评论选人（同组+关系网+路人补齐）START ======
+async function selectCommentActors(moment) {
+    const authorId = moment.authorId;
+    if (authorId === 'me') return [];
+
+    // 1) 读取作者所在分组的同组真实角色
+    const groups = await new Promise(resolve => loadChatGroups(resolve));
+    const authorGroups = (groups || []).filter(g => Array.isArray(g.memberChatIds) && g.memberChatIds.includes(authorId));
+
+    const sameGroupIds = new Set();
+    authorGroups.forEach(g => {
+        g.memberChatIds.forEach(id => {
+            if (id !== authorId) sameGroupIds.add(id);
+        });
+    });
+
+    const allSingles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    const sameGroupChats = allSingles.filter(c => sameGroupIds.has(c.id));
+
+    // 2) 读取作者关系网文本
+    const charInfoAll = await loadCharacterInfoAllSafe();
+    const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
+    const relationshipText = authorInfo.relationshipText || '';
+
+    // 3) 从关系网中提取虚拟人物（@名字）
+    const virtualNames = extractVirtualPeopleFromRelationshipText(relationshipText);
+
+    // 4) 构建候选池：同组真实角色 + 虚拟人物（去重）
+    // 中文注释：同组角色按 chatId 唯一；虚拟人物按 name 唯一
+    const pool = [];
+
+    sameGroupChats.forEach(c => {
+        pool.push({
+            type: 'chat',
+            id: c.id,
+            name: c.name
+        });
+    });
+
+    virtualNames.forEach((vn, idx) => {
+        pool.push({
+            type: 'virtual',
+            id: -1000 - idx, // 虚拟人物用负数 id
+            name: vn
+        });
+    });
+
+    // 5) 随机抽 3-4 人（如果池子太小则尽量抽）
+    const targetCount = 3 + Math.floor(Math.random() * 2); // 3或4
+    const shuffled = pool.sort(() => 0.5 - Math.random());
+    let picked = shuffled.slice(0, Math.min(targetCount, shuffled.length));
+
+    // 6) 不足则补路人甲/乙（路人也用负数 id）
+    let passerIdx = 0;
+    while (picked.length < targetCount) {
+        const name = passerIdx === 0 ? '路人甲' : (passerIdx === 1 ? '路人乙' : `路人${passerIdx + 1}`);
+        picked.push({
+            type: 'passerby',
+            id: -2000 - passerIdx,
+            name
+        });
+        passerIdx++;
+    }
+
+    return picked;
+}
+// ====== 氛围评论选人（同组+关系网+路人补齐）END ======
+
+
+// ====== Moments API Call (New+Continue Prompt) START ======
+async function callApiToGenComments(moment, actors, options) {
+    const scheme = getSubApiScheme();
+    if (!scheme) {
+        alert('请先设置副 API 方案');
+        return null;
+    }
+    if (!scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
+        alert('副API方案配置不完整');
+        return null;
+    }
+
+    const mode = options && options.mode ? options.mode : 'new'; // 'new' | 'continue'
+    const threadContext = options && options.threadContext ? String(options.threadContext) : '';
+    const minCount = options && options.minCount ? options.minCount : 3;
+    const maxCount = options && options.maxCount ? options.maxCount : 6;
+
+    const charInfoAll = await loadCharacterInfoAllSafe();
+    const authorId = moment.authorId;
+    const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
+    const authorPersonality = authorInfo.personality || '';
+    const relationshipText = authorInfo.relationshipText || '';
+
+    // 参与者卡片
+    const actorCards = actors.map(a => {
+        const name = a.name;
+        let profile = '';
+        let source = '';
+
+        if (a.type === 'chat') {
+            const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
+            profile = info.personality || '';
+            source = `同组真实角色(chatId=${a.id})`;
+        } else if (a.type === 'virtual') {
+            const sn1 = extractSnippetsForName(relationshipText, '@' + name);
+            const sn2 = extractSnippetsForName(relationshipText, name);
+            profile = (sn1 || sn2 || '').trim();
+            source = '关系网虚拟人物(@标注)';
+        } else {
+            profile = '路过的朋友，爱凑热闹，口吻随意。';
+            source = '随机路人';
+        }
+
+        if (!profile) profile = '性格信息不详，说话简短自然。';
+
+        return `- ${name} (roleId=${a.id}, 来源=${source})：${profile}`;
+    }).join('\n');
+
+    // 中文注释：新生成 vs 续聊 的不同任务描述
+    const taskBlockNew = `
+【任务要求】
+1. 请生成 ${minCount}-${maxCount} 条评论互动。
+2. 每条评论口语化、短句为主，像真实朋友圈；允许少量颜文字(>_<)(._.)。
+3. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
+4. 必须体现“关系”：
+   - 如果作者关系网里提到某人（或@某人），语气更贴合（亲密/互怼/客气/暧昧等）。
+   - 如果没有明确关系线索，就按普通朋友互动。
+5. 必须有楼中楼：至少出现 2 条 “A 回复 B”（replyToName 不为 null）。
+6. 不要输出长段对话，不要引用聊天记录原文。
+`.trim();
+
+    const taskBlockContinue = `
+【任务要求（续聊模式）】
+1. 这是“第二次生成评论”，请在已有评论基础上继续聊下去，而不是重开新话题。
+2. 你会看到已有的楼中楼对话片段，请务必承接最后一句的内容继续往下聊。
+3. 请生成 ${minCount}-${maxCount} 条“续聊评论”，优先使用同一批参与者，保持说话风格一致。
+4. 续聊必须包含楼中楼（replyToName 不为 null），且话题必须延续，不要突然换到别的话题。
+5. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
+`.trim();
+
+    const prompt = `
+你是一名“朋友圈评论区编剧”。你要模拟一个真实朋友圈的评论互动。
+
+【动态作者】
+作者名：${moment.authorName}
+作者人设：
+${authorPersonality || '（未提供）'}
+
+【作者关系网文本（仅作为关系线索）】
+${relationshipText ? relationshipText : '（未提供）'}
+
+【动态内容】
+${moment.content}
+
+【参与评论的人（必须严格按各自人设说话）】
+${actorCards}
+
+${mode === 'continue' ? `
+【已有楼中楼对话片段（请接着聊，不要换话题）】
+${threadContext || '（无）'}
+
+${taskBlockContinue}
+` : taskBlockNew}
+
+【输出格式】
+只输出严格 JSON 数组（必须使用英文双引号 " ，禁止中文引号 “ ”），数组必须完整闭合，以 ] 结束。
+每个元素格式如下：
+{"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
+
+【可用 roleId / roleName 对照】
+${actors.map(a => `${a.name}=${a.id}`).join(', ')}
+作者 ${moment.authorName}=${moment.authorId}
+`.trim();
+
+    const raw = await callSubApiGenerateCommentsOnly({
+        baseUrl: scheme.baseUrl,
+        apiKey: scheme.apiKey,
+        model: scheme.defaultModel,
+        prompt: prompt
+    });
+
+    if (!raw) return null;
+
+    const arr = parseJsonArrayFromText(raw);
+    if (!Array.isArray(arr)) return null;
+
+    const normalized = arr.map(x => ({
+        roleId: typeof x.roleId === 'number' ? x.roleId : -9999,
+        roleName: String(x.roleName || '未知'),
+        content: sanitizeCommentText(String(x.content || '')),
+        replyToName: x.replyToName === null || x.replyToName === undefined ? null : String(x.replyToName)
+    })).filter(x => x.content && x.content.trim().length > 0);
+
+    return normalized;
+}
+// ====== Moments API Call (New+Continue Prompt) END ======
+
+
+
+// ====== Moments SubAPI Call (For Comments Only) START ======
+async function callSubApiGenerateCommentsOnly(params) {
+    const baseUrl = (params.baseUrl || '').trim();
+    const apiKey = (params.apiKey || '').trim();
+    const model = (params.model || '').trim();
+    const prompt = params.prompt || '';
+
+    if (!baseUrl || !apiKey || !model) {
+        console.error('[CommentsAPI] 参数缺失', { baseUrl, hasKey: !!apiKey, model });
+        return null;
+    }
+
+    const url = baseUrl.endsWith('/')
+        ? baseUrl + 'chat/completions'
+        : baseUrl + '/chat/completions';
+
+    const body = {
+        model: model,
+        temperature: 0.8,
+        max_tokens: 10000,
+        messages: [
+            { role: 'system', content: '你是一个朋友圈评论生成器。' },
+            { role: 'user', content: prompt }
+        ]
+    };
+
+    console.log('[CommentsAPI] POST', url);
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+            console.error('[CommentsAPI] Error:', resp.status, await resp.text());
+            return null;
+        }
+
+        const data = await resp.json();
+        const raw = data && data.choices && data.choices[0] && data.choices[0].message
+            ? data.choices[0].message.content
+            : '';
+
+        console.log('[CommentsAPI] raw:', raw);
+
+        if (!raw) return null;
+
+        // 尝试解析，如果是数组就返回 raw 字符串（让外层去 parse），或者直接返回 raw
+        // 为了保险，我们这里只负责返回 raw 文本，解析交给外层 callApiToGenComments
+        return raw; 
+
+    } catch (e) {
+        console.error('[CommentsAPI] Fetch Error:', e);
+        return null;
+    }
+}
+// ====== Moments SubAPI Call (For Comments Only) END ======
+
+// ====== Comments JSON Array Parser (Sanitize+Repair) START ======
+function parseJsonArrayFromText(text) {
+    let s = String(text || '').trim();
+    if (!s) return null;
+
+    // 1) 提取 ```json ... ``` 或 ``` ... ``` 内容
+    const codeBlock = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlock && codeBlock[1]) {
+        s = codeBlock[1].trim();
+    }
+
+    // 2) 清洗中文符号为 JSON 半角
+    s = s.replace(/[“”]/g, '"');
+    s = s.replace(/：/g, ':');
+    s = s.replace(/，/g, ',');
+    s = s.replace(/、/g, ',');
+    s = s.replace(/,\s*}/g, '}');
+    s = s.replace(/,\s*]/g, ']');
+
+    // 3) 尝试提取从第一个 [ 开始的部分（允许没闭合）
+    const startIdx = s.indexOf('[');
+    if (startIdx >= 0) {
+        s = s.slice(startIdx);
+    }
+
+    // 4) 兜底修复：补全缺失的 } 和 ]
+    // 统计括号数量，缺多少补多少
+    const openCurly = (s.match(/{/g) || []).length;
+    const closeCurly = (s.match(/}/g) || []).length;
+    if (closeCurly < openCurly) {
+        s += '}'.repeat(openCurly - closeCurly);
+    }
+
+    const openSquare = (s.match(/\[/g) || []).length;
+    const closeSquare = (s.match(/]/g) || []).length;
+    if (closeSquare < openSquare) {
+        s += ']'.repeat(openSquare - closeSquare);
+    }
+
+    // 5) 最终 parse
+    try {
+        const v = JSON.parse(s);
+        return Array.isArray(v) ? v : null;
+    } catch (e) {
+        console.error('[Comments] array parse failed:', s);
+        return null;
+    }
+}
+// ====== Comments JSON Array Parser (Sanitize+Repair) END ======
+
+// ====== Comment Text Sanitize START ======
+function sanitizeCommentText(text) {
+    let s = String(text || '');
+
+    // 去掉 [坏笑] [doge] 这类方括号表情
+    s = s.replace(/\[[^\]]{1,8}\]/g, '');
+
+    // 去掉多余空格
+    s = s.replace(/\s+/g, ' ').trim();
+
+    return s;
+}
+// ====== Comment Text Sanitize END ======
+
+// ====== 关系网弹窗逻辑 START ======
+function openRelationshipModal() {
+    if (!currentChatId) {
+        alert('请先打开角色信息页');
+        return;
+    }
+
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        document.getElementById('relationshipTextInput').value = charData.relationshipText || '';
+        document.getElementById('relationshipModal').style.display = 'flex';
+    });
+}
+
+function closeRelationshipModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('relationshipModal').style.display = 'none';
+}
+
+function saveRelationshipText() {
+    if (!currentChatId) return;
+
+    const text = document.getElementById('relationshipTextInput').value || '';
+
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+
+        // 中文注释：relationshipText 是纯文本关系网；@名字 只在关系网中代表虚拟人物
+        charData.relationshipText = text;
+
+        allCharData[currentChatId] = charData;
+        saveToDB('characterInfo', allCharData);
+
+        closeRelationshipModal();
+        alert('关系网已保存');
+    });
+}
+// ====== 关系网弹窗逻辑 END ======
+
+// ====== 关系网解析工具 START ======
+// 中文注释：提取 @名字（虚拟人物，仅存在关系网中）
+function extractVirtualPeopleFromRelationshipText(text) {
+    const s = String(text || '');
+    const set = new Set();
+    const re = /@([^\s：:，,。;；\n]{1,12})/g;
+    let m;
+    while ((m = re.exec(s)) !== null) {
+        if (m[1]) set.add(m[1]);
+    }
+    return Array.from(set);
+}
+
+// 中文注释：提取包含某个名字的句子/片段，作为该人物的人设/关系线索
+function extractSnippetsForName(text, name) {
+    const s = String(text || '');
+    const n = String(name || '').trim();
+    if (!s || !n) return '';
+
+    const lines = s.split(/\n+/).map(x => x.trim()).filter(Boolean);
+    const hit = lines.filter(line => line.includes(n));
+    // 最多取3行，避免太长
+    return hit.slice(0, 3).join('；');
+}
+// ====== 关系网解析工具 END ======
+
+// ====== 续聊：线程抽取工具 START ======
+// 中文注释：从已有 commentsList 中抽取最近的楼中楼线程，用于“第二次生成”续写
+function extractMomentThreadsForContinuation(moment, maxThreads) {
+    const list = moment && Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    const m = Math.max(1, maxThreads || 2);
+
+    // 只取楼中楼（replyToName 不为空）
+    const replies = list.filter(c => c && c.replyToName);
+
+    if (replies.length === 0) {
+        return { hasThread: false, contextText: '' };
+    }
+
+    // 取最近的 m 条楼中楼作为“线程种子”
+    const seeds = replies.slice(Math.max(0, replies.length - m));
+
+    // 组装上下文：把种子以及它前面一条（如果存在且相关）也带上，增强连贯性
+    const lines = [];
+    seeds.forEach(seed => {
+        const idx = list.findIndex(x => x && x.id === seed.id);
+        // 带上 seed 前一条，增加话题来源（可能是 A:xxx，然后作者回复）
+        if (idx > 0) {
+            const prev = list[idx - 1];
+            if (prev) {
+                const prevLine = prev.replyToName
+                    ? `${prev.senderName} 回复 ${prev.replyToName}：${prev.content}`
+                    : `${prev.senderName}：${prev.content}`;
+                lines.push(prevLine);
+            }
+        }
+        const seedLine = `${seed.senderName} 回复 ${seed.replyToName}：${seed.content}`;
+        lines.push(seedLine);
+    });
+
+    // 去重相邻重复行
+    const compact = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (i === 0 || lines[i] !== lines[i - 1]) compact.push(lines[i]);
+    }
+
+    return {
+        hasThread: true,
+        contextText: compact.join('\n')
+    };
+}
+// ====== 续聊：线程抽取工具 END ======
+
+// ====== 用户评论输入栏控制（可收起）START ======
+function openCommentInput(momentId, replyToName, btnEl) {
+    const bar = document.getElementById('commentInputBar');
+    const input = document.getElementById('commentInput');
+    if (!bar || !input) return;
+
+    const isVisible = bar.style.display === 'flex';
+
+    // 中文注释：如果输入栏已打开，并且再次点击的是同一条动态的“评论”，则收起输入栏
+    if (isVisible && currentCommentMomentId === momentId && !replyToName) {
+        closeCommentInputBar();
+        return;
+    }
+
+    // 正常打开/切换到新的动态或进入回复模式
+    currentCommentMomentId = momentId;
+    currentCommentReplyToName = replyToName || null;
+
+    // 记录按钮引用（可选）
+    currentCommentBtnEl = btnEl || null;
+
+    bar.style.display = 'flex';
+    input.value = '';
+    input.placeholder = currentCommentReplyToName ? `回复 ${currentCommentReplyToName}...` : '评论...';
+
+    setTimeout(() => input.focus(), 50);
+}
+// ====== 用户评论输入栏控制（可收起）END ======
+
+
+
+function closeCommentInputBar() {
+    const bar = document.getElementById('commentInputBar');
+    const input = document.getElementById('commentInput');
+    if (bar) bar.style.display = 'none';
+    if (input) input.blur();
+
+    currentCommentMomentId = null;
+    currentCommentReplyToName = null;
+}
+// ====== 用户评论输入栏控制 END ======
+
+// ====== 评论点击回复 START ======
+function replyToComment(momentId, commentId, senderName) {
+    // 中文注释：点击某条评论 -> 回复该评论的发送者
+     openCommentInput(momentId, senderName, null);
+}
+// ====== 评论点击回复 END ======
+
+// ====== 用户发送评论 START ======
+async function sendUserComment() {
+    const input = document.getElementById('commentInput');
+    if (!input) return;
+
+    const text = String(input.value || '').trim();
+    if (!text) return;
+
+    if (!currentCommentMomentId) return;
+
+    const moment = moments.find(m => m.id === currentCommentMomentId);
+    if (!moment) return;
+
+    // 中文注释：用户昵称来自朋友圈资料
+    const userName = (momentsProfile && momentsProfile.name) ? momentsProfile.name : '我';
+
+    // 1) 写入用户评论
+    if (!moment.commentsList) moment.commentsList = [];
+
+    const userComment = {
+        id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+        senderId: 'me',
+        senderName: userName,
+        replyToId: null,
+        replyToName: currentCommentReplyToName, // null=评论动态；非null=回复某人
+        content: sanitizeCommentText(text),
+        time: Date.now(),
+        isAiGenerated: false
+    };
+
+    moment.commentsList.push(userComment);
+    moment.comments = moment.commentsList.length;
+
+    saveToDB('moments', { list: moments });
+    renderMomentsList();
+
+    // 2) 关闭输入栏
+    closeCommentInputBar();
+
+    // 3) 自动触发作者回复（用副API方案）
+    // ====== 评论按钮变“生成中”START ======
+setCommentBtnLoadingByMomentId(moment.id, true);
+await autoReplyToUserComment(moment, userComment);
+setCommentBtnLoadingByMomentId(moment.id, false);
+
+// ====== 评论按钮变“生成中”END ======
+
+}
+// ====== 用户发送评论 END ======
+
+// ====== 作者自动回复用户评论 START ======
+async function autoReplyToUserComment(moment, userComment) {
+    // 中文注释：只对“有真实作者”的动态自动回复（作者必须是聊天列表角色）
+    const authorId = moment.authorId;
+    if (authorId === 'me') return;
+
+    const scheme = getSubApiScheme();
+    if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
+        console.warn('[comment-reply] 副API方案未配置，跳过自动回复');
+        return;
+    }
+
+    const charInfoAll = await loadCharacterInfoAllSafe();
+    const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
+    const authorPersonality = authorInfo.personality || '';
+    const relationshipText = authorInfo.relationshipText || '';
+
+    // 中文注释：取该动态最近12条评论作为上下文（越近越像真实聊天）
+    const threadContext = buildCommentThreadContext(moment, 12);
+
+    const prompt = buildUserCommentReplyPrompt({
+        authorName: moment.authorName,
+        authorId: authorId,
+        authorPersonality,
+        relationshipText,
+        momentContent: moment.content,
+        threadContext,
+        userName: userComment.senderName,
+        userText: userComment.content,
+        replyToName: userComment.replyToName
+    });
+
+    const raw = await callSubApiGenerateCommentsOnly({
+        baseUrl: scheme.baseUrl,
+        apiKey: scheme.apiKey,
+        model: scheme.defaultModel,
+        prompt
+    });
+
+    if (!raw) return;
+
+    // 解析为 {"content":"..."}（这里用一个专用解析，避免被评论数组解析影响）
+    const replyText = parseJsonObjectContentFromText(raw);
+    if (!replyText) return;
+
+    const clean = sanitizeCommentText(replyText);
+    if (!clean) return;
+
+    // 写入作者回复
+    if (!moment.commentsList) moment.commentsList = [];
+
+    const reply = {
+        id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+        senderId: authorId,
+        senderName: moment.authorName,
+        replyToId: userComment.id,
+        replyToName: userComment.senderName,
+        content: clean,
+        time: Date.now(),
+        isAiGenerated: true
+    };
+
+    moment.commentsList.push(reply);
+    moment.comments = moment.commentsList.length;
+
+    saveToDB('moments', { list: moments });
+    renderMomentsList();
+}
+// ====== 作者自动回复用户评论 END ======
+
+// ====== 评论线程上下文构建 START ======
+function buildCommentThreadContext(moment, limit) {
+    const list = moment && Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    const max = Number.isFinite(limit) && limit > 0 ? limit : 12;
+    const tail = list.slice(Math.max(0, list.length - max));
+
+    const lines = tail.map(c => {
+        if (!c) return '';
+        const who = c.senderName || '未知';
+        const content = c.content || '';
+        if (c.replyToName) {
+            return `${who} 回复 ${c.replyToName}：${content}`;
+        }
+        return `${who}：${content}`;
+    }).filter(Boolean);
+
+    return lines.join('\n');
+}
+// ====== 评论线程上下文构建 END ======
+
+// ====== 用户评论回复提示词 START ======
+function buildUserCommentReplyPrompt(opts) {
+    const authorName = opts.authorName || '作者';
+    const authorPersonality = opts.authorPersonality || '（未提供）';
+    const relationshipText = opts.relationshipText || '';
+    const momentContent = opts.momentContent || '';
+    const threadContext = opts.threadContext || '';
+    const userName = opts.userName || '我';
+    const userText = opts.userText || '';
+    const replyToName = opts.replyToName || null;
+
+    return `
+你正在扮演：${authorName}。你是这条朋友圈动态的作者，现在有人在评论区和你互动。
+
+【作者人设】
+${authorPersonality}
+
+【作者关系网文本（可用作关系线索）】
+${relationshipText ? relationshipText : '（无）'}
+
+【动态内容】
+${momentContent}
+
+【当前评论区上下文（从旧到新）】
+${threadContext || '（无）'}
+
+【用户本次发言】
+${replyToName ? `用户在回复 ${replyToName}：${userText}` : `用户评论你：${userText}`}
+
+【要求】
+1) 你必须以第一人称、符合人设的口吻回复 ${userName}，语气自然真实。
+2) 回复要承接上下文，别突然换话题。
+3) 纯文本回复：禁止使用任何方括号表情（如[doge][坏笑][表情]）。
+4) 可以少量颜文字(>_<)(._.)，不要太多。
+5) 字数 8-40 个汉字。
+6) 只输出严格 JSON（必须使用英文双引号 " ，禁止中文引号 “ ”）：
+{"content":"你的回复"}
+`.trim();
+}
+// ====== 用户评论回复提示词 END ======
+
+// ====== 回复JSON解析 START ======
+function parseJsonObjectContentFromText(text) {
+    let s = String(text || '').trim();
+    if (!s) return null;
+
+    // 提取代码块
+    const codeBlock = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlock && codeBlock[1]) {
+        s = codeBlock[1].trim();
+    }
+
+    // 清洗中文符号
+    s = s.replace(/[“”]/g, '"');
+    s = s.replace(/：/g, ':');
+    s = s.replace(/，/g, ',');
+    s = s.replace(/,\s*}/g, '}');
+
+    // 提取 {...}
+    const objMatch = s.match(/\{[\s\S]*\}/);
+    if (objMatch) s = objMatch[0];
+
+    // 补全 }
+    const openCurly = (s.match(/{/g) || []).length;
+    const closeCurly = (s.match(/}/g) || []).length;
+    if (closeCurly < openCurly) s += '}'.repeat(openCurly - closeCurly);
+
+    try {
+        const v = JSON.parse(s);
+        if (!v || !v.content) return null;
+        return String(v.content).trim();
+    } catch (e) {
+        console.error('[reply] parse failed:', s);
+        return null;
+    }
+}
+// ====== 回复JSON解析 END ======
+
+// ====== 评论按钮加载态（按动态ID定位）START ======
+function setCommentBtnLoadingByMomentId(momentId, isLoading) {
+    const el = document.getElementById(`commentBtn-${momentId}`);
+    if (!el) return;
+
+    if (isLoading) {
+        if (!el.dataset.originHtml) el.dataset.originHtml = el.innerHTML;
+        el.innerHTML = `<span class="comment-loading"></span><span style="font-size:12px; margin-left:4px;">生成中</span>`;
+        el.style.pointerEvents = 'none';
+    } else {
+        if (el.dataset.originHtml) el.innerHTML = el.dataset.originHtml;
+        el.style.pointerEvents = 'auto';
+        delete el.dataset.originHtml;
+    }
+}
+// ====== 评论按钮加载态（按动态ID定位）END ======
+
+// ====== 用户动态可见性状态 START ======
+// 中文注释：用户发布动态时选择“公开/分组可见”
+let draftMomentVisibility = { mode: 'public', groupId: null };
+// ====== 用户动态可见性状态 END ======
+
+/* ====== 可见性弹窗控制 START ====== */
+function openMomentVisibilityModal() {
+    // 打开前先加载分组列表
+    loadChatGroups(() => {
+        fillMomentVisibilityGroupSelect();
+        renderMomentVisibilityUI();
+        document.getElementById('momentVisibilityModal').style.display = 'flex';
+    });
+}
+
+function closeMomentVisibilityModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('momentVisibilityModal').style.display = 'none';
+}
+
+function fillMomentVisibilityGroupSelect() {
+    const sel = document.getElementById('momentVisibilityGroupSelect');
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">请选择分组...</option>';
+    (chatGroups || []).forEach(g => {
+        sel.innerHTML += `<option value="${g.id}">${escapeHtml(g.name)}</option>`;
+    });
+
+    sel.value = draftMomentVisibility.groupId ? String(draftMomentVisibility.groupId) : '';
+}
+
+function renderMomentVisibilityUI() {
+    // radio 回显
+    const radios = document.querySelectorAll('input[name="momentVisibilityMode"]');
+    radios.forEach(r => r.checked = (r.value === draftMomentVisibility.mode));
+
+    const panel = document.getElementById('momentVisibilityGroupPanel');
+    if (panel) panel.style.display = (draftMomentVisibility.mode === 'group') ? 'block' : 'none';
+
+    // 发布弹窗里的显示
+    const label = document.getElementById('momentVisibilityValue');
+    if (label) {
+        if (draftMomentVisibility.mode === 'public') {
+            label.textContent = '公开';
+        } else {
+            const g = (chatGroups || []).find(x => x.id === draftMomentVisibility.groupId);
+            label.textContent = g ? `分组：${g.name}` : '分组';
+        }
+    }
+}
+
+function handleMomentVisibilityModeChange() {
+    const checked = document.querySelector('input[name="momentVisibilityMode"]:checked');
+    if (!checked) return;
+
+    draftMomentVisibility.mode = checked.value;
+    if (draftMomentVisibility.mode === 'public') {
+        draftMomentVisibility.groupId = null;
+    }
+    renderMomentVisibilityUI();
+}
+
+function handleMomentVisibilityChange() {
+    const sel = document.getElementById('momentVisibilityGroupSelect');
+    draftMomentVisibility.groupId = sel && sel.value ? parseInt(sel.value, 10) : null;
+    renderMomentVisibilityUI();
+}
+/* ====== 可见性弹窗控制 END ====== */
+
+// ====== 用户动态可见池计算 START ======
+function getVisibleChatPoolForUserMoment(moment) {
+    const allSingles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    const allIds = allSingles.map(c => c.id);
+
+    const v = moment && moment.visibility ? moment.visibility : null;
+    const mode = v && v.mode ? v.mode : 'public';
+
+    if (mode === 'public') return allIds;
+
+    if (mode === 'group') {
+        const groupId = v.groupId;
+        const g = (chatGroups || []).find(x => x.id === groupId);
+        if (!g || !Array.isArray(g.memberChatIds)) return [];
+        // 只允许单聊角色 id
+        return g.memberChatIds.filter(id => allIds.includes(id));
+    }
+
+    return allIds;
+}
+// ====== 用户动态可见池计算 END ======
+
+// ====== 用户动态评论生成 Prompt+API START ======
+async function callApiToGenUserMomentComments(moment, chatIdList, scheme) {
+    const charInfoAll = await loadCharacterInfoAllSafe();
+
+    // 参与者人设卡片（只是真实角色）
+    const cards = chatIdList.map(id => {
+        const chat = (chats || []).find(c => c.id === id);
+        const name = chat ? chat.name : `角色${id}`;
+        const info = charInfoAll && charInfoAll[id] ? charInfoAll[id] : {};
+        const p = info.personality || '性格信息不详，说话简短自然。';
+        return `- ${name} (roleId=${id})：${p}`;
+    }).join('\n');
+
+    const userName = momentsProfile && momentsProfile.name ? momentsProfile.name : '我';
+
+    const prompt = `
+你是“朋友圈评论生成器”。现在用户发布了一条动态，请让以下角色各自评论一句。
+
+【动态作者（用户）】
+${userName}
+
+【动态内容】
+${moment.content}
+
+【可评论的角色（每人必须严格按自己人设说话）】
+${cards}
+
+【任务要求】
+1) 只生成顶层评论：每条 replyToName 必须为 null。
+2) 每个角色最多输出 1 条评论（不要重复角色）。
+3) 评论要口语化、短句为主，像真实朋友圈，允许少量颜文字(>_<)(._.)。
+4) 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
+5) 输出条数必须等于角色数量（roleIdList 有几个就输出几条）。
+
+【输出格式】
+只输出严格 JSON 数组（必须使用英文双引号 " ，禁止中文引号 “ ”），数组必须完整闭合，以 ] 结束。
+每个元素格式：
+{"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
+
+【可用 roleId/name 对照】
+${chatIdList.map(id => {
+        const chat = (chats || []).find(c => c.id === id);
+        return `${chat ? chat.name : ('角色' + id)}=${id}`;
+    }).join(', ')}
+`.trim();
+
+    const raw = await callSubApiGenerateCommentsOnly({
+        baseUrl: scheme.baseUrl,
+        apiKey: scheme.apiKey,
+        model: scheme.defaultModel,
+        prompt
+    });
+    if (!raw) return null;
+
+    const arr = parseJsonArrayFromText(raw);
+    if (!Array.isArray(arr)) return null;
+
+    // 规范化并做一次“每人一条”去重（双保险）
+    const seen = new Set();
+    const normalized = arr.map(x => ({
+        roleId: typeof x.roleId === 'number' ? x.roleId : -9999,
+        roleName: String(x.roleName || '未知'),
+        content: sanitizeCommentText(String(x.content || '')),
+        replyToName: null
+    })).filter(x => x.roleId > 0 && !seen.has(x.roleId) && x.content);
+
+    normalized.forEach(x => seen.add(x.roleId));
+
+    return normalized;
+}
+// ====== 用户动态评论生成 Prompt+API END ======
+
+// ====== 用户动态可见性标签渲染 START ======
+function renderMomentVisibilityTag(m) {
+    // 中文注释：只展示用户动态的可见范围；老动态没有 visibility 默认公开
+    if (!m || m.authorId !== 'me') return '';
+
+    const v = m.visibility || { mode: 'public', groupId: null };
+    if (!v || v.mode === 'public') {
+        return `<div style="margin-top: 6px; font-size: 12px; color: #999;">公开 · 全员可见</div>`;
+    }
+
+    if (v.mode === 'group') {
+        const g = (chatGroups || []).find(x => x.id === v.groupId);
+        const name = g ? g.name : '未命名分组';
+        return `<div style="margin-top: 6px; font-size: 12px; color: #999;">分组可见 · ${escapeHtml(name)}</div>`;
+    }
+
+    return '';
+}
+// ====== 用户动态可见性标签渲染 END ======
+
+// ====== 动态转发模块 START ======
+let currentForwardMomentId = null;
+let forwardSelectedChatIds = [];
+
+// 打开转发弹窗
+function openMomentForwardModal(momentId) {
+    currentForwardMomentId = momentId;
+    forwardSelectedChatIds = [];
+
+    renderMomentForwardList();
+    updateForwardSelectedCount();
+
+    document.getElementById('momentForwardModal').style.display = 'flex';
+}
+
+// 关闭转发弹窗
+function closeMomentForwardModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('momentForwardModal').style.display = 'none';
+    currentForwardMomentId = null;
+    forwardSelectedChatIds = [];
+}
+
+// 渲染可选角色列表（只显示单聊）
+function renderMomentForwardList() {
+    const container = document.getElementById('momentForwardList');
+    if (!container) return;
+
+    const singles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+    if (singles.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color:#999; padding: 20px 0;">暂无单聊角色可转发</div>`;
+        return;
+    }
+
+    container.innerHTML = singles.map(chat => {
+        const checked = forwardSelectedChatIds.includes(chat.id);
+
+        const avatarHtml = chat.avatarImage
+            ? `<img src="${chat.avatarImage}" alt="">`
+            : (chat.avatar || '👤');
+
+        // 中文注释：这里的点击既支持点整行，也支持点复选框
+        return `
+            <div class="forward-item" onclick="toggleForwardTarget(${chat.id})">
+                <input class="forward-check" type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleForwardTarget(${chat.id})">
+                <div class="forward-avatar">${avatarHtml}</div>
+                <div class="forward-name">${escapeHtml(chat.name)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleForwardTarget(chatId) {
+    const idx = forwardSelectedChatIds.indexOf(chatId);
+    if (idx >= 0) {
+        forwardSelectedChatIds.splice(idx, 1);
+    } else {
+        forwardSelectedChatIds.push(chatId);
+    }
+    updateForwardSelectedCount();
+    renderMomentForwardList();
+}
+
+function updateForwardSelectedCount() {
+    const el = document.getElementById('forwardSelectedCount');
+    if (el) el.textContent = String(forwardSelectedChatIds.length);
+}
+
+// 组装转发内容（用于写入聊天消息 & 用于AI读取）
+function buildMomentForwardPayload(moment) {
+    // 中文注释：评论区预览最多取前8条，避免太长
+    const comments = Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    const preview = comments.slice(0, 8).map(c => {
+        if (!c) return '';
+        const who = c.senderName || '未知';
+        if (c.replyToName) {
+            return `${who} 回复 ${c.replyToName}：${c.content}`;
+        }
+        return `${who}：${c.content}`;
+    }).filter(Boolean).join('\n');
+
+    const v = moment.visibility || { mode: 'public', groupId: null };
+    const visibilityText = v.mode === 'group'
+        ? `分组可见(${v.groupId || ''})`
+        : '公开';
+
+    return {
+        momentId: moment.id,
+        authorName: moment.authorName,
+        authorId: moment.authorId,
+        content: moment.content || '',
+        images: Array.isArray(moment.images) ? moment.images.slice(0, 3) : [],
+        timestamp: moment.timestamp || Date.now(),
+        visibility: v,
+        visibilityText,
+        commentsPreview: preview
+    };
+}
+
+// ====== 确认转发（仅系统提示 + 隐藏上下文）START ======
+function confirmMomentForward() {
+    if (!currentForwardMomentId) return;
+
+    if (!forwardSelectedChatIds || forwardSelectedChatIds.length === 0) {
+        alert('请选择要转发的角色');
+        return;
+    }
+
+    const moment = moments.find(m => m.id === currentForwardMomentId);
+    if (!moment) {
+        alert('找不到该动态');
+        return;
+    }
+
+    const payload = buildMomentForwardPayload(moment);
+
+    loadFromDB('messages', (data) => {
+        let all = [];
+        if (data && Array.isArray(data.list)) all = data.list;
+        else if (Array.isArray(data)) all = data;
+
+        // 中文注释：对每个选中的单聊，写入两条消息：
+        // 1) system：用户可见
+        // 2) moment_forward_hidden：用户不可见，但AI上下文可读
+        forwardSelectedChatIds.forEach((chatId) => {
+            const now = getCurrentTime();
+
+            // 系统提示（可见）
+            all.push({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                chatId: chatId,
+                type: 'system',
+                content: '你已转发一条朋友圈动态',
+                senderId: 'system',
+                time: now,
+                isRevoked: false
+            });
+
+            // 隐藏上下文（不可见）
+            all.push({
+                id: Date.now() + Math.floor(Math.random() * 1000) + 1,
+                chatId: chatId,
+                type: 'moment_forward_hidden',
+                content: '[隐藏转发上下文]',
+                senderId: 'me',
+                time: now,
+                isRevoked: false,
+                forwardData: payload
+            });
+
+            // 更新聊天列表预览
+            updateChatLastMessage(chatId, '你已转发一条朋友圈动态');
+        });
+
+        // 保存回库
+        const tx = db.transaction(['messages'], 'readwrite');
+        tx.objectStore('messages').put({ id: 1, list: all });
+
+        tx.oncomplete = () => {
+            closeMomentForwardModal();
+            alert('已转发');
+        };
+    });
+}
+// ====== 确认转发（仅系统提示 + 隐藏上下文）END ======
 
 
 // 初始化，

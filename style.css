@@ -400,6 +400,78 @@
             cursor: not-allowed;
         }
         
+/* ====== 朋友圈设置弹窗滚动布局 START ====== */
+.moments-settings-modal {
+    padding: 0;                 /* 由内部三段控制内边距 */
+    max-height: 85vh;           /* 限制高度，适配移动端 */
+    display: flex;
+    flex-direction: column;
+}
+
+.moments-settings-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+    background: #fff;
+}
+
+.moments-settings-body {
+    padding: 18px 20px;
+    overflow-y: auto;           /* 内容区滚动 */
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+}
+
+.moments-settings-footer {
+    padding: 14px 20px 18px;
+    border-top: 1px solid #f0f0f0;
+    flex-shrink: 0;
+    background: #fff;
+}
+/* ====== 朋友圈设置弹窗滚动布局 END ====== */
+
+/* ====== 朋友圈设置弹窗移动端防溢出 START ====== */
+.moments-settings-body {
+    overflow-x: hidden; /* 禁止横向滚动条 */
+}
+
+.moments-settings-body .form-input {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 自动发布那一行：小屏自动换行 */
+#momentsAutoPublishPanel > div:first-child {
+    flex-wrap: wrap;
+}
+
+#momentsAutoPublishIntervalValue,
+#momentsAutoPublishIntervalUnit {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* 让 “每/发布一次” 两个文字也能对齐 */
+#momentsAutoPublishPanel > div:first-child span {
+    white-space: nowrap;
+}
+/* ====== 朋友圈设置弹窗移动端防溢出 END ====== */
+
+/* 朋友圈发布 Loading 动画 */
+.moments-loading-icon {
+    width: 20px;
+    height: 20px;
+    animation: moments-spin 0.8s linear infinite;
+    display: block;
+}
+
+@keyframes moments-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+
         /* 弹窗样式 */
         .modal-overlay {
             position: fixed;
@@ -7889,56 +7961,106 @@ body.transparent-nav-mode .chat-input:focus {
 .icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
 
 /* 第一部分：顶部个人资料卡片 */
+/* 第一部分：顶部个人资料卡片 */
 .profile-header-card { 
-    width: 100%; 
-    background: var(--bg-color); 
-    border-radius: 16px; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
-    border: 1px solid var(--border-color); 
-    overflow: hidden; 
+    width: 100%;
+    background: transparent;              /* 去掉白色卡片底 */
+    border-radius: 16px;
+    box-shadow: none;                     /* 去掉阴影 */
+    border: none;                         /* 去掉边框 */
+    overflow: hidden;
     position: relative;
 }
 
+/* 顶部封面 */
 .ph-banner { 
-    height: 120px; 
+    height: 190px;                        /* 给中间头像+名字留空间 */
     background-color: #e6e6e6; 
     background-image: radial-gradient(#ffffff 20%, transparent 20%);
     background-size: 20px 20px;
-    position: relative;
     background-position: center;
     background-repeat: no-repeat;
-    background-size: cover; /* 确保自定义封面覆盖 */
+    background-size: cover;               /* 确保自定义封面覆盖 */
+    border-radius: 16px;                  /* 封面圆角 */
 }
 
-.ph-tools { 
-    position: absolute; top: 15px; left: 15px; right: 15px;
-    display: flex; justify-content: space-between; 
-    color: #fff; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-    z-index: 20;
+/* 叠在封面中间的内容：圆形头像 + 名字(在头像下) */
+.ph-content {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);     /* 正中间 */
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+    pointer-events: none;                 /* 避免挡住封面点击换封面 */
 }
-.ph-tools .icon { width: 24px; height: 24px; stroke: #fff; stroke-width: 2.5; }
 
-.ph-content { 
-    padding: 0 20px 20px; 
-    display: flex; flex-direction: column; align-items: center; 
-}
-
+/* 头像外圈（圆形） */
 .ph-avatar-ring { 
-    width: 84px; height: 84px; border-radius: 50%; padding: 4px; border: 1px solid #eee; background: #fff; 
-    margin-top: -42px; margin-bottom: 10px; z-index: 10; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,0.65);
+    background: rgba(255,255,255,0.18);
+    margin: 0;
+    box-shadow: none;                 /* 无阴影 */
     cursor: pointer;
+    pointer-events: auto;             /* 允许点击头像编辑资料 */
+    backdrop-filter: blur(6px);
 }
-.ph-avatar-img { 
-    width: 100%; height: 100%; border-radius: 50%; background-color: #333; color: #fff; 
-    font-size: 32px; display: flex; align-items: center; justify-content: center; overflow: hidden;
-}
-.ph-avatar-img img { width: 100%; height: 100%; object-fit: cover; }
 
-.ph-name { font-size: 20px; font-weight: 700; color: #000; margin-top: 5px; }
-.ph-handle { font-size: 13px; color: #999; margin: 2px 0 10px; font-family: monospace; }
-.ph-pill { padding: 4px 12px; border-radius: 20px; background: #f0f2f5; color: #555; font-size: 12px; margin-bottom: 10px; text-align: center; }
-.ph-loc { color: #999; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+/* 头像本体（圆形） */
+.ph-avatar-img { 
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: rgba(0,0,0,0.35);
+    color: #fff;
+    font-size: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.ph-avatar-img img { 
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 头像外圈（圆形） */
+.ph-avatar-ring { 
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,0.65);
+    background: rgba(255,255,255,0.18);
+    margin: 0;
+    box-shadow: none;                 /* 无阴影 */
+    cursor: pointer;
+    pointer-events: auto;             /* 允许点击头像编辑资料 */
+    backdrop-filter: blur(6px);
+}
+/* 名字在头像下方（封面上可读） */
+.ph-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+    line-height: 1.1;
+    text-shadow: none;                /* 无阴影 */
+    pointer-events: auto;             /* 允许点击名字编辑资料 */
+}
+
+
+
 
 /* 第二部分：动态流列表 */
 .feed-list {
@@ -8004,6 +8126,47 @@ body.transparent-nav-mode .chat-input:focus {
     border-radius: 4px; 
     margin-bottom: 2px;   /* 微调行距 */
 }
+
+
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.chat-header-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: none;                 /* 去掉边框 */
+    background: transparent;      /* 去掉基底 */
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.chat-header-icon-btn:hover {
+    background: transparent;      /* 悬停也不需要底 */
+}
+
+.chat-header-icon-btn:active {
+    transform: scale(0.92);
+}
+
+.chat-header-icon-btn svg {
+    width: 22px;
+    height: 22px;
+    stroke: #333;
+    stroke-width: 1.7;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 
 
 /* ============ 发布动态弹窗美化 ============ */
@@ -8304,5 +8467,269 @@ body.transparent-nav-mode .chat-input:focus {
     backdrop-filter: blur(2px);
 }
 
-
 /* 文字图气泡样式结束 */
+
+/* ====== 朋友圈评论区美化 START ====== */
+
+/* 评论区容器 */
+.fc-comments-box {
+    background: #f7f7f7;
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+}
+
+/* 评论区上面的小三角 */
+.fc-comments-box::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid #f7f7f7;
+}
+
+/* 单条评论行 */
+.fc-comment-row {
+    margin-bottom: 4px;
+    word-wrap: break-word;
+}
+.fc-comment-row:last-child {
+    margin-bottom: 0;
+}
+
+/* 评论者名字 */
+.fc-comment-name {
+    color: #576b95; /* 微信蓝 */
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+.fc-comment-name:active {
+    background-color: #e5e5e5; /* 点击反馈 */
+}
+
+/* 回复文本 */
+.fc-reply-text {
+    color: #333;
+}
+
+/* 底部固定评论输入栏 */
+/* ====== 用户评论输入栏美化 START ====== */
+.comment-input-bar {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 100%;
+    max-width: 375px;
+
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    border-top: 1px solid rgba(0,0,0,0.06);
+    z-index: 2500;
+}
+
+.comment-input {
+    flex: 1;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: #fff;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.comment-input:focus {
+    border-color: rgba(0,0,0,0.25);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.comment-send-btn {
+    border: none;
+    background: #333;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    white-space: nowrap;
+}
+
+.comment-send-btn:active {
+    transform: scale(0.96);
+    background: #000;
+}
+/* ====== 用户评论输入栏美化 END ====== */
+
+
+/* 正在生成的 Loading 状态 */
+.comment-loading {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ccc;
+    border-top-color: #666;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+/* ====== 朋友圈评论区美化 END ====== */
+
+/* ====== 关系网弹窗美化 START ====== */
+.relationship-modal {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.relationship-modal .form-input {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 12px;
+    resize: none;
+}
+/* ====== 关系网弹窗美化 END ====== */
+
+/* ====== 动态可见性弹窗小美化 START ====== */
+#momentVisibilityModal .modal {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#momentVisibilityModal .form-input {
+    border-radius: 12px;
+}
+/* ====== 动态可见性弹窗小美化 END ====== */
+
+/* ====== 动态转发弹窗样式 START ====== */
+.forward-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.forward-item:hover {
+    background: #fafafa;
+}
+
+.forward-item:last-child {
+    border-bottom: none;
+}
+
+.forward-check {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    accent-color: #333;
+    flex-shrink: 0;
+}
+
+.forward-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.forward-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.forward-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* 转发卡片（聊天消息里展示） */
+.moment-forward-card {
+    max-width: 270px;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    background: #fff;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.moment-forward-card-header {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #999;
+    border-bottom: 1px solid #f3f3f3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.moment-forward-card-body {
+    padding: 12px;
+}
+
+.moment-forward-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.moment-forward-content {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-wrap;
+}
+
+.moment-forward-detail {
+    display: none;
+    padding: 12px;
+    border-top: 1px dashed #eee;
+    background: #fafafa;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.moment-forward-detail.show {
+    display: block;
+}
+/* ====== 动态转发弹窗样式 END ====== */

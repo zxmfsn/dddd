@@ -6,7 +6,7 @@
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 
-    <title>汪汪机</title>
+    <title>帽子小猫cat</title>
     <link rel="stylesheet" href="style.css">
   
 <style>
@@ -815,9 +815,41 @@
 <!-- 聊天页面 -->
 <div class="chat-screen" id="chatScreen">
 <div class="chat-header">
-        <button class="back-btn" onclick="backToMain()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-        <div class="header-title">聊天</div>
+    <button class="back-btn" onclick="backToMain()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <div class="header-title">聊天</div>
+
+    <!-- 只在朋友圈Tab显示的右侧按钮 -->
+  <div class="chat-header-actions" id="momentsHeaderActions" style="display: none;">
+    <!-- 分组 -->
+    <button class="chat-header-icon-btn" onclick="openMomentsGroupPanel()" title="分组">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3.5 6.5a2 2 0 0 1 2-2h4.2c.5 0 1 .2 1.4.6l1 1c.3.3.6.4 1 .4H18.5a2 2 0 0 1 2 2v8.5a2.5 2.5 0 0 1-2.5 2.5h-12A2.5 2.5 0 0 1 3.5 17V6.5z"/>
+        </svg>
+    </button>
+
+    <!-- 设置 -->
+    <button class="chat-header-icon-btn" onclick="openMomentsSettingsPanel()" title="设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M12 3.5c-4.7 0-8.5 3.6-8.5 8.1V20c0 .6.7 1 1.2.6l2.2-1.6c.2-.1.4-.2.6-.2h9c.2 0 .4.1.6.2l2.2 1.6c.5.4 1.2 0 1.2-.6v-8.4c0-4.5-3.8-8.1-8.5-8.1z"/>
+            <circle cx="9" cy="11" r="1.2" fill="#ffffff"/>
+            <circle cx="15" cy="11" r="1.2" fill="#ffffff"/>
+        </svg>
+    </button>
+
+    <!-- 新增：加载转圈 (默认隐藏) -->
+    <div id="momentsPublishLoading" style="display: none; margin-left: 6px;">
+        <svg class="moments-loading-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="#999" stroke-width="3" stroke-opacity="0.3"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
     </div>
+</div>
+
+</div>
+
 
     
     <!-- 聊天列表 -->
@@ -988,6 +1020,135 @@
     </div>
 </div>
 
+<!-- ====== 朋友圈设置弹窗 START ====== -->
+<div class="modal-overlay" id="momentsSettingsModal" onclick="closeMomentsSettingsModal(event)">
+    <div class="modal moments-settings-modal" onclick="event.stopPropagation()">
+        <div class="moments-settings-header">
+            <div class="modal-title" style="margin: 0;">朋友圈设置</div>
+        </div>
+
+        <div class="moments-settings-body">
+            <div class="form-group">
+                <label class="form-label">副API方案</label>
+                <select id="momentsSubApiSchemeSelect" class="form-input" onchange="handleMomentsSettingsChange()">
+                    <option value="">请选择副API方案...</option>
+                </select>
+                <div style="font-size: 12px; color: #999; margin-top: 6px; line-height: 1.4;">
+                    用于自动/立即发布时调用的接口（从 API设置 的方案中选择）。
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">发布动态人</label>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 12px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="radio" name="momentsPublisherMode" value="all" onchange="handleMomentsPublisherModeChange()" />
+                        <span style="font-size: 14px; color:#333;">全部发动态（全员单聊）</span>
+                    </label>
+
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="radio" name="momentsPublisherMode" value="specified" onchange="handleMomentsPublisherModeChange()" />
+                        <span style="font-size: 14px; color:#333;">指定角色发布动态</span>
+                    </label>
+
+                    <div id="momentsSpecifiedPanel" style="display:none; padding-left: 26px;">
+                        <button class="ins-line-btn" onclick="openMomentsPublisherSelector()" style="width: 100%; justify-content: center;">
+                            <span>选择角色</span>
+                        </button>
+                        <div id="momentsSpecifiedPreview" style="margin-top: 8px; font-size: 12px; color: #999; line-height: 1.5;">
+                            未选择
+                        </div>
+                    </div>
+
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="radio" name="momentsPublisherMode" value="random" onchange="handleMomentsPublisherModeChange()" />
+                        <span style="font-size: 14px; color:#333;">随机角色发布动态</span>
+                    </label>
+
+                    <div id="momentsRandomPanel" style="display:none; padding-left: 26px; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size: 13px; color:#333;">随机</span>
+                        <input type="number" id="momentsRandomCountInput" class="form-input" min="1" value="1" style="width: 90px;" oninput="handleMomentsSettingsChange()">
+                        <span style="font-size: 13px; color:#333;">个人</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label">自动发布动态</label>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f9f9f9; border:1px solid #eee; padding: 12px; border-radius: 12px;">
+                    <span style="font-size: 14px; color:#333;">启用自动发布</span>
+                    <input type="checkbox" id="momentsAutoPublishToggle" onchange="handleMomentsSettingsChange()" style="accent-color: #333; transform: scale(1.2); cursor:pointer;">
+                </div>
+
+                <div id="momentsAutoPublishPanel" style="display:none; margin-top: 10px; background:#fff; border:1px solid #eee; padding: 12px; border-radius: 12px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size: 13px; color:#333;">每</span>
+                        <input type="number" id="momentsAutoPublishIntervalValue" class="form-input" min="1" value="30" style="width: 110px;" oninput="handleMomentsSettingsChange()">
+                        <select id="momentsAutoPublishIntervalUnit" class="form-input" style="width: 110px;" onchange="handleMomentsSettingsChange()">
+                            <option value="minutes">分钟</option>
+                            <option value="hours">小时</option>
+                        </select>
+                        <span style="font-size: 13px; color:#333;">发布一次</span>
+                    </div>
+                    <div style="font-size: 12px; color:#999; margin-top: 8px; line-height: 1.4;">
+                        页面打开时生效（浏览器关闭或刷新会重启计时）。
+                    </div>
+                    <div style="font-size: 12px; color:#999; margin-top: 6px; line-height: 1.4;">
+                       最多只能生成5条动态。
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <button class="ins-line-btn ins-btn-black" onclick="triggerMomentsPublishNow()" style="width: 100%; justify-content: center;">
+                    <span>立即发布一次</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="moments-settings-footer">
+            <div class="modal-buttons" style="margin-top: 0;">
+                <button class="btn btn-cancel" onclick="closeMomentsSettingsModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ====== 朋友圈设置弹窗 END ====== -->
+
+
+
+<!-- 朋友圈分组管理弹窗 -->
+<div class="modal-overlay" id="momentsGroupModal" onclick="closeMomentsGroupModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+
+        <div class="modal-title">分组管理</div>
+
+        <div class="form-group">
+            <label class="form-label">新建分组</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="momentsNewGroupName" class="form-input" placeholder="输入分组名称" style="flex: 1;">
+                <button class="btn btn-save" onclick="createMomentsGroup()" style="flex: none; padding: 12px 16px; white-space: nowrap;">新建</button>
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 6px; line-height: 1.4;">
+                新建后会立即弹出成员选择。
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">分组列表</label>
+            <div id="momentsGroupList" style="max-height: 260px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeMomentsGroupModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+
+
 <!-- 发布动态弹窗 (美化版) -->
 <div class="modal-overlay" id="postMomentModal" onclick="closePostMomentModal(event)">
     <div class="modal post-modal-card" onclick="event.stopPropagation()">
@@ -1029,12 +1190,15 @@
                     <span class="opt-label">提醒谁看</span>
                     <span class="opt-arrow">›</span>
                 </div>
-                <div class="post-option-item">
-                    <span class="opt-icon"></span>
-                    <span class="opt-label">谁可以看</span>
-                    <span class="opt-value">公开</span>
-                    <span class="opt-arrow">›</span>
-                </div>
+              <!-- ====== 谁可以看（可见性）START ====== -->
+<div class="post-option-item" onclick="openMomentVisibilityModal()">
+    <span class="opt-icon"></span>
+    <span class="opt-label">谁可以看</span>
+    <span class="opt-value" id="momentVisibilityValue">公开</span>
+    <span class="opt-arrow">›</span>
+</div>
+<!-- ====== 谁可以看（可见性）END ====== -->
+
             </div>
         </div>
     </div>
@@ -1049,6 +1213,11 @@
             <label class="form-label">昵称</label>
             <input type="text" id="momentsProfileName" class="form-input" placeholder="设置朋友圈昵称">
         </div>
+        <div class="form-group">
+    <label class="form-label">昵称颜色</label>
+    <input type="color" id="momentsProfileNameColor" class="form-input" value="#ffffff" style="height: 44px; padding: 6px;">
+</div>
+
         <div class="form-group">
             <label class="form-label">头像</label>
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -1274,7 +1443,7 @@
 </div>
 
 
-<!-- 心声悬浮条 (可拖动版) -->
+<!-- 状态监控悬浮条 (可拖动版) -->
 <!-- 注意：这里删掉了 onclick 属性，将在 JS 中处理点击 -->
 <div class="status-heartbeat-bar" id="statusHeartbeatBar" style="display: none;">
     <div class="heartbeat-center">
@@ -1486,11 +1655,23 @@
             </div>
             <div class="ins-list-item">
     <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-    <div class="ins-item-label">心声</div>
+    <div class="ins-item-label">状态监控</div>
     <div style="display: flex; align-items: center;">
         <input type="checkbox" id="statusMonitorCheckbox" onclick="handleStatusMonitorCheckbox()" style="accent-color: #333;">
     </div>
 </div>
+<!-- ====== 关系网入口 START ====== -->
+<div class="ins-list-item" onclick="openRelationshipModal()">
+    <svg class="ins-item-icon" viewBox="0 0 24 24">
+        <path d="M16 11c1.66 0 3-1.34 3-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3z"></path>
+        <path d="M8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z"></path>
+        <path d="M16 13c-2.67 0-8 1.34-8 4v2"></path>
+        <path d="M8 13c-2.67 0-8 1.34-8 4v2"></path>
+    </svg>
+    <div class="ins-item-label">关系网</div>
+    <div class="ins-arrow">›</div>
+</div>
+<!-- ====== 关系网入口 END ====== -->
 
         </div>
 
@@ -2334,11 +2515,11 @@
 </div>
 
 
-<!-- 心声弹窗 -->
+<!-- 状态监控弹窗 -->
 <div class="modal-overlay" id="statusMonitorModal" onclick="closeStatusMonitorModal(event)">
     <div class="status-monitor-panel" onclick="event.stopPropagation()">
         <div class="status-monitor-header">
-            <div class="status-monitor-title">心声</div>
+            <div class="status-monitor-title">状态监控</div>
             <button class="status-close-btn" onclick="closeStatusMonitorModal()">×</button>
         </div>
         
@@ -2698,6 +2879,89 @@
         </div>
     </div>
 </div>
+
+<!-- 底部评论输入框容器 -->
+<div id="commentInputBar" class="comment-input-bar" style="display: none;">
+    <input type="text" id="commentInput" class="comment-input" placeholder="评论...">
+    <button class="comment-send-btn" onclick="sendUserComment()">发送</button>
+</div>
+
+<!-- ====== 关系网弹窗 START ====== -->
+<div class="modal-overlay" id="relationshipModal" onclick="closeRelationshipModal(event)">
+    <div class="modal relationship-modal" onclick="event.stopPropagation()">
+        <div class="modal-title">关系网</div>
+
+        <div style="font-size: 12px; color: #999; line-height: 1.6; margin-bottom: 12px;">
+            这里写下 TA 的朋友圈关系网。<br>
+            聊天列表角色：写聊天列表里的角色名字。<br>
+            人设好友：用 <strong>@名字</strong> 标注，例如：<br>
+            <span style="font-family: monospace;">@路人甲：邻居，爱八卦；@小夏：闺蜜，嘴碎但心软。</span>
+        </div>
+
+        <div class="form-group">
+            <textarea id="relationshipTextInput" class="form-input" rows="8" placeholder="例如：&#10;张三：从小一起长大，互怼但很照顾我。&#10;@路人甲：楼下邻居，喜欢插科打诨。&#10;@小夏：闺蜜，爱吐槽，信息很灵通。"></textarea>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeRelationshipModal()">取消</button>
+            <button class="btn btn-save" onclick="saveRelationshipText()">保存</button>
+        </div>
+    </div>
+</div>
+<!-- ====== 关系网弹窗 END ====== -->
+
+<!-- ====== 动态可见性选择弹窗 START ====== -->
+<div class="modal-overlay" id="momentVisibilityModal" onclick="closeMomentVisibilityModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">谁可以看</div>
+
+        <div class="form-group" style="display:flex; flex-direction:column; gap:10px;">
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="radio" name="momentVisibilityMode" value="public" onchange="handleMomentVisibilityModeChange()">
+                <span style="font-size:14px; color:#333;">公开（全员）</span>
+            </label>
+
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="radio" name="momentVisibilityMode" value="group" onchange="handleMomentVisibilityModeChange()">
+                <span style="font-size:14px; color:#333;">分组可见</span>
+            </label>
+        </div>
+
+        <div class="form-group" id="momentVisibilityGroupPanel" style="display:none;">
+            <label class="form-label">选择分组</label>
+            <select id="momentVisibilityGroupSelect" class="form-input" onchange="handleMomentVisibilityChange()">
+                <option value="">请选择分组...</option>
+            </select>
+            <div style="font-size:12px; color:#999; margin-top:6px; line-height:1.4;">
+                仅该分组内的角色会来评论（氛围）。
+            </div>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeMomentVisibilityModal()">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ====== 动态可见性选择弹窗 END ====== -->
+
+<!-- ====== 动态转发弹窗 START ====== -->
+<div class="modal-overlay" id="momentForwardModal" onclick="closeMomentForwardModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-height: 80vh; overflow-y: auto;">
+        <div class="modal-title">转发动态</div>
+
+        <div style="background:#f9f9f9; border:1px solid #eee; padding:10px 12px; border-radius:12px; font-size:12px; color:#666; line-height:1.5; margin-bottom: 12px;">
+            已选：<span id="forwardSelectedCount" style="font-weight:700; color:#333;">0</span> 人
+        </div>
+
+        <div id="momentForwardList" style="max-height: 320px; overflow-y: auto;"></div>
+
+        <div class="modal-buttons" style="margin-top: 16px;">
+            <button class="btn btn-cancel" onclick="closeMomentForwardModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmMomentForward()">确认转发</button>
+        </div>
+    </div>
+</div>
+<!-- ====== 动态转发弹窗 END ====== -->
 
 
 <script src="script.js"></script>
