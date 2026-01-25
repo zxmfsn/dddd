@@ -4013,7 +4013,7 @@ function publishMoment() {
             groupId: draftMomentVisibility.groupId
         }
     };
-alert('[DBG生成动态] chatId=' + chatId + ' authorId=' + newMoment.authorId + ' authorName=' + newMoment.authorName);
+
 
 
     moments.unshift(newMoment);
@@ -5277,6 +5277,17 @@ async function generateAiComments(momentId, btnEl) {
         const mode = threadInfo.hasThread ? 'continue' : 'new';
 
         const actors = await selectCommentActors(moment);
+        // 强制作者参与评论（提高参与感）
+if (moment && moment.authorId && moment.authorId !== 'me') {
+    const authorChat = Array.isArray(chats) ? chats.find(c => c.id === moment.authorId) : null;
+    if (authorChat) {
+        const exists = Array.isArray(actors) && actors.some(a => a && a.type === 'chat' && a.id === moment.authorId);
+        if (!exists) {
+            actors.unshift({ type: 'chat', id: authorChat.id, name: authorChat.name });
+        }
+    }
+}
+
      const commentsData = await callApiToGenComments(moment, actors, {
     mode,
     threadContext: threadInfo.contextText,
@@ -5325,74 +5336,154 @@ async function generateAiComments(momentId, btnEl) {
 // ====== 氛围评论入口（用户动态 + 角色动态双模式）END ======
 
 
-// ====== 氛围评论选人（同组+关系网+路人补齐）START ======
+// ====== 角色动态评论选人（纯作者人设+关系网 -> 虚拟配角；无则路人）START ======
 async function selectCommentActors(moment) {
-    const authorId = moment.authorId;
-    if (authorId === 'me') return [];
+    const authorId = moment && moment.authorId;
+    if (!authorId || authorId === 'me') return [];
 
-    // 1) 读取作者所在分组的同组真实角色
-    const groups = await new Promise(resolve => loadChatGroups(resolve));
-    const authorGroups = (groups || []).filter(g => Array.isArray(g.memberChatIds) && g.memberChatIds.includes(authorId));
-
-    const sameGroupIds = new Set();
-    authorGroups.forEach(g => {
-        g.memberChatIds.forEach(id => {
-            if (id !== authorId) sameGroupIds.add(id);
-        });
-    });
-
-    const allSingles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
-    const sameGroupChats = allSingles.filter(c => sameGroupIds.has(c.id));
-
-    // 2) 读取作者关系网文本
     const charInfoAll = await loadCharacterInfoAllSafe();
-    const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
-    const relationshipText = authorInfo.relationshipText || '';
+    const authorInfo = (charInfoAll && charInfoAll[authorId]) ? charInfoAll[authorId] : {};
+    const personalityText = String(authorInfo.personality || '');
+    const relationshipText = String(authorInfo.relationshipText || '');
 
-    // 3) 从关系网中提取虚拟人物（@名字）
-    const virtualNames = extractVirtualPeopleFromRelationshipText(relationshipText);
+    const srcText = `${personalityText}\n${relationshipText}`.trim();
 
-    // 4) 构建候选池：同组真实角色 + 虚拟人物（去重）
-    // 中文注释：同组角色按 chatId 唯一；虚拟人物按 name 唯一
-    const pool = [];
+    // 从文本抽取“关系人物条目”
+    // 支持写法示例：
+    // - 好朋友：A，性格xx；B，性格xx
+    // - 朋友A：性格xx
+    // - 同事小张：...
+    // - 我妈：...
+    function extractRelations(text) {
+        const s = String(text || '').trim();
+        if (!s) return [];
 
-    sameGroupChats.forEach(c => {
-        pool.push({
-            type: 'chat',
-            id: c.id,
-            name: c.name
+        // 统一分隔符
+        const norm = s
+            .replace(/\r/g, '')
+            .replace(/，/g, ',')
+            .replace(/；/g, ';')
+            .replace(/。/g, ';')
+            .replace(/、/g, ',')
+            .replace(/\n+/g, '\n');
+
+        const relations = [];
+
+        const pushRel = (name, hint) => {
+            const n = String(name || '').trim();
+            if (!n) return;
+            // 过滤太长的“名字”
+            if (n.length > 16) return;
+
+            const h = String(hint || '').trim();
+            relations.push({ name: n, hint: h });
+        };
+
+        // 1) 先按行/段切块，避免一次抓太多
+        const lines = norm.split('\n').map(x => x.trim()).filter(Boolean);
+
+        // 2) 识别“列表块”：例如 “好朋友: A..., B...”
+        const listHeadRe = /^(好朋友|朋友|闺蜜|兄弟|同事|同学|室友|家人|亲人|父母|妈妈|爸爸)[：:]\s*(.+)$/;
+        lines.forEach(line => {
+            const m = line.match(listHeadRe);
+            if (!m) return;
+
+            const group = m[1];
+            const tail = m[2] || '';
+            // 用 ; 先切“人物条”，再在每条里取名字+描述
+            tail.split(';').forEach(part => {
+                const p = String(part || '').trim();
+                if (!p) return;
+
+                // 名字通常在开头，后面跟逗号/冒号/空格描述
+                // e.g. "A, 性格xx" / "B: 性格yy"
+                const mm = p.match(/^([^,:]{1,16})\s*[: ,]\s*(.*)$/);
+                if (mm) {
+                    const nm = mm[1].trim();
+                    const hint = `${group}；${mm[2].trim()}`;
+                    pushRel(nm, hint);
+                } else {
+                    // 只有名字没有描述
+                    pushRel(p.slice(0, 16), group);
+                }
+            });
         });
-    });
 
-    virtualNames.forEach((vn, idx) => {
-        pool.push({
-            type: 'virtual',
-            id: -1000 - idx, // 虚拟人物用负数 id
-            name: vn
+        // 3) 识别“单人物条目”：例如 “朋友A: 性格xx” “同事小张：...”
+        const itemRe = /^(好朋友|朋友|闺蜜|兄弟|同事|同学|室友|家人|亲人)?\s*([^\s,:]{1,16})\s*[：:]\s*(.{0,80})$/;
+        lines.forEach(line => {
+            const m = line.match(itemRe);
+            if (!m) return;
+
+            const role = String(m[1] || '').trim();
+            const nm = String(m[2] || '').trim();
+            const desc = String(m[3] || '').trim();
+
+            // 避免把“好朋友：A,B”这种再次误判（nm里含逗号就跳过）
+            if (nm.includes(',') || nm.includes(';')) return;
+
+            const hint = role ? `${role}；${desc}` : desc;
+            pushRel(nm, hint);
         });
-    });
 
-    // 5) 随机抽 3-4 人（如果池子太小则尽量抽）
-   const targetCount = 4 + Math.floor(Math.random() * 2);
-    const shuffled = pool.sort(() => 0.5 - Math.random());
-    let picked = shuffled.slice(0, Math.min(targetCount, shuffled.length));
-
-    // 6) 不足则补路人甲/乙（路人也用负数 id）
-    let passerIdx = 0;
-    while (picked.length < targetCount) {
-        const name = passerIdx === 0 ? '路人甲' : (passerIdx === 1 ? '路人乙' : `路人${passerIdx + 1}`);
-        picked.push({
-            type: 'passerby',
-            id: -2000 - passerIdx,
-            name
+        // 去重：名字相同就合并 hint
+        const map = new Map();
+        relations.forEach(r => {
+            const k = r.name;
+            if (!map.has(k)) {
+                map.set(k, { name: r.name, hint: r.hint });
+            } else {
+                const old = map.get(k);
+                const merged = [old.hint, r.hint].filter(Boolean).join('；');
+                old.hint = merged;
+                map.set(k, old);
+            }
         });
-        passerIdx++;
+
+        return Array.from(map.values());
     }
 
-    return picked;
-}
-// ====== 氛围评论选人（同组+关系网+路人补齐）END ======
+    const rels = extractRelations(srcText);
 
+    // 只要有任何关系人物：抽 3-4 个，不补路人
+    if (rels.length > 0) {
+        const targetCount = 3 + Math.floor(Math.random() * 2); // 3-4
+        const shuffled = rels.sort(() => 0.5 - Math.random()).slice(0, Math.min(targetCount, rels.length));
+
+        // 给虚拟人分配稳定负数 id
+        return shuffled.map((r, idx) => ({
+            type: 'virtual',
+            id: -1000 - idx,
+            name: r.name,
+            hint: r.hint || ''
+        }));
+    }
+
+    // 如果一个关系人物都没有：才生成路人 3-4
+ const passerCount = 3 + Math.floor(Math.random() * 2);
+
+const passerOrigins = [
+    '同城群新加的好友',
+    '朋友的朋友',
+    '活动上认识的',
+    '一起上过课的',
+    '工作上有一面之缘',
+    '之前加了微信没怎么聊'
+];
+
+const passers = [];
+for (let i = 0; i < passerCount; i++) {
+    passers.push({
+        type: 'passerby',
+        id: -2000 - i,
+        name: `泛好友${i + 1}`, // 占位名：最终由AI在roleName里生成真实名字
+        hint: passerOrigins[Math.floor(Math.random() * passerOrigins.length)]
+    });
+}
+return passers;
+
+}
+// ====== 角色动态评论选人（纯作者人设+关系网 -> 虚拟配角；无则路人）END ======
 
 // ====== Moments API Call (New+Continue Prompt) START ======
 async function callApiToGenComments(moment, actors, options) {
@@ -5420,81 +5511,88 @@ async function callApiToGenComments(moment, actors, options) {
     const authorPersonality = authorInfo.personality || '';
     const relationshipText = authorInfo.relationshipText || '';
 
-    // 构建参与者卡片
-    const actorCards = actors.map(a => {
-        const name = a.name;
-        if (a.type === 'chat') {
-            const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
-            const p = info.personality || '性格信息不详，说话简短自然。';
-            return `【固定角色】昵称：${name} (ID:${a.id})\n- 人设：${p}\n- 规则：必须严格扮演此人，不可改名。`;
-        }
-        if (a.type === 'virtual') {
-            const sn1 = extractSnippetsForName(relationshipText, '@' + name);
-            const sn2 = extractSnippetsForName(relationshipText, name);
-            const p = (sn1 || sn2 || '关系网提及人物').trim();
-            return `【指定配角】昵称：${name} (ID:${a.id})\n- 线索：${p}\n- 规则：扮演此人，不可改名。`;
-        }
-        return `【智能补位位】临时ID:${a.id} (当前暂名:${name})\n- 规则：如果作者关系网里没提到你，你就是纯路人。禁止装熟。`;
-    }).join('\n\n');
+// 参与者卡片：只描述“人设+边界”，不再出现“同组/智能补位位/@优先”等逻辑
+const actorCards = actors.map(a => {
+    const name = String(a.name || '未知');
+
+    // 真实角色（来自 chats）
+    if (a.type === 'chat') {
+        const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
+        const p = info.personality || '（未提供人设）';
+        return `【角色】${name} (roleId:${a.id})
+- 人设：${p}
+- 关系边界：只允许友情/亲情/同事/陌生/情敌(仅争用户)，禁止爱情/暧昧/撒娇/磕CP
+- 规则：必须严格扮演此人；roleName 不可改名。`;
+    }
+
+    // 关系网/人设里出现的关系人物（虚拟）
+if (a.type === 'virtual') {
+    const p = String(a.hint || '').trim() || '（来自作者人设/关系网的关系人物，性格未详）';
+    return `【关系人物】${name} (roleId:${a.id})
+- 设定：${p}
+- 关系边界：只允许友情/亲情/同事/陌生/情敌(仅争用户)，禁止爱情/暧昧/撒娇/磕CP
+- 规则：扮演此人；roleName 不可改名。`;
+}
+
+    // 路人（只在“一个朋友都找不到”时才会出现，选人函数已保证）
+ return `【泛好友】临时占位名：${name} (roleId:${a.id})
+- 你与作者的关系：${String(a.hint || '新加的好友/泛社交圈认识').trim()}
+- 你需要为自己生成一个“正常、不奇葩”的显示名字，并写进最终 JSON 的 roleName 字段。
+- 名字规则（必须遵守）：
+  1) 中文名：2-4 个常见汉字（如“陈宇”“林雨晴”“周子涵”），不要生僻字
+  2) 或简单英文名：2-8 个字母，首字母大写（如“Lily”“Jason”“Mia”）
+  3) 禁止网名风格：禁止“momo/小透明/吃瓜群众/User_007/快乐小狗”等
+- 说话风格：像真实朋友圈里“认识但不熟”的人：一句话捧场/轻共鸣/轻问候即可
+- 禁止：装熟、打探隐私（跟谁/在哪/细节）、起哄感情、磕CP、任何暧昧/撒娇
+- 边界：保持分寸感，别长篇大论
+- 注意：roleId 必须保留为 ${a.id}，不要修改。`;
+
+}).join('\n\n');
 
     // ★★★ 核心 Prompt：强调边界感与人设 ★★★
-    const prompt = `
-你是一名严谨的“朋友圈评论区编剧”。请根据【人设】和【关系网】生成真实的评论互动。
-
-【动态作者】${moment.authorName}
-【作者人设】
+   const prompt = `
+你是一名“朋友圈评论区编剧”。你要生成像真实人一样的评论互动：短、随口、有情绪但不演戏。
+【动态作者】
+作者名：${moment.authorName}
+【作者人设（必须遵守）】
 ${authorPersonality || '（未提供）'}
-【作者关系网（亲朋好友）】
+【作者关系网文本（必须遵守；这是关系判定来源之一）】
 ${relationshipText ? relationshipText : '（无）'}
 【动态内容】
 ${moment.content}
-【参与评论的角色名单】
-${actorCards}
-【已有对话上下文（续聊模式用）】
+【已有评论区片段（旧->新，用于续写；若为空则当新开）】
 ${threadContext || '（无）'}
+【参与评论的人员名单（必须遵守每人的规则）】
+${actorCards}
+【核心规则：关系与边界（最高优先级）】
+1) 关系判定只能依据：作者人设 + 作者关系网文本。
+2) 角色与角色之间，只允许出现以下关系语气：
+   - 陌生人/点赞之交：客气、短评、不越界
+   - 朋友/同事：互怼、调侃、约饭、吐槽都行，但要像日常聊天
+   - 亲人：长辈关心/家人提醒/碎碎念
+   - 情敌：只能是“角色与角色”之间的对立；但争抢对象只能指向“用户（我）”，不得争抢作者或其他角色
+3) 禁止项（违反即死）：
+   - 禁止任何爱情/暧昧/恋爱向互动（不许互撩、调情、示爱、吃醋、脸红心跳）
+   - 禁止撒娇与黏糊语气（如：抱抱、贴贴、嘤嘤嘤、人家、想你啦、亲亲等）
+   - 禁止磕CP/起哄感情（如：你们好甜、快在一起、我磕到了、真般配等）
+   - 禁止“角色A与角色B”把重点聊成他们自己的亲密互动
+4) 人设第一：每个人说话必须贴合自己的人设；不要为了热闹而OOC。
+5) 楼中楼要求：至少 2 条评论是 A 回复 B（replyToName 不为 null）。
+6)作者本人必须参与：在本次生成中，作者（${moment.authorName}）必须至少出现 2 条评论，其中至少 1 条必须是“作者回复某个朋友/关系人物”的楼中楼（replyToName 指向对方）。
 
-【核心指令：边界感 + 人设像活人一样】
-你要先“看关系再开口”，每一句都像朋友圈里真实的人会说的话：短、随口、带点情绪，但不演戏、不写小说。
-
-1) 关系判定（只看【作者人设】与【作者关系网】）
-- 熟人：评论者的名字/称呼在作者关系网里出现，或作者人设明确提到（例如“我妈/室友/同事老王/@小李”等）。
-- 默认陌生人：没有任何明确提及，就是点赞之交/列表好友（这是最常见的情况）。
-
-2) 说话方式（人设第一，边界第二）
-- 陌生人/点赞之交（默认）：
-  - 语气：礼貌、克制、不过界；可以热情但不熟络。
-  - 内容：只围绕动态内容本身，夸一句/问一句浅问题都行（如“拍得真清爽”“这家店看着不错”）。
-  - 禁止：不要打探隐私（“跟谁/在哪/你俩啥关系”这种都不说）；不要指点人生；不要强行接梗装熟。
-- 熟人（只能是友情/亲情/同事）：
-  - 语气：可以贫嘴、互怼、关心、提醒、吐槽，但要像熟人日常聊天，不要戏精。
-  - 内容：可以轻微“揭短”或约一下，但要符合人设（高冷就少字，话痨就多两句）。
-  - 禁止：绝对禁止撒娇语气（例如“嘤嘤嘤/抱抱/人家/贴贴/想你啦”）；绝对禁止暧昧氛围。
-
-3) 关系边界总规则（最高优先级）
-- 角色与角色之间：只能是【朋友/同事/家人/陌生人/互相看不顺眼的情敌】这类关系。
-- 严禁角色与角色之间出现任何“好感向/恋爱向”对话：不许互撩、调情、示爱、吃醋、暧昧称呼。
-- 允许“情敌”只针对【用户（我）】：可以出现“我跟你抢TA/别总霸着TA/下次轮到我”这种占有欲或竞争，但对象必须明确是“用户（我）”，不能变成角色A和角色B谈恋爱。
-- 禁止磕CP/起哄：禁止“你俩好甜/快在一起/我磕到了/真般配”等话术（无论对象是谁都不许）。
-
-4) 输出风格限制（避免AI味）
-- 句子要短，像随手打字；可以有口头禅、停顿、反问，但别堆修辞。
-- 不要写长段，不要讲大道理，不要总结。
-- 禁止方括号表情：[doge][坏笑][表情] 等一律不出现；可少量颜文字(._.)(>_<)。
-
-【任务要求】
-1) 生成 ${minCount}-${maxCount} 条评论。
-2) 必须有楼中楼（A 回复 B）至少 2 条；陌生人之间的回复也要客气、浅互动（如“哈哈谢谢”“确实”）。
-3) 人设与边界感优先级最高；宁可冷场也不要越界。
-
-
-【输出格式】
+【生成模式】
+- 如果已有评论区片段不为空：这是续写模式，你必须承接最后几句的语境继续往下聊，不要重开新话题。
+- 如果为空：新开评论，但也要像真实朋友圈，不要写长段。
+【输出格式（严格遵守）】
 只输出严格 JSON 数组（必须使用英文双引号），数组必须完整闭合，以 ] 结束。
-每个元素格式：
+每个元素格式如下：
 {"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
+【硬性要求】
+- 评论内容每条建议 6-30 个汉字，短句为主。
+- 禁止使用任何方括号表情：[doge][坏笑][表情]。
+- 不要输出除 JSON 以外的任何文字。
+- 只有【泛好友】允许自己生成 roleName（并遵守名字规则）；【角色】与【关系人物】的 roleName 必须与名单一致，严禁改名。
 
-【可用 roleId 对照】
-${actors.map(a => `${a.name}=${a.id}`).join(', ')}
-作者 ${moment.authorName}=${moment.authorId}
 `.trim();
 
     // 调用 API
@@ -6173,6 +6271,74 @@ function getVisibleChatPoolForUserMoment(moment) {
     return allIds;
 }
 // ====== 用户动态可见池计算 END ======
+
+// ====== 角色视角：用户动态可见性判断 START ======
+
+// chatId 是否能看到某条“用户动态”（authorId==='me'）
+function canChatSeeUserMoment(chatId, moment) {
+    if (!moment || moment.authorId !== 'me') return false;
+
+    const v = moment.visibility || { mode: 'public', groupId: null };
+    const mode = v.mode || 'public';
+
+    // 公开：所有单聊角色可见
+    if (mode === 'public') return true;
+
+    // 分组可见：只有分组成员可见
+    if (mode === 'group') {
+        const groupId = v.groupId;
+        if (!groupId) return false;
+        const g = (chatGroups || []).find(x => x.id === groupId);
+        if (!g || !Array.isArray(g.memberChatIds)) return false;
+        return g.memberChatIds.includes(chatId);
+    }
+
+    // 兜底：未知模式按公开处理或不可见；这里更安全用不可见
+    return false;
+}
+
+// 获取某角色可见的“用户最近N条动态”（包含评论区）
+function getVisibleUserMomentsForChat(chatId, limit) {
+    const n = Number.isFinite(limit) && limit > 0 ? limit : 3;
+
+    const list = Array.isArray(moments) ? moments : [];
+    const userMoments = list
+        .filter(m => m && m.authorId === 'me')
+        .filter(m => canChatSeeUserMoment(chatId, m))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, n);
+
+    return userMoments;
+}
+
+// 把可见动态 + 评论区格式化成一段上下文文本，供 prompt 使用
+function formatVisibleUserMomentsContext(chatId, limit) {
+    const ms = getVisibleUserMomentsForChat(chatId, limit);
+
+    if (!ms || ms.length === 0) return '（用户近期无你可见的动态）';
+
+    return ms.map((m, idx) => {
+        const v = m.visibility || { mode: 'public', groupId: null };
+        const visText = v.mode === 'group' ? `分组(${v.groupId || ''})` : '公开';
+
+        const comments = Array.isArray(m.commentsList) ? m.commentsList : [];
+        const commentLines = comments.slice(0, 12).map(c => {
+            if (!c) return '';
+            if (c.replyToName) return `${c.senderName} 回复 ${c.replyToName}：${c.content}`;
+            return `${c.senderName}：${c.content}`;
+        }).filter(Boolean);
+
+        const commentsText = commentLines.length > 0 ? commentLines.join('\n') : '（暂无评论）';
+
+        return `【用户动态#${idx + 1}｜${visText}｜${new Date(m.timestamp || Date.now()).toLocaleString()}】
+内容：${String(m.content || '').trim() || '（无文字）'}
+评论区：
+${commentsText}`;
+    }).join('\n\n');
+}
+
+// ====== 角色视角：用户动态可见性判断 END ======
+
 
 
 // ============ 视觉评论：抽样+压缩+总结存储（用户动态专用）===========

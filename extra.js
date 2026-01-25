@@ -4143,65 +4143,63 @@ async function getMemoryContext() {
     });
 }
 
-// ============ 新增：获取朋友圈动态上下文 ============
-function getRecentMomentsContext(chatId) {
-    return new Promise(resolve => {
-        loadFromDB('moments', (data) => {
-            let allMoments = [];
-            if (Array.isArray(data)) allMoments = data;
-            else if (data && data.list) allMoments = data.list;
+// ====== 角色读取朋友圈上下文：仅可见的用户动态（公开+所在分组）START ======
+async function getRecentMomentsContext(chatId) {
+    // 确保分组数据是最新的（因为 getVisibleChatPoolForUserMoment 依赖 chatGroups）
+    // 如果你已经在进入页面时 loadChatGroups 过，也不会有副作用
+    await new Promise(resolve => loadChatGroups(() => resolve()));
 
-            // 1. 筛选 AI (当前角色) 的动态 - 取最近3条
-            const aiMoments = allMoments
-                .filter(m => m.authorId === chatId)
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 3);
-
-            // 2. 筛选 用户 (me) 的动态 - 取最近3条
-            const userMoments = allMoments
-                .filter(m => m.authorId === 'me')
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 3);
-
-            // 内部格式化函数
-            const formatStr = (list) => {
-                if (list.length === 0) return "无";
-                return list.map(m => {
-                    const date = new Date(m.timestamp);
-                    // 格式化时间：月/日 时:分
-                    const timeStr = `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-                    // 截取内容防止太长
-                    const content = (m.content || '').substring(0, 60) + (m.content && m.content.length > 60 ? '...' : '');
-                    const hasImage = m.images && m.images.length > 0 ? '[有图]' : '';
-                    
-                    // 提取评论预览 (最近3条)
-                    let comments = "";
-                    if (m.commentsList && m.commentsList.length > 0) {
-                        comments = m.commentsList.slice(-3).map(c => {
-                            const sender = c.senderName;
-                            const text = c.content;
-                            // 处理回复格式
-                            return c.replyToName ? `${sender}回${c.replyToName}:${text}` : `${sender}:${text}`;
-                        }).join(' | ');
-                    }
-                    if(!comments) comments = "暂无评论";
-
-                    return `• [${timeStr}] ${content} ${hasImage}\n   └─ 评论: ${comments}`;
-                }).join('\n');
-            };
-
-            let text = "";
-            if (aiMoments.length > 0) {
-                text += `【你(AI)发的朋友圈】\n${formatStr(aiMoments)}\n`;
+    // 取用户动态（authorId === 'me'），并按“这个角色是否在可评论池”判断可见
+    // 逻辑等价于：可见 <=> 该角色属于这条动态的可见范围
+    const userVisible = (Array.isArray(moments) ? moments : [])
+        .filter(m => m && m.authorId === 'me')
+        .filter(m => {
+            try {
+                const pool = getVisibleChatPoolForUserMoment(m) || [];
+                return pool.includes(chatId);
+            } catch (e) {
+                return false;
             }
-            if (userMoments.length > 0) {
-                text += `【用户(对方)发的朋友圈】\n${formatStr(userMoments)}\n`;
-            }
-            
-            resolve(text);
-        });
+        })
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, 3);
+
+    if (userVisible.length === 0) {
+        return '（暂无你可见的用户朋友圈动态）';
+    }
+
+    // 格式化：动态 + 评论区（最多取前12条评论，避免爆 prompt）
+    const blocks = userVisible.map((m, idx) => {
+        const v = m.visibility || { mode: 'public', groupId: null };
+        let visText = '公开';
+        if (v.mode === 'group') {
+            const g = (chatGroups || []).find(x => x.id === v.groupId);
+            visText = g ? `分组：${g.name}` : '分组可见';
+        }
+
+        const contentText = String(m.content || '').trim() || '（无文字）';
+
+        const comments = Array.isArray(m.commentsList) ? m.commentsList : [];
+        const commentLines = comments.slice(0, 12).map(c => {
+            if (!c) return '';
+            const who = c.senderName || '未知';
+            const txt = String(c.content || '').trim();
+            if (!txt) return '';
+            if (c.replyToName) return `${who} 回复 ${c.replyToName}：${txt}`;
+            return `${who}：${txt}`;
+        }).filter(Boolean);
+
+        const commentsText = commentLines.length > 0 ? commentLines.join('\n') : '（暂无评论）';
+
+        return `【用户朋友圈#${idx + 1}｜${visText}｜${formatTimeAgo(m.timestamp)}】
+动态：${contentText}
+评论区：
+${commentsText}`;
     });
+
+    return blocks.join('\n\n');
 }
+// ====== 角色读取朋友圈上下文：仅可见的用户动态（公开+所在分组）END ======
 
 
 
@@ -4322,10 +4320,25 @@ ${worldbooksContent}
 
 【朋友圈社交动态（话题库）】
 ${momentsContext || "（近期双方无动态）"}
-**社交互动指令：**
-1. **自然关注**：如果用户刚发了动态（特别是心情不好或有趣的事），你可以主动提及，比如“对了，看你刚发的朋友圈...”。
-2. **评论互动**：如果你的动态评论区有用户的留言，或者你在用户动态下评过论，可以顺着那个话题继续聊。
-3. **话题融合**：不要生硬地插入动态话题，要像刷完朋友圈后自然的闲聊。
+
+【朋友圈话题使用规则】
+1) 你可以“顺手提一嘴”，但不要每次都提：只有当动态/评论区里出现明显可聊点（情绪波动、约人、被频繁互动、被人@、争议话题、明显开心/低落）时，再自然带到聊天里。
+2) 提起方式要像刷到朋友圈后随口一句：一句轻问/一句调侃/一句关心就够了，别写成盘问或审讯。
+3) 允许你对评论区产生真实反应（前提：贴合人设和你们关系热度）：
+   - 好奇：例如“你那条动态下面跟你聊得挺热的那个人是谁？”
+   - 轻微吃醋/介意：只能是对用户的占有欲或在意，不能延伸成你和对方的恋爱脑剧情；也不要用撒娇语气。
+   - 关心：例如“你评论区是不是被烦到了？要不要我帮你怼回去？”
+4) 你必须保持边界感：
+   - 不要反复追问“是谁/具体关系/在哪里/什么时候去”这种隐私细节。
+   - 如果用户不想说或转移话题，你要识趣收住
+5) 禁区（和你前面总规则一致）：
+   - 禁止磕CP、禁止把用户和评论区任何人强行写成恋爱关系。
+   - 禁止你对评论区的人说暧昧话、禁止撒娇式“黏腻”表达。
+
+ **自然关注**：如果用户刚发了动态（特别是心情不好或有趣的事），你可以主动提及，比如“对了，看你刚发的朋友圈...”。
+ **评论互动**：如果你的动态评论区有用户的留言，或者你在用户动态下评过论，可以顺着那个话题继续聊。
+ **话题融合**：不要生硬地插入动态话题，要像刷完朋友圈后自然的闲聊。
+
 
 【环境与生理感知】
 时间：${dateStr} ${timeStr}
