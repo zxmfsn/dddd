@@ -4020,8 +4020,50 @@ function publishMoment() {
     saveToDB('moments', { list: moments });
     renderMomentsList();
     closePostMomentModal();
+    autoVisionBroadcastForUserMoment(newMoment);
 }
 // ====== 用户发布动态（含可见性）END ======
+
+async function autoVisionBroadcastForUserMoment(moment) {
+    try {
+        if (!moment || moment.authorId !== 'me') return;
+        if (!Array.isArray(moment.images) || moment.images.length === 0) return;
+
+        const scheme = getSubApiScheme();
+        if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) return;
+
+        const visionImages = await compressImagesForVision(moment.images);
+        if (!visionImages || visionImages.length === 0) return;
+
+        const summaryObj = await callSubApiVisionSummarizeMoment({
+            baseUrl: scheme.baseUrl,
+            apiKey: scheme.apiKey,
+            model: scheme.defaultModel,
+            momentText: moment.content,
+            visionImages
+        });
+
+        if (!summaryObj || !Array.isArray(summaryObj.images)) return;
+
+        const lines = summaryObj.images
+            .slice(0, 3)
+            .map(it => `${it.idx}) ${it.desc}`)
+            .join('\n');
+        const overall = summaryObj.overall ? `\n总体：${summaryObj.overall}` : '';
+        const visionSummaryText = (lines + overall).trim();
+
+        broadcastVisionSummaryToAllSingleChats({
+            momentId: moment.id,
+            authorId: moment.authorId,
+            authorName: momentsProfile && momentsProfile.name ? momentsProfile.name : '用户',
+            timestamp: moment.timestamp,
+            content: moment.content || '',
+            visionSummaryText
+        });
+    } catch (e) {
+        console.warn('[autoVisionBroadcastForUserMoment] failed:', e);
+    }
+}
 
 
 function deleteMoment(id) {
@@ -6451,8 +6493,15 @@ async function callSubApiVisionSummarizeMoment(params) {
   "overall": "..."
 }
 5) images 数组长度 = 你实际看到的图片数量（最多3张），idx 从 1 开始按输入顺序编号。
-6) desc 每条 15-40 个汉字，写清：主体 + 场景 + 动作/情绪；不要使用 emoji。
-7) overall 可为空字符串，但字段必须存在（例如 "overall": ""）。
+6) desc 每条 40-150 个汉字，必须包含以下信息（尽量具体）：
+   - 主体是谁/是什么（人/动物/物品），视频，装饰，在做什么
+   - 场景地点（室内/室外/街道/餐厅/家里等）
+   - 构图与细节（颜色、光线、天气、动作、表情、穿着/物品）
+   - 氛围情绪（轻松/疲惫/开心/压抑等）
+   不要写“可能/也许/像是AI猜测”，要像人在看图描述。
+
+7) overall 50-100 个汉字：用一句话总结“整条动态的画面气质 + 用户状态/意图”（如记录生活/分享美食/吐槽等）。
+
 
 【动态文字】
 ${momentText || '（无）'}`
@@ -6472,7 +6521,7 @@ ${momentText || '（无）'}`
             body: JSON.stringify({
                 model,
                 temperature: 0.2,
-                max_tokens: 800,
+                max_tokens: 2000,
                 messages: [
                     { role: 'system', content: '你是一个严格输出JSON的视觉总结器。' },
                     { role: 'user', content }
