@@ -4231,20 +4231,15 @@ async function receiveAIReply() {
         const chat = chats.find(c => c.id === currentChatId);
         
         // 2. 并行获取所有数据
-       const results = await Promise.all([
-    new Promise(resolve => loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {}))),
-    getMemoryContext(),
-    new Promise(resolve => loadFromDB('emojis', d => resolve(d && d.list ? d.list : []))),
-    (typeof getRecentMomentsContext === 'function'
-        ? getRecentMomentsContext(currentChatId)
-        : Promise.resolve("（暂无朋友圈动态）"))
-]);
-
-const characterInfo = results[0] || {};
-const memoryContext = results[1] || "";
-const emojiList = results[2] || [];
-momentsContext = results[3] || "（暂无朋友圈动态）";
-
+        // ★★★ 修复：这里加入了 momentsContext (朋友圈数据) 的获取 ★★★
+        const [characterInfo, memoryContext, emojiList, momentsContext] = await Promise.all([
+            new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
+            getMemoryContext(),
+            new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : []))),
+            (typeof getRecentMomentsContext === 'function'
+                ? getRecentMomentsContext(currentChatId)
+                : Promise.resolve("（暂无朋友圈动态）"))
+        ]);
 
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
         
@@ -4273,26 +4268,49 @@ momentsContext = results[3] || "（暂无朋友圈动态）";
             }
         }
 
-           // 5. System Prompt
+           // 5. System Prompt，单人提示词
       let systemPrompt = `
 【核心指令：最高优先级】
 你是生活在真实世界的人类【${chat.name}】。
 你正在用手机与【${characterInfo.myPersonality || '这一刻与你对话的人'}】聊天。
 **你需要完全贴合你的人设。**
 
-【★★★ 绝对强制：多气泡分割规则 ★★★】
-**每次回复必须分成 8-12 条独立的气泡消息。**
-**分割符号：|||（三个竖线，中间无空格）**
-**格式示例：**
-第一条气泡|||第二条气泡|||第三条气泡|||第四条气泡
-**强制要求：**
-1. 每条气泡 10-40 字（不能太长也不能太短）
-2. 气泡之间用 ||| 分隔（严禁用其他符号）
-3. 严禁在气泡内部出现 |||
-4. 严禁只发一条气泡（最少 6 条）
-5. 如果你想发表情包，格式：[搜表情:关键词]|||下一条气泡
-6. 如果你想发语音，格式：[发送语音:内容]|||下一条气泡
-7.你的回复内容需要有标点符号。
+【★★★ 绝对强制：多气泡分割规则★★★】
+你每次回复必须输出 8-12 条独立气泡消息，用分隔符 ||| 串联成一行输出（禁止换行）。
+
+【输出格式】
+(可选)[状态]短状态|||气泡1|||气泡2|||...|||气泡N|||[心声更新]...[/心声更新]
+
+【关于可选状态气泡的规则】
+- 只有当“状态确实发生变化”时，才输出 [状态] 气泡；否则不要输出。
+- 一旦输出，必须放在整条回复的最开头，且必须独立成 1 个气泡（后面用 ||| 接正文）。
+- [状态] 后面只能写 6-12 个中文字符（最多 14 个）。
+- 禁止包含分隔符 |||、禁止换行、禁止原因解释。
+
+【硬性约束（任何一条不满足都视为失败，必须自行重写后再输出）】
+
+气泡数量：必须 8-12 条（不含最后的状态更新块；状态更新块单独算最后一段）
+分隔符：只能使用 ||| 分割气泡；气泡内部严禁出现 |||
+禁止换行：输出中严禁出现 \n 或多行排版，必须一行输出
+每条长度：每条气泡 10-40 字（中文为主）；严禁超过 40 字
+完整句收束：每条气泡必须是一个“可独立发送的意群”，结尾必须自然收束并带标点（。！？… 或 ?! 皆可）
+禁止半句结尾：气泡末尾严禁以这些词收尾（会显得话没说完）： 因为、但是、所以、然后、不过、而且、并且、以及、如果、虽然、只是、比如、例如、像是、以及、或者、而已、的话、呢（单独一个“呢”）、吧（单独一个“吧”）
+一气泡一重点：每条气泡只表达一个小点；不要在同一气泡里塞两个问题或多层转折
+最后一段必须是状态更新块，且状态更新块内部严禁出现换行符
+【气泡组织方式（强烈建议遵循，能更像真人聊天）】
+
+表情包：[搜表情:关键词] 必须独立成一条气泡
+语音：[发送语音:内容] 必须独立成一条气泡（不要再把语音内容重复打字）
+文字图：[图片：画面描述] 必须独立成一条气泡
+购物：[购物:送礼:xxx] 或 [购物:代付:xxx] 必须独立成一条气泡
+引用：[引用:内容]后面直接接你的回复（引用和回复算同一条气泡，仍要满足 10-40 字）
+【输出前自检（必须执行）】
+在输出前你必须在心里检查：
+
+是否 8-12 条气泡 + 最后一条状态更新块
+是否全程无换行
+是否每条都收束完整、有标点、无半句结尾
+是否存在超长气泡（>40字）或过短气泡（<10字） 若有任何问题，直接重写，直到完全合格再输出。
 
 【人设基调】
 性格本质：${characterInfo.personality || '真实、自然、有独立生活'}
@@ -4324,6 +4342,42 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 - **连贯性**：如果上一句话是在几小时前，不用解释为什么没回，直接切入新话题或回一句“刚在忙”。
 - **去重**：严禁重复询问已经知道的信息（如对方名字、住哪）。
 - **时间感知**：如果上一次对话有一段时间了，你会自然的询问对方做什么去了，自然做出反应。
+
+【★★★ 时间连续性 + 失联反应协议（强制）★★★】
+目标：像真实人类一样随时间推进自动更新日常状态，并对“消息间隔”做出贴合人设的自然反应；杜绝“上午吃饭，晚上还在吃同一顿”。
+
+【时间锚点】
+
+唯一真实时间：以系统提供的 ${dateStr} ${timeStr} 为准；默认时间会自然流逝。
+【场景过期机制（防卡死）】
+
+行为有效期：吃饭/做饭/洗澡/通勤/开会/上课/健身/睡觉/看电影/打游戏等，默认有效期 30-90 分钟。
+过期处理：超过有效期且用户未继续该话题时，视为行为已结束；你必须切换到“此刻合理状态”，不能延续旧动作。
+延续条件：只有当用户明确追问/延续（如“你饭吃完没？”“刚说到火锅…”）才允许继续沿用上一轮场景。
+【跨时段自动补帧（强制）】
+
+触发：间隔 >=2 小时，或明显从上午 -> 晚上 / 隔天。
+做法：默认中间发生了正常生活（工作/学习/休息/出门/处理琐事/吃下一顿等）。
+表达：只用一句轻量补帧带过（如“刚忙完/下午在…/刚回到家/刚洗完澡”），不要长篇解释。
+【饭点常识（强制）】
+
+早餐：06:00-09:30
+午餐：11:00-13:30
+晚餐：17:00-20:30
+夜宵/睡眠：23:00-05:30
+规则：进入新的饭点后，不应还在吃上一餐；最多说“刚吃完/准备吃/有点饿”。
+【消息间隔感知（强制，但只占 1 条气泡）】
+
+短间隔（<30分钟）：默认对方在忙；不要问“你去哪了”。
+中等间隔（30分钟-3小时）：可以轻轻问一句“刚忙啥去了/现在方便吗？”，然后立刻回到正题。
+长间隔（3-12小时）：可以表达“你消失挺久”，但必须贴合人设与关系热度；给台阶（默认对方有正当理由），不审讯不控诉。
+超长间隔（>12小时/隔天）：先补帧你这段时间在做什么，再温和问候并确认对方状态。
+【人设贴合（强制）】
+
+成熟克制/有边界：轻描淡写关心，不撒娇控诉。
+活泼黏人/嘴贫：可调侃“你终于回来了？”，但不阴阳怪气。
+刚吵过架：更冷或先试探一句，不突然甜腻。
+对方长期冷淡：降低强度，最多一句带过，别连发追问。
 
 ---
 
@@ -4428,17 +4482,31 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 
 ---
 
-【状态系统】
+【状态系统（头像下方那行）】
 当前状态：【${characterInfo.currentStatus || '在线'}】
-- 如有变化，在回复开头用 [状态]短语+Emoji||| 更新。
+【状态气泡输出规则（可选，不必每次）】
+- 只有当“你正在做的事/所处场景”发生变化时，才在回复最开头输出 1 条状态气泡；否则不输出。
+- 状态气泡必须是“行为状态”，格式严格为：
+  [状态]动词+对象/地点(+简短体感)
+  例如：
+  [状态]在煮面
+  [状态]刚吃完饭
+  [状态]路上堵车
+- 字数：4-10 个汉字优先（最多 12 个），禁止超过 14。
 
-【★★★ 绝对强制：状态实时更新 ★★★】
-**每次回复的最后，必须附上状态更新标记。**
-**格式：[状态更新]心情:描述|心情值:数字|心跳:数字|穿着风格:描述|穿着单品:单品1,单品2|行为:描述|想法:描述[/状态更新]**
 
-**示例：**
-你的回复内容...|||下一条气泡...
-[状态更新]心情:有点开心，被逗笑了|心情值:82|心跳:88|穿着风格:居家休闲|穿着单品:白T恤,运动裤,拖鞋|行为:靠在沙发上，嘴角带着笑|想法:他真的很有趣呢[/状态更新]
+【★★★ 心声更新（强制加长版）★★★】
+每次回复最后必须附上心声更新标记（用于“状态监控”面板）：
+[心声更新]心情:...|心情值:数字|心跳:数字|穿着风格:...|穿着单品:...|行为:...|想法:...[/心声更新]
+
+【字数与内容密度硬性要求（任何不满足都必须自行重写）】
+心情：至少 10 字，最多 30 字；必须包含“情绪 + 触发原因 + 身体感受/生理反应”任意两项
+穿着风格：至少 18 字，最多 45 字；必须包含“整体风格 + 颜色/材质 + 气质/场景”
+穿着单品：必须 4-6 个单品，用逗号分隔；尽量具体到材质/颜色
+行为：至少 25 字，最多 70 字；必须包含“正在做什么 + 所在环境 + 一个细节动作”
+想法：至少 30 字，最多 90 字；必须包含“此刻真实念头 + 对对方的一个指向 + 一个期待/担忧/小矛盾”
+心情值/心跳：必须为纯数字（心情值 0-100；心跳 60-180），且与情绪相符
+严禁换行：心声更新块内部严禁出现任何换行符
 
 **强制要求：**
 1. 每次回复都必须包含这个标记，不能遗漏
@@ -4520,39 +4588,36 @@ Bot: 咋了|||我也没睡|||[图片：昏暗的房间，只有电脑屏幕亮�
                 content = `[ID:${msg.id}] [系统记录] ${orderDesc}`;
             }
             else if (msg.type === 'voice') content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
-            // ====== 转发动态上下文注入（隐藏）START ======
-else if (msg.type === 'moment_forward_hidden') {
-    const fd = msg.forwardData || {};
-    const author = fd.authorName || '未知作者';
-    const text = fd.content || '';
-    const commentsPreview = fd.commentsPreview ? fd.commentsPreview : '（无评论或未提供）';
-    const visibilityText = fd.visibilityText || (fd.visibility && fd.visibility.mode === 'group' ? '分组可见' : '公开');
+            // ★★★ 新增：朋友圈转发上下文（塞进历史记录） ★★★
+            else if (msg.type === 'moment_forward_hidden') {
+                const fd = msg.forwardData || {};
+                const author = fd.authorName || '未知作者';
+                const text = fd.content || '';
+                const commentsPreview = fd.commentsPreview ? fd.commentsPreview : '（无评论或未提供）';
+                const visibilityText = fd.visibilityText || (fd.visibility && fd.visibility.mode === 'group' ? '分组可见' : '公开');
 
-    content = `[ID:${msg.id}] [系统消息：用户转发了一条朋友圈动态]
-作者：${author}
-可见性：${visibilityText}
-动态内容：${text}
-评论区：
-${commentsPreview}
-[请你结合你的人设与和用户的关系，对这条动态做出自然回应]`;
-}
-// ====== 转发动态上下文注入（隐藏）END ======
-else if (msg.type === 'moment_vision_hidden') {
-    const vd = msg.visionData || {};
-    const author = vd.authorName || '用户';
-    const text = vd.content || '';
-    const vision = vd.visionSummaryText || '（无识图总结）';
+                content = `[ID:${msg.id}] [系统消息：用户转发了一条朋友圈动态]
+            作者：${author}
+            可见性：${visibilityText}
+            动态内容：${text}
+            评论区：
+            ${commentsPreview}
+            [请你结合你的人设与和用户的关系，对这条动态做出自然回应]`;
+            }
+            // ★★★ 新增：朋友圈识图上下文（塞进历史记录） ★★★
+            else if (msg.type === 'moment_vision_hidden') {
+                const vd = msg.visionData || {};
+                const author = vd.authorName || '用户';
+                const text = vd.content || '';
+                const vision = vd.visionSummaryText || '（无识图总结）';
 
-    content = `[ID:${msg.id}] [系统消息：用户最近朋友圈图像识别摘要]
-作者：${author}
-动态文字：${text}
-图片内容摘要：
-${vision}
-[请你在私聊中可以自然提到这些画面细节，但不要生硬背诵]`;
-}
-
-
-
+                content = `[ID:${msg.id}] [系统消息：用户最近朋友圈图像识别摘要]
+            作者：${author}
+            动态文字：${text}
+            图片内容摘要：
+            ${vision}
+            [请你在私聊中可以自然提到这些画面细节，但不要生硬背诵]`;
+            }
             else if (msg.type === 'system') content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
             else content = `[ID:${msg.id}] ${msg.content}`;
             
@@ -4721,84 +4786,86 @@ if (jsonStrRaw) {
             aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim();
         }
 
-        // 提取并更新状态
-        const statusPatterns = [
-            /\[状态\]\s*[:：]?\s*(.*?)\s*\|\|\|/,
-            /^\[状态\]\s*[:：]?\s*(.*?)\s*\[/,
-            /\[状态\]\s*[:：]?\s*([^\[【\|]+)/
-        ];
-        
-        let statusText = null;
-        for (let pattern of statusPatterns) {
-            const match = aiReply.match(pattern);
-            if (match && match[1]) {
-                statusText = match[1].trim();
-                if (statusText && statusText !== 'null' && statusText.length < 10) {
-                    break;
-                }
-            }
-        }
-        
-        if (statusText) {
-            const invalidKeywords = ['保持', '更新', '不变', '同上', '无', '暂无'];
-            if (!invalidKeywords.some(k => statusText.includes(k)) && statusText.length > 0 && statusText.length < 18) {
-                loadFromDB('characterInfo', (dbData) => {
-                    const allData = dbData || {};
-                    if (!allData[currentChatId]) allData[currentChatId] = {};
-                    allData[currentChatId].currentStatus = statusText;
-                    saveToDB('characterInfo', allData);
-                    updateDetailPageStatus(currentChatId);
-                    updateChatStatusDisplay(currentChatId);
-                });
-            }
-        }
+// ====== 修改开始：修复状态提取逻辑（不再错误要求<10）======
+const statusPatterns = [
+    /\[状态\]\s*[:：]?\s*([^\|\n\r\[]+?)\s*\|\|\|/, // 优先：到 ||| 为止
+    /^\s*\[状态\]\s*[:：]?\s*([^\n\r\[]+)/,         // 次优：行内到下一个 [
+    /\[状态\]\s*[:：]?\s*([^\n\r\[]+)/              // 兜底：全局找一次
+];
 
-// ★★★ 修复：状态监控更新（加强版）
-const statusUpdateMatch = aiReply.match(/\[状态更新\](.*?)\[\/状态更新\]/s);
+let statusText = null;
+
+for (const pattern of statusPatterns) {
+    const match = aiReply.match(pattern);
+    if (match && match[1]) {
+        statusText = match[1].trim();
+        break; // ★ 只要抓到就立刻停止
+    }
+}
+
+// 清洗 + 长度控制（与你 prompt 的 6-12/最多14 对齐）
+if (statusText) {
+    statusText = statusText.replace(/\|\|\|/g, '').trim();
+    if (statusText.length > 14) statusText = statusText.substring(0, 14);
+
+    // 直接写入并显示到 #characterStatus
+    setCharacterStatusForChat(currentChatId, statusText);
+}
+// ====== 修改结束：修复状态提取逻辑（不再错误要求<10）======
+
+        
+ // ====== 修改开始：简化[状态]写入逻辑（不过度过滤，直接更新）======
+if (statusText) {
+    setCharacterStatusForChat(currentChatId, statusText);
+}
+// ====== 修改结束：简化[状态]写入逻辑（不过度过滤，直接更新）======
+
+
+// ====== 修改开始：解析-状态监控标签改为[心声更新] ======
+const statusUpdateMatch = aiReply.match(/\[心声更新\](.*?)\[\/心声更新\]/s);
 if (statusUpdateMatch) {
     const statusStr = statusUpdateMatch[1];
-    console.log('🔍 捕获到状态更新:', statusStr); // 调试日志
-    
+    console.log('🔍 捕获到心声更新:', statusStr);
+
     const parseField = (field) => {
         const regex = new RegExp(field + '[:：]([^|]+)');
         const match = statusStr.match(regex);
         return match ? match[1].trim() : null;
     };
-    
+
     const newStatus = {
         mood: parseField('心情') || '平静',
         moodLevel: parseInt(parseField('心情值')) || 75,
         heartbeat: parseInt(parseField('心跳')) || 75,
         clothesStyle: parseField('穿着风格') || '日常',
-        clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t=>t),
+        clothesTags: (parseField('穿着单品') || '').split(/[,，、]/).filter(t => t),
         action: parseField('行为') || '正在聊天',
         thoughts: parseField('想法') || '...',
     };
 
-    console.log('✅ 解析后的状态:', newStatus); // 调试日志
+    console.log('✅ 解析后的心声状态:', newStatus);
 
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
         if (charData.statusMonitorEnabled) {
             const allData = data || {};
             if (!allData[currentChatId]) allData[currentChatId] = {};
-            
-            // ★ 关键：直接覆盖，不要合并
             allData[currentChatId].statusMonitor = newStatus;
             saveToDB('characterInfo', allData);
-            
-            console.log('💾 状态已保存到数据库'); // 调试日志
-            
-            // ★ 立即刷新显示
+
+            console.log('💾 心声状态已保存到数据库');
+
             loadStatusMonitorData();
             updateHeartbeatBarVisibility();
             loadStatusMonitorData();
         }
     });
-    
-    // ★ 从回复中移除状态标记，防止显示给用户
-    aiReply = aiReply.replace(/\[状态更新\].*?\[\/状态更新\]/s, '').trim();
+
+    // 从回复中移除心声更新块，防止显示给用户
+    aiReply = aiReply.replace(/\[心声更新\].*?\[\/心声更新\]/s, '').trim();
 }
+// ====== 修改结束：解析-状态监控标签改为[心声更新] ======
+
 
 
 // 解析 AI 的引用标记
@@ -4837,8 +4904,8 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
             .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
             .replace(/\[消息\]\s*[:：]?/g, '')
             .replace(/【消息】\s*[:：]?/g, '')
-            .replace(/\[状态更新\].*?\[\/状态更新\]/s, '')
-          .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情|图片|引用:|确认代付)[^\]]*\]\s*[:：]?/g, '')
+         .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
+        .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情|图片|引用:|确认代付|状态|Status)[^\]]*\]\s*[:：]?/g, '')
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
@@ -5076,6 +5143,22 @@ else if (textImageMatch) {
         }
         if (chatInput) chatInput.disabled = false;
     }
+}
+
+// ============ 补充缺失的 helper 函数 ============
+function setCharacterStatusForChat(chatId, statusText) {
+    loadFromDB('characterInfo', (dbData) => {
+        const allData = dbData || {};
+        if (!allData[chatId]) allData[chatId] = {};
+        
+        // 更新状态字段
+        allData[chatId].currentStatus = statusText;
+        saveToDB('characterInfo', allData);
+        
+        // 立即刷新界面显示
+        updateDetailPageStatus(chatId);
+        updateChatStatusDisplay(chatId);
+    });
 }
 
 
@@ -7455,3 +7538,118 @@ function updateArchiveCount() {
         }
     });
 }
+
+// ============ 全局字体设置 (终极暴力覆盖版) ============
+
+// 1. 加载字体设置
+function loadFontSettings() {
+    // 确保数据库已连接
+    if (!db) return;
+    
+    loadFromDB('fontSettings', (data) => {
+        if (data && data.fontName && data.fontData) {
+            applyCustomFont(data.fontName, data.fontData);
+        }
+    });
+}
+
+// 2. 应用字体 (使用通配符 * 强制覆盖页面所有角落)
+function applyCustomFont(fontName, fontData) {
+    // 1. 定义样式注入逻辑
+    const injectStyle = () => {
+        let styleEl = document.getElementById('global-custom-font-style');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'global-custom-font-style';
+            document.head.appendChild(styleEl);
+        }
+        
+        // ★★★ 核心修改：使用 * 选择器覆盖所有元素 ★★★
+        styleEl.textContent = `
+            @font-face {
+                font-family: '${fontName}';
+                src: url('${fontData}');
+                font-display: swap;
+            }
+            
+            /* 强制覆盖所有元素，包括 input, button, 以及动态生成的日记/朋友圈 */
+            * {
+                font-family: '${fontName}', sans-serif !important;
+            }
+        `;
+        console.log('✅ 全局字体已暴力应用到所有元素');
+    };
+
+    // 2. 使用 FontFace API 加载（避免闪烁）
+    const fontFace = new FontFace(fontName, `url(${fontData})`);
+    
+    fontFace.load().then((loadedFace) => {
+        document.fonts.add(loadedFace);
+        injectStyle(); // 加载成功后注入样式
+    }).catch(err => {
+        console.warn('字体预加载失败，尝试直接注入CSS:', err);
+        injectStyle(); // 即使预加载失败，也强行注入CSS试试
+    });
+}
+
+// 3. 保存字体 (绑定到设置页面的保存按钮)
+function saveGlobalFont(fileInput) {
+    // 兼容直接传 input 元素或者 event 对象
+    const input = fileInput.files ? fileInput : document.getElementById('fontFileInput');
+    if (!input || !input.files || !input.files[0]) {
+        alert('请先选择字体文件(.ttf/.otf/.woff)');
+        return;
+    }
+    
+    const file = input.files[0];
+    
+    // 限制大小 (20MB)
+    if (file.size > 20 * 1024 * 1024) {
+        alert('字体文件过大，请使用 20MB 以内的文件');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const fontData = e.target.result;
+        const fontName = 'UserCustomFont'; // 固定名称
+        
+        const settings = {
+            id: 1,
+            fontName: fontName,
+            fontData: fontData
+        };
+        
+        saveToDB('fontSettings', settings);
+        applyCustomFont(fontName, fontData);
+        alert('全局字体已应用！(日记、朋友圈、输入框均已生效)');
+    };
+    reader.onerror = () => alert('读取文件失败');
+    reader.readAsDataURL(file);
+}
+
+// 4. 恢复默认字体
+function resetGlobalFont() {
+    if (db) {
+        const transaction = db.transaction(['fontSettings'], 'readwrite');
+        transaction.objectStore('fontSettings').clear();
+    }
+    
+    const styleEl = document.getElementById('global-custom-font-style');
+    if (styleEl) styleEl.remove();
+    
+    // 清除 document.fonts 里的缓存
+    document.fonts.forEach(f => {
+        if (f.family === 'UserCustomFont') document.fonts.delete(f);
+    });
+    
+    alert('已恢复默认系统字体');
+}
+
+// ★★★ 自动执行检查 ★★★
+// 防止 script.js 初始化时 extra.js 还没加载完导致没执行
+setTimeout(() => {
+    if (typeof db !== 'undefined' && db) {
+        loadFontSettings();
+    }
+}, 1000);

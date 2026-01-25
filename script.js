@@ -4013,6 +4013,8 @@ function publishMoment() {
             groupId: draftMomentVisibility.groupId
         }
     };
+alert('[DBG生成动态] chatId=' + chatId + ' authorId=' + newMoment.authorId + ' authorName=' + newMoment.authorName);
+
 
     moments.unshift(newMoment);
     saveToDB('moments', { list: moments });
@@ -4766,6 +4768,8 @@ async function runAutoPublishOnce(opts) {
 
 // ====== Moments Generate One (Env+Gap+Birthday) START ======
 async function generateMomentForChatId(chatId, scheme) {
+    console.log('[DBG moment] generating for chatId=', chatId);
+
     const chat = Array.isArray(chats) ? chats.find(c => c.id === chatId) : null;
     if (!chat) return null;
 
@@ -4863,6 +4867,7 @@ async function generateMomentForChatId(chatId, scheme) {
         timestamp: Date.now(),
         type: 'character'
     };
+console.log('[DBG moment] created moment authorId=', newMoment.authorId, 'authorName=', newMoment.authorName, 'content=', (newMoment.content || '').slice(0, 30));
 
     return newMoment;
 }
@@ -5391,6 +5396,8 @@ async function selectCommentActors(moment) {
 
 // ====== Moments API Call (New+Continue Prompt) START ======
 async function callApiToGenComments(moment, actors, options) {
+    alert('[DBG生成评论] moment.id=' + (moment && moment.id) + ' moment.authorId=' + (moment && moment.authorId) + ' moment.authorName=' + (moment && moment.authorName));
+
     const scheme = getSubApiScheme();
     if (!scheme) {
         alert('请先设置副 API 方案');
@@ -5413,37 +5420,38 @@ async function callApiToGenComments(moment, actors, options) {
     const relationshipText = authorInfo.relationshipText || '';
 
 // 参与者卡片：固定角色 / 指定配角 / 智能补位位
-const actorCards = actors.map(a => {
-    const name = a.name;
-
-    // A) 同组真实角色：必须用原名原人设
-    if (a.type === 'chat') {
-        const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
-        const p = info.personality || '性格信息不详，说话简短自然。';
-        return `【固定角色】昵称：${name} (ID:${a.id})
+ const actorCards = actors.map(a => {
+        const name = a.name;
+        // A) 同组真实角色：必须用原名原人设
+        if (a.type === 'chat') {
+            const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
+            const p = info.personality || '性格信息不详，说话简短自然。';
+            return `【固定角色】昵称：${name} (ID:${a.id})
 - 人设：${p}
 - 规则：必须严格扮演此人；roleName 不可改名。`;
-    }
-
-    // B) 关系网 @ 标注的虚拟人物：也固定名字
-    if (a.type === 'virtual') {
-        const sn1 = extractSnippetsForName(relationshipText, '@' + name);
-        const sn2 = extractSnippetsForName(relationshipText, name);
-        const p = (sn1 || sn2 || '关系网提及人物').trim();
-        return `【指定配角】昵称：${name} (ID:${a.id})
+        }
+        // B) 关系网 @ 标注的虚拟人物：也固定名字
+        if (a.type === 'virtual') {
+            const sn1 = extractSnippetsForName(relationshipText, '@' + name);
+            const sn2 = extractSnippetsForName(relationshipText, name);
+            const p = (sn1 || sn2 || '关系网提及人物').trim();
+            return `【指定配角】昵称：${name} (ID:${a.id})
 - 线索：${p}
 - 规则：扮演此人；roleName 不可改名。`;
-    }
-
-    // C) 智能补位位：允许“变身”为人设/关系网里的好友家人
-    return `【智能补位位】临时ID:${a.id} (当前暂名:${name})
-- 你必须阅读【作者人设】与【关系网文本】，自动识别里面提到的亲友/家人/好朋友/死党/闺蜜/同事等。
-- 优先级1：如果文本里提到了具体人物（如“妈妈”“闺蜜小美”“发小阿强”“室友”）并且评论区还没出现过该人物，请你直接“变身”为他/她：
-  - 在 JSON 中把 roleName 改成该人物称呼（例如：妈妈/小美/死党/室友）
-  - 语气要符合身份关系（长辈关心唠叨、闺蜜嘴碎、死党互损等）
-- 优先级2：如果确实没有具体人物可扮演，才允许当路人网友（roleName 可写“路人甲/网友/某个ID”）。
-- 注意：无论你变身成谁，roleId 必须保留临时ID(负数)，不要修改。`;
-}).join('\n\n');
+        }
+        // C) 智能补位位：允许“变身”为人设/关系网里的好友家人
+        // ▼▼▼ 修改开始：增加“严禁参考其他角色”的指令 ▼▼▼
+       return `【智能补位位】临时ID:${a.id} (当前暂名:${name})
+- 来源严格限制：你只能阅读【作者人设】与【作者关系网文本】。
+- 严禁越界：绝对禁止参考其他【固定角色】的人设信息！
+- 优先级1（关系户）：如果【作者】文本里提到了具体人物（如“妈妈”、“死党老王”、“暗恋对象”），且该人物未在评论区出现，请优先“变身”为该人物，roleName 改成对应的称呼。
+- 优先级2（纯路人）：如果找不到具体关系人物，请扮演普通的“朋友圈点赞之交”或“网友”。
+  - 【改名强制】：roleName 必须改成一个自然的网名（例如：momo、小透明、快乐小狗、Sunday、吃瓜大王、User_007、或者是普通的英文名/昵称）。
+  - 【禁止】：绝对禁止直接使用“路人甲”、“损友”、“闺蜜”、“妹妹”、“阿强”这种身份标签或土味名字作为 roleName。
+  - 语气：随和、吃瓜、简单附和或礼貌赞美。
+- 注意：roleId 必须保留临时ID(负数)，不要修改。`;
+        // ▲▲▲ 修改结束 ▲▲▲
+    }).join('\n\n');
 
 
     // 中文注释：新生成 vs 续聊 的不同任务描述
@@ -5468,24 +5476,23 @@ const actorCards = actors.map(a => {
 5. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
 `.trim();
 
-const prompt = `
+ const prompt = `
 你是一名“朋友圈评论区编剧”。你要模拟一个真实朋友圈的评论互动。
-
 【动态作者】
 作者名：${moment.authorName}
 作者人设：
 ${authorPersonality || '（未提供）'}
-
 【作者关系网文本（重要线索，用来匹配好友/家人）】
 ${relationshipText ? relationshipText : '（未提供）'}
-
 【动态内容】
 ${moment.content}
-
 【参与评论的人员名单（务必遵守每个人的规则）】
 ${actorCards}
-
 【任务要求】
+0) 【禁止暧昧互动（最高优先级）】
+- 禁止任何“角色A ↔ 角色B”之间的暧昧/恋爱向互动：不许互撩、调情、示爱、吃醋、争宠。
+- 禁止使用暧昧/恋爱称呼或措辞（对任何其他角色都不允许）：如“宝贝/亲爱的/老婆/老公/对象/想你/心动/约会/抱抱/亲亲”等。
+- 允许朋友式/同事式/家人式的正常交流与玩笑，不得营造暧昧张力；不要写成情侣互动。
 1. 生成 ${minCount}-${maxCount} 条评论互动，口语化短句为主，像真实朋友圈。
 2. 评论区人员必须“混合”出现：
    - 【固定角色】(同组真实角色) 必须至少出现 2 人（如果名单里有足够人数）。
@@ -5494,16 +5501,13 @@ ${actorCards}
 4. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
 5. 可以少量颜文字(>_<)(._.)，不要太多。
 6. 不要引用聊天记录原句，不要写长段。
-
 【输出格式（严格遵守）】
 只输出严格 JSON 数组（必须使用英文双引号），数组必须完整闭合，以 ] 结束。
 每个元素格式如下：
 {"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
-
 【智能改名规则（非常重要）】
 - 【固定角色】【指定配角】：roleName 必须与名单一致，严禁改名。
 - 【智能补位位】：允许改名为“人设/关系网里提到的人物称呼”，用该人物口吻说话；roleId 保持原负数ID不变。
-
 【可用 roleId 对照】
 ${actors.map(a => `${a.name}=${a.id}`).join(', ')}
 作者 ${moment.authorName}=${moment.authorId}
@@ -6537,39 +6541,34 @@ async function callApiToGenUserMomentComments(moment, chatIdList, scheme, vision
 
     const prompt = `
 你是“朋友圈评论生成器”。现在用户发布了一条动态，请让以下角色各自评论一句。
-
 【动态作者（用户）】
 ${userName}
-
 【动态内容】
 ${moment.content}
-
 【图片内容摘要（由视觉识别得出）】
 ${visionSummaryText ? visionSummaryText : '（无图片或未识别）'}
-
-
 【可评论的角色（每人必须严格按自己人设说话）】
 ${cards}
-
 【任务要求】
+0) 【禁止暧昧互动（最高优先级）】
+- 禁止任何“角色 ↔ 角色”之间的暧昧/恋爱向互动与称呼：不许互撩、调情、示爱、吃醋、争宠。
+- 禁止使用暧昧/恋爱称呼或措辞（对其他角色不允许）：如“宝贝/亲爱的/老婆/老公/对象/想你/心动/约会/抱抱/亲亲”等。
+- 评论可以热闹，但不得把重点写成角色之间的暧昧互动。
 1) 只生成顶层评论：每条 replyToName 必须为 null。
 2) 每个角色最多输出 1 条评论（不要重复角色）。
 3) 评论要口语化、短句为主，像真实朋友圈，允许少量颜文字(>_<)(._.)。
 4) 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
 5) 输出条数必须等于角色数量（roleIdList 有几个就输出几条）。
-
 【输出格式】
 只输出严格 JSON 数组（必须使用英文双引号 " ，禁止中文引号 “ ”），数组必须完整闭合，以 ] 结束。
 每个元素格式：
 {"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
-
 【可用 roleId/name 对照】
 ${chatIdList.map(id => {
         const chat = (chats || []).find(c => c.id === id);
         return `${chat ? chat.name : ('角色' + id)}=${id}`;
     }).join(', ')}
 `.trim();
-
     const raw = await callSubApiGenerateCommentsOnly({
         baseUrl: scheme.baseUrl,
         apiKey: scheme.apiKey,
