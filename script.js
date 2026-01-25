@@ -5396,7 +5396,7 @@ async function selectCommentActors(moment) {
 
 // ====== Moments API Call (New+Continue Prompt) START ======
 async function callApiToGenComments(moment, actors, options) {
-    alert('[DBG生成评论] moment.id=' + (moment && moment.id) + ' moment.authorId=' + (moment && moment.authorId) + ' moment.authorName=' + (moment && moment.authorName));
+   
 
     const scheme = getSubApiScheme();
     if (!scheme) {
@@ -5413,107 +5413,91 @@ async function callApiToGenComments(moment, actors, options) {
     const minCount = options && options.minCount ? options.minCount : 3;
     const maxCount = options && options.maxCount ? options.maxCount : 6;
 
+    // 加载作者信息
     const charInfoAll = await loadCharacterInfoAllSafe();
     const authorId = moment.authorId;
     const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
     const authorPersonality = authorInfo.personality || '';
     const relationshipText = authorInfo.relationshipText || '';
 
-// 参与者卡片：固定角色 / 指定配角 / 智能补位位
- const actorCards = actors.map(a => {
+    // 构建参与者卡片
+    const actorCards = actors.map(a => {
         const name = a.name;
-        // A) 同组真实角色：必须用原名原人设
         if (a.type === 'chat') {
             const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
             const p = info.personality || '性格信息不详，说话简短自然。';
-            return `【固定角色】昵称：${name} (ID:${a.id})
-- 人设：${p}
-- 规则：必须严格扮演此人；roleName 不可改名。`;
+            return `【固定角色】昵称：${name} (ID:${a.id})\n- 人设：${p}\n- 规则：必须严格扮演此人，不可改名。`;
         }
-        // B) 关系网 @ 标注的虚拟人物：也固定名字
         if (a.type === 'virtual') {
             const sn1 = extractSnippetsForName(relationshipText, '@' + name);
             const sn2 = extractSnippetsForName(relationshipText, name);
             const p = (sn1 || sn2 || '关系网提及人物').trim();
-            return `【指定配角】昵称：${name} (ID:${a.id})
-- 线索：${p}
-- 规则：扮演此人；roleName 不可改名。`;
+            return `【指定配角】昵称：${name} (ID:${a.id})\n- 线索：${p}\n- 规则：扮演此人，不可改名。`;
         }
-        // C) 智能补位位：允许“变身”为人设/关系网里的好友家人
-        // ▼▼▼ 修改开始：增加“严禁参考其他角色”的指令 ▼▼▼
-       return `【智能补位位】临时ID:${a.id} (当前暂名:${name})
-- 来源严格限制：你只能阅读【作者人设】与【作者关系网文本】。
-- 严禁越界：绝对禁止参考其他【固定角色】的人设信息！
-- 优先级1（关系户）：如果【作者】文本里提到了具体人物（如“妈妈”、“死党老王”、“暗恋对象”），且该人物未在评论区出现，请优先“变身”为该人物，roleName 改成对应的称呼。
-- 优先级2（纯路人）：如果找不到具体关系人物，请扮演普通的“朋友圈点赞之交”或“网友”。
-  - 【改名强制】：roleName 必须改成一个自然的网名（例如：momo、小透明、快乐小狗、Sunday、吃瓜大王、User_007、或者是普通的英文名/昵称）。
-  - 【禁止】：绝对禁止直接使用“路人甲”、“损友”、“闺蜜”、“妹妹”、“阿强”这种身份标签或土味名字作为 roleName。
-  - 语气：随和、吃瓜、简单附和或礼貌赞美。
-- 注意：roleId 必须保留临时ID(负数)，不要修改。`;
-        // ▲▲▲ 修改结束 ▲▲▲
+        return `【智能补位位】临时ID:${a.id} (当前暂名:${name})\n- 规则：如果作者关系网里没提到你，你就是纯路人。禁止装熟。`;
     }).join('\n\n');
 
+    // ★★★ 核心 Prompt：强调边界感与人设 ★★★
+    const prompt = `
+你是一名严谨的“朋友圈评论区编剧”。请根据【人设】和【关系网】生成真实的评论互动。
 
-    // 中文注释：新生成 vs 续聊 的不同任务描述
-    const taskBlockNew = `
-【任务要求】
-1. 请生成 ${minCount}-${maxCount} 条评论互动。
-2. 每条评论口语化、短句为主，像真实朋友圈；允许少量颜文字(>_<)(._.)。
-3. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
-4. 必须体现“关系”：
-   - 如果作者关系网里提到某人（或@某人），语气更贴合（亲密/互怼/客气/暧昧等）。
-   - 如果没有明确关系线索，就按普通朋友互动。
-5. 必须有楼中楼：至少出现 2 条 “A 回复 B”（replyToName 不为 null）。
-6. 不要输出长段对话，不要引用聊天记录原文。
-`.trim();
-
-    const taskBlockContinue = `
-【任务要求（续聊模式）】
-1. 这是“第二次生成评论”，请在已有评论基础上继续聊下去，而不是重开新话题。
-2. 你会看到已有的楼中楼对话片段，请务必承接最后一句的内容继续往下聊。
-3. 请生成 ${minCount}-${maxCount} 条“续聊评论”，优先使用同一批参与者，保持说话风格一致。
-4. 续聊必须包含楼中楼（replyToName 不为 null），且话题必须延续，不要突然换到别的话题。
-5. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
-`.trim();
-
- const prompt = `
-你是一名“朋友圈评论区编剧”。你要模拟一个真实朋友圈的评论互动。
-【动态作者】
-作者名：${moment.authorName}
-作者人设：
+【动态作者】${moment.authorName}
+【作者人设】
 ${authorPersonality || '（未提供）'}
-【作者关系网文本（重要线索，用来匹配好友/家人）】
-${relationshipText ? relationshipText : '（未提供）'}
+【作者关系网（亲朋好友）】
+${relationshipText ? relationshipText : '（无）'}
 【动态内容】
 ${moment.content}
-【参与评论的人员名单（务必遵守每个人的规则）】
+【参与评论的角色名单】
 ${actorCards}
+【已有对话上下文（续聊模式用）】
+${threadContext || '（无）'}
+
+【核心指令：边界感 + 人设像活人一样】
+你要先“看关系再开口”，每一句都像朋友圈里真实的人会说的话：短、随口、带点情绪，但不演戏、不写小说。
+
+1) 关系判定（只看【作者人设】与【作者关系网】）
+- 熟人：评论者的名字/称呼在作者关系网里出现，或作者人设明确提到（例如“我妈/室友/同事老王/@小李”等）。
+- 默认陌生人：没有任何明确提及，就是点赞之交/列表好友（这是最常见的情况）。
+
+2) 说话方式（人设第一，边界第二）
+- 陌生人/点赞之交（默认）：
+  - 语气：礼貌、克制、不过界；可以热情但不熟络。
+  - 内容：只围绕动态内容本身，夸一句/问一句浅问题都行（如“拍得真清爽”“这家店看着不错”）。
+  - 禁止：不要打探隐私（“跟谁/在哪/你俩啥关系”这种都不说）；不要指点人生；不要强行接梗装熟。
+- 熟人（只能是友情/亲情/同事）：
+  - 语气：可以贫嘴、互怼、关心、提醒、吐槽，但要像熟人日常聊天，不要戏精。
+  - 内容：可以轻微“揭短”或约一下，但要符合人设（高冷就少字，话痨就多两句）。
+  - 禁止：绝对禁止撒娇语气（例如“嘤嘤嘤/抱抱/人家/贴贴/想你啦”）；绝对禁止暧昧氛围。
+
+3) 关系边界总规则（最高优先级）
+- 角色与角色之间：只能是【朋友/同事/家人/陌生人/互相看不顺眼的情敌】这类关系。
+- 严禁角色与角色之间出现任何“好感向/恋爱向”对话：不许互撩、调情、示爱、吃醋、暧昧称呼。
+- 允许“情敌”只针对【用户（我）】：可以出现“我跟你抢TA/别总霸着TA/下次轮到我”这种占有欲或竞争，但对象必须明确是“用户（我）”，不能变成角色A和角色B谈恋爱。
+- 禁止磕CP/起哄：禁止“你俩好甜/快在一起/我磕到了/真般配”等话术（无论对象是谁都不许）。
+
+4) 输出风格限制（避免AI味）
+- 句子要短，像随手打字；可以有口头禅、停顿、反问，但别堆修辞。
+- 不要写长段，不要讲大道理，不要总结。
+- 禁止方括号表情：[doge][坏笑][表情] 等一律不出现；可少量颜文字(._.)(>_<)。
+
 【任务要求】
-0) 【禁止暧昧互动（最高优先级）】
-- 禁止任何“角色A ↔ 角色B”之间的暧昧/恋爱向互动：不许互撩、调情、示爱、吃醋、争宠。
-- 禁止使用暧昧/恋爱称呼或措辞（对任何其他角色都不允许）：如“宝贝/亲爱的/老婆/老公/对象/想你/心动/约会/抱抱/亲亲”等。
-- 允许朋友式/同事式/家人式的正常交流与玩笑，不得营造暧昧张力；不要写成情侣互动。
-1. 生成 ${minCount}-${maxCount} 条评论互动，口语化短句为主，像真实朋友圈。
-2. 评论区人员必须“混合”出现：
-   - 【固定角色】(同组真实角色) 必须至少出现 2 人（如果名单里有足够人数）。
-   - 【智能补位位】要优先“变身”为人设/关系网提到的好友家人（例如妈妈/闺蜜/死党），不要只当路人。
-3. 必须有楼中楼：至少 2 条评论的 replyToName 不为 null（A 回复 B）。
-4. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
-5. 可以少量颜文字(>_<)(._.)，不要太多。
-6. 不要引用聊天记录原句，不要写长段。
-【输出格式（严格遵守）】
+1) 生成 ${minCount}-${maxCount} 条评论。
+2) 必须有楼中楼（A 回复 B）至少 2 条；陌生人之间的回复也要客气、浅互动（如“哈哈谢谢”“确实”）。
+3) 人设与边界感优先级最高；宁可冷场也不要越界。
+
+
+【输出格式】
 只输出严格 JSON 数组（必须使用英文双引号），数组必须完整闭合，以 ] 结束。
-每个元素格式如下：
+每个元素格式：
 {"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
-【智能改名规则（非常重要）】
-- 【固定角色】【指定配角】：roleName 必须与名单一致，严禁改名。
-- 【智能补位位】：允许改名为“人设/关系网里提到的人物称呼”，用该人物口吻说话；roleId 保持原负数ID不变。
+
 【可用 roleId 对照】
 ${actors.map(a => `${a.name}=${a.id}`).join(', ')}
 作者 ${moment.authorName}=${moment.authorId}
 `.trim();
 
-
+    // 调用 API
     const raw = await callSubApiGenerateCommentsOnly({
         baseUrl: scheme.baseUrl,
         apiKey: scheme.apiKey,
@@ -5526,6 +5510,7 @@ ${actors.map(a => `${a.name}=${a.id}`).join(', ')}
     const arr = parseJsonArrayFromText(raw);
     if (!Array.isArray(arr)) return null;
 
+    // 规范化结果
     const normalized = arr.map(x => ({
         roleId: typeof x.roleId === 'number' ? x.roleId : -9999,
         roleName: String(x.roleName || '未知'),
