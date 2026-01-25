@@ -5103,7 +5103,7 @@ async function callSubApiGenerateMoment(params) {
 
     if (!raw) return null;
 
-    const parsed = safeParseJsonFromText(raw);
+const parsed = safeParseJsonFromText(raw);
     console.log('[moments] parsed:', parsed);
 
     if (!parsed || !parsed.content) return null;
@@ -5229,7 +5229,14 @@ async function generateAiComments(momentId, btnEl) {
                     content: moment.content || '',
                     visionSummaryText
                 });
+            
+                        } else {
+                // 图片识别失败时给出明确提示
+                alert('图片识别失败！\n\n请检查：\n1. 朋友圈设置中的“副API方案”是否正确配置。\n2. 该方案选择的模型是否为支持视觉功能的模型（如 gpt-4o, gpt-4-vision-preview 等）。');
+                // 中断执行，防止生成无视图片的评论
+                return; 
             }
+
         }
     }
 
@@ -5860,7 +5867,22 @@ async function sendUserComment() {
     // 3) 自动触发作者回复（用副API方案）
     // ====== 评论按钮变“生成中”START ======
 setCommentBtnLoadingByMomentId(moment.id, true);
-await autoReplyToUserComment(moment, userComment);
+let replyRoleId = null;
+
+// 如果用户是在“回复某人”，就从评论列表里找到那个人最新的一条评论的 senderId
+if (userComment.replyToName) {
+    const list = Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    for (let i = list.length - 1; i >= 0; i--) {
+        const c = list[i];
+        if (c && c.senderName === userComment.replyToName && c.senderId !== 'me') {
+            replyRoleId = c.senderId;
+            break;
+        }
+    }
+}
+
+await autoReplyToUserComment(moment, userComment, replyRoleId);
+
 setCommentBtnLoadingByMomentId(moment.id, false);
 
 // ====== 评论按钮变“生成中”END ======
@@ -5868,11 +5890,19 @@ setCommentBtnLoadingByMomentId(moment.id, false);
 }
 // ====== 用户发送评论 END ======
 
-// ====== 作者自动回复用户评论 START ======
-async function autoReplyToUserComment(moment, userComment) {
-    // 中文注释：只对“有真实作者”的动态自动回复（作者必须是聊天列表角色）
-    const authorId = moment.authorId;
-    if (authorId === 'me') return;
+// ====== 角色自动回复用户评论 START ======
+async function autoReplyToUserComment(moment, userComment, replyRoleId) {
+    // responderId：默认动态作者；但如果动态作者是 me（用户动态），则用“被回复的评论者”
+    let responderId = moment.authorId;
+
+    // 用户动态：只有在“回复某个角色评论”时才触发自动回复
+    if (responderId === 'me') {
+        if (typeof replyRoleId === 'number') {
+            responderId = replyRoleId;
+        } else {
+            return;
+        }
+    }
 
     const scheme = getSubApiScheme();
     if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
@@ -5880,18 +5910,29 @@ async function autoReplyToUserComment(moment, userComment) {
         return;
     }
 
-    const charInfoAll = await loadCharacterInfoAllSafe();
-    const authorInfo = charInfoAll && charInfoAll[authorId] ? charInfoAll[authorId] : {};
-    const authorPersonality = authorInfo.personality || '';
-    const relationshipText = authorInfo.relationshipText || '';
+    // 回复者名字：从评论区里找 responderId 对应的 senderName；找不到再兜底
+    let responderName = moment.authorName || 'TA';
+    const list = Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    for (let i = list.length - 1; i >= 0; i--) {
+        const c = list[i];
+        if (c && c.senderId === responderId && c.senderName) {
+            responderName = c.senderName;
+            break;
+        }
+    }
 
-    // 中文注释：取该动态最近12条评论作为上下文（越近越像真实聊天）
+    const charInfoAll = await loadCharacterInfoAllSafe();
+    const responderInfo = charInfoAll && charInfoAll[responderId] ? charInfoAll[responderId] : {};
+    const responderPersonality = responderInfo.personality || '';
+    const relationshipText = responderInfo.relationshipText || '';
+
+    // 取该动态最近12条评论作为上下文
     const threadContext = buildCommentThreadContext(moment, 12);
 
     const prompt = buildUserCommentReplyPrompt({
-        authorName: moment.authorName,
-        authorId: authorId,
-        authorPersonality,
+        authorName: responderName,
+        authorId: responderId,
+        authorPersonality: responderPersonality,
         relationshipText,
         momentContent: moment.content,
         threadContext,
@@ -5909,20 +5950,18 @@ async function autoReplyToUserComment(moment, userComment) {
 
     if (!raw) return;
 
-    // 解析为 {"content":"..."}（这里用一个专用解析，避免被评论数组解析影响）
     const replyText = parseJsonObjectContentFromText(raw);
     if (!replyText) return;
 
     const clean = sanitizeCommentText(replyText);
     if (!clean) return;
 
-    // 写入作者回复
     if (!moment.commentsList) moment.commentsList = [];
 
     const reply = {
         id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-        senderId: authorId,
-        senderName: moment.authorName,
+        senderId: responderId,
+        senderName: responderName,
         replyToId: userComment.id,
         replyToName: userComment.senderName,
         content: clean,
@@ -5936,7 +5975,8 @@ async function autoReplyToUserComment(moment, userComment) {
     saveToDB('moments', { list: moments });
     renderMomentsList();
 }
-// ====== 作者自动回复用户评论 END ======
+// ====== 角色自动回复用户评论 END ======
+
 
 // ====== 评论线程上下文构建 START ======
 function buildCommentThreadContext(moment, limit) {
@@ -6217,7 +6257,6 @@ async function compressImagesForVision(images) {
     return compressed;
 }
 
-// 视觉总结：一次API，把 1-3 张图按编号总结出来
 async function callSubApiVisionSummarizeMoment(params) {
     const baseUrl = (params.baseUrl || '').trim();
     const apiKey = (params.apiKey || '').trim();
@@ -6225,35 +6264,51 @@ async function callSubApiVisionSummarizeMoment(params) {
     const momentText = params.momentText || '';
     const visionImages = Array.isArray(params.visionImages) ? params.visionImages : [];
 
-    if (!baseUrl || !apiKey || !model) return null;
+    if (!baseUrl || !apiKey || !model) {
+        alert('[VisionSummary] baseUrl/apiKey/model 缺失');
+        return null;
+    }
 
-    const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+    const url = baseUrl.endsWith('/')
+        ? baseUrl + 'chat/completions'
+        : baseUrl + '/chat/completions';
 
-    // 多模态 content：文字 + 多张图
+    // 用于确认代码生效&请求地址正确
+    // alert('[VisionSummary] URL=' + url);
+
     const content = [
         {
             type: 'text',
             text:
-`你是图片理解助手。请结合动态文字与图片内容，输出严格JSON（不要输出任何多余文字）：
-{
-  "images":[{"idx":1,"desc":"..."},{"idx":2,"desc":"..."}],
-  "overall":"一句话总结整体氛围/事件(可选)"
-}
 
-要求：
-1) desc 15-40字，写清主体、场景、动作/情绪
-2) idx 从 1 开始，按图片输入顺序编号
-3) 不要用emoji
-4) 只输出JSON对象
+`你是图片理解助手。请结合动态文字与图片内容，输出“严格可解析 JSON”。
+
+【输出要求（必须严格遵守）】
+1) 只输出一个 JSON 对象，禁止输出任何解释、标题、代码块标记（禁止输出 \`\`\`json）。
+2) 输出必须包含最外层花括号 { }，禁止只输出片段（例如只输出 "images": [...] 这种是不允许的）。
+3) JSON 必须能被 JavaScript JSON.parse 直接解析通过：必须用英文双引号 " ，禁止中文引号 “ ”。
+4) 字段结构必须完全符合下面模板，字段名不能改：
+{
+  "images": [
+    {"idx": 1, "desc": "..."},
+    {"idx": 2, "desc": "..."}
+  ],
+  "overall": "..."
+}
+5) images 数组长度 = 你实际看到的图片数量（最多3张），idx 从 1 开始按输入顺序编号。
+6) desc 每条 15-40 个汉字，写清：主体 + 场景 + 动作/情绪；不要使用 emoji。
+7) overall 可为空字符串，但字段必须存在（例如 "overall": ""）。
 
 【动态文字】
 ${momentText || '（无）'}`
+
         },
         ...visionImages.map(u => ({ type: 'image_url', image_url: { url: u } }))
     ];
 
+    let resp;
     try {
-        const resp = await fetch(url, {
+        resp = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -6269,40 +6324,161 @@ ${momentText || '（无）'}`
                 ]
             })
         });
-
-        if (!resp.ok) {
-            console.error('[VisionSummary] HTTP', resp.status, await resp.text().catch(() => ''));
-            return null;
-        }
-
-        const data = await resp.json();
-        const raw = data && data.choices && data.choices[0] && data.choices[0].message
-            ? data.choices[0].message.content
-            : '';
-
-        if (!raw) return null;
-
-        // 复用你已有的 JSON 提取思路：提取第一个 { ... }
-        const match = String(raw).match(/\{[\s\S]*\}/);
-        if (!match) return null;
-
-        const cleaned = match[0]
-            .replace(/[“”]/g, '"')
-            .replace(/：/g, ':')
-            .replace(/，/g, ',')
-            .trim();
-
-        try {
-            return JSON.parse(cleaned);
-        } catch (e) {
-            console.error('[VisionSummary] JSON parse failed:', cleaned);
-            return null;
-        }
     } catch (e) {
-        console.error('[VisionSummary] fetch error:', e);
+        alert('[VisionSummary] fetch 失败：' + (e && e.message ? e.message : String(e)));
+        return null;
+    }
+
+    if (!resp.ok) {
+        const t = await resp.text().catch(() => '');
+        alert(
+            '[VisionSummary] HTTP错误\n' +
+            'HTTP: ' + resp.status + '\n' +
+            'URL: ' + url + '\n\n' +
+            (t ? ('返回(前400字):\n' + t.slice(0, 400)) : '无返回内容')
+        );
+        return null;
+    }
+
+    // 有些反代会返回非JSON，先读 text 再尝试 parse
+    const rawText = await resp.text().catch(() => '');
+    if (!rawText) {
+        alert('[VisionSummary] 响应为空\nURL: ' + url);
+        return null;
+    }
+
+    let data;
+    try {
+        data = JSON.parse(rawText);
+    } catch (e) {
+        alert(
+            '[VisionSummary] 返回不是JSON\n' +
+            'URL: ' + url + '\n\n' +
+            '返回(前400字):\n' + rawText.slice(0, 400)
+        );
+        return null;
+    }
+
+    const raw = data && data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : '';
+
+    if (!raw) {
+        alert(
+            '[VisionSummary] 返回结构不含 choices[0].message.content\n' +
+            'URL: ' + url + '\n\n' +
+            '返回JSON(前400字):\n' + JSON.stringify(data).slice(0, 400)
+        );
+        return null;
+    }
+
+ // ===== Vision Summary Parse (Robust) =====
+let s = String(raw || '').trim();
+
+// 去掉 ```json 代码块
+s = s.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+// 修正常见中文符号
+s = s.replace(/[“”]/g, '"').replace(/：/g, ':').replace(/，/g, ',');
+
+// 如果模型只输出了 "images": [...] 片段，包一层 {}
+if (!s.startsWith('{') && s.includes('"images"')) s = '{' + s;
+if (!s.endsWith('}') && s.includes('"images"')) s = s + '}';
+
+// 尝试提取第一个 {...}
+const m = s.match(/\{[\s\S]*\}/);
+if (m) s = m[0];
+
+// 先尝试严格 JSON.parse
+try {
+    const obj = JSON.parse(s);
+    if (obj && Array.isArray(obj.images)) {
+        if (typeof obj.overall !== 'string') obj.overall = '';
+        return obj;
+    }
+} catch (e) {
+    // ignore, fallback below
+}
+
+// Fallback：从文本中“抽取”idx/desc，然后重新组装（最稳）
+const images = [];
+const imgBlock = String(raw || '');
+const re = /"idx"\s*:\s*(\d+)[\s\S]*?"desc"\s*:\s*"([^"]*)/g;
+let mm;
+while ((mm = re.exec(imgBlock)) !== null) {
+    const idx = parseInt(mm[1], 10);
+    const desc = (mm[2] || '').trim();
+    if (Number.isFinite(idx) && desc) {
+        images.push({ idx, desc });
+    }
+}
+
+// 再兜底：有的模型可能输出 desc 没有引号，用另一条规则抽取到换行/括号前
+if (images.length === 0) {
+    const re2 = /"idx"\s*:\s*(\d+)[\s\S]*?"desc"\s*:\s*([^,\]\}\n\r]+)/g;
+    while ((mm = re2.exec(imgBlock)) !== null) {
+        const idx = parseInt(mm[1], 10);
+        let desc = (mm[2] || '').trim();
+        desc = desc.replace(/^[":\s]+/, '').replace(/[",\]\}\s]+$/, '').trim();
+        if (Number.isFinite(idx) && desc) {
+            images.push({ idx, desc });
+        }
+    }
+}
+
+if (images.length === 0) {
+    alert(
+        '[VisionSummary] 无法从模型输出中提取图片描述\n' +
+        '模型原文(前400字):\n' + String(raw).slice(0, 400)
+    );
+    return null;
+}
+
+return { images: images.slice(0, 3), overall: '' };
+// ===== Vision Summary Parse END =====
+
+
+}
+function safeParseVisionSummary(text) {
+    let s = String(text || '').trim();
+    if (!s) return null;
+
+    // 去掉 ```json 代码块
+    s = s.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+    // 把中文引号之类修一下
+    s = s.replace(/[“”]/g, '"').replace(/：/g, ':').replace(/，/g, ',');
+
+    // 如果模型只输出了字段片段（没有最外层 {}），自动包裹
+    if (!s.startsWith('{') && s.includes('"images"')) {
+        s = '{' + s;
+    }
+    if (!s.endsWith('}') && s.includes('"images"')) {
+        s = s + '}';
+    }
+
+    // 尝试提取 {...}（如果里面混了别的文字）
+    const m = s.match(/\{[\s\S]*\}/);
+    if (m) s = m[0];
+
+    // 补全缺失括号
+    const openCurly = (s.match(/{/g) || []).length;
+    const closeCurly = (s.match(/}/g) || []).length;
+    if (closeCurly < openCurly) s += '}'.repeat(openCurly - closeCurly);
+
+    const openSquare = (s.match(/\[/g) || []).length;
+    const closeSquare = (s.match(/]/g) || []).length;
+    if (closeSquare < openSquare) s += ']'.repeat(openSquare - closeSquare);
+
+    try {
+        const obj = JSON.parse(s);
+        if (!obj || !Array.isArray(obj.images)) return null;
+        return obj;
+    } catch (e) {
         return null;
     }
 }
+
 
 // 把视觉总结广播写入所有单聊，并且每个单聊只保留最近3条 moment_vision_hidden
 function broadcastVisionSummaryToAllSingleChats(summaryPayload) {

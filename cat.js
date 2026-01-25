@@ -197,50 +197,18 @@ function playIncomingSound() {
 
 
 // ===========================================
-// ★★★ 字体设置功能实现 ★★★
+// ★★★ 字体设置功能实现 (终极修复版) ★★★
 // ===========================================
 
-// 打开字体设置弹窗
-function openFontSettings() {
-    loadFromDB('userInfo', (data) => {
-        const settings = data || {};
-        
-        // 1. 填充 URL
-        document.getElementById('fontUrlInput').value = settings.customFontUrl || '';
-        
-        // 2. 填充大小
-        const size = settings.customFontSize || 14;
-        document.getElementById('fontSizeInput').value = size;
-        document.getElementById('fontSizeDisplay').textContent = size + 'px';
-        
-        // 3. 加载预设列表
-        renderFontPresets(settings.fontPresets || []);
-        
-        document.getElementById('fontSettingsModal').style.display = 'flex';
-    });
-}
-
-// 关闭弹窗
-function closeFontSettingsModal(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('fontSettingsModal').style.display = 'none';
-}
-
-// 实时预览字体大小
-function previewFontSize(val) {
-    document.getElementById('fontSizeDisplay').textContent = val + 'px';
-    // 实时预览效果（暂不保存）
-    document.documentElement.style.setProperty('--app-font-size', val + 'px');
-}
-
-// 应用字体逻辑（核心）
+// 1. 应用字体和字号的核心函数
 function applyFontLogic(url, size) {
-    // 1. 应用大小
-    if (size) {
-        document.documentElement.style.setProperty('--app-font-size', size + 'px');
-    }
+    const numericSize = parseInt(size) || 14;
+
+    // 1.1 应用大小 (使用 CSS 变量 + JS 直接设置，双保险)
+    document.documentElement.style.setProperty('--app-font-size', numericSize + 'px');
+    document.documentElement.style.fontSize = numericSize + 'px';
     
-    // 2. 应用字体 URL
+    // 1.2 应用字体 URL
     const styleId = 'custom-user-font-style';
     let styleTag = document.getElementById(styleId);
     
@@ -259,98 +227,101 @@ function applyFontLogic(url, size) {
                 font-display: swap;
             }
         `;
-        // 设置变量
+        // 设置 CSS 变量，让全局样式生效
         document.documentElement.style.setProperty('--app-font-family', "'UserCustomFont', sans-serif");
     } else {
-        // 如果 URL 为空，移除样式并恢复默认
+        // 如果 URL 为空，移除样式并恢复默认字体
         if (styleTag) styleTag.remove();
         document.documentElement.style.setProperty('--app-font-family', "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif");
     }
 }
 
+// 2. 打开字体设置弹窗 (修复：分开读取 active setting 和 presets)
+function openFontSettings() {
+    // a. 从 'fontSettings' 读取当前激活的配置
+    loadFromDB('fontSettings', (activeSettings) => {
+        const settings = activeSettings || {};
+        const url = settings.fontUrl || '';
+        const size = settings.fontSize || 14;
+        
+        // 填充输入框
+        document.getElementById('fontUrlInput').value = url;
+        document.getElementById('fontSizeInput').value = size;
+        document.getElementById('fontSizeDisplay').textContent = size + 'px';
+        
+        // b. 从 'userInfo' 读取预设列表
+        loadFromDB('userInfo', (userData) => {
+            const presets = (userData && userData.fontPresets) ? userData.fontPresets : [];
+            renderFontPresets(presets);
+            
+            // c. 显示弹窗
+            document.getElementById('fontSettingsModal').style.display = 'flex';
+        });
+    });
+}
+
+// 3. 关闭弹窗
+function closeFontSettingsModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('fontSettingsModal').style.display = 'none';
+    // 恢复页面加载时的字体，防止只预览不保存
+    loadFontSettings(); 
+}
+
+// 4. 实时预览字体大小
+function previewFontSize(val) {
+    document.getElementById('fontSizeDisplay').textContent = val + 'px';
+    // 实时预览效果（仅预览，不保存）
+    applyFontLogic(document.getElementById('fontUrlInput').value, val);
+}
+
+// 5. 保存并应用设置 (修复：只写 fontSettings)
 function saveFontSettings() {
     const fontUrl = document.getElementById('fontUrlInput').value.trim();
-    const fontSize = document.getElementById('fontSizeInput').value;
+    const fontSize = parseInt(document.getElementById('fontSizeInput').value) || 14;
     
     const fontSettings = {
         fontUrl: fontUrl,
-        fontSize: parseInt(fontSize) || 14
+        fontSize: fontSize
     };
     
-    // 保存到数据库
+    // 保存到独立的 fontSettings 表
     saveToDB('fontSettings', fontSettings);
     
-    // 立即应用字体
-    if (fontUrl) {
-        const style = document.createElement('style');
-        style.textContent = `
-            @font-face {
-                font-family: 'CustomFont';
-                src: url('${fontUrl}') format('woff2');
-            }
-            body, * {
-                font-family: 'CustomFont', sans-serif !important;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    if (fontSize) {
-        document.documentElement.style.fontSize = fontSize + 'px';
-    }
+    // 立即应用
+    applyFontLogic(fontUrl, fontSize);
     
     alert('字体设置已保存');
     closeFontSettingsModal();
 }
 
-
+// 6. 页面加载时应用字体 (修复：统一走 applyFontLogic)
 function loadFontSettings() {
     loadFromDB('fontSettings', (data) => {
         if (data) {
-            // 应用字体
-            if (data.fontUrl) {
-                const style = document.createElement('style');
-                style.textContent = `
-                    @font-face {
-                        font-family: 'CustomFont';
-                        src: url('${data.fontUrl}') format('woff2');
-                    }
-                    body, * {
-                        font-family: 'CustomFont', sans-serif !important;
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            // 应用字体大小
-            if (data.fontSize) {
-                document.documentElement.style.fontSize = data.fontSize + 'px';
-            }
+            applyFontLogic(data.fontUrl, data.fontSize);
         }
     });
 }
 
-
-// ============ 预设管理系统 ============
+// ============ 预设管理系统 (修复版) ============
 
 // 渲染预设列表
 function renderFontPresets(presets) {
     const select = document.getElementById('fontPresetSelect');
-    // 保留第一个默认选项
     select.innerHTML = '<option value="">选择预设...</option>';
     
-    presets.forEach((preset, index) => {
+    (presets || []).forEach((preset, index) => {
         const option = document.createElement('option');
-        option.value = index; // 使用索引作为值
+        option.value = index;
         option.textContent = preset.name;
-        // 把数据存到 dataset 里方便读取
         option.dataset.url = preset.url;
         option.dataset.size = preset.size;
         select.appendChild(option);
     });
 }
 
-// 选中预设时应用到输入框
+// 选中预设时应用到输入框并预览 (修复：增加实时预览)
 function applyFontPreset() {
     const select = document.getElementById('fontPresetSelect');
     const selectedOption = select.options[select.selectedIndex];
@@ -364,12 +335,12 @@ function applyFontPreset() {
     document.getElementById('fontSizeInput').value = size;
     document.getElementById('fontSizeDisplay').textContent = size + 'px';
     
-    // 可选：立即预览
-    // previewFontSize(size); 
+    // ★★★ 关键：选中后立即应用预览 ★★★
+    applyFontLogic(url, size); 
 }
 
-// 保存当前配置为预设
-function saveCurrentAsPreset() {
+// 保存当前配置为字体预设 (修复：保证 size 是数字)
+function saveFontPreset() {
     const url = document.getElementById('fontUrlInput').value.trim();
     const size = document.getElementById('fontSizeInput').value;
     
@@ -385,17 +356,16 @@ function saveCurrentAsPreset() {
         const newData = data || {};
         if (!newData.fontPresets) newData.fontPresets = [];
         
-        // 添加新预设
         newData.fontPresets.push({
             name: name,
             url: url,
-            size: size
+            size: parseInt(size) || 14 // 确保保存的是数字
         });
         
         saveToDB('userInfo', newData);
         renderFontPresets(newData.fontPresets);
-        // 自动选中刚添加的
         document.getElementById('fontPresetSelect').value = newData.fontPresets.length - 1;
+        alert('字体预设已保存');
     });
 }
 
@@ -415,17 +385,16 @@ function deleteFontPreset() {
         const newData = data || {};
         if (!newData.fontPresets) return;
         
-        // 删除指定索引
         newData.fontPresets.splice(index, 1);
         
         saveToDB('userInfo', newData);
         renderFontPresets(newData.fontPresets);
         
-        // 清空输入框
         document.getElementById('fontUrlInput').value = '';
         select.value = "";
     });
 }
+
 
 // ===========================================
 // ★★★ 全量备份与恢复功能 ★★★
@@ -1453,7 +1422,7 @@ function renderBubblePresets(presets) {
     addBtn.style.border = '1px dashed #667eea';
     addBtn.style.color = '#667eea';
     addBtn.style.flexShrink = '0';
-    addBtn.onclick = saveCurrentAsPreset;
+   addBtn.onclick = saveBubblePreset;
     container.appendChild(addBtn);
     
     // 渲染预设项
@@ -1495,8 +1464,8 @@ function applyBubblePreset(index) {
     });
 }
 
-// 4. 保存当前为新预设
-function saveCurrentAsPreset() {
+// 4. 保存当前为新预设 (改名避免冲突)
+function saveBubblePreset() {
     const name = prompt('给这个样式起个名字：', '我的新样式');
     if (!name) return;
     
@@ -1505,7 +1474,7 @@ function saveCurrentAsPreset() {
     
     loadFromDB('userInfo', (data) => {
         const newData = data || {};
-        if (!newData.bubblePresets) newData.bubblePresets = [...OFFICIAL_PRESETS]; // 确保有初始数据
+        if (!newData.bubblePresets) newData.bubblePresets = [...OFFICIAL_PRESETS];
         
         newData.bubblePresets.push({
             name: name,
@@ -1517,6 +1486,7 @@ function saveCurrentAsPreset() {
         renderBubblePresets(newData.bubblePresets);
     });
 }
+
 
 // 5. 删除预设
 function deleteBubblePreset(index) {
