@@ -8527,23 +8527,23 @@ body.transparent-nav-mode .chat-input:focus {
     left: 50%;
     transform: translateX(-50%);
     bottom: 0;
-    width: 100%;
-    max-width: 375px;
-
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-
+    width: min(100%, 420px);
+    box-sizing: border-box;
     padding: 10px 12px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
-
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    border-top: 1px solid rgba(0,0,0,0.06);
-    z-index: 2500;
+    background: #fff;
+    border-top: 1px solid #eee;
+    z-index: 2000;
 }
+.comment-input-bar .comment-input {
+    flex: 1;
+    min-width: 0; /* 关键：防止 flex 子元素把容器撑爆 */
+}
+
+.comment-input-bar .comment-send-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 
 .comment-input {
     flex: 1;
