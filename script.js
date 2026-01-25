@@ -44,7 +44,8 @@ function initDB() {
             'shoppingCart', 'shoppingCategories', 'wallet', 
             'gameConsole', 'widgetSettings', 'voiceConfig', 
             'fontSettings', 'notificationSound', 
-          'moments', 'momentsProfile', 'chatGroups', 'momentsSettings'
+          'moments', 'momentsProfile', 'chatGroups', 'momentsSettings',
+           'memories'
         ];
 
         storeNames.forEach(name => {
@@ -118,7 +119,7 @@ function saveToDB(storeName, data) {
         const transaction = db.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
         
-        if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments'].includes(storeName)) {
+       if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments', 'chatGroups'].includes(storeName)) {
             // 列表类数据
             objectStore.put({ id: 1, list: data.list || data });
         } else if (storeName === 'characterInfo') {
@@ -170,7 +171,7 @@ function loadFromDB(storeName, callback) {
         const request = (storeName === 'momentsProfile') ? objectStore.get('me') : objectStore.get(1);
         
         request.onsuccess = () => {
-            if (['worldbooks', 'categories', 'products', 'shoppingCart', 'memories', 'moments'].includes(storeName)) {
+          if (['worldbooks', 'categories', 'products', 'shoppingCart', 'memories', 'moments', 'chatGroups'].includes(storeName)) {
                 if (request.result && Array.isArray(request.result.list)) {
                     callback(request.result.list);
                 } else if (request.result && Array.isArray(request.result)) {
@@ -383,37 +384,52 @@ function applyWallpaper(wallpaperData) {
 
 
         
- function saveUserInfo() {
+// ============ 修复版：保存个人信息 (保留其他设置字段) ============
+function saveUserInfo() {
     const userId = document.getElementById('userIdInput').value || '我的小手机';
     const signature = document.getElementById('signatureInput').value || '今天也要开心呀～';
     const textColor = document.getElementById('textColorInput').value;
     const appTextColor = document.getElementById('appTextColorInput').value;
     const avatarFile = document.getElementById('avatarInput').files[0];
-    
-    if (avatarFile) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const avatarData = e.target.result;
-            updateUI(userId, signature, avatarData, textColor, appTextColor);
-            saveToDB('userInfo', { userId, signature, avatar: avatarData, textColor, appTextColor });
-            // 触发全局头像更新事件
-window.dispatchEvent(new StorageEvent('storage', {
-    key: 'userAvatar',
-    newValue: avatarData
-}));
 
-          closeModal();
-        };
-        reader.readAsDataURL(avatarFile);
-    } else {
-        // 没有新头像，保留原有头像
-        loadFromDB('userInfo', (data) => {
-            const existingAvatar = data ? data.avatar : null;
-            updateUI(userId, signature, existingAvatar, textColor, appTextColor);
-            saveToDB('userInfo', { userId, signature, avatar: existingAvatar, textColor, appTextColor });
+    // 1. 先读取现有数据，防止覆盖掉 fontPresets, themeSchemes 等其他字段
+    loadFromDB('userInfo', (currentData) => {
+        const oldData = currentData || {};
+
+        // 内部函数：执行合并保存
+        const performSave = (finalAvatar) => {
+            const newData = {
+                ...oldData, // ★★★ 关键：保留旧数据的所有字段 ★★★
+                userId: userId,
+                signature: signature,
+                avatar: finalAvatar,
+                textColor: textColor,
+                appTextColor: appTextColor
+            };
+
+            updateUI(userId, signature, finalAvatar, textColor, appTextColor);
+            saveToDB('userInfo', newData);
+
+            // 触发全局头像更新事件
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'userAvatar',
+                newValue: finalAvatar
+            }));
+
             closeModal();
-        });
-    }
+        };
+
+        // 2. 处理头像逻辑
+        if (avatarFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                performSave(e.target.result); // 用新头像保存
+            };
+            reader.readAsDataURL(avatarFile);
+        } else {
+            performSave(oldData.avatar); // 用旧头像保存
+        }
+    });
 }
 
         
@@ -4201,18 +4217,7 @@ function saveChatGroups() {
     saveToDB('chatGroups', { list: chatGroups });
 }
 
-function loadChatGroups(callback) {
-    loadFromDB('chatGroups', (data) => {
-        if (Array.isArray(data)) {
-            chatGroups = data;
-        } else if (data && Array.isArray(data.list)) {
-            chatGroups = data.list;
-        } else {
-            chatGroups = [];
-        }
-        if (callback) callback(chatGroups);
-    });
-}
+
 
 function saveChatGroups() {
     saveToDB('chatGroups', { list: chatGroups });
@@ -5167,69 +5172,105 @@ async function generateAiComments(momentId, btnEl) {
 
     try {
         // ====== 分支A：用户动态（顶层评论，每人一条，不楼中楼） ======
-        if (moment.authorId === 'me') {
-            const pool = getVisibleChatPoolForUserMoment(moment);
-            if (!pool || pool.length === 0) {
-                alert('当前可见范围内没有角色，无法生成评论');
-                return;
+       if (moment.authorId === 'me') {
+    const pool = getVisibleChatPoolForUserMoment(moment);
+    if (!pool || pool.length === 0) {
+        alert('当前可见范围内没有角色，无法生成评论');
+        return;
+    }
+
+    const commentedIds = new Set(
+        (moment.commentsList || [])
+            .filter(c => c && typeof c.senderId === 'number' && c.senderId > 0)
+            .map(c => c.senderId)
+    );
+
+    const fresh = pool.filter(id => !commentedIds.has(id));
+    let candidateIds = fresh.length > 0 ? fresh : pool;
+
+    const count = Math.min(candidateIds.length, 3 + Math.floor(Math.random() * 3)); // 3-5人
+    candidateIds = candidateIds.sort(() => 0.5 - Math.random()).slice(0, count);
+
+    const scheme = getSubApiScheme();
+    if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
+        alert('请先在朋友圈设置里选择副API方案（需支持视觉模型）');
+        return;
+    }
+
+    let visionSummaryText = '';
+
+    // 有图 -> 先视觉总结（第1次API），再用总结生成评论（第2次API）
+    if (Array.isArray(moment.images) && moment.images.length > 0) {
+        const visionImages = await compressImagesForVision(moment.images);
+
+        if (visionImages.length > 0) {
+            const summaryObj = await callSubApiVisionSummarizeMoment({
+                baseUrl: scheme.baseUrl,
+                apiKey: scheme.apiKey,
+                model: scheme.defaultModel,
+                momentText: moment.content,
+                visionImages
+            });
+
+            if (summaryObj && Array.isArray(summaryObj.images)) {
+                const lines = summaryObj.images
+                    .slice(0, 3)
+                    .map(it => `${it.idx}) ${it.desc}`)
+                    .join('\n');
+                const overall = summaryObj.overall ? `\n总体：${summaryObj.overall}` : '';
+                visionSummaryText = (lines + overall).trim();
+
+                // 广播隐藏上下文（只保留每个单聊最近3条）
+                broadcastVisionSummaryToAllSingleChats({
+                    momentId: moment.id,
+                    authorId: moment.authorId,
+                    authorName: momentsProfile && momentsProfile.name ? momentsProfile.name : '用户',
+                    timestamp: moment.timestamp,
+                    content: moment.content || '',
+                    visionSummaryText
+                });
             }
-
-            const commentedIds = new Set(
-                (moment.commentsList || [])
-                    .filter(c => c && typeof c.senderId === 'number' && c.senderId > 0)
-                    .map(c => c.senderId)
-            );
-
-            const fresh = pool.filter(id => !commentedIds.has(id));
-            let candidateIds = fresh.length > 0 ? fresh : pool;
-
-            const count = Math.min(candidateIds.length, 1 + Math.floor(Math.random() * 4));
-            candidateIds = candidateIds.sort(() => 0.5 - Math.random()).slice(0, count);
-
-            const scheme = getSubApiScheme();
-            if (!scheme || !scheme.baseUrl || !scheme.apiKey || !scheme.defaultModel) {
-                alert('请先在朋友圈设置里选择副API方案');
-                return;
-            }
-
-            const commentsArr = await callApiToGenUserMomentComments(moment, candidateIds, scheme);
-            if (!commentsArr || commentsArr.length === 0) {
-                alert('生成失败，AI 未返回有效内容。');
-                return;
-            }
-
-            if (!moment.commentsList) moment.commentsList = [];
-
-            const newItems = commentsArr.map(x => ({
-                id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-                senderId: x.roleId,
-                senderName: x.roleName,
-                replyToId: null,
-                replyToName: null,
-                content: sanitizeCommentText(x.content),
-                time: Date.now(),
-                isAiGenerated: true
-            })).filter(c => c.content && c.content.trim().length > 0);
-
-            moment.commentsList.push(...newItems);
-            moment.comments = moment.commentsList.length;
-
-            saveToDB('moments', { list: moments });
-            renderMomentsList();
-            return;
         }
+    }
+
+    const commentsArr = await callApiToGenUserMomentComments(moment, candidateIds, scheme, visionSummaryText);
+    if (!commentsArr || commentsArr.length === 0) {
+        alert('生成失败，AI 未返回有效内容。');
+        return;
+    }
+
+    if (!moment.commentsList) moment.commentsList = [];
+    const newItems = commentsArr.map(x => ({
+        id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+        senderId: x.roleId,
+        senderName: x.roleName,
+        replyToId: null,
+        replyToName: null,
+        content: sanitizeCommentText(x.content),
+        time: Date.now(),
+        isAiGenerated: true
+    })).filter(c => c.content && c.content.trim().length > 0);
+
+    moment.commentsList.push(...newItems);
+    moment.comments = moment.commentsList.length;
+
+    saveToDB('moments', { list: moments });
+    renderMomentsList();
+    return;
+}
+
 
         // ====== 分支B：角色动态（沿用原有：同组+关系网，可楼中楼，可续聊） ======
         const threadInfo = extractMomentThreadsForContinuation(moment, 2);
         const mode = threadInfo.hasThread ? 'continue' : 'new';
 
         const actors = await selectCommentActors(moment);
-        const commentsData = await callApiToGenComments(moment, actors, {
-            mode,
-            threadContext: threadInfo.contextText,
-            minCount: 3,
-            maxCount: 6
-        });
+     const commentsData = await callApiToGenComments(moment, actors, {
+    mode,
+    threadContext: threadInfo.contextText,
+    minCount: 4,
+    maxCount: 8
+});
 
         if (!commentsData || !Array.isArray(commentsData) || commentsData.length === 0) {
             alert('生成失败，AI 未返回有效内容。');
@@ -5320,7 +5361,7 @@ async function selectCommentActors(moment) {
     });
 
     // 5) 随机抽 3-4 人（如果池子太小则尽量抽）
-    const targetCount = 3 + Math.floor(Math.random() * 2); // 3或4
+   const targetCount = 4 + Math.floor(Math.random() * 2);
     const shuffled = pool.sort(() => 0.5 - Math.random());
     let picked = shuffled.slice(0, Math.min(targetCount, shuffled.length));
 
@@ -5364,30 +5405,39 @@ async function callApiToGenComments(moment, actors, options) {
     const authorPersonality = authorInfo.personality || '';
     const relationshipText = authorInfo.relationshipText || '';
 
-    // 参与者卡片
-    const actorCards = actors.map(a => {
-        const name = a.name;
-        let profile = '';
-        let source = '';
+// 参与者卡片：固定角色 / 指定配角 / 智能补位位
+const actorCards = actors.map(a => {
+    const name = a.name;
 
-        if (a.type === 'chat') {
-            const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
-            profile = info.personality || '';
-            source = `同组真实角色(chatId=${a.id})`;
-        } else if (a.type === 'virtual') {
-            const sn1 = extractSnippetsForName(relationshipText, '@' + name);
-            const sn2 = extractSnippetsForName(relationshipText, name);
-            profile = (sn1 || sn2 || '').trim();
-            source = '关系网虚拟人物(@标注)';
-        } else {
-            profile = '路过的朋友，爱凑热闹，口吻随意。';
-            source = '随机路人';
-        }
+    // A) 同组真实角色：必须用原名原人设
+    if (a.type === 'chat') {
+        const info = charInfoAll && charInfoAll[a.id] ? charInfoAll[a.id] : {};
+        const p = info.personality || '性格信息不详，说话简短自然。';
+        return `【固定角色】昵称：${name} (ID:${a.id})
+- 人设：${p}
+- 规则：必须严格扮演此人；roleName 不可改名。`;
+    }
 
-        if (!profile) profile = '性格信息不详，说话简短自然。';
+    // B) 关系网 @ 标注的虚拟人物：也固定名字
+    if (a.type === 'virtual') {
+        const sn1 = extractSnippetsForName(relationshipText, '@' + name);
+        const sn2 = extractSnippetsForName(relationshipText, name);
+        const p = (sn1 || sn2 || '关系网提及人物').trim();
+        return `【指定配角】昵称：${name} (ID:${a.id})
+- 线索：${p}
+- 规则：扮演此人；roleName 不可改名。`;
+    }
 
-        return `- ${name} (roleId=${a.id}, 来源=${source})：${profile}`;
-    }).join('\n');
+    // C) 智能补位位：允许“变身”为人设/关系网里的好友家人
+    return `【智能补位位】临时ID:${a.id} (当前暂名:${name})
+- 你必须阅读【作者人设】与【关系网文本】，自动识别里面提到的亲友/家人/好朋友/死党/闺蜜/同事等。
+- 优先级1：如果文本里提到了具体人物（如“妈妈”“闺蜜小美”“发小阿强”“室友”）并且评论区还没出现过该人物，请你直接“变身”为他/她：
+  - 在 JSON 中把 roleName 改成该人物称呼（例如：妈妈/小美/死党/室友）
+  - 语气要符合身份关系（长辈关心唠叨、闺蜜嘴碎、死党互损等）
+- 优先级2：如果确实没有具体人物可扮演，才允许当路人网友（roleName 可写“路人甲/网友/某个ID”）。
+- 注意：无论你变身成谁，roleId 必须保留临时ID(负数)，不要修改。`;
+}).join('\n\n');
+
 
     // 中文注释：新生成 vs 续聊 的不同任务描述
     const taskBlockNew = `
@@ -5411,7 +5461,7 @@ async function callApiToGenComments(moment, actors, options) {
 5. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
 `.trim();
 
-    const prompt = `
+const prompt = `
 你是一名“朋友圈评论区编剧”。你要模拟一个真实朋友圈的评论互动。
 
 【动态作者】
@@ -5419,31 +5469,39 @@ async function callApiToGenComments(moment, actors, options) {
 作者人设：
 ${authorPersonality || '（未提供）'}
 
-【作者关系网文本（仅作为关系线索）】
+【作者关系网文本（重要线索，用来匹配好友/家人）】
 ${relationshipText ? relationshipText : '（未提供）'}
 
 【动态内容】
 ${moment.content}
 
-【参与评论的人（必须严格按各自人设说话）】
+【参与评论的人员名单（务必遵守每个人的规则）】
 ${actorCards}
 
-${mode === 'continue' ? `
-【已有楼中楼对话片段（请接着聊，不要换话题）】
-${threadContext || '（无）'}
+【任务要求】
+1. 生成 ${minCount}-${maxCount} 条评论互动，口语化短句为主，像真实朋友圈。
+2. 评论区人员必须“混合”出现：
+   - 【固定角色】(同组真实角色) 必须至少出现 2 人（如果名单里有足够人数）。
+   - 【智能补位位】要优先“变身”为人设/关系网提到的好友家人（例如妈妈/闺蜜/死党），不要只当路人。
+3. 必须有楼中楼：至少 2 条评论的 replyToName 不为 null（A 回复 B）。
+4. 禁止使用任何方括号表情，例如：[坏笑][doge][表情]。
+5. 可以少量颜文字(>_<)(._.)，不要太多。
+6. 不要引用聊天记录原句，不要写长段。
 
-${taskBlockContinue}
-` : taskBlockNew}
-
-【输出格式】
-只输出严格 JSON 数组（必须使用英文双引号 " ，禁止中文引号 “ ”），数组必须完整闭合，以 ] 结束。
+【输出格式（严格遵守）】
+只输出严格 JSON 数组（必须使用英文双引号），数组必须完整闭合，以 ] 结束。
 每个元素格式如下：
 {"roleId": 1, "roleName": "名字", "content": "评论内容", "replyToName": null}
 
-【可用 roleId / roleName 对照】
+【智能改名规则（非常重要）】
+- 【固定角色】【指定配角】：roleName 必须与名单一致，严禁改名。
+- 【智能补位位】：允许改名为“人设/关系网里提到的人物称呼”，用该人物口吻说话；roleId 保持原负数ID不变。
+
+【可用 roleId 对照】
 ${actors.map(a => `${a.name}=${a.id}`).join(', ')}
 作者 ${moment.authorName}=${moment.authorId}
 `.trim();
+
 
     const raw = await callSubApiGenerateCommentsOnly({
         baseUrl: scheme.baseUrl,
@@ -6087,8 +6145,207 @@ function getVisibleChatPoolForUserMoment(moment) {
 }
 // ====== 用户动态可见池计算 END ======
 
+
+// ============ 视觉评论：抽样+压缩+总结存储（用户动态专用）===========
+
+// 随机抽取最多 n 张图片（>n 则随机挑 n 张）
+function pickRandomImages(images, n) {
+    const arr = Array.isArray(images) ? images.filter(Boolean) : [];
+    if (arr.length <= n) return arr.slice();
+    const copy = arr.slice();
+    copy.sort(() => Math.random() - 0.5);
+    return copy.slice(0, n);
+}
+
+// 本地压缩一张 dataURL 图片，返回 Promise<dataURL>；失败返回 null
+function compressDataUrlImage(dataUrl, maxSide = 512, quality = 0.62) {
+    return new Promise(resolve => {
+        try {
+            if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+                resolve(null);
+                return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let w = img.width;
+                    let h = img.height;
+                    if (!w || !h) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const scale = Math.min(1, maxSide / Math.max(w, h));
+                    const nw = Math.max(1, Math.round(w * scale));
+                    const nh = Math.max(1, Math.round(h * scale));
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = nw;
+                    canvas.height = nh;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, nw, nh);
+
+                    const out = canvas.toDataURL('image/jpeg', quality);
+                    // 简单保护：太大则认为失败（避免请求炸）
+                    if (out && out.length > 1600000) {
+                        resolve(null);
+                        return;
+                    }
+                    resolve(out);
+                } catch (e) {
+                    resolve(null);
+                }
+            };
+            img.onerror = () => resolve(null);
+            img.src = dataUrl;
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
+// 多张图压缩（最多3张），返回压缩后的 dataURL 数组
+async function compressImagesForVision(images) {
+    const picked = pickRandomImages(images, 3);
+    const compressed = [];
+    for (const img of picked) {
+        const out = await compressDataUrlImage(img, 512, 0.62);
+        if (out) compressed.push(out);
+        if (compressed.length >= 3) break;
+    }
+    return compressed;
+}
+
+// 视觉总结：一次API，把 1-3 张图按编号总结出来
+async function callSubApiVisionSummarizeMoment(params) {
+    const baseUrl = (params.baseUrl || '').trim();
+    const apiKey = (params.apiKey || '').trim();
+    const model = (params.model || '').trim();
+    const momentText = params.momentText || '';
+    const visionImages = Array.isArray(params.visionImages) ? params.visionImages : [];
+
+    if (!baseUrl || !apiKey || !model) return null;
+
+    const url = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+
+    // 多模态 content：文字 + 多张图
+    const content = [
+        {
+            type: 'text',
+            text:
+`你是图片理解助手。请结合动态文字与图片内容，输出严格JSON（不要输出任何多余文字）：
+{
+  "images":[{"idx":1,"desc":"..."},{"idx":2,"desc":"..."}],
+  "overall":"一句话总结整体氛围/事件(可选)"
+}
+
+要求：
+1) desc 15-40字，写清主体、场景、动作/情绪
+2) idx 从 1 开始，按图片输入顺序编号
+3) 不要用emoji
+4) 只输出JSON对象
+
+【动态文字】
+${momentText || '（无）'}`
+        },
+        ...visionImages.map(u => ({ type: 'image_url', image_url: { url: u } }))
+    ];
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model,
+                temperature: 0.2,
+                max_tokens: 800,
+                messages: [
+                    { role: 'system', content: '你是一个严格输出JSON的视觉总结器。' },
+                    { role: 'user', content }
+                ]
+            })
+        });
+
+        if (!resp.ok) {
+            console.error('[VisionSummary] HTTP', resp.status, await resp.text().catch(() => ''));
+            return null;
+        }
+
+        const data = await resp.json();
+        const raw = data && data.choices && data.choices[0] && data.choices[0].message
+            ? data.choices[0].message.content
+            : '';
+
+        if (!raw) return null;
+
+        // 复用你已有的 JSON 提取思路：提取第一个 { ... }
+        const match = String(raw).match(/\{[\s\S]*\}/);
+        if (!match) return null;
+
+        const cleaned = match[0]
+            .replace(/[“”]/g, '"')
+            .replace(/：/g, ':')
+            .replace(/，/g, ',')
+            .trim();
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error('[VisionSummary] JSON parse failed:', cleaned);
+            return null;
+        }
+    } catch (e) {
+        console.error('[VisionSummary] fetch error:', e);
+        return null;
+    }
+}
+
+// 把视觉总结广播写入所有单聊，并且每个单聊只保留最近3条 moment_vision_hidden
+function broadcastVisionSummaryToAllSingleChats(summaryPayload) {
+    if (!summaryPayload) return;
+
+    loadFromDB('messages', (data) => {
+        let all = [];
+        if (data && Array.isArray(data.list)) all = data.list;
+        else if (Array.isArray(data)) all = data;
+
+        const singles = Array.isArray(chats) ? chats.filter(c => c.type === 'single') : [];
+        const now = getCurrentTime();
+
+        singles.forEach(chat => {
+            // 先清理该 chatId 旧的 hidden（只保留最近3条）
+            const hidden = all
+                .filter(m => m && m.chatId === chat.id && m.type === 'moment_vision_hidden')
+                .sort((a, b) => (Date.parse(b.time || '') || 0) - (Date.parse(a.time || '') || 0));
+
+            const keepIds = new Set(hidden.slice(0, 3).map(m => m.id));
+            all = all.filter(m => !(m && m.chatId === chat.id && m.type === 'moment_vision_hidden' && !keepIds.has(m.id)));
+
+            // 写入新的一条 hidden
+            all.push({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                chatId: chat.id,
+                type: 'moment_vision_hidden',
+                senderId: 'me',
+                time: now,
+                isRevoked: false,
+                visionData: summaryPayload
+            });
+        });
+
+        const tx = db.transaction(['messages'], 'readwrite');
+        tx.objectStore('messages').put({ id: 1, list: all });
+    });
+}
+
+
+
 // ====== 用户动态评论生成 Prompt+API START ======
-async function callApiToGenUserMomentComments(moment, chatIdList, scheme) {
+async function callApiToGenUserMomentComments(moment, chatIdList, scheme, visionSummaryText) {
     const charInfoAll = await loadCharacterInfoAllSafe();
 
     // 参与者人设卡片（只是真实角色）
@@ -6110,6 +6367,10 @@ ${userName}
 
 【动态内容】
 ${moment.content}
+
+【图片内容摘要（由视觉识别得出）】
+${visionSummaryText ? visionSummaryText : '（无图片或未识别）'}
+
 
 【可评论的角色（每人必须严格按自己人设说话）】
 ${cards}

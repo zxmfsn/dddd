@@ -4231,12 +4231,20 @@ async function receiveAIReply() {
         const chat = chats.find(c => c.id === currentChatId);
         
         // 2. 并行获取所有数据
-        const [characterInfo, memoryContext, emojiList] = await Promise.all([
-            new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
-            getMemoryContext(),
-            new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : []))),
-             getRecentMomentsContext(currentChatId)
-        ]);
+       const results = await Promise.all([
+    new Promise(resolve => loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {}))),
+    getMemoryContext(),
+    new Promise(resolve => loadFromDB('emojis', d => resolve(d && d.list ? d.list : []))),
+    (typeof getRecentMomentsContext === 'function'
+        ? getRecentMomentsContext(currentChatId)
+        : Promise.resolve("（暂无朋友圈动态）"))
+]);
+
+const characterInfo = results[0] || {};
+const memoryContext = results[1] || "";
+const emojiList = results[2] || [];
+momentsContext = results[3] || "（暂无朋友圈动态）";
+
 
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
         
@@ -4529,6 +4537,19 @@ ${commentsPreview}
 [请你结合你的人设与和用户的关系，对这条动态做出自然回应]`;
 }
 // ====== 转发动态上下文注入（隐藏）END ======
+else if (msg.type === 'moment_vision_hidden') {
+    const vd = msg.visionData || {};
+    const author = vd.authorName || '用户';
+    const text = vd.content || '';
+    const vision = vd.visionSummaryText || '（无识图总结）';
+
+    content = `[ID:${msg.id}] [系统消息：用户最近朋友圈图像识别摘要]
+作者：${author}
+动态文字：${text}
+图片内容摘要：
+${vision}
+[请你在私聊中可以自然提到这些画面细节，但不要生硬背诵]`;
+}
 
 
 
@@ -5090,6 +5111,8 @@ function renderMessages() {
 // ====== 隐藏转发上下文：不渲染 START ======
 // 中文注释：moment_forward_hidden 只用于 AI 上下文，不显示在聊天界面
 if (msg.type === 'moment_forward_hidden') return '';
+if (msg.type === 'moment_vision_hidden') return '';
+
 // ====== 隐藏转发上下文：不渲染 END ======
 
 
