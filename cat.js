@@ -2204,4 +2204,270 @@ function playNotificationSound() {
     });
 }
 
+// ============ 日程页面逻辑 (cat.js) ============
+
+// 临时存储变量
+let tempUserPlan = "";
+let tempCharRoutine = "";
+
+// 打开日程页面
+function openScheduleScreen() {
+    if (!currentChatId) return;
+    
+    // 隐藏聊天详情
+    document.getElementById('chatDetailScreen').style.display = 'none';
+    const screen = document.getElementById('scheduleScreen');
+    if (screen) screen.style.display = 'flex';
+
+    // 设置标题名字
+    const chat = chats.find(c => c.id === currentChatId);
+    if(chat) document.getElementById('scheduleCharName').textContent = chat.name;
+
+    // 加载已有数据
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[currentChatId] ? data[currentChatId] : {};
+        const scheduleData = charData.scheduleData || {};
+
+        // 回显文本
+        tempUserPlan = scheduleData.userPlan || "";
+        tempCharRoutine = scheduleData.charRoutine || "";
+        
+        document.getElementById('userPlanInput').value = tempUserPlan;
+        document.getElementById('charRoutineInput').value = tempCharRoutine;
+
+        // 更新UI预览文字
+        updateScheduleUIPreview();
+
+        // 如果已经有生成的行程，渲染出来
+        if (scheduleData.todayTimeline && scheduleData.todayTimeline.length > 0) {
+            renderTimeline(scheduleData.todayTimeline);
+        }
+    });
+}
+
+// 更新列表上的预览文字
+function updateScheduleUIPreview() {
+    const planPreview = document.getElementById('userPlanPreview');
+    const routinePreview = document.getElementById('charRoutinePreview');
+    
+    if (tempUserPlan) planPreview.textContent = "已填写：" + tempUserPlan.substring(0, 15) + "...";
+    else planPreview.textContent = "点击填写今日安排";
+
+    if (tempCharRoutine) routinePreview.textContent = "已填写：" + tempCharRoutine.substring(0, 15) + "...";
+    else routinePreview.textContent = "默认按人设自由发挥";
+}
+
+// 关闭日程页面
+function closeScheduleScreen() {
+    document.getElementById('scheduleScreen').style.display = 'none';
+    document.getElementById('chatDetailScreen').style.display = 'flex';
+}
+
+// --- 弹窗控制 (确保这些函数在全局作用域) ---
+function openUserPlanModal() { 
+    document.getElementById('userPlanModal').style.display = 'flex'; 
+}
+
+function closeUserPlanModal(e) { 
+    if(e && e.target !== e.currentTarget) return; 
+    document.getElementById('userPlanModal').style.display = 'none'; 
+}
+
+function openRoutineModal() { 
+    document.getElementById('charRoutineModal').style.display = 'flex'; 
+}
+
+function closeRoutineModal(e) { 
+    if(e && e.target !== e.currentTarget) return; 
+    document.getElementById('charRoutineModal').style.display = 'none'; 
+}
+
+// --- 保存输入 ---
+function saveUserPlan() {
+    tempUserPlan = document.getElementById('userPlanInput').value.trim();
+    saveScheduleDataToDB();
+    updateScheduleUIPreview();
+    closeUserPlanModal();
+}
+
+function saveRoutine() {
+    tempCharRoutine = document.getElementById('charRoutineInput').value.trim();
+    saveScheduleDataToDB();
+    updateScheduleUIPreview();
+    closeRoutineModal();
+}
+
+// 保存数据到 DB
+function saveScheduleDataToDB(timeline = null) {
+    if (!currentChatId) return;
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        const oldSchedule = allData[currentChatId].scheduleData || {};
+        
+        allData[currentChatId].scheduleData = {
+            ...oldSchedule,
+            userPlan: tempUserPlan,
+            charRoutine: tempCharRoutine,
+            todayTimeline: timeline !== null ? timeline : oldSchedule.todayTimeline
+        };
+        
+        saveToDB('characterInfo', allData);
+    });
+}
+
+
+// 渲染时间轴 (带吐槽版)
+function renderTimeline(timeline) {
+    const container = document.getElementById('scheduleTimeline');
+    const area = document.getElementById('scheduleResultArea');
+    if (area) area.style.display = 'block';
+    
+    if (container) {
+        container.innerHTML = timeline.map(item => `
+            <div class="schedule-item ${item.withUser ? 'with-user' : ''}">
+                <div class="schedule-time">${item.time}</div>
+                <div class="schedule-content">
+                    <div style="font-weight: 600; margin-bottom: 4px;">
+                        ${item.withUser ? '❤️ ' : ''}${item.activity}
+                    </div>
+                    <div style="font-size: 12px; color: #888; font-style: italic; margin-top: 4px;">
+                        "${item.comment}"
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+
+// --- ✨ 核心：生成行程 (修正语气版) ---
+async function generateDaySchedule() {
+    // 1. 检查 API 配置
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先配置API');
+        return;
+    }
+
+    // 2. 获取 UI 元素
+    const btn = document.querySelector('#scheduleScreen .ins-btn-black');
+    const originalText = btn ? btn.textContent : "生成今日行程";
+    const loadingIcon = document.getElementById('scheduleLoadingIcon');
+
+    // === 开始加载状态 ===
+    if (btn) {
+        btn.textContent = "正在规划中...";
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+    }
+    if (loadingIcon) loadingIcon.style.display = 'block';
+
+    try {
+        // 3. 获取数据
+        const chat = chats.find(c => c.id === currentChatId);
+        if (!chat) throw new Error("未找到当前角色");
+
+        const charData = await new Promise(resolve => {
+            loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {}));
+        });
+
+        // 4. 构建 Prompt (★ 重点修改了这里：强调“计划感”和“将来时”)
+     const prompt = `你现在是【${chat.name}】本人，在手机里给自己写【今天的行程计划】。这是一份“还没发生的计划”，不是回忆录/日记。
+
+【硬性设定（最高优先级）】
+- 你必须严格符合下面的【角色人设】；【作息补充】是你的补充与参考，你也要看！
+- 你的语气必须像真实人类写计划：用“准备/打算/应该/可能/先/再/到时候/如果…”等表达。
+- 禁止使用“已经/刚刚/结束了/我去了/我吃了/我做完了”这类回忆口吻。
+
+【角色人设（必须遵守）】
+${charData.personality || '无特殊设定'}
+
+【作息补充（参考补充）】
+${tempCharRoutine ? tempCharRoutine : '（无补充：按人设+常识自由安排）'}
+
+【用户的计划（可能不带时间，要你自己合理安排）】
+${tempUserPlan ? tempUserPlan : '（用户没写具体计划：你就按人设过普通的一天）'}
+
+【你要输出的内容：今天行程表（带吐槽）】
+- 生成 6-10 条行程，不要太满，也不要太空。
+- 每条都包含：
+  1) time：可以是具体时间“10:00/15:30”，也可以是时段“午后/傍晚/睡前/通勤路上”
+  2) activity：一句话说明今天你要做什么（像计划表）
+  3) comment：一句“你内心的OS/吐槽”，必须是你的口吻，像发给朋友看的那种（别太文艺，别太像AI总结）
+  4) withUser：如果这段行程和用户一起/围绕用户展开，填 true，否则 false
+
+【融合规则（很重要）】
+- 用户计划如果没时间：你要自己按常识放到合理时段（吃饭=饭点、电影=晚上、睡觉=深夜等）。
+- 你不能全天围着用户：至少 60% 的条目是你自己的生活（工作/学习/摸鱼/健身/通勤/家务/发呆）。
+- 但你会“把用户纳入你的生活”：如果人设允许，你可以主动腾时间/改计划；如果人设不允许，就写成“我尽量/我下班后/我晚点回你”这种现实安排。
+- comment 里可以吐槽上班、犯困、社交电量、嘴硬心软、期待见面等，但必须贴合人设，同样也是对activity的一些期待和评价，不能说的好像是已经做过一样，这是还没有做的心理话！
+
+【输出格式（必须严格遵守）】
+只输出 JSON 数组，不要输出任何解释、不要 Markdown、不要代码块。
+字段固定为：time, activity, comment, withUser
+
+【示例（仅示例，别照抄）】
+[
+  {"time":"10:00","activity":"上班/开会","comment":"我真的想把闹钟扔出窗外。","withUser":false},
+  {"time":"午饭前后","activity":"今天和你一起吃牛肉饭","comment":"新开的一家，不知道味道如何，千万别踩雷","withUser":true},
+  {"time":"下午三点","activity":"跟你出去玩/见面/散步","comment":"行吧，今天我就当一次有生活的人。","withUser":true},
+  {"time":"睡前","activity":"躺平刷手机","comment":"刷视频的生活不用解释","withUser":false}
+]
+
+现在开始输出今天的 JSON 行程。`;
+
+
+        // 5. 调用 API
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) throw new Error('网络请求失败');
+
+        const resData = await response.json();
+        let content = resData.choices[0].message.content.trim();
+        
+        // 6. 清洗 JSON
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        let timeline = [];
+        try {
+            timeline = JSON.parse(content);
+        } catch (e) {
+            console.error("JSON解析失败", content);
+            throw new Error("AI生成格式有误，请重试");
+        }
+
+        // 7. 保存并渲染
+        saveScheduleDataToDB(timeline);
+        renderTimeline(timeline);
+        
+    } catch (error) {
+        console.error(error);
+        alert("生成失败：" + error.message);
+    } finally {
+        // === 结束加载状态 ===
+        if (btn) {
+            btn.textContent = originalText;
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+        if (loadingIcon) loadingIcon.style.display = 'none';
+    }
+}
+
 

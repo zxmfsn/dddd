@@ -164,6 +164,23 @@ async function generateDiary() {
         });
     });
     
+// ★★★ 新增：读取日程数据 ★★★
+const scheduleData = characterInfo.scheduleData || {};
+let scheduleContext = "";
+if (scheduleData.todayTimeline && scheduleData.todayTimeline.length > 0) {
+ const timelineStr = scheduleData.todayTimeline.map(t => 
+    `- ${t.time}: ${t.activity} (内心OS: ${t.comment}) ${t.withUser ? '[在一起]' : ''}`
+).join('\n');
+    
+    scheduleContext = `
+【你今天的行程表 (严格参考)】
+${timelineStr}
+(请根据当前时间判断你正在做什么。如果是共同活动，表现出你们在一起的状态。)
+`;
+} else {
+    scheduleContext = `\n【行程】你今天暂时没有具体计划，按人设自由行动。`;
+}
+
     const today = new Date();
     const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
     const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
@@ -1744,6 +1761,30 @@ function openCall() {
     document.getElementById('callInput').value = '';
     document.getElementById('callSendBtn').style.opacity = '0.5';
     document.getElementById('callReceiveBtn').style.opacity = '0.5';
+     // ★★★ 修复：将外面的底部白条改为半透明黑色 ★★★
+    const callInputEl = document.getElementById('callInput');
+    if (callInputEl) {
+        // 1. 找到包裹输入框的父容器（也就是那个白色的底栏）
+        const bottomBar = callInputEl.parentElement;
+        
+        if (bottomBar) {
+            // 修改背景为半透明黑 + 磨砂
+            bottomBar.style.background = 'rgba(0, 0, 0, 0)'; 
+           
+            bottomBar.style.borderTop = '1px solid rgba(255, 255, 255, 0)'; // 边框变淡
+            
+            // 2. 把底栏里的所有按钮图标变成白色（防止黑色背景下看不清）
+            const buttons = bottomBar.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.style.color = 'rgba(0, 0, 0, 0.9)'; // 按钮文字/图标颜色
+            });
+            
+            // 3. 同时也微调一下输入框本身，让它更融合
+            callInputEl.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'; // 输入框背景深一点
+            callInputEl.style.color = '#000000'; // 输入文字白色
+            callInputEl.style.border = 'none';
+        }
+    }
     
     // 隐藏聊天详情页，显示通话页
     document.getElementById('chatDetailScreen').style.display = 'none';
@@ -4246,6 +4287,8 @@ async function receiveAIReply() {
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
         const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
 
+
+
         // 4. 天气信息
         let weatherInfoStr = '（未启用城市信息，请根据语境自由发挥）';
         if (characterInfo.cityInfoEnabled && characterInfo.charWeather && characterInfo.charWeather.today) {
@@ -4265,6 +4308,213 @@ async function receiveAIReply() {
                 console.warn('天气数据解析异常', e);
             }
         }
+
+      // ====== 日程注入 START：增强版（当前/下一条 + 兜底不崩） ======
+const scheduleData = (characterInfo && characterInfo.scheduleData) ? characterInfo.scheduleData : {};
+const timeline = Array.isArray(scheduleData.todayTimeline) ? scheduleData.todayTimeline : [];
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const nowMinutes = today.getHours() * 60 + today.getMinutes();
+
+// ====== 时间间隔感知（用于“昨晚->白天”这种跨时段纠偏） ======
+const getLastUserMessage = () => {
+    try {
+        if (!Array.isArray(allMessages)) return null;
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+            const m = allMessages[i];
+            if (!m) continue;
+            if (m.chatId !== currentChatId) continue;
+            if (m.isRevoked) continue;
+            if (m.senderId !== 'me') continue; // 只看用户最后一次发言
+            if (!m.time) continue;
+            return m;
+        }
+    } catch (e) {}
+    return null;
+};
+
+const formatGap = (ms) => {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return '刚刚';
+    if (min < 60) return `${min}分钟`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h < 24) return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
+    const d = Math.floor(h / 24);
+    const hh = h % 24;
+    return hh > 0 ? `${d}天${hh}小时` : `${d}天`;
+};
+
+const getDayPart = (hmMinutes) => {
+    const h = Math.floor(hmMinutes / 60);
+    if (h >= 5 && h < 10) return '清晨/早上';
+    if (h >= 10 && h < 12) return '上午';
+    if (h >= 12 && h < 14) return '中午';
+    if (h >= 14 && h < 18) return '下午';
+    if (h >= 18 && h < 22) return '晚上';
+    return '深夜';
+};
+
+const lastUserMsg = getLastUserMessage();
+let gapText = '（未知）';
+let lastTimeText = '（未知）';
+let lastDayPart = '（未知）';
+
+if (lastUserMsg) {
+    const lastDate = new Date(lastUserMsg.time);
+    const nowDate = new Date();
+    const gapMs = nowDate.getTime() - lastDate.getTime();
+
+    gapText = formatGap(Math.max(0, gapMs));
+    lastTimeText = `${lastDate.getFullYear()}年${lastDate.getMonth() + 1}月${lastDate.getDate()}日 ${pad2(lastDate.getHours())}:${pad2(lastDate.getMinutes())}`;
+    lastDayPart = getDayPart(lastDate.getHours() * 60 + lastDate.getMinutes());
+}
+
+const nowDayPart = getDayPart(nowMinutes);
+// ====== 时间间隔感知结束 ======
+
+
+const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return null;
+    const s = String(timeStr).trim();
+
+    // 匹配 10:00 / 9:30 / 09：30
+    const m = s.match(/(\d{1,2})\s*[:：]\s*(\d{1,2})/);
+    if (m) {
+        const hh = parseInt(m[1], 10);
+        const mm = parseInt(m[2], 10);
+        if (Number.isFinite(hh) && Number.isFinite(mm) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+            return hh * 60 + mm;
+        }
+    }
+
+    // 常见时段（粗略映射，用于“现在在干嘛”）
+    if (s.includes('清晨') || s.includes('早晨')) return 7 * 60;
+    if (s.includes('上午')) return 10 * 60;
+    if (s.includes('中午')) return 12 * 60;
+    if (s.includes('午后') || s.includes('下午')) return 15 * 60;
+    if (s.includes('傍晚') || s.includes('黄昏')) return 18 * 60;
+    if (s.includes('晚上') || s.includes('夜晚')) return 20 * 60;
+    if (s.includes('深夜') || s.includes('凌晨')) return 23 * 60;
+
+    return null; // 解析不了就交给兜底逻辑
+};
+
+// 1) 生成用于 prompt 的行程文本（最多 12 条，避免撑爆）
+const lines = timeline.slice(0, 12).map(t => {
+    const time = (t && t.time) ? String(t.time) : '某时段';
+    const act = (t && t.activity) ? String(t.activity) : '（未填写）';
+    const cmt = (t && t.comment) ? String(t.comment) : '';
+    const withUser = (t && t.withUser) ? ' [共同活动]' : '';
+    return `- ${time}: ${act}${withUser}${cmt ? `（OS: ${cmt}）` : ''}`;
+});
+
+// 2) 计算“当前正在做/下一条是什么”
+// 规则：
+// - 如果能解析出时间，则按时间排序
+// - 认为每条默认持续 90 分钟（可调），用于判断“当前条目”
+const DEFAULT_DURATION_MIN = 90;
+
+let nowItem = null;
+let nextItem = null;
+
+const enriched = timeline
+    .map((t, idx) => {
+        const m = parseTimeToMinutes(t && t.time);
+        return { t, idx, minutes: m };
+    });
+
+// 优先用可解析时间的条目
+const withParsed = enriched.filter(x => x.minutes !== null).sort((a, b) => a.minutes - b.minutes);
+
+if (withParsed.length > 0) {
+    // 找到最后一个 minutes <= nowMinutes 的条目作为“当前”
+    let current = null;
+    for (let i = 0; i < withParsed.length; i++) {
+        if (withParsed[i].minutes <= nowMinutes) current = withParsed[i];
+        else break;
+    }
+
+    if (current) {
+        // 如果已经过了默认持续时长，则认为当前已结束，当前置空，下一条为后继
+        const endAt = current.minutes + DEFAULT_DURATION_MIN;
+        if (nowMinutes <= endAt) {
+            nowItem = current.t;
+        }
+        // 下一条：current 后面的第一条
+        const next = withParsed.find(x => x.minutes > current.minutes);
+        if (next) nextItem = next.t;
+    } else {
+        // 现在比第一条还早：下一条就是第一条
+        nextItem = withParsed[0].t;
+    }
+
+    // 如果当前为空但 next 也空（比如都过了），就兜底到最后一条
+    if (!nowItem && !nextItem && withParsed.length > 0) {
+        nowItem = withParsed[withParsed.length - 1].t;
+    }
+} else {
+    // 没有任何可解析时间：按原顺序做弱兜底
+    // 如果有行程，就认为第一条是“接下来”，最后一条是“今天晚些”
+    if (timeline.length > 0) {
+        nextItem = timeline[0];
+        nowItem = null;
+    }
+}
+
+const formatOneLine = (t) => {
+    if (!t) return '（无）';
+    const time = t.time ? String(t.time) : '某时段';
+    const act = t.activity ? String(t.activity) : '（未填写）';
+    const cmt = t.comment ? String(t.comment) : '';
+    const withUser = t.withUser ? ' [共同活动]' : '';
+    return `${time}: ${act}${withUser}${cmt ? `（OS: ${cmt}）` : ''}`;
+};
+
+// 3) 组装 scheduleContext（给 systemPrompt 用）
+let scheduleContext = `（今日尚未生成具体行程：你按人设自然生活；如果用户提到“今天/待会/晚上”，你再临场安排。）`;
+
+if (timeline.length > 0) {
+    const nowLine = nowItem ? formatOneLine(nowItem) : '（未明确：按你人设与当前时间自由发挥）';
+    const nextLine = nextItem ? formatOneLine(nextItem) : '（暂无下一条：你可以临场安排或休息）';
+
+    scheduleContext = `【你今天的行程计划（未发生，按这个执行）】
+
+【绝对时间锚点（最高优先级）】
+现在时间：${dateStr} ${timeStr}
+当前时段：${nowDayPart}
+你必须以“现在时间/当前时段”为准说话，严禁把上一轮聊天的时间段（比如昨晚/晚上）延续到现在。
+
+【消息间隔感知（你要像真人一样意识到时间过去了）】
+上一次用户发消息时间：${lastTimeText}
+距离现在过去了：${gapText}
+上一次对话时段：${lastDayPart} -> 现在：${nowDayPart}
+
+【间隔反应协议（强制，只占 1 条气泡）】
+- 如果间隔 >= 2小时 或 时段发生明显跨越（例如“晚上->下午 / 隔天”），你必须在回复开头用 1 条气泡做“补帧/解释”，例如：
+  - “刚在忙，下午才看到你消息。”
+  - “我早上有点事，刚空下来。”
+  - “昨晚睡着了，刚起没多久。”
+- 注意：只用 1 条气泡带过，不要长篇解释，然后立刻回到用户话题。
+
+【时间纠偏协议（强制）】
+1) 如果你回复中出现与当前时段矛盾的词（现在是下午却说“今晚/刚睡醒/准备睡”），你必须立刻自我纠正成符合当前时段的表达。
+2) 禁止“卡死在某个时段”，时间会自然流逝，你要更新你正在做的事。
+
+你此刻大概率在做：${nowLine}
+接下来你准备做：${nextLine}
+
+【今日行程清单】
+${lines.length > 0 ? lines.join('\n') : '（空）'}
+
+【使用规则（强制）】
+1) 这是“计划”，不是回忆录：不要用“我刚刚/我已经做完”开头；要用“我现在/我等会/我打算/我准备/我可能”。
+2) 回答用户时要像真人：结合“此刻/下一条”调整语气（忙/闲/在路上/在一起等）。
+3) 若用户提出新安排：你可以按人设改计划（嘴硬心软/社畜加班/懒得出门等），但要合理解释。`;
+
+}
+// ====== 日程注入 END：增强版 ======
+
 
            // 5. System Prompt，单人提示词
       let systemPrompt = `
@@ -4321,6 +4571,9 @@ ${worldbooksContent}
 【朋友圈社交动态（话题库）】
 ${momentsContext || "（近期双方无动态）"}
 
+【角色日程】
+${scheduleContext}
+
 【朋友圈话题使用规则】
 1) 你可以“顺手提一嘴”，但不要每次都提：只有当动态/评论区里出现明显可聊点（情绪波动、约人、被频繁互动、被人@、争议话题、明显开心/低落）时，再自然带到聊天里。
 2) 提起方式要像刷到朋友圈后随口一句：一句轻问/一句调侃/一句关心就够了，别写成盘问或审讯。
@@ -4353,6 +4606,10 @@ ${weatherInfoStr}
 1. **生物钟**：现在是深夜吗？你的回复应该带有困意或深夜的感性。是清晨吗？应该有刚睡醒的懵懂或起床气。
 2. **体感**：${weatherInfoStr}。下雨会让你不想出门，天热会让你想喝冰水。让环境物理地影响你的心情。
 2.**工作与事业**：现在是工作时间吗？在工作吗？如果工作就应该有工作的疲累，成就，快乐，忙碌。
+
+
+
+
 
 【你的记忆】
 ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
@@ -4798,17 +5055,17 @@ if (jsonStrRaw) {
 
         // 解析记忆标记
         let triggeredMemoryId = null;
-        const memMatch = aiReply.match(/\[MEM:(\d+)\]/);
+        const memMatch = aiReply.match(/$$MEM:(\d+)$$/);
         if (memMatch) {
             triggeredMemoryId = parseInt(memMatch[1]);
-            aiReply = aiReply.replace(/\[MEM:\d+\]/g, '').trim();
+            aiReply = aiReply.replace(/$$MEM:\d+$$/g, '').trim();
         }
 
 // ====== 修改开始：修复状态提取逻辑（不再错误要求<10）======
 const statusPatterns = [
-    /\[状态\]\s*[:：]?\s*([^\|\n\r\[]+?)\s*\|\|\|/, // 优先：到 ||| 为止
-    /^\s*\[状态\]\s*[:：]?\s*([^\n\r\[]+)/,         // 次优：行内到下一个 [
-    /\[状态\]\s*[:：]?\s*([^\n\r\[]+)/              // 兜底：全局找一次
+    /$$状态$$\s*[:：]?\s*([^\|\n\r\[]+?)\s*\|\|\|/, // 优先：到 ||| 为止
+    /^\s*$$状态$$\s*[:：]?\s*([^\n\r\[]+)/,         // 次优：行内到下一个 [
+    /$$状态$$\s*[:：]?\s*([^\n\r$$]+)/              // 兜底：全局找一次
 ];
 
 let statusText = null;
@@ -4997,7 +5254,7 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
             if (shoppingMatch) {
                 const shoppingType = shoppingMatch[1];
                 const keyword = shoppingMatch[2].trim();
-                msgText = msgText.replace(/\[购物:(送礼|代付):[^\]]+\]/g, '').trim();
+                msgText = msgText.replace(/\[购物:(送礼|代付):[^\]]+$$/g, '').trim();
                 handleAIShopping(shoppingType, keyword);
                 if (!msgText) continue;
             }
@@ -5018,7 +5275,7 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
                     saveMessages();
                     renderMessages();
                 }
-                msgText = msgText.replace(/\[领取转账\]/g, '').trim();
+                msgText = msgText.replace(/$$领取转账$$/g, '').trim();
                 if (!msgText) continue;
             }
 
@@ -5050,7 +5307,7 @@ if (msgText.includes('[确认代付]')) {
         saveMessages();
     }
     
-    msgText = msgText.replace(/\[确认代付\]/g, '').trim();
+    msgText = msgText.replace(/$$确认代付$$/g, '').trim();
     if (!msgText) continue;
 }
 
@@ -5088,7 +5345,7 @@ if (aiQuotes.length > 0) {
 
 
             // 处理引用
-            const quoteMatch = msgText.match(/\[引用:(\d+)\]/);
+            const quoteMatch = msgText.match(/$$引用:(\d+)$$/);
             if (quoteMatch) {
                 const quotedId = parseInt(quoteMatch[1]);
                 const originalMsg = allMessages.find(m => m.id === quotedId);
@@ -5097,16 +5354,16 @@ if (aiQuotes.length > 0) {
                     newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
                     newMessage.quotedContent = originalMsg.content;
                     newMessage.quotedTime = formatMessageTime(originalMsg.time);
-                    msgText = msgText.replace(/\[引用:\d+\]/, '').trim();
+                    msgText = msgText.replace(/$$引用:\d+$$/, '').trim();
                     newMessage.content = msgText;
                 }
             }
 
             // 特殊消息类型
-            const emojiMatch = msgText.match(/\[EMOJI:(\d+)\]/);
-            const transferMatch = msgText.match(/\[转账:(\d+(?:\.\d{1,2})?):?(.*?)\]/);
-            const voiceMatch = msgText.match(/[\[【]?发送语音[:：]\s*(.*?)[\]】]?$/);
-  const textImageMatch = msgText.match(/\[图片[:：](.*?)\]/);
+            const emojiMatch = msgText.match(/$$EMOJI:(\d+)$$/);
+            const transferMatch = msgText.match(/$$转账:(\d+(?:\.\d{1,2})?):?(.*?)$$/);
+            const voiceMatch = msgText.match(/[$$【]?发送语音[:：]\s*(.*?)[$$】]?$/);
+  const textImageMatch = msgText.match(/$$图片[:：](.*?)$$/);
             if (emojiMatch) {
                 const emoji = emojiList.find(e => e.id == emojiMatch[1]);
                 if (emoji) {
@@ -5162,6 +5419,7 @@ else if (textImageMatch) {
         if (chatInput) chatInput.disabled = false;
     }
 }
+
 
 // ============ 补充缺失的 helper 函数 ============
 function setCharacterStatusForChat(chatId, statusText) {
@@ -7671,3 +7929,4 @@ setTimeout(() => {
         loadFontSettings();
     }
 }, 1000);
+

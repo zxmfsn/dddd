@@ -8733,3 +8733,64 @@ body.transparent-nav-mode .chat-input:focus {
     display: block;
 }
 /* ====== 动态转发弹窗样式 END ====== */
+
+/* 日程时间轴样式 */
+.schedule-timeline {
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid #f0f0f0;
+}
+
+.schedule-item {
+    position: relative;
+    margin-bottom: 25px;
+    padding-left: 20px;
+}
+
+.schedule-item::before {
+    content: '';
+    position: absolute;
+    left: -27px; /* 调整圆点位置 */
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #333;
+}
+
+/* 共同活动高亮 */
+.schedule-item.with-user::before {
+    border-color: #667eea;
+    background: #667eea;
+}
+
+.schedule-time {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.schedule-content {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.schedule-item.with-user .schedule-content {
+    background: #f0f4ff;
+    color: #445588;
+}
+/* 加载圈旋转动画 */
+.schedule-spinner {
+    animation: spin-circle 0.8s linear infinite;
+}
+
+@keyframes spin-circle {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
