@@ -485,6 +485,30 @@ window.addEventListener('storage', function(e) {
 let worldbooks = [];
 let categories = ['默认分类'];
 let currentCategory = 'all';
+
+// ========================
+// 中文注释：固定分类规则
+// - 系统内置一个固定分类：html（不可删除）
+// - 用于后续“HTML卡片插件”读取模板参考
+// ========================
+function ensureFixedCategories() {
+    // 中文注释：防御性处理，确保 categories 一定是数组
+    if (!Array.isArray(categories)) {
+        categories = [];
+    }
+
+    // 中文注释：保证“默认分类”存在（你原本就是默认有的，这里做保险）
+    if (!categories.includes('默认分类')) {
+        categories.unshift('默认分类');
+    }
+
+    // 中文注释：保证固定分类 html 永远存在
+    if (!categories.includes('html')) {
+        categories.push('html');
+    }
+}
+
+
 // API设置相关变量
 let apiSchemes = [];
 let currentApiConfig = {
@@ -501,11 +525,25 @@ function loadWorldbooks() {
         worldbooks = data || [];
         renderWorldbooks();
     });
+
     loadFromDB('categories', (data) => {
+        // 中文注释：从数据库加载分类；没有就给默认
         categories = data || ['默认分类'];
+
+        // 中文注释：强制补全固定分类 html
+        const before = JSON.stringify(categories);
+        ensureFixedCategories();
+        const after = JSON.stringify(categories);
+
+        // 中文注释：如果补全导致分类变化，则写回数据库，保证下次也有 html
+        if (before !== after) {
+            saveToDB('categories', categories);
+        }
+
         renderCategories();
     });
 }
+
 
 function renderCategories() {
     const container = document.getElementById('categoryTags');
@@ -694,9 +732,12 @@ function renderCategoryList() {
     container.innerHTML = categories.map(cat => `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f5f5f5;">
             <span style="font-size: 15px; color: #333; font-weight: 500;">${cat}</span>
-            ${cat !== '默认分类' ? 
-                `<button class="ins-action-btn ins-btn-del" onclick="deleteCategory('${cat}')" style="padding: 6px 14px; font-size: 12px;">删除</button>` 
-                : '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">系统默认</span>'}
+         ${(cat !== '默认分类' && cat !== 'html') ? 
+    `<button class="ins-action-btn ins-btn-del" onclick="deleteCategory('${cat}')" style="padding: 6px 14px; font-size: 12px;">删除</button>` 
+    : (cat === 'html'
+        ? '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">固定分类</span>'
+        : '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">系统默认</span>')}
+
         </div>
     `).join('');
 }
@@ -727,6 +768,11 @@ function addCategory() {
 }
 
 function deleteCategory(categoryName) {
+    // 中文注释：固定分类 html 不允许删除
+    if (categoryName === 'html') {
+        alert('html 为固定分类，无法删除');
+        return;
+    }
     if (confirm(`确定删除分类 "${categoryName}" 吗？\n该分类下的世界书将移动到默认分类。`)) {
         // 1. 数据处理：把该分类下的内容移到默认分类
         if (Array.isArray(worldbooks)) {
@@ -1037,7 +1083,7 @@ let walletData = {
     bills: []
 };
 let currentChatTab = 'single'; // single, group, peek
-
+let isReceiving = false;
 // 加载聊天列表
 function loadChats() {
     loadFromDB('chats', (data) => {
@@ -2098,6 +2144,7 @@ function updateChatLastMessage(chatId, content) {
         saveToDB('chats', { list: chats });
     }
 }
+
 // 长按消息相关变量
 let longPressTimer = null;
 let selectedMessageId = null;
@@ -2488,6 +2535,14 @@ renderWorldbookSelector(charData.linkedWorldbooks || []);
             // 强制转换为布尔值，防止 undefined 导致错误
             cityCheckbox.checked = charData.cityInfoEnabled === true;
         }
+
+// 中文注释：回填 HTML 插件开关（默认关闭）
+const htmlPluginCheckbox = document.getElementById('htmlPluginCheckbox');
+if (htmlPluginCheckbox) {
+    htmlPluginCheckbox.checked = charData.htmlPluginEnabled === true;
+}
+
+
      // 控制查看按钮的显示
 const viewBtn = document.getElementById('viewWeatherBtn');
 if (viewBtn) {
@@ -2566,6 +2621,7 @@ function saveCharacterInfo() {
             personality: getInputValue('charPersonality'),
             myPersonality: getInputValue('myPersonality'),
             linkedWorldbooks: getSelectedWorldbooks() || [],
+             htmlPluginEnabled: document.getElementById('htmlPluginCheckbox')?.checked === true,
             contextRounds: parseInt(document.getElementById('contextRoundsInput').value) || 30,
              autoSummaryEnabled: document.getElementById('autoSummaryCheckbox')?.checked || false,
     autoSummaryThreshold: parseInt(document.getElementById('autoSummaryThresholdInput')?.value) || 50,
@@ -3462,6 +3518,43 @@ async function getLinkedWorldbooksContent(linkedIds) {
         });
     });
 }
+
+// ================================
+// 中文注释：只提取“关联世界书”里 category=html 的内容
+// - 用作 HTML 卡片模板/风格参考
+// - 不掺杂其它分类内容，避免污染人设/剧情
+// ================================
+async function getLinkedHtmlWorldbooksContent(linkedIds) {
+    if (!linkedIds || !Array.isArray(linkedIds) || linkedIds.length === 0) {
+        return '';
+    }
+
+    return new Promise((resolve) => {
+        loadFromDB('worldbooks', (data) => {
+            let allWorldbooks = [];
+            if (Array.isArray(data)) allWorldbooks = data;
+            else if (data && Array.isArray(data.list)) allWorldbooks = data.list;
+
+            const linkedBooks = allWorldbooks
+                .filter(wb => wb && linkedIds.includes(wb.id))
+                .filter(wb => wb.category === 'html' && String(wb.content || '').trim().length > 0);
+
+            if (linkedBooks.length === 0) {
+                resolve('');
+                return;
+            }
+
+            // 中文注释：允许多个 html 世界书条目叠加
+            const content = linkedBooks.map(wb =>
+                `【HTML参考：${wb.title || '无标题'}】\n${String(wb.content || '').trim()}`
+            ).join('\n\n');
+
+            resolve(content);
+        });
+    });
+}
+
+
 // 导出聊天记录
 function exportChatHistory() {
     if (!currentChatId) {
@@ -4263,9 +4356,6 @@ function saveChatGroups() {
 
 
 
-function saveChatGroups() {
-    saveToDB('chatGroups', { list: chatGroups });
-}
 
 function openMomentsGroupModal() {
     document.getElementById('momentsNewGroupName').value = '';

@@ -191,6 +191,45 @@ ${timelineStr}
         weatherInfo = `当前天气：${characterInfo.charWeather.today.condition}，${characterInfo.charWeather.today.temp}`;
     }
  
+
+// ================================
+// 中文注释：HTML卡片插件（生成端规则）
+// - 这里用 systemPrompt += 的方式追加，确保 allowHtmlCard 已经定义
+// ================================
+systemPrompt += `
+【HTML卡片插件（可选输出，纯展示，无任何功能性效果）】
+- 是否允许输出卡片：${allowHtmlCard ? '允许' : '禁止'}
+- 说明：卡片只是“展示”，不改变剧情，不触发任何系统功能。
+
+【输出协议（严格）】
+1) 你的正常回复仍然必须按“8-12条气泡 + ||| 分割 + 末尾[心声更新]”的规则输出。
+2) 如果允许输出卡片：你可以在“某一条气泡消息”后面附带一个 HTML 卡片模块（不要单独再拆成新的 ||| 气泡）。
+【语言要求（强制）】
+- 卡片里的所有可见文字必须使用中文（除非是必要的英文缩写/编号，如航班号 CA1234、座位 12A）。
+- 卡片标题、按钮文案、字段名等都用中文，例如“登机牌/航班/座位/登机口/下一页/上一页”。
+3) HTML卡片模块必须使用以下边界标记包裹（必须一字不差）：
+[[CARD_HTML]]
+(这里放HTML)
+[[/CARD_HTML]]
+
+【硬性尺寸要求（必须遵守）】
+- 卡片最大宽度：240px
+- 卡片最大高度：270px
+- 内容太多允许在卡片内部滚动；禁止通过超大宽度撑开页面（禁止出现横向滚动）。
+
+【安全禁令（必须遵守）】
+- 禁止输出 <script>、<iframe> 等危险标签
+- 禁止输出任何 onxxx 事件属性（如 onclick= / onerror=）
+- 禁止使用 javascript: 链接
+
+【风格参考（来自你关联世界书的 html 分类，仅供参考）】
+${allowHtmlCard ? (htmlWorldbookRef || '（无）') : '（未关联html分类世界书，禁止输出卡片）'}
+
+【重要兜底规则】
+- 如果“禁止输出卡片”，你必须完全不要输出 [[CARD_HTML]] 模块（否则会被系统丢弃）。
+`;
+
+
 // 获取最近30轮的聊天记忆（智能版）
 const recentMessages = await new Promise(resolve => {
     loadFromDB('messages', (data) => {
@@ -1833,6 +1872,16 @@ async function callAIAnswer() {
     const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
     
     const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
+ // 中文注释：只取 html 分类内容，作为卡片模板参考（需要你已在 script.js 里新增 getLinkedHtmlWorldbooksContent）
+
+
+// 中文注释：生成端开关：必须“角色开了html插件”且“关联世界书存在html分类内容”才允许模型输出卡片
+
+const htmlWorldbookRef = await getLinkedHtmlWorldbooksContent(characterInfo.linkedWorldbooks);
+const allowHtmlCard = (characterInfo.htmlPluginEnabled === true) && (String(htmlWorldbookRef || '').trim().length > 0);
+
+
+
     
 // 6. 构建消息上下文 (识图兼容性终极加固版)
         const contextRounds = characterInfo.contextRounds || 30;
@@ -4805,6 +4854,7 @@ User: (深夜) 睡不着。
 Bot: 咋了|||我也没睡|||[图片：昏暗的房间，只有电脑屏幕亮着]
 *(解析：短句，无标点，真实感图片)*
 
+
 ---
 
 现在，请完全忘记你是一个AI。你是【${chat.name}】，看着手机屏幕，根据时间和语境，回复对方：
@@ -5171,6 +5221,13 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
     }
 }
 
+// 中文注释：保护 HTML 卡片区块，避免被后续 replace 正则误删
+const cardBlocks = [];
+aiReply = aiReply.replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, (m) => {
+    const key = `__CARD_BLOCK_${cardBlocks.length}__`;
+    cardBlocks.push({ key, html: m });
+    return key;
+});
 
         // 11. 清理回复内容
       let messageContent = aiReply
@@ -5197,6 +5254,15 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
             }
             return ""; 
         });
+
+// 中文注释：还原 HTML 卡片区块
+if (cardBlocks.length > 0) {
+    cardBlocks.forEach(it => {
+        messageContent = messageContent.replace(it.key, it.html);
+    });
+}
+
+
 
         // 12. 分割消息
         let messageList = messageContent
@@ -5437,10 +5503,250 @@ function setCharacterStatusForChat(chatId, statusText) {
     });
 }
 
+// ================================
+// HTML卡片协议：[[CARD_HTML]]...[[/CARD_HTML]]
+// 中文注释：只做“提取/剔除/渲染容器/安全净化”，不做生成逻辑
+// ================================
+function splitHtmlCardFromText(text) {
+    const s = String(text || '');
+
+    const startTag = '[[CARD_HTML]]';
+    const endTag = '[[/CARD_HTML]]';
+
+    const start = s.indexOf(startTag);
+    const end = s.indexOf(endTag);
+
+    // 中文注释：找不到完整区块 -> 当作纯文本
+    if (start === -1 || end === -1 || end < start) {
+        return { text: s, cardHtml: null };
+    }
+
+    const before = s.slice(0, start);
+    const inside = s.slice(start + startTag.length, end);
+    const after = s.slice(end + endTag.length);
+
+    // 中文注释：text = 去掉卡片后的正常文本（保留前后文本）
+    const cleanText = (before + after).trim();
+
+    // 中文注释：cardHtml = 卡片内部原始HTML
+    const cardHtml = inside.trim();
+
+    return { text: cleanText, cardHtml: cardHtml || null };
+}
+
+function sanitizeHtmlCard(dirtyHtml) {
+    let html = String(dirtyHtml || '');
+
+    // 中文注释：修正常见中文/花式引号，避免属性解析异常
+    html = html.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+
+    const root = tpl.content;
+
+    // 1) 删除会污染全局/危险的标签（重点：style 必须删）
+   const bannedTags = ['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base'];
+
+    bannedTags.forEach(tag => {
+        root.querySelectorAll(tag).forEach(el => el.remove());
+    });
+
+    // 2) 清理属性（事件、外链、class/id）
+    root.querySelectorAll('*').forEach(el => {
+      
+
+        Array.from(el.attributes).forEach(attr => {
+            const name = attr.name.toLowerCase();
+            const value = String(attr.value || '');
+
+            // 2.1 删除所有 onxxx 事件属性
+            if (name.startsWith('on')) {
+                el.removeAttribute(attr.name);
+                return;
+            }
+
+            // 2.2 限制 href
+            if (name === 'href') {
+                const v = value.trim().toLowerCase();
+                const ok = v.startsWith('http://') || v.startsWith('https://');
+                if (!ok) el.removeAttribute(attr.name);
+                else {
+                    // 中文注释：防止新窗口劫持
+                    el.setAttribute('target', '_blank');
+                    el.setAttribute('rel', 'noopener noreferrer');
+                }
+                return;
+            }
+
+            // 2.3 限制 src（允许 data:image 和 http/https）
+            if (name === 'src') {
+                const v = value.trim().toLowerCase();
+                const ok = v.startsWith('http://') || v.startsWith('https://') || v.startsWith('data:image/');
+                if (!ok) el.removeAttribute(attr.name);
+                return;
+            }
+
+            // 2.4 限制 style：禁止 url()/@import/expression/javascript:
+            if (name === 'style') {
+                const v = value.toLowerCase();
+                if (v.includes('url(') || v.includes('@import') || v.includes('expression(') || v.includes('javascript:')) {
+                    el.removeAttribute(attr.name);
+                }
+                return;
+            }
+        });
+    });
+
+    return tpl.innerHTML;
+}
+
+
+// ================================
+// 中文注释：把卡片 HTML 包进固定尺寸容器
+// - 240 宽
+// - 最大高 270（你现在的偏好）
+// - 只允许纵向滚动，禁止横向滚动
+// ================================
+function buildHtmlCardContainer(cardHtml, msgId) {
+    const safeId = String(msgId || '');
+
+    // 中文注释：先净化再渲染
+    const safeHtml = sanitizeHtmlCard(cardHtml);
+
+    return `
+        <div class="html-card-wrap" data-card-msg-id="${safeId}"
+             style="width:240px; max-width:240px; height:270px; max-height:270px; overflow:hidden; border-radius:14px; border:1px solid rgba(0,0,0,0.08); background:#fff; box-shadow: 0 8px 18px rgba(0,0,0,0.08);">
+            <div class="html-card-inner"
+                 style="width:100%; height:100%; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; box-sizing:border-box;">
+                <div class="html-card-content"
+                     style="width:100%; box-sizing:border-box; overflow-wrap:anywhere; word-break:break-word;">
+                    ${safeHtml}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ================================
+// 中文注释：初始化卡片分页（每条消息渲染后调用一次）
+// - 默认显示第 1 页
+// - 如果卡片里没有 data-card-page，则不处理
+// ================================
+function initHtmlCardPaging(rootEl) {
+    if (!rootEl) return;
+
+    const pages = rootEl.querySelectorAll('[data-card-page]');
+    if (!pages || pages.length === 0) return;
+
+    // 默认第一页
+    let current = 1;
+
+    // 如果容器上有记忆的页码（比如用户刚刚翻过页），优先用它
+    const saved = parseInt(rootEl.getAttribute('data-card-current-page') || '1', 10);
+    if (Number.isFinite(saved) && saved > 0) current = saved;
+
+    pages.forEach(p => {
+        const n = parseInt(p.getAttribute('data-card-page') || '0', 10);
+        p.style.display = (n === current) ? 'block' : 'none';
+    });
+
+    rootEl.setAttribute('data-card-current-page', String(current));
+}
+
+// ================================
+// 中文注释：卡片点击事件代理（翻页/跳页）
+// ================================
+function bindHtmlCardInteractions() {
+    // 避免重复绑定
+    if (window.__htmlCardBound) return;
+    window.__htmlCardBound = true;
+
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target) return;
+
+        // 找到离点击点最近的 action 元素
+        const actionEl = target.closest('[data-action]');
+        if (!actionEl) return;
+
+        // 只处理卡片内部的动作
+        const cardWrap = actionEl.closest('.html-card-wrap');
+        if (!cardWrap) return;
+
+        const action = String(actionEl.getAttribute('data-action') || '').trim();
+        if (!action.startsWith('card:')) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const pages = cardWrap.querySelectorAll('[data-card-page]');
+        if (!pages || pages.length === 0) return;
+
+        const maxPage = Math.max(...Array.from(pages).map(p => parseInt(p.getAttribute('data-card-page') || '0', 10)).filter(n => Number.isFinite(n)));
+
+        let current = parseInt(cardWrap.getAttribute('data-card-current-page') || '1', 10);
+        if (!Number.isFinite(current) || current <= 0) current = 1;
+
+        if (action === 'card:next') current = Math.min(maxPage, current + 1);
+        else if (action === 'card:prev') current = Math.max(1, current - 1);
+        else if (action === 'card:goto') {
+            const goto = parseInt(actionEl.getAttribute('data-page') || '1', 10);
+            if (Number.isFinite(goto)) current = Math.min(maxPage, Math.max(1, goto));
+        } else {
+            return;
+        }
+
+        // 切换显示
+        pages.forEach(p => {
+            const n = parseInt(p.getAttribute('data-card-page') || '0', 10);
+            p.style.display = (n === current) ? 'block' : 'none';
+        });
+
+        cardWrap.setAttribute('data-card-current-page', String(current));
+    }, true);
+}
+
+
+
+// 中文注释：判断当前角色是否允许渲染 HTML 卡片
+// 条件：角色开启 htmlPluginEnabled + 关联世界书中存在 html 分类内容（非空）
+async function isHtmlCardAllowedForCurrentChat() {
+    try {
+        if (!currentChatId) return false;
+
+        // 1) 读取角色信息（包含 htmlPluginEnabled、linkedWorldbooks）
+        const charInfoAll = await new Promise((resolve) => {
+            loadFromDB('characterInfo', (data) => resolve(data || {}));
+        });
+
+        const charData = charInfoAll[currentChatId] || {};
+        if (charData.htmlPluginEnabled !== true) return false;
+
+        const linkedIds = Array.isArray(charData.linkedWorldbooks) ? charData.linkedWorldbooks : [];
+        if (linkedIds.length === 0) return false;
+
+        // 2) 在已关联世界书里找 html 分类且 content 非空
+        const allWorldbooks = await new Promise((resolve) => {
+            loadFromDB('worldbooks', (data) => resolve(Array.isArray(data) ? data : []));
+        });
+
+        const linkedBooks = allWorldbooks.filter(wb => wb && linkedIds.includes(wb.id));
+        if (linkedBooks.length === 0) return false;
+
+        const hasHtmlRef = linkedBooks.some(wb => wb.category === 'html' && String(wb.content || '').trim().length > 0);
+        return hasHtmlRef;
+    } catch (e) {
+        console.warn('isHtmlCardAllowedForCurrentChat failed:', e);
+        return false;
+    }
+}
+
+
 
 
 // ============ 修复版：渲染消息列表 (解决文字竖排问题) ============
-function renderMessages() {
+async function renderMessages() {
     const container = document.getElementById('messagesList');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     
@@ -5457,6 +5763,10 @@ function renderMessages() {
         return;
     }
     
+// 中文注释：只计算一次“本聊天是否允许HTML卡片”，避免每条消息都查DB
+const htmlCardAllowed = await isHtmlCardAllowedForCurrentChat();
+
+
     container.innerHTML = visibleMessages.map((msg) => {
         const isMe = msg.senderId === 'me';
         const multiSelectClass = isMultiSelectMode ? 'multi-select-mode' : '';
@@ -5649,9 +5959,31 @@ if (msg.type === 'voice') {
                 </div>
             `;
         } else {
-            // 普通文本
-            messageContent = msg.content;
-        }
+            
+            
+    // 普通文本（支持附加 HTML 卡片协议）
+    const rawText = String(msg.content || '');
+
+    // 1) 先按协议拆分：正常文本 + 卡片区块
+    const parts = splitHtmlCardFromText(rawText);
+    const cleanText = parts.text;       // 去掉卡片后的文本
+    const cardHtml = parts.cardHtml;    // 卡片HTML（可能为null）
+
+    // 2) 文本部分永远正常显示（如果为空就显示空）
+    // 中文注释：你之前要求“正常回复 + 卡片”，所以这里永远以文本为主
+    messageContent = cleanText;
+
+    // 3) 卡片展示策略：
+    // - 允许渲染：追加卡片容器
+    // - 不允许渲染：直接丢弃卡片（不显示任何[[CARD_HTML]]残留）
+    if (cardHtml && htmlCardAllowed) {
+        messageContent += buildHtmlCardContainer(cardHtml, msg.id);
+    }
+
+    // 4) 如果文本为空但卡片存在且允许渲染，仍然可以只显示卡片
+    // （如果你不想允许“只卡片”，后续我们可以强制要求必须有文本）
+}
+
         // 记忆回溯提示条
         let memoryHintHtml = '';
         if (msg.memoryId) {
@@ -5703,6 +6035,10 @@ if (msg.type === 'voice') {
 
 
     }).join('');
+
+// 中文注释：初始化本次渲染出来的所有卡片分页（默认显示第一页）
+container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging(wrap));
+
 
     // 调用那个“丢失”的函数
     updateRetryButtonState();
@@ -6818,7 +7154,7 @@ ${recentMessages || '暂无聊天'}
         
         // 解析返回内容
         const parts = content.split('|||').map(s => s.trim());
-        if (parts.length < 8) return null;
+        if (parts.length < 7) return null; 
         
        
         
@@ -7045,6 +7381,7 @@ loadFromDB('characterInfo', (data) => {
         const oldMonitor = allData[currentChatId].statusMonitor || {};
         
         // ★★★ 修复：逐字段更新，允许 null 值覆盖旧数据 ★★★
+        const newStatus = analysisData; 
         allData[currentChatId].statusMonitor = {
             mood: newStatus.mood !== undefined ? newStatus.mood : oldMonitor.mood,
             moodLevel: newStatus.moodLevel !== undefined ? newStatus.moodLevel : oldMonitor.moodLevel,
@@ -7930,3 +8267,4 @@ setTimeout(() => {
     }
 }, 1000);
 
+bindHtmlCardInteractions();
