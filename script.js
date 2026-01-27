@@ -4305,16 +4305,19 @@ function sendTextImage() {
 }
 
 
-// ============ 文字图详情展示 (适配新格式) ============
+// ============ 文字图详情展示 (兼容：旧壳/新纯描述) ============
 function showTextImageDetail(encodedContent) {
-    // 1. 解码
-    let content = decodeURIComponent(encodedContent);
-    
-    // 2. ★★★ 去掉新的外壳 ★★★
-    // 去掉开头的 "[图片：" 和结尾的 "]"
-    content = content.replace(/^\[图片：/, '').replace(/\]$/, '');
-    
-    // 3. 显示
+    let content = decodeURIComponent(encodedContent || '');
+    content = String(content).trim();
+
+    // 兼容去壳：
+    // 【图片：xxx】 / [图片：xxx] / 【图片:xxx】 / [图片:xxx]
+    // 如果没有壳，就原样显示
+    const m = content.match(/^[【\[]\s*图片\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/);
+    if (m && m[1] != null) {
+        content = String(m[1]).trim();
+    }
+
     document.getElementById('textImageDetailContent').innerText = content;
     document.getElementById('textImageDetailModal').style.display = 'flex';
 }

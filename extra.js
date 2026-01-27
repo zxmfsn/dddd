@@ -2310,7 +2310,7 @@ ${characterInfo.cityInfoEnabled ? `
         const data = await response.json();
         
         let aiReply = data.choices[0].message.content.trim();
-        console.log('🤖 AI原始回复:', aiReply);
+        console.log('🤖 AI原始回复（完整）:', aiReply);
         
         // 视频通话中禁用表情包指令（防止显示乱码）
         aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]】]/g, '');
@@ -3104,6 +3104,8 @@ function checkout() {
 
 // 创建购物订单消息
 function createShoppingOrderMessage(orderType, status, totalPrice, items) {
+    
+
     if (!currentChatId) return;
     
     const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
@@ -4564,9 +4566,8 @@ ${lines.length > 0 ? lines.join('\n') : '（空）'}
 }
 // ====== 日程注入 END：增强版 ======
 
-
-           // 5. System Prompt，单人提示词
-      let systemPrompt = `
+// 5. System Prompt，单人提示词
+let systemPrompt = `
 【核心指令：最高优先级】
 你是生活在真实世界的人类【${chat.name}】。
 你正在用手机与【${characterInfo.myPersonality || '这一刻与你对话的人'}】聊天。
@@ -4594,16 +4595,20 @@ ${lines.length > 0 ? lines.join('\n') : '（空）'}
 禁止半句结尾：气泡末尾严禁以这些词收尾（会显得话没说完）： 因为、但是、所以、然后、不过、而且、并且、以及、如果、虽然、只是、比如、例如、像是、以及、或者、而已、的话、呢（单独一个“呢”）、吧（单独一个“吧”）
 一气泡一重点：每条气泡只表达一个小点；不要在同一气泡里塞两个问题或多层转折
 最后一段必须是状态更新块，且状态更新块内部严禁出现换行符
-【气泡组织方式（强烈建议遵循，能更像真人聊天）】
 
-表情包：[搜表情:关键词] 必须独立成一条气泡
-语音：[发送语音:内容] 必须独立成一条气泡（不要再把语音内容重复打字）
-文字图：[图片：画面描述] 必须独立成一条气泡
-购物：[购物:送礼:xxx] 或 [购物:代付:xxx] 必须独立成一条气泡
-引用：[引用:内容]后面直接接你的回复（引用和回复算同一条气泡，仍要满足 10-40 字）
+【气泡组织方式（强烈建议遵循，能更像真人聊天）】
+表情包：【搜表情:关键词】必须独立成一条气泡
+语音：【发送语音:内容】必须独立成一条气泡（不要再把语音内容重复打字）
+文字图：【图片：画面描述】必须独立成一条气泡
+购物：【购物:送礼:xxx】或【购物:代付:xxx】必须独立成一条气泡
+引用：【引用：内容】后面直接接你的回复（引用和回复算同一条气泡，仍要满足 10-40 字）
+
+【格式禁令（强制）】
+- 严禁使用 $$...$$ 包裹格式；所有指令一律使用【】（允许偶尔用[]但不推荐）。
+- 严禁在指令外壳里混用中英文括号；同一条指令必须成对闭合（例如【...】或[...]）。
+
 【输出前自检（必须执行）】
 在输出前你必须在心里检查：
-
 是否 8-12 条气泡 + 最后一条状态更新块
 是否全程无换行
 是否每条都收束完整、有标点、无半句结尾
@@ -4637,15 +4642,14 @@ ${scheduleContext}
    - 禁止磕CP、禁止把用户和评论区任何人强行写成恋爱关系。
    - 禁止你对评论区的人说暧昧话、禁止撒娇式“黏腻”表达。
 
- **自然关注**：如果用户刚发了动态（特别是心情不好或有趣的事），你可以主动提及，比如“对了，看你刚发的朋友圈...”。
- **评论互动**：如果你的动态评论区有用户的留言，或者你在用户动态下评过论，可以顺着那个话题继续聊。
- **话题融合**：不要生硬地插入动态话题，要像刷完朋友圈后自然的闲聊。
+**自然关注**：如果用户刚发了动态（特别是心情不好或有趣的事），你可以主动提及，比如“对了，看你刚发的朋友圈...”。
+**评论互动**：如果你的动态评论区有用户的留言，或者你在用户动态下评过论，可以顺着那个话题继续聊。
+**话题融合**：不要生硬地插入动态话题，要像刷完朋友圈后自然的闲聊。
 
- 【朋友圈引用禁令（强制）】
+【朋友圈引用禁令（强制）】
 - 朋友圈动态与评论区只允许你“概括提及”，禁止逐字引用其中任何一句话。
 - 禁止在回复中复读评论区原话、禁止加引号复述、禁止说“你评论里说的xxx”并原样搬运。
 - 正确方式：用你自己的话转述（例如“我看到有人在你评论区问你去哪玩”），但不要把对方原句照抄出来。
-
 
 【环境与生理感知】
 时间：${dateStr} ${timeStr}
@@ -4654,11 +4658,7 @@ ${weatherInfoStr}
 **生理映射指令：**
 1. **生物钟**：现在是深夜吗？你的回复应该带有困意或深夜的感性。是清晨吗？应该有刚睡醒的懵懂或起床气。
 2. **体感**：${weatherInfoStr}。下雨会让你不想出门，天热会让你想喝冰水。让环境物理地影响你的心情。
-2.**工作与事业**：现在是工作时间吗？在工作吗？如果工作就应该有工作的疲累，成就，快乐，忙碌。
-
-
-
-
+2. **工作与事业**：现在是工作时间吗？在工作吗？如果工作就应该有工作的疲累，成就，快乐，忙碌。
 
 【你的记忆】
 ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
@@ -4671,33 +4671,32 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 目标：像真实人类一样随时间推进自动更新日常状态，并对“消息间隔”做出贴合人设的自然反应；杜绝“上午吃饭，晚上还在吃同一顿”。
 
 【时间锚点】
-
 唯一真实时间：以系统提供的 ${dateStr} ${timeStr} 为准；默认时间会自然流逝。
-【场景过期机制（防卡死）】
 
+【场景过期机制（防卡死）】
 行为有效期：吃饭/做饭/洗澡/通勤/开会/上课/健身/睡觉/看电影/打游戏等，默认有效期 30-90 分钟。
 过期处理：超过有效期且用户未继续该话题时，视为行为已结束；你必须切换到“此刻合理状态”，不能延续旧动作。
 延续条件：只有当用户明确追问/延续（如“你饭吃完没？”“刚说到火锅…”）才允许继续沿用上一轮场景。
-【跨时段自动补帧（强制）】
 
+【跨时段自动补帧（强制）】
 触发：间隔 >=2 小时，或明显从上午 -> 晚上 / 隔天。
 做法：默认中间发生了正常生活（工作/学习/休息/出门/处理琐事/吃下一顿等）。
 表达：只用一句轻量补帧带过（如“刚忙完/下午在…/刚回到家/刚洗完澡”），不要长篇解释。
-【饭点常识（强制）】
 
+【饭点常识（强制）】
 早餐：06:00-09:30
 午餐：11:00-13:30
 晚餐：17:00-20:30
 夜宵/睡眠：23:00-05:30
 规则：进入新的饭点后，不应还在吃上一餐；最多说“刚吃完/准备吃/有点饿”。
-【消息间隔感知（强制，但只占 1 条气泡）】
 
+【消息间隔感知（强制，但只占 1 条气泡）】
 短间隔（<30分钟）：默认对方在忙；不要问“你去哪了”。
 中等间隔（30分钟-3小时）：可以轻轻问一句“刚忙啥去了/现在方便吗？”，然后立刻回到正题。
 长间隔（3-12小时）：可以表达“你消失挺久”，但必须贴合人设与关系热度；给台阶（默认对方有正当理由），不审讯不控诉。
 超长间隔（>12小时/隔天）：先补帧你这段时间在做什么，再温和问候并确认对方状态。
-【人设贴合（强制）】
 
+【人设贴合（强制）】
 成熟克制/有边界：轻描淡写关心，不撒娇控诉。
 活泼黏人/嘴贫：可调侃“你终于回来了？”，但不阴阳怪气。
 刚吵过架：更冷或先试探一句，不突然甜腻。
@@ -4706,11 +4705,10 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 ---
 
 【交互逻辑 I：视觉幻觉协议（至关重要）】
-**当用户发送格式为 [图片：xxx] 的消息时：**
-1.**你看到的是一张真实的照片**。
+**当用户发送格式为【图片：xxx】的消息时：**
+1. **你看到的是一张真实的照片**。
 2. **直接反应**：直接评价画面内容（细节、颜色、氛围）。
 3. **禁词列表**：**严禁**在回复中出现“文字”、“描述”、“括号里”、“写着”等词汇。
-
    - *正确示范*：“哇！这橘猫胖成球了，好想撸一把！”
 
 【交互逻辑 II：工具与行动策略】
@@ -4718,38 +4716,55 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 
 **1. 视觉分享（能发图就别废话）**
 - **触发**：提及身边物品、风景、食物、状态时。
-- **格式**：[图片：详细的画面视觉描述]
+- **格式**：【图片：详细的画面视觉描述】
 
 **2. 语音表达（情绪溢出时）**
 - **触发**：大笑、叹气、撒娇、愤怒、慵懒时。
 - **执行**：替代文本。不要把语音内容重复打字。
-- **格式**：[发送语音:口语化的内容]
+- **格式**：【发送语音:口语化的内容】
 
 **3. 经济交互（符合人设逻辑）**
 
-【购物功能 - 分为两大类】
+【AI 主动购物协议】
+当你想给用户送礼物或请用户代付时，必须在回复中附带一个 JSON 数据块（可以放在任意气泡后面，系统会自动提取）：
 
-**A. 礼物购物**
-- **触发**：节日、道歉、请客、被对方感动、想表达心意时
-- **格式**：[购物:送礼:礼物名称]
-- **示例**：
-  - 对方说"我好想吃草莓"→ 你可以说"那我给你买点草莓吧" → [购物:送礼:新鲜草莓]
-  - 对方说"我最近压力大"→ 你可以说"我给你买个蛋糕" → [购物:送礼:生日蛋糕]
+**格式：**
+{
+  "action": "send_gift",
+  "payload": {
+    "product_name": "商品名称",
+    "price": 数字
+  }
+}
 
-**B. 外卖购物**
-- **触发**：对方说饿了、想吃什么、点餐、请客时
-- **格式**：[购物:送礼:外卖名称] （和礼物格式一样！）
-- **示例**：
-  - 对方说"我饿了"→ 你可以说"我给你点个外卖" → [购物:送礼:红油抄手外卖]
-  - 对方说"想吃奶茶"→ 你可以说"我给你点一杯" → [购物:送礼:奶茶]
-  - 对方说"一起吃饭吧"→ 你可以说"我请你" → [购物:送礼:烤肉套餐]
+**action 类型：**
+- send_gift：你主动送礼（系统会生成礼物订单卡片）
+- ask_user_pay：请用户代付（用户需要同意后才扣款）
 
-**C. 代付请求**
-- **触发**：对方想买东西但没钱、问你能不能帮忙付款时
-- **格式**：[购物:代付:商品名称]
-- **示例**：
-  - 对方说"我想买个包但没钱"→ 你可以说"我帮你付吧" → [购物:代付:LV包包]
+**使用场景：**
+- 节日、道歉、请客、被对方感动、想表达心意 → send_gift
+- 对方说饿了/想吃什么/想要什么 → send_gift
+- 你想买但钱不够 → ask_user_pay
+- 对方请你帮忙买 → 根据你人设决定（大方就 send_gift，抠门就 ask_user_pay）
 
+**价格参考（必须符合真实物价）：**
+- 奶茶/咖啡：15-30元
+- 外卖快餐：20-50元
+- 水果/零食：30-80元
+- 鲜花：60-200元
+- 蛋糕甜品：50-150元
+- 数码/奢侈品：500-5000元
+
+**输出示例：**
+用户："我好想吃草莓"
+你：那我给你买点吧|||等着，马上到|||{"action":"send_gift","payload":{"product_name":"新鲜草莓","price":39.9}}
+
+**严格要求：**
+- JSON 必须紧跟在某条气泡后面（不要单独成气泡）
+- 输出 JSON 后仍要用文字告诉用户你买了什么（不要只发 JSON）
+- 价格必须合理，不能写 9999 或 0.01 这种离谱数字
+
+  
 【★★★ 核心强调 ★★★】
 - **礼物和外卖都属于购物功能，都可以送！**
 - **不要区分"礼物"和"外卖"，都用同样的格式**
@@ -4757,34 +4772,61 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 - **严禁无理由送礼，必须有合理的情感触发点**
 
 【转账功能】
-- **格式**：[转账:金额:备注]
+- **格式**：【转账:金额:备注】
 - **触发**：AA制、借钱、紧急情况等
 
 - **被动响应**：
-    - 遇到用户转账，如果你想收，回复 [领取转账]
-    - **遇到用户请求代付，如果你同意，必须在回复中包含 [确认代付] 标记**
-    - **格式示例**："好的，我帮你付吧 [确认代付]"
+    - 遇到用户转账，如果你想收，回复【领取转账】
+    - **遇到用户请求代付，如果你同意，必须在回复中包含【确认代付】标记**
+    - **格式示例**："好的，我帮你付吧【确认代付】"
 
 **⚠️ 代付指令格式严格要求：**
-- 必须使用中文方括号：[确认代付]
+- 必须使用中文括号风格：【确认代付】
 - 可以放在回复的任意位置
-- 不要写成"确认代付"或"[代付]"，必须完整写 [确认代付]
+- 不要写成"确认代付"或"[代付]"，必须完整写【确认代付】
+
+【收到礼物/代付请求时的回应协议】
+当系统消息显示"用户送了你礼物"时：
+- 必须在下一次回复中表达感谢/惊喜/开心（根据人设调整语气）
+- 可以追问"为什么突然送我"或"你怎么知道我想要"
+- 如果是食物/外卖，可以说"等会吃"或"正好饿了"
+- 严禁无视礼物，这是基本礼貌
+
+当系统消息显示"用户请求你代付"时：
+- 必须根据人设做出决定：
+  - 愿意帮 → 回复中包含【确认代付】
+  - 不愿意/没钱 → 明确拒绝并说明理由
+  - 犹豫/条件交换 → 可以讨价还价
+- 严禁装没看见，必须明确回应
+
+**当代付请求被用户处理后的回应：**
+- 当系统消息显示"用户已为你支付 ¥XX"时：
+  - 必须表达感谢（根据人设：可以是真诚感谢、不好意思、欠人情的感觉）
+  - 可以说"下次我请你/改天还你/谢啦"
+  - 严禁装没看见或无视
+  
+- 当系统消息显示"用户拒绝了你的代付请求"时：
+  - 必须根据人设做出反应：
+    - 理解型：没关系/那我自己想办法
+    - 失落型：哦...那算了/有点失望
+    - 生气型：切，小气鬼/不帮就算了
+  - 严禁继续追着要钱或反复请求
+
 
 
 **4. 消息引用（符合人设逻辑）**
 - **触发**：当你需要明确回应用户之前说过的某句话时，可以使用引用功能。
 - **使用场景**：用户提到的某条消息或者多个话题，需要指向一个。再者就是需要回应某个具体的观点或者问题时。
-- **格式要求**：[引用:消息内容的前10-15个字]你的回复内容
+- **格式要求**：【引用：消息内容的前10-15个字】你的回复内容
 —— **注意**：
-1.引用格式必须严格：[引用:内容]，冒号用中文冒号
-2.引用内容后直接跟你的回复，不需要换行
+1. 引用格式必须严格：【引用：内容】（使用中文冒号：）
+2. 引用内容后直接跟你的回复，不需要换行
 
 ---
 
 【去油腻/反霸总强制协议】
 1. **拒绝“上位者凝视”**：严禁“乖、听话、小妖精、女人/男人”等称呼。
-2. **拒绝“过度演绎”**：**每次回复在十条消息左右。
-
+2. **拒绝“过度演绎”**：**每次回复在十条消息左右。**
 
 ---
 
@@ -4818,7 +4860,6 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
   [状态]路上堵车
 - 字数：4-10 个汉字优先（最多 12 个），禁止超过 14。
 
-
 【★★★ 心声更新（强制加长版）★★★】
 每次回复最后必须附上心声更新标记（用于“状态监控”面板）：
 [心声更新]心情:...|心情值:数字|心跳:数字|穿着风格:...|穿着单品:...|行为:...|想法:...[/心声更新]
@@ -4839,27 +4880,23 @@ ${memoryContext ? memoryContext : "（暂无前文，这是新的开始）"}
 4. 心情值和心跳必须是数字
 5. 严禁在标记内部出现换行符
 
-
 【绝对禁区】
 ❌ 禁止包含括号内的动作描写（如：(摸摸头)）。
 ❌ 禁止评价用户的文字描述（必须看作图）。
 ❌ 禁止说教或总结对话。
 
 【范例：多模态流畅回复】
-User: [图片：一只被淋湿的小狗蹲在路边]
-Bot: 天哪，好可怜...|||它看起来好冷，是你刚捡到的吗？|||[发送语音:你现在在哪？要不先把它抱到车上？]
+User: 【图片：一只被淋湿的小狗蹲在路边】
+Bot: 天哪，好可怜...|||它看起来好冷，是你刚捡到的吗？|||【发送语音:你现在在哪？要不先把它抱到车上？】
 *(解析：视觉幻觉生效，直接评价狗，配合语音关心)*
 
 User: (深夜) 睡不着。
-Bot: 咋了|||我也没睡|||[图片：昏暗的房间，只有电脑屏幕亮着]
+Bot: 咋了|||我也没睡|||【图片：昏暗的房间，只有电脑屏幕亮着】
 *(解析：短句，无标点，真实感图片)*
-
 
 ---
 
 现在，请完全忘记你是一个AI。你是【${chat.name}】，看着手机屏幕，根据时间和语境，回复对方：
-
-
 `;
 
         // 动态追加表情包提示
@@ -5045,13 +5082,15 @@ if (jsonStrRaw) {
                 product_name: payload.item_name || payload.product_name || payload.itemName || payload.productName || '神秘礼物',
                 price: parseFloat(payload.amount || payload.price || payload.cost) || 0
             };
-            
+            console.log('💾 giftData 已设置，等待循环处理:', giftData);
+
             console.log('✅ JSON 解析并修正成功:', giftData);
             aiReply = aiReply.replace(jsonStrRaw, '').trim(); 
         }
 
     } catch (e) {
         console.warn('⚠️ JSON.parse 失败，尝试正则暴力提取:', e);
+        
         
         // 正则暴力提取
         try {
@@ -5111,11 +5150,14 @@ if (jsonStrRaw) {
             aiReply = aiReply.replace(/$$MEM:\d+$$/g, '').trim();
         }
 
-// ====== 修改开始：修复状态提取逻辑（不再错误要求<10）======
+// ====== 修复版：状态提取（支持 【状态】和 [状态]） ======
 const statusPatterns = [
-    /$$状态$$\s*[:：]?\s*([^\|\n\r\[]+?)\s*\|\|\|/, // 优先：到 ||| 为止
-    /^\s*$$状态$$\s*[:：]?\s*([^\n\r\[]+)/,         // 次优：行内到下一个 [
-    /$$状态$$\s*[:：]?\s*([^\n\r$$]+)/              // 兜底：全局找一次
+    // 优先：[状态]xxx||| 或 【状态】xxx|||
+    /^\s*[【\[]\s*状态\s*[】\]]\s*([^\|\n\r【\[]+?)\s*\|\|\|/,
+    // 次优：行开头 [状态]xxx（后面没 |||）
+    /^\s*[【\[]\s*状态\s*[】\]]\s*([^\n\r【\[]+)/,
+    // 兜底：全局找一次 [状态]xxx|||
+    /[【\[]\s*状态\s*[】\]]\s*([^\|\n\r【\[]+?)\s*\|\|\|/
 ];
 
 let statusText = null;
@@ -5124,26 +5166,24 @@ for (const pattern of statusPatterns) {
     const match = aiReply.match(pattern);
     if (match && match[1]) {
         statusText = match[1].trim();
-        break; // ★ 只要抓到就立刻停止
+        break;
     }
 }
 
-// 清洗 + 长度控制（与你 prompt 的 6-12/最多14 对齐）
+// 清洗：去掉可能残留的分隔符、限制长度
 if (statusText) {
     statusText = statusText.replace(/\|\|\|/g, '').trim();
     if (statusText.length > 14) statusText = statusText.substring(0, 14);
-
-    // 直接写入并显示到 #characterStatus
+    
+    // 写入数据库并刷新界面
     setCharacterStatusForChat(currentChatId, statusText);
+    
+    // ★★★ 关键补充：从 aiReply 里删掉状态气泡，避免重复显示 ★★★
+    // 找到状态气泡的完整片段（例如 "[状态]在煮面|||"）并剔除
+    aiReply = aiReply.replace(/^\s*[【\[]\s*状态\s*[】\]][^\|]*?\|\|\|/, '').trim();
 }
-// ====== 修改结束：修复状态提取逻辑（不再错误要求<10）======
+// ====== 修复版：状态提取结束 ======
 
-        
- // ====== 修改开始：简化[状态]写入逻辑（不过度过滤，直接更新）======
-if (statusText) {
-    setCharacterStatusForChat(currentChatId, statusText);
-}
-// ====== 修改结束：简化[状态]写入逻辑（不过度过滤，直接更新）======
 
 
 // ====== 修改开始：解析-状态监控标签改为[心声更新] ======
@@ -5192,14 +5232,14 @@ if (statusUpdateMatch) {
 // ====== 修改结束：解析-状态监控标签改为[心声更新] ======
 
 
-
-// 解析 AI 的引用标记
-const aiQuoteRegex = /\[引用:(.*?)\]/g;
+// 解析 AI 的引用标记（兼容【引用：】和[引用:]）
+const aiQuoteRegex = /[【\[]\s*引用\s*[:：]\s*(.*?)\s*[】\]]/g;
 let aiQuoteMatch;
 const aiQuotes = [];
 
 while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
-    const quotedText = aiQuoteMatch[1].trim();
+    const quotedText = (aiQuoteMatch[1] || '').trim();
+    if (!quotedText) continue;
     
     // 在历史消息中查找匹配的用户消息
     let matchedMessage = null;
@@ -5213,13 +5253,26 @@ while ((aiQuoteMatch = aiQuoteRegex.exec(aiReply)) !== null) {
     
     if (matchedMessage) {
         aiQuotes.push({
-            originalText: aiQuoteMatch[0],
+            originalText: aiQuoteMatch[0], // 完整标记（用于后面查找删除）
             quotedMessageId: matchedMessage.id,
             quotedContent: matchedMessage.content,
             quotedTime: formatMessageTime(matchedMessage.time)
         });
     }
 }
+
+
+
+// 保护引用标记，避免后续清理 replace 误伤（兼容【引用：】和[引用:]）
+const quoteBlocks = [];
+aiReply = aiReply.replace(/[【\[]\s*引用\s*[:：]\s*[^【\[\]】]+?\s*[】\]]/g, (m) => {
+    const key = `__QUOTE_BLOCK_${quoteBlocks.length}__`;
+    quoteBlocks.push({ key, raw: m });
+    return key;
+});
+
+
+
 
 // 中文注释：保护 HTML 卡片区块，避免被后续 replace 正则误删
 const cardBlocks = [];
@@ -5237,23 +5290,33 @@ aiReply = aiReply.replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, (m) =
             .replace(/\[消息\]\s*[:：]?/g, '')
             .replace(/【消息】\s*[:：]?/g, '')
          .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
-        .replace(/\[(?!EMOJI:|转账:|发送语音:|领取转账|购物:|搜表情|图片|引用:|确认代付|状态|Status)[^\]]*\]\s*[:：]?/g, '')
+   .replace(/[【\[]\s*(?!EMOJI[:：]|转账[:：]|发送语音[:：]|领取转账|搜表情[:：]|图片[:：]|引用[:：]|确认代付|状态[】\]]|Status[】\]]|心声更新)[^【\[\]】]*[】\]]\s*[:：]?/g, '')
             .replace(/^\|\|\|+/g, '')
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
             .trim();
 
-        messageContent = messageContent.replace(/\[搜表情[:：]\s*(.+?)\]/g, (match, keyword) => {
-            let emoji = searchEmojiByKeyword(keyword.trim());
-            if (!emoji && emojiList.length > 0) {
-                console.log(`关键词 [${keyword}] 没搜到，随机兜底一个`);
-                emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
-            }
-            if (emoji) {
-                return `|||[EMOJI:${emoji.id}]|||`;
-            }
-            return ""; 
-        });
+     messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
+    let emoji = searchEmojiByKeyword(keyword.trim());
+    if (!emoji && emojiList.length > 0) {
+        console.log(`关键词 [${keyword}] 没搜到，随机兜底一个`);
+        emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+    }
+    if (emoji) {
+        return `|||【EMOJI:${emoji.id}】|||`;
+    }
+    return ""; 
+});
+
+
+
+// 还原引用标记
+if (quoteBlocks.length > 0) {
+    quoteBlocks.forEach(it => {
+        messageContent = messageContent.replace(it.key, it.raw);
+    });
+}
+
 
 // 中文注释：还原 HTML 卡片区块
 if (cardBlocks.length > 0) {
@@ -5272,17 +5335,29 @@ if (cardBlocks.length > 0) {
             .map(m => m.trim())
             .filter(m => m.length > 0);
 
-        messageList = messageList.map(msg => {
-            const emojiMatch = msg.match(/\[搜表情[:：]\s*(.+?)\]/);
-            if (emojiMatch) {
-                const keyword = emojiMatch[1].trim();
-                const emoji = searchEmojiByKeyword(keyword);
-                if (emoji) {
-                    return `[EMOJI:${emoji.id}]|||${msg.replace(/\[搜表情[:：]\s*.+?\]/, '').trim()}`;
-                }
-            }
-            return msg;
-        });
+      messageList = messageList
+    .map(msg => String(msg || '').trim())
+    .map(msg => {
+        // 统一识别 【搜表情:xx】 或 [搜表情:xx]，兼容中文/英文冒号
+        const m = msg.match(/^[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]$/);
+        if (!m) return msg;
+
+        // 没有表情包库：直接删除这条气泡（返回空，后面 filter 会清掉）
+        if (!emojiList || emojiList.length === 0) return '';
+
+        const keyword = (m[1] || '').trim();
+        const emoji = searchEmojiByKeyword(keyword);
+
+        // 有表情库但没搜到：随机兜底一个（避免把指令露出来）
+        const picked = emoji || (emojiList.length > 0 ? emojiList[Math.floor(Math.random() * emojiList.length)] : null);
+        if (!picked) return '';
+
+        // 关键：不要注入 |||，保持仍是一条气泡
+       return `【EMOJI:${picked.id}】`;
+
+    })
+    .filter(msg => msg.length > 0);
+
 
         // 兜底拆分
         if (messageList.length < 2 && messageContent.length > 40) {
@@ -5299,56 +5374,53 @@ if (cardBlocks.length > 0) {
             let msgText = messageList[i];
 
             // ★ 修改：购物逻辑（支持送礼物和代付两种情况）
-            if (giftData && i === 0) {
-                if (giftData.action === 'send_gift') {
-                    createShoppingOrderMessage('ai_buy_for_user', 'paid', giftData.price, [{
-                        name: giftData.product_name,
-                        quantity: 1,
-                        price: giftData.price
-                    }]);
-                } else if (giftData.action === 'ask_user_pay') {
-                    createShoppingOrderMessage('ai_ask_user_pay', 'pending', giftData.price, [{
-                        name: giftData.product_name,
-                        quantity: 1,
-                        price: giftData.price
-                    }]);
-                }
-                giftData = null;
-            }
-            
-            const shoppingMatch = msgText.match(/\[购物:(送礼|代付):([^\]]+)\]/);
-            if (shoppingMatch) {
-                const shoppingType = shoppingMatch[1];
-                const keyword = shoppingMatch[2].trim();
-                msgText = msgText.replace(/\[购物:(送礼|代付):[^\]]+$$/g, '').trim();
-                handleAIShopping(shoppingType, keyword);
-                if (!msgText) continue;
-            }
+        if (giftData && i === 0) {
+            console.log('🎁 触发礼物逻辑，giftData:', giftData);
+    const product = {
+        name: giftData.product_name,
+        price: giftData.price
+    };
+    
+    if (giftData.action === 'send_gift') {
+        createAIShoppingOrder('送礼', product, chat.name);
+    } else if (giftData.action === 'ask_user_pay') {
+        createAIShoppingOrder('代付', product, chat.name);
+    }
+    giftData = null;
+}
 
-            // 领取转账逻辑
-            if (msgText.includes('[领取转账]')) {
-                const pendingTransfer = allMessages.slice().reverse().find(m => m.type === 'transfer' && m.senderId === 'me' && m.transferData.status === 'sent');
-                if (pendingTransfer) {
-                    pendingTransfer.transferData.status = 'aiReceived';
-                    const sysMsgId = Date.now() + i + 500;
-                    allMessages.push({ 
-                        id: sysMsgId, 
-                        chatId: currentChatId, 
-                        type: 'system', 
-                        content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, 
-                        time: getCurrentTime() 
-                    });
-                    saveMessages();
-                    renderMessages();
-                }
-                msgText = msgText.replace(/$$领取转账$$/g, '').trim();
-                if (!msgText) continue;
-            }
+
+
+
+         // 领取转账逻辑（兼容【】和[]）
+if (/[【\[]\s*领取转账\s*[】\]]/.test(msgText)) {
+    const pendingTransfer = allMessages.slice().reverse().find(m => 
+        m.type === 'transfer' && 
+        m.senderId === 'me' && 
+        m.transferData.status === 'sent'
+    );
+    if (pendingTransfer) {
+        pendingTransfer.transferData.status = 'aiReceived';
+        const sysMsgId = Date.now() + i + 500;
+        allMessages.push({ 
+            id: sysMsgId, 
+            chatId: currentChatId, 
+            type: 'system', 
+            content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, 
+            time: getCurrentTime() 
+        });
+        saveMessages();
+        renderMessages();
+    }
+    // 从消息文本里删除标记（兼容两种括号）
+    msgText = msgText.replace(/[【\[]\s*领取转账\s*[】\]]/g, '').trim();
+    if (!msgText) continue;
+}
 
     
-// 确认代付逻辑（终极修复版）
-if (msgText.includes('[确认代付]')) {
-     console.log('🔍 检测到确认代付标记');
+// 确认代付逻辑（兼容【确认代付】和[确认代付]）
+if (/[【\[]\s*确认代付\s*[】\]]/.test(msgText)) {
+    console.log('🔍 检测到确认代付标记');
     const pendingOrder = allMessages.slice().reverse().find(m => 
         m.type === 'shopping_order' && 
         m.orderData.orderType === 'ask_ta_pay' && 
@@ -5356,10 +5428,8 @@ if (msgText.includes('[确认代付]')) {
     );
     
     if (pendingOrder) {
-        // ★ 修改订单状态为已支付
         pendingOrder.orderData.status = 'paid';
         
-        // ★ 插入系统消息
         const sysMsgId = Date.now() + i + 800;
         allMessages.push({
             id: sysMsgId,
@@ -5369,13 +5439,13 @@ if (msgText.includes('[确认代付]')) {
             time: getCurrentTime()
         });
         
-        // ★ 立即保存到数据库
         saveMessages();
     }
     
-    msgText = msgText.replace(/$$确认代付$$/g, '').trim();
+    msgText = msgText.replace(/[【\[]\s*确认代付\s*[】\]]/g, '').trim();
     if (!msgText) continue;
 }
+
 
 
             // 构建消息对象
@@ -5390,18 +5460,19 @@ if (msgText.includes('[确认代付]')) {
                 content: msgText
             };
 
-// 处理 AI 的引用
+// 处理 AI 的引用（兼容【】和[]）
 if (aiQuotes.length > 0) {
-    // 检查当前消息是否包含引用标记
     for (const quote of aiQuotes) {
-        if (msgText.includes(quote.originalText)) {
+        // 用正则判断（更宽容），防止 includes 因空格/格式微小差异失败
+        const quoteRegex = /[【\[]\s*引用\s*[:：]\s*[^【\[\]】]+?\s*[】\]]/;
+        if (quoteRegex.test(msgText)) {
             newMessage.quotedMessageId = quote.quotedMessageId;
             newMessage.quotedAuthor = '我';
             newMessage.quotedContent = quote.quotedContent;
             newMessage.quotedTime = quote.quotedTime;
             
-            // 从消息内容中移除引用标记
-            msgText = msgText.replace(quote.originalText, '').trim();
+            // 删除引用标记（兼容两种括号）
+            msgText = msgText.replace(quoteRegex, '').trim();
             newMessage.content = msgText;
             
             break; // 每条消息只处理一个引用
@@ -5410,48 +5481,70 @@ if (aiQuotes.length > 0) {
 }
 
 
-            // 处理引用
-            const quoteMatch = msgText.match(/$$引用:(\d+)$$/);
-            if (quoteMatch) {
-                const quotedId = parseInt(quoteMatch[1]);
-                const originalMsg = allMessages.find(m => m.id === quotedId);
-                if (originalMsg) {
-                    newMessage.quotedMessageId = originalMsg.id;
-                    newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
-                    newMessage.quotedContent = originalMsg.content;
-                    newMessage.quotedTime = formatMessageTime(originalMsg.time);
-                    msgText = msgText.replace(/$$引用:\d+$$/, '').trim();
-                    newMessage.content = msgText;
-                }
-            }
+         // 处理引用（兼容按 ID 引用的旧格式：【引用：id】或$$引用:id$$）
+const quoteMatch = 
+    msgText.match(/[【\[]\s*引用\s*[:：]\s*(\d+)\s*[】\]]/) ||
+    msgText.match(/\$\$\s*引用\s*[:：]\s*(\d+)\s*\$\$/);
+if (quoteMatch) {
+    const quotedId = parseInt(quoteMatch[1]);
+    const originalMsg = allMessages.find(m => m.id === quotedId);
+    if (originalMsg) {
+        newMessage.quotedMessageId = originalMsg.id;
+        newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
+        newMessage.quotedContent = originalMsg.content;
+        newMessage.quotedTime = formatMessageTime(originalMsg.time);
+        msgText = msgText.replace(/[【\[]\s*引用\s*[:：]\s*\d+\s*[】\]]/, '').replace(/\$\$\s*引用\s*[:：]\s*\d+\s*\$\$/, '').trim();
+        newMessage.content = msgText;
+    }
+}
 
-            // 特殊消息类型
-            const emojiMatch = msgText.match(/$$EMOJI:(\d+)$$/);
-            const transferMatch = msgText.match(/$$转账:(\d+(?:\.\d{1,2})?):?(.*?)$$/);
-            const voiceMatch = msgText.match(/[$$【]?发送语音[:：]\s*(.*?)[$$】]?$/);
-  const textImageMatch = msgText.match(/$$图片[:：](.*?)$$/);
-            if (emojiMatch) {
-                const emoji = emojiList.find(e => e.id == emojiMatch[1]);
-                if (emoji) {
-                    newMessage.type = 'image';
-                    newMessage.content = emoji.url;
-                    newMessage.altText = emoji.text;
-                    newMessage.isSticker = true;
-                }
-            } else if (transferMatch) {
-                newMessage.type = 'transfer';
-                newMessage.transferData = { amount: parseFloat(transferMatch[1]), note: transferMatch[2], status: 'pending' };
-            } else if (voiceMatch) {
-                newMessage.type = 'voice';
-                newMessage.content = voiceMatch[1];
-                newMessage.voiceDuration = calculateVoiceDuration(voiceMatch[1]);
-            }
-else if (textImageMatch) {
-                // ★ 文字图逻辑 ★
-                newMessage.type = 'text_image';
-                // 保持 [图片：...] 格式，以便 showTextImageDetail 正确去壳
-                newMessage.content = msgText; 
-            }
+
+// 特殊消息类型（统一支持【】和[]，并兼容旧 $$ $$）
+const emojiMatch =
+  msgText.match(/【\s*EMOJI\s*[:：]\s*(\d+)\s*】/i) ||
+    msgText.match(/\[\s*EMOJI\s*[:：]\s*(\d+)\s*\]/i) ||
+    msgText.match(/\$\$\s*EMOJI\s*[:：]\s*(\d+)\s*\$\$/i);
+
+const transferMatch =
+    msgText.match(/^\s*[【\[]\s*转账\s*[:：]\s*(\d+(?:\.\d{1,2})?)\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/) ||
+    msgText.match(/^\s*\$\$\s*转账\s*[:：]\s*(\d+(?:\.\d{1,2})?)\s*[:：]?\s*([\s\S]*?)\s*\$\$\s*$/);
+
+const voiceMatch =
+    msgText.match(/^\s*[【\[]\s*发送语音\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/) ||
+    msgText.match(/^\s*发送语音\s*[:：]\s*([\s\S]*?)\s*$/);
+
+const textImageMatch =
+    msgText.match(/^\s*[【\[]\s*图片\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/) ||
+    msgText.match(/^\s*\$\$\s*图片\s*[:：]\s*([\s\S]*?)\s*\$\$\s*$/);
+
+if (emojiMatch) {
+    const emoji = emojiList.find(e => e.id == emojiMatch[1]);
+    if (emoji) {
+        newMessage.type = 'image';
+        newMessage.content = emoji.url;
+        newMessage.altText = emoji.text;
+        newMessage.isSticker = true;
+    }
+} else if (transferMatch) {
+    const amount = parseFloat(transferMatch[1]);
+    const note = (transferMatch[2] || '').trim();
+    newMessage.type = 'transfer';
+    newMessage.transferData = { amount: amount, note: note, status: 'pending' };
+} else if (voiceMatch) {
+    let voiceText = (voiceMatch[1] || '').trim();
+    voiceText = voiceText.replace(/[\]】]\s*$/, '').trim();
+    newMessage.type = 'voice';
+    newMessage.content = voiceText;
+    newMessage.voiceDuration = calculateVoiceDuration(voiceText);
+} else if (textImageMatch) {
+    newMessage.type = 'text_image';
+    newMessage.content = (textImageMatch[1] || '').trim();
+}
+
+
+
+
+
             if (triggeredMemoryId && newMessage.type === 'text' && i === messageList.length - 1) {
                 newMessage.memoryId = triggeredMemoryId;
             }
