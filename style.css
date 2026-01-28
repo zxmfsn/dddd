@@ -8794,3 +8794,9 @@ body.transparent-nav-mode .chat-input:focus {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+/* 避免最后一条消息被输入框遮挡：给滚动容器留出底部空间 */
+#messagesContainer {
+  padding-bottom: 90px;  /* 可按你输入框高度微调：90-140px */
+  box-sizing: border-box; /* 确保 padding 计算稳定 */
+  scroll-padding-bottom: 90px; /* 可选：让滚动定位更舒服 */
+}

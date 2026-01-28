@@ -181,6 +181,8 @@ ${timelineStr}
     scheduleContext = `\n【行程】你今天暂时没有具体计划，按人设自由行动。`;
 }
 
+
+
     const today = new Date();
     const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
     const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
@@ -192,22 +194,23 @@ ${timelineStr}
     }
  
 
+    
 // ================================
 // 中文注释：HTML卡片插件（生成端规则）
 // - 这里用 systemPrompt += 的方式追加，确保 allowHtmlCard 已经定义
 // ================================
-systemPrompt += `
+const safeAllowHtmlCard =
+    (typeof allowHtmlCard !== 'undefined') ? allowHtmlCard : false;
+const safeHtmlWorldbookRef =
+    (typeof htmlWorldbookRef !== 'undefined') ? htmlWorldbookRef : '';
+const cardRuleText = `
 【HTML卡片插件（可选输出，纯展示，无任何功能性效果）】
-- 是否允许输出卡片：${allowHtmlCard ? '允许' : '禁止'}
-- 说明：卡片只是“展示”，不改变剧情，不触发任何系统功能。
+- 是否允许输出卡片：${safeAllowHtmlCard ? '允许' : '禁止'}
+【卡片输出协议（仅在允许时生效）】
+1) 如果允许输出卡片：HTML 卡片必须“独立占用一条气泡”，并且这一条气泡内容只能包含卡片本体，禁止混入任何普通文字。
+-  正确示例：气泡A（文字）|||[[CARD_HTML]]...[[/CARD_HTML]]|||气泡C（文字）
 
-【输出协议（严格）】
-1) 你的正常回复仍然必须按“8-12条气泡 + ||| 分割 + 末尾[心声更新]”的规则输出。
-2) 如果允许输出卡片：你可以在“某一条气泡消息”后面附带一个 HTML 卡片模块（不要单独再拆成新的 ||| 气泡）。
-【语言要求（强制）】
-- 卡片里的所有可见文字必须使用中文（除非是必要的英文缩写/编号，如航班号 CA1234、座位 12A）。
-- 卡片标题、按钮文案、字段名等都用中文，例如“登机牌/航班/座位/登机口/下一页/上一页”。
-3) HTML卡片模块必须使用以下边界标记包裹（必须一字不差）：
+2) HTML卡片模块必须使用以下边界标记包裹（必须一字不差）：
 [[CARD_HTML]]
 (这里放HTML)
 [[/CARD_HTML]]
@@ -215,18 +218,15 @@ systemPrompt += `
 【硬性尺寸要求（必须遵守）】
 - 卡片最大宽度：240px
 - 卡片最大高度：270px
-- 内容太多允许在卡片内部滚动；禁止通过超大宽度撑开页面（禁止出现横向滚动）。
-
+- 内容太多允许在卡片内部滚动；禁止出现横向滚动。
 【安全禁令（必须遵守）】
 - 禁止输出 <script>、<iframe> 等危险标签
 - 禁止输出任何 onxxx 事件属性（如 onclick= / onerror=）
 - 禁止使用 javascript: 链接
-
-【风格参考（来自你关联世界书的 html 分类，仅供参考）】
-${allowHtmlCard ? (htmlWorldbookRef || '（无）') : '（未关联html分类世界书，禁止输出卡片）'}
-
+【风格参考（仅供参考）】
+${safeAllowHtmlCard ? (safeHtmlWorldbookRef || '（无）') : '（未开启/未关联，禁止输出卡片）'}
 【重要兜底规则】
-- 如果“禁止输出卡片”，你必须完全不要输出 [[CARD_HTML]] 模块（否则会被系统丢弃）。
+- 如果“禁止输出卡片”，你必须完全不要输出 [[CARD_HTML]] 模块。
 `;
 
 
@@ -333,6 +333,9 @@ const recentMessages = await new Promise(resolve => {
         .join("\n");
 
     const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇**灵魂有趣、拒绝流水账**的个人日记。
+
+${cardRuleText}
+
 
 【角色人设】
 ${characterInfo.personality || '一个真实有趣的人'}
@@ -1441,6 +1444,39 @@ async function retryAIReply() {
     // 调用AI重新回复
     receiveAIReply();
 }
+
+// 将图片压缩到较小尺寸，返回 dataURL（JPEG）
+function compressImageToDataUrl(dataUrl, maxSide = 1024, quality = 0.78) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            let { width, height } = img;
+
+            // 不放大，只缩小
+            const longSide = Math.max(width, height);
+            if (longSide > maxSide) {
+                const scale = maxSide / longSide;
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 用 JPEG 输出通常比 PNG 小很多
+            const out = canvas.toDataURL('image/jpeg', quality);
+            resolve(out);
+        };
+        img.onerror = () => reject(new Error('图片加载失败，无法压缩'));
+        img.src = dataUrl;
+    });
+}
+
+
 // ============ 图片上传功能 ============
 function handleImageUpload(event) {
     const file = event.target.files[0];
@@ -1460,47 +1496,56 @@ function handleImageUpload(event) {
     
     // 读取图片
     const reader = new FileReader();
-    reader.onload = function(e) {
-        const imageData = e.target.result;
-        // ★★★ 新增：简单的图片压缩检查 ★★★
-        // 如果 Base64 字符串太长（超过 200万字符，约 1.5MB），可能会导致 API 报错
-        if (imageData.length > 2000000) {
-            alert('这张图片太大了，AI 处理不过来，请发一张小一点的截图试试。');
-            return;
-        }
-        
-        // 生成新消息ID
-        const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
-        
-        const newMessage = {
-            id: newId,
-            chatId: currentChatId,
-            type: 'image',
-            content: imageData,
-            altText: file.name,
-            senderId: 'me',
-            time: getCurrentTime(),
-            isRevoked: false
-        };
-        
-        // 如果有引用消息，添加引用信息
-        if (quotedMessage) {
-            newMessage.quotedMessageId = quotedMessage.id;
-            newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
-            newMessage.quotedContent = quotedMessage.content;
-            newMessage.quotedTime = formatMessageTime(quotedMessage.time);
-            cancelQuote();
-        }
-        
-        allMessages.push(newMessage);
-        saveMessages();
-        updateChatLastMessage(currentChatId, '【图片】');
-        
-        visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
-        renderMessages();
-        scrollToBottom();
-    };
-    
+ reader.onload = function(e) {
+    const originalDataUrl = e.target.result;
+
+    compressImageToDataUrl(originalDataUrl, 1024, 0.78)
+        .then((compressed1) => {
+            if (compressed1.length <= 2000000) return compressed1;
+            return compressImageToDataUrl(originalDataUrl, 768, 0.72);
+        })
+        .then((imageData) => {
+            if (imageData.length > 2000000) {
+                alert('这张图片太大了，压缩后仍无法发送。建议截小一点再试。');
+                return;
+            }
+
+            // 生成新消息ID（保留你原来的逻辑）
+            const newId = allMessages.length > 0 ? Math.max(...allMessages.map(m => m.id || 0)) + 1 : 1;
+
+            const newMessage = {
+                id: newId,
+                chatId: currentChatId,
+                type: 'image',
+                content: imageData,
+                altText: file.name,
+                senderId: 'me',
+                time: getCurrentTime(),
+                isRevoked: false
+            };
+
+            if (quotedMessage) {
+                newMessage.quotedMessageId = quotedMessage.id;
+                newMessage.quotedAuthor = quotedMessage.senderId === 'me' ? '我' : quotedMessage.senderId;
+                newMessage.quotedContent = quotedMessage.content;
+                newMessage.quotedTime = formatMessageTime(quotedMessage.time);
+                cancelQuote();
+            }
+
+            allMessages.push(newMessage);
+            saveMessages();
+            updateChatLastMessage(currentChatId, '【图片】');
+
+            visibleMessagesCount = Math.min(visibleMessagesCount + 1, allMessages.length);
+            renderMessages();
+            scrollToBottom();
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('图片处理失败：' + (err && err.message ? err.message : err));
+        });
+};
+
     reader.readAsDataURL(file);
     
     // 清空input，允许重复选择同一文件
