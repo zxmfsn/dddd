@@ -1718,6 +1718,62 @@ function removeCurrentLayer() {
     generateBubbleCSS();
 }
 
+
+function getCreatorEffectValue() {
+    const el = document.getElementById('creatorEffect');
+    return el ? el.value : 'none';
+}
+
+function getBubbleEffectCss(effect, bgColor, radius) {
+    // 只追加“质感”，不覆盖基础的 background-color / color / border-radius / padding
+    if (!effect || effect === 'none') return '';
+
+    if (effect === 'glass') {
+        // 玻璃拟态：半透明 + 模糊 + 细描边 + 柔阴影
+        return (
+            `background-color: rgba(255,255,255,0.55);\n` +
+            `backdrop-filter: blur(8px);\n` +
+            `-webkit-backdrop-filter: blur(8px);\n` +
+            `border: 1px solid rgba(255,255,255,0.55);\n` +
+            `box-shadow: 0 8px 18px rgba(0,0,0,0.10);\n`
+        );
+    }
+
+    if (effect === 'highlight') {
+        // 高光短横线：使用 ::before，不与贴纸 ::after 冲突
+        return (
+            `overflow: hidden;\n` +
+            `}\n\n/* 高光短横线 */\n` +
+            `::before {\n` +
+            `content: '';\n` +
+            `position: absolute;\n` +
+            `left: 18%;\n` +
+            `top: 7px;\n` +
+            `width: 42%;\n` +
+            `height: 2px;\n` +
+            `border-radius: 999px;\n` +
+            `background: rgba(255,255,255,0.65);\n` +
+            `pointer-events: none;\n` +
+            `}\n`
+        );
+    }
+
+
+
+    if (effect === 'jelly') {
+        // 果冻拟态：渐变 + 内外阴影
+        return (
+            `background-image: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(0,0,0,0.06));\n` +
+            `box-shadow: 0 10px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.55);\n` +
+            `border: 1px solid rgba(0,0,0,0.06);\n`
+        );
+    }
+
+    return '';
+}
+
+
+
 // 8. ★★★ 核心：生成 CSS (支持外部贴纸的 Breakout 模式) ★★★
 function generateBubbleCSS() {
     const activeTabBtn = document.querySelector('#bubbleBeautifyScreen .ins-tab-btn.active');
@@ -1738,13 +1794,26 @@ function generateBubbleCSS() {
     const padY = elPadY ? elPadY.value : 12; 
     const padX = elPadX ? elPadX.value : 12;
     
-    // 1. 气泡本体样式
-    let css = `background-color: ${bgColor};\n`;
-    css += `color: ${textColor};\n`;
-    css += `border-radius: ${radius}px;\n`;
-    css += `border: 1px solid rgba(0,0,0,0.05);\n`;
-    css += `padding: ${padY}px ${padX}px;\n`;
-    css += `position: relative; overflow: visible;\n`; 
+   // 1. 气泡本体样式
+let css = `background-color: ${bgColor};\n`;
+css += `color: ${textColor};\n`;
+css += `border-radius: ${radius}px;\n`;
+css += `border: 1px solid rgba(0,0,0,0.05);\n`;
+css += `padding: ${padY}px ${padX}px;\n`;
+css += `position: relative; overflow: visible;\n`;
+
+// 1.1 追加质感效果
+const effect = getCreatorEffectValue();
+const effectCss = getBubbleEffectCss(effect, bgColor, radius);
+
+if (effect === 'highlight') {
+    const patched = effectCss.replace(/\n::before\s*\{/g, `\n\n${selector}::before {\n`);
+    css += patched;
+} else {
+    css += effectCss;
+}
+
+
     
     // 2. 贴纸逻辑
     const validLayers = activeStickerLayers.filter(l => l.url && l.url.trim() !== '');
@@ -2010,6 +2079,26 @@ function syncCreatorControlsFromCss(css) {
         const el = document.getElementById('creatorTextColor');
         if (el) el.value = textMatch[1];
     }
+
+    // 5. 同步质感下拉框（从 CSS 反推）
+const effectSelect = document.getElementById('creatorEffect');
+if (effectSelect) {
+    let effect = 'none';
+
+    if (/backdrop-filter:\s*blur\(/.test(css) || /-webkit-backdrop-filter:\s*blur\(/.test(css)) {
+        effect = 'glass';
+    } else if (/::before/.test(css) || /高光短横线/.test(css)) {
+        effect = 'highlight';
+    }  else if (/data:image\/svg\+xml,/.test(css) && /短横线外框/.test(css)) {
+  
+
+    } else if (/inset\s+0\s+1px\s+0\s+rgba\(255,255,255/.test(css) && /linear-gradient\(/.test(css)) {
+        effect = 'jelly';
+    }
+
+    effectSelect.value = effect;
+}
+
 }
 
 // ============ 角色语音功能 ============

@@ -9,6 +9,12 @@
     <title>帽子小猫cat</title>
     <link rel="stylesheet" href="style.css">
   
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+
 <style>
     /* 强制禁止全局横向滚动 */
     html, body {
@@ -704,6 +710,22 @@
                 </div>
             </div>
             
+<!-- 气泡质感 -->
+<div style="margin-bottom: 15px;">
+    <div style="font-size: 11px; margin-bottom: 5px; color: #666;">气泡质感</div>
+    <select id="creatorEffect"
+            class="ins-input"
+            style="width: 100%; font-size: 12px;"
+            onchange="generateBubbleCSS()">
+        <option value="none">无</option>
+        <option value="glass">拟态玻璃</option>
+        <option value="highlight">高光短横线</option>
+        <option value="dash-frame">短横线外框</option>
+        <option value="jelly">果冻拟态</option>
+    </select>
+</div>
+
+
                        <!-- 圆角 (无数字版) -->
             <div style="margin-bottom: 15px;">
                 <div style="font-size: 11px; margin-bottom: 5px; color: #666;">圆角大小</div>
@@ -753,7 +775,8 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+               <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+
                     <div>
                         <div style="font-size: 10px; color: #666; margin-bottom: 4px;">大小: <span id="layerSizeVal">30px</span></div>
                         <input type="range" id="layerSize" min="10" max="150" style="width: 100%; accent-color: #667eea;" oninput="updateCurrentLayer('size', this.value)">
@@ -762,7 +785,8 @@
                         <div style="font-size: 10px; color: #666; margin-bottom: 4px;">水平位移 X: <span id="layerXVal">0px</span></div>
                         <input type="range" id="layerX" min="-50" max="100" style="width: 100%; accent-color: #333;" oninput="updateCurrentLayer('x', this.value)">
                     </div>
-                    <div style="grid-column: span 2;">
+                    <div>
+
                         <div style="font-size: 10px; color: #666; margin-bottom: 4px;">垂直位移 Y: <span id="layerYVal">0px</span></div>
                         <input type="range" id="layerY" min="-50" max="100" style="width: 100%; accent-color: #333;" oninput="updateCurrentLayer('y', this.value)">
                     </div>
@@ -3085,9 +3109,18 @@
 </div>
 
 
+
 <script src="script.js"></script>
 <script src="extra.js"></script>
 <script src="cat.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js");
+}
+</script>
+
+
 
 </body>
 </html>
