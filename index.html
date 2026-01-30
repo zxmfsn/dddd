@@ -9,8 +9,10 @@
     <title>帽子小猫cat</title>
     <link rel="stylesheet" href="style.css">
   
-    <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="./pwa.webmanifest">
 <meta name="theme-color" content="#ffffff">
+
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
@@ -3116,9 +3118,10 @@
 
 <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js");
+  navigator.serviceWorker.register("./sw.js");
 }
 </script>
+
 
 
 
