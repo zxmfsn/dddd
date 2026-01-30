@@ -1,11 +1,5 @@
-self.addEventListener('install', function(event) {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', function(event) {
-  event.waitUntil(clients.claim());
-});
-
-self.addEventListener('fetch', function(event) {
-  event.respondWith(fetch(event.request));
+// sw.js
+self.addEventListener('fetch', event => {
+  // This is a placeholder fetch handler.
+  // It's required for the app to be installable.
 });
