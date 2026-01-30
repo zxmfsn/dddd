@@ -1,9 +1,0 @@
-{
-  "name": "帽子小猫cat",
-  "short_name": "帽子小猫",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff"
-}
-
