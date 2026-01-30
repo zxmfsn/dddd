@@ -1,6 +1,6 @@
 {
-  "name": "你的应用名称",
-  "short_name": "简称",
+  "name": "帽子小猫cat",
+  "short_name": "帽子小猫cat",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
