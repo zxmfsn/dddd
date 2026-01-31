@@ -5,6 +5,7 @@
 let diaries = [];
 let currentViewingDiaryId = null;
 
+
 // ============ 强制修复版：数据库初始化 (版本号 30) ============
 function initDB() {
     // ★★★ 重点：版本号改成 50，强制触发更新！ ★★★
@@ -310,27 +311,31 @@ function switchIconTab(tab) {
             }
         }
         
-/* 修改 applyWallpaper 函数 */
-function applyWallpaper(wallpaperData) {
-    // 1. 获取手机屏幕容器
-    const screen = document.querySelector('.phone-screen');
-    
-    if (wallpaperData) {
-        // 2. 把壁纸应用到 screen 而不是 body
-        screen.style.background = `url(${wallpaperData}) center/cover no-repeat`;
-    } else {
-        // 3. 恢复默认渐变
-        screen.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    }
-}
-        function loadWallpaper() {
-            loadFromDB('wallpaper', (data) => {
-                if (data && data.data) {
-                    currentWallpaper = data.data;
-                    applyWallpaper(currentWallpaper);
-                }
-            });
+
+
+
+      const DEFAULT_WALLPAPER_URL = 'https://free-img.400040.xyz/4/2026/01/31/697d396f788b8.png';
+
+function loadWallpaper() {
+    loadFromDB('wallpaper', (data) => {
+        if (data && data.data) {
+            currentWallpaper = data.data;
+            applyWallpaper(currentWallpaper);
+        } else {
+            // ★关键：数据库没有壁纸时，应用默认壁纸
+            currentWallpaper = null;
+            applyWallpaper(null);
         }
+    });
+}
+
+function applyWallpaper(wallpaperData) {
+    const screen = document.querySelector('.phone-screen');
+    const finalWallpaper = wallpaperData || DEFAULT_WALLPAPER_URL;
+
+    screen.style.background = `url(${finalWallpaper}) center/cover no-repeat`;
+}
+
         
         // 文件预览
         document.getElementById('wallpaperFile').addEventListener('change', function(e) {
@@ -572,19 +577,24 @@ function switchCategory(category) {
         return;
     }
     
+    // ★★★ 修复："全部"应该显示所有分类，不筛选 ★★★
     currentCategory = category;
     
-    // ▼▼▼ 修复点：把原来的 .category-tag 改成 .ins-cat-pill ▼▼▼
     document.querySelectorAll('.ins-cat-pill').forEach(tag => tag.classList.remove('active'));
     
-    // 找到当前点击的那个标签，加上 active 样式
     const activeTag = document.querySelector(`.ins-cat-pill[data-category="${category}"]`);
     if (activeTag) {
         activeTag.classList.add('active');
     }
     
+    // ★★★ 调试：打印切换后的分类 ★★★
+    console.log('切换到分类:', category);
+    
     renderWorldbooks();
 }
+
+
+
 function renderWorldbooks() {
     const container = document.getElementById('worldbookList');
     const filtered = currentCategory === 'all' ? worldbooks : worldbooks.filter(wb => wb.category === currentCategory);
@@ -598,23 +608,57 @@ function renderWorldbooks() {
         return;
     }
     
-    // 生成 Ins 风卡片
-    container.innerHTML = filtered.map(wb => `
-        <div class="ins-book-card">
-            <div class="ins-book-header">
-                <div class="ins-book-title">${wb.title}</div>
-                <div class="ins-book-tag">${wb.category}</div>
-            </div>
-            
-            <div class="ins-book-preview">${wb.content}</div>
-            
-            <div class="ins-book-actions">
-                <button class="ins-action-btn ins-btn-edit" onclick="editWorldbook(${wb.id})">EDIT</button>
-                <button class="ins-action-btn ins-btn-del" onclick="deleteWorldbook(${wb.id})">DELETE</button>
-            </div>
-        </div>
-    `).join('');
+    // 先清空
+    container.innerHTML = '';
+    
+    filtered.forEach(wb => {
+        // 创建卡片容器
+        const card = document.createElement('div');
+        card.className = 'ins-book-card';
+        
+        // 创建头部
+        const header = document.createElement('div');
+        header.className = 'ins-book-header';
+        header.innerHTML = `
+            <div class="ins-book-title">${wb.title || '未命名'}</div>
+            <div class="ins-book-tag">${wb.category || '默认分类'}</div>
+        `;
+        
+        // 创建预览内容
+        const preview = document.createElement('div');
+        preview.className = 'ins-book-preview';
+        preview.textContent = wb.content || '（无内容）';
+        
+        // 创建操作按钮区域
+        const actions = document.createElement('div');
+        actions.className = 'ins-book-actions';
+        
+        // 编辑按钮
+        const editBtn = document.createElement('button');
+        editBtn.className = 'ins-action-btn ins-btn-edit';
+        editBtn.textContent = 'EDIT';
+        editBtn.onclick = () => editWorldbook(wb.id);
+        
+        // 删除按钮
+        const delBtn = document.createElement('button');
+        delBtn.className = 'ins-action-btn ins-btn-del';
+        delBtn.textContent = 'DELETE';
+        delBtn.onclick = () => deleteWorldbook(wb.id);
+        
+        // 组装
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        
+        card.appendChild(header);
+        card.appendChild(preview);
+        card.appendChild(actions);
+        
+        container.appendChild(card);
+    });
 }
+
+
+
 function openAddWorldbook() {
     alert('添加世界书功能开发中...');
 }
@@ -7073,6 +7117,7 @@ function confirmMomentForward() {
     });
 }
 // ====== 确认转发（仅系统提示 + 隐藏上下文）END ======
+
 
 
 // 初始化，

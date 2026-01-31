@@ -908,26 +908,6 @@ function updateDiaryCount() {
 }
 
 
-// 新增：实时更新档案（时光相册）数量
-function updateArchiveCount() {
-    if (!currentChatId) return;
-    
-    loadFromDB('memories', (data) => {
-        // 1. 获取所有数据
-        let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
-        
-        // 2. 筛选当前角色的“时光记录” (type === 'moment')
-        const momentCount = allMemories.filter(m => 
-            m.chatId === currentChatId && m.type === 'moment'
-        ).length;
-        
-        // 3. 更新界面上的数字 (对应“关注”或“档案”的位置)
-        const countEl = document.getElementById('charFollowing');
-        if (countEl) {
-            countEl.textContent = momentCount;
-        }
-    });
-}
 
 
 
@@ -1973,6 +1953,10 @@ const allowHtmlCard = (characterInfo.htmlPluginEnabled === true) && (String(html
                 content: content
             };
         });
+
+
+
+
 
     // === 2. 构建系统提示词 (加强接听逻辑) ===
     let systemPrompt = `你是${chat.name}。现在是${dateStr} ${timeStr}。
@@ -3697,225 +3681,244 @@ function rejectAIPayRequest(messageId) {
 let currentEditingPart = null; // 记录当前正在改哪个部位的颜色
 
 
+// ============ 组件设置逻辑（整理版：便签=纯图片）===========
 
-// ============ 组件设置逻辑 ============
-
-// 临时存储图片数据
+// 临时图片（仅音乐用）
 let tempWidgetImages = {
     musicBg: null,
-    musicCover: null,
-    noteBg: null
+    musicCover: null
 };
 
-// 1. 初始化组件数据
-function loadWidgetSettings() {
+// 便签图片：临时值（本地上传 dataURL）
+let noteTempImage = null;
+
+function renderNoteImageWidget(settings) {
+    const img = document.getElementById('noteImageDisplay');
+    const frame = document.getElementById('noteImageFrame');
+    if (!img || !frame) return;
+
+    const s = settings || {};
+    const noteImage = s.noteImage || null;
+
+    if (noteImage) {
+        img.src = noteImage;
+        img.style.display = 'block';
+        frame.classList.remove('is-empty');
+    } else {
+        img.style.display = 'none';
+        frame.classList.add('is-empty');
+    }
+}
+
+function clearNoteImage() {
+    noteTempImage = '';
+    const preview = document.getElementById('noteImagePreview');
+    if (preview) {
+        preview.style.display = 'none';
+        preview.style.backgroundImage = '';
+    }
+}
+
+function saveNoteImage() {
     loadFromDB('widgetSettings', (data) => {
-        if (!data) return;
-        
-        // === 音乐组件设置 ===
-        const musicWidget = document.querySelector('.music-widget');
-        if (data.musicBg) {
-            musicWidget.style.backgroundImage = `url(${data.musicBg})`;
-        } else {
-            musicWidget.style.backgroundImage = '';
-        }
-        
-        const musicCover = document.getElementById('musicCoverDisplay');
-        if (data.musicCover) {
-            musicCover.src = data.musicCover;
-            musicCover.style.display = 'block';
-        } else {
-            musicCover.style.display = 'none';
-        }
-        
-        if (data.musicTitle) document.querySelector('.music-title').textContent = data.musicTitle;
-        if (data.musicArtist) document.querySelector('.music-desc').textContent = data.musicArtist;
+        const settings = data || {};
 
-        // ▼▼▼ 应用音乐字体颜色 ▼▼▼
-        if (data.musicTextColor) {
-            document.querySelector('.music-title').style.color = data.musicTextColor;
-            document.querySelector('.music-desc').style.color = data.musicTextColor;
-            // 播放按钮也顺便变色，保持一致
-            document.querySelector('.music-icon').style.color = data.musicTextColor;
-        } else {
-            // 恢复默认白色
-            document.querySelector('.music-title').style.color = 'white';
-            document.querySelector('.music-desc').style.color = 'white';
-            document.querySelector('.music-icon').style.color = 'white';
+        if (noteTempImage !== null) {
+            settings.noteImage = noteTempImage || null;
         }
 
-        // === 便签组件设置 ===
-        const noteWidget = document.querySelector('.note-widget');
-        if (data.noteBg) {
-            noteWidget.style.backgroundImage = `url(${data.noteBg})`;
-            noteWidget.style.textShadow = '0 1px 3px rgba(0,0,0,0.5)'; 
-        } else {
-            noteWidget.style.backgroundImage = '';
-            noteWidget.style.textShadow = 'none';
-        }
-
-        // ▼▼▼ 应用便签字体颜色 ▼▼▼
-        if (data.noteTextColor) {
-            noteWidget.style.color = data.noteTextColor;
-            // 强制改变所有列表项的颜色
-            const items = document.querySelectorAll('.note-item');
-            items.forEach(item => {
-                item.style.color = data.noteTextColor;
-                // 顺便把前面的小方块边框颜色也改了
-                const checkbox = item.querySelector('.note-checkbox');
-                if (checkbox) checkbox.style.borderColor = data.noteTextColor;
-            });
-            // 标题颜色
-            document.querySelector('.note-header').style.color = data.noteTextColor;
-        } else {
-            // 恢复默认白色
-            noteWidget.style.color = 'white';
-            document.querySelector('.note-header').style.color = 'white';
-        }
-
-        if (data.noteContent) {
-            const listHtml = data.noteContent.split('\n').map(text => `
-                <div class="note-item" style="${data.noteTextColor ? 'color:'+data.noteTextColor : ''}">
-                    <span class="note-checkbox" style="${data.noteTextColor ? 'border-color:'+data.noteTextColor : ''}"></span> ${text}
-                </div>
-            `).join('');
-            document.querySelector('.note-list').innerHTML = listHtml;
-        }
+        saveToDB('widgetSettings', settings);
+        renderNoteImageWidget(settings);
+        closeWidgetSettings('note');
     });
 }
 
-// ============ 组件设置功能 (这是新加的) ============
+// 1) 初始化组件数据（启动时调用）
+function loadWidgetSettings() {
+    loadFromDB('widgetSettings', (data) => {
+        const settings = data || {};
 
-// 1. 打开组件设置弹窗
+        // === 音乐组件设置 ===
+        const musicWidget = document.querySelector('.music-widget');
+        if (musicWidget) {
+            if (settings.musicBg) {
+                musicWidget.style.backgroundImage = `url(${settings.musicBg})`;
+            } else {
+                musicWidget.style.backgroundImage = '';
+            }
+        }
+
+        const musicCover = document.getElementById('musicCoverDisplay');
+        if (musicCover) {
+            if (settings.musicCover) {
+                musicCover.src = settings.musicCover;
+                musicCover.style.display = 'block';
+            } else {
+                musicCover.style.display = 'none';
+            }
+        }
+
+        if (settings.musicTitle) {
+            const titleEl = document.querySelector('.music-title');
+            if (titleEl) titleEl.textContent = settings.musicTitle;
+        }
+        if (settings.musicArtist) {
+            const artistEl = document.querySelector('.music-desc');
+            if (artistEl) artistEl.textContent = settings.musicArtist;
+        }
+
+        // 应用音乐字体颜色（music-icon 已被你删除，所以这里判空）
+        const musicTitleEl = document.querySelector('.music-title');
+        const musicDescEl = document.querySelector('.music-desc');
+        if (settings.musicTextColor) {
+            if (musicTitleEl) musicTitleEl.style.color = settings.musicTextColor;
+            if (musicDescEl) musicDescEl.style.color = settings.musicTextColor;
+        } else {
+            if (musicTitleEl) musicTitleEl.style.color = 'white';
+            if (musicDescEl) musicDescEl.style.color = 'white';
+        }
+
+        // === 便签组件（纯图片） ===
+        renderNoteImageWidget(settings);
+    });
+}
+
+// 2) 打开组件设置弹窗
 function openWidgetSettings(type) {
     loadFromDB('widgetSettings', (data) => {
         const settings = data || {};
 
-        // 如果点击的是【音乐组件】
         if (type === 'music') {
             document.getElementById('musicSettingsModal').style.display = 'flex';
-            
-            const currentTitle = document.querySelector('.music-title').textContent;
-            const currentArtist = document.querySelector('.music-desc').textContent;
-            
+
+            const currentTitle = document.querySelector('.music-title')?.textContent || '';
+            const currentArtist = document.querySelector('.music-desc')?.textContent || '';
+
             document.getElementById('musicTitleInput').value = currentTitle;
             document.getElementById('musicArtistInput').value = currentArtist;
-            
-            // ▼▼▼ 回显颜色 ▼▼▼
-            document.getElementById('musicTextColorInput').value = settings.musicTextColor || '#ffffff';
-        } 
-        // 如果点击的是【便签组件】
-        else {
-            document.getElementById('noteSettingsModal').style.display = 'flex';
-            
-            const items = document.querySelectorAll('.note-item');
-            const text = Array.from(items).map(item => item.textContent.trim()).join('\n');
-            
-            document.getElementById('noteContentInput').value = text;
 
-            // ▼▼▼ 回显颜色 ▼▼▼
-            document.getElementById('noteTextColorInput').value = settings.noteTextColor || '#ffffff';
+            document.getElementById('musicTextColorInput').value = settings.musicTextColor || '#ffffff';
+            return;
+        }
+
+        if (type === 'note') {
+            document.getElementById('noteSettingsModal').style.display = 'flex';
+
+            noteTempImage = null;
+
+            const preview = document.getElementById('noteImagePreview');
+            if (preview) {
+                if (settings.noteImage) {
+                    preview.style.display = 'block';
+                    preview.style.backgroundImage = `url(${settings.noteImage})`;
+                } else {
+                    preview.style.display = 'none';
+                    preview.style.backgroundImage = '';
+                }
+            }
+
+            const input = document.getElementById('noteImageInput');
+            if (input) input.value = '';
+            return;
         }
     });
 }
-// 2. 关闭组件设置弹窗
-function closeWidgetSettings(type) {
-    document.getElementById(type + 'SettingsModal').style.display = 'none';
-    
-    // 如果有临时图片数据，顺便清理一下（防止下次打开还留着）
-    if (typeof tempWidgetImages !== 'undefined') {
-        tempWidgetImages = { musicBg: null, musicCover: null, noteBg: null };
-    }
-}
-        
-// ============ 补充组件逻辑代码 (请复制到 script 末尾) ============
 
-// 1. 处理组件图片上传预览
+// 3) 关闭组件设置弹窗
+function closeWidgetSettings(type) {
+    const modal = document.getElementById(type + 'SettingsModal');
+    if (modal) modal.style.display = 'none';
+
+    // 清理临时数据
+    tempWidgetImages.musicBg = null;
+    tempWidgetImages.musicCover = null;
+    noteTempImage = null;
+}
+
+// 4) 处理组件图片上传预览（音乐用）
 function handleWidgetImage(input, previewId) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            // 存入临时变量
             if (input.id === 'musicBgInput') tempWidgetImages.musicBg = e.target.result;
             if (input.id === 'musicCoverInput') tempWidgetImages.musicCover = e.target.result;
-            if (input.id === 'noteBgInput') tempWidgetImages.noteBg = e.target.result;
 
-            // 显示预览
             const preview = document.getElementById(previewId);
-            preview.style.backgroundImage = `url(${e.target.result})`;
-            preview.style.display = 'block';
-        }
+            if (preview) {
+                preview.style.backgroundImage = `url(${e.target.result})`;
+                preview.style.display = 'block';
+            }
+        };
         reader.readAsDataURL(input.files[0]);
     }
 }
 
-// 2. 清除组件背景图
+// 5) 清除音乐组件预览（音乐用）
 function clearWidgetImage(type) {
-    // 标记为空字符串，表示要删除
-    tempWidgetImages[type] = ''; 
-    
-    // 隐藏预览
+    tempWidgetImages[type] = '';
+
     const preview = document.getElementById(type + 'Preview');
     if (preview) {
         preview.style.backgroundImage = '';
         preview.style.display = 'none';
     }
-    
-    // 清空文件输入框
+
     const input = document.getElementById(type + 'Input');
     if (input) input.value = '';
 }
 
-// 3. 保存音乐组件设置
+// 6) 保存音乐组件设置
 function saveMusicSettings() {
     const title = document.getElementById('musicTitleInput').value;
     const artist = document.getElementById('musicArtistInput').value;
-    const textColor = document.getElementById('musicTextColorInput').value; // 获取颜色
+    const textColor = document.getElementById('musicTextColorInput').value;
 
     loadFromDB('widgetSettings', (oldData) => {
         const currentData = oldData || {};
-        
         const newData = {
             ...currentData,
             musicTitle: title,
             musicArtist: artist,
-            musicTextColor: textColor // 保存颜色
+            musicTextColor: textColor
         };
 
         if (tempWidgetImages.musicBg !== null) newData.musicBg = tempWidgetImages.musicBg;
         if (tempWidgetImages.musicCover !== null) newData.musicCover = tempWidgetImages.musicCover;
 
         saveToDB('widgetSettings', newData);
-        loadWidgetSettings(); 
+        loadWidgetSettings();
         closeWidgetSettings('music');
-        
+
         tempWidgetImages.musicBg = null;
         tempWidgetImages.musicCover = null;
     });
 }
-// 4. 保存便签组件设置
-function saveNoteSettings() {
-    const content = document.getElementById('noteContentInput').value;
-    const textColor = document.getElementById('noteTextColorInput').value; // 获取颜色
 
-    loadFromDB('widgetSettings', (oldData) => {
-        const currentData = oldData || {};
-        
-        const newData = {
-            ...currentData,
-            noteContent: content,
-            noteTextColor: textColor // 保存颜色
+// 7) 绑定便签图片 input（只本地上传）
+window.addEventListener('DOMContentLoaded', function() {
+    const noteImageInput = document.getElementById('noteImageInput');
+    if (!noteImageInput) return;
+
+    noteImageInput.addEventListener('change', function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            noteTempImage = ev.target.result;
+
+            const preview = document.getElementById('noteImagePreview');
+            if (preview) {
+                preview.style.display = 'block';
+                preview.style.backgroundImage = `url(${noteTempImage})`;
+            }
         };
+        reader.readAsDataURL(file);
 
-        if (tempWidgetImages.noteBg !== null) newData.noteBg = tempWidgetImages.noteBg;
-
-        saveToDB('widgetSettings', newData);
-        loadWidgetSettings();
-        closeWidgetSettings('note');
-        
-        tempWidgetImages.noteBg = null;
+        noteImageInput.value = '';
     });
-}
+});
+
 
 // ============ 记忆空间核心逻辑 ============
 
@@ -3930,22 +3933,7 @@ function backToCharacterInfoFromMemory() {
     document.getElementById('characterInfoScreen').style.display = 'flex';
 }
 
-function switchMemoryTab(tab) {
-    currentMemoryTab = tab;
-    
-    // 更新 Tab 样式
-    document.querySelectorAll('.memory-tab-item').forEach(el => el.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    
-    // 切换显示区域
-    if (tab === 'tags') {
-        document.getElementById('memoryTagsList').style.display = 'flex';
-        document.getElementById('memoryTimelineList').style.display = 'none';
-    } else {
-        document.getElementById('memoryTagsList').style.display = 'none';
-        document.getElementById('memoryTimelineList').style.display = 'block';
-    }
-}
+
 
 // 2. 加载与渲染记忆
 function loadMemories() {
@@ -4340,7 +4328,7 @@ ${commentsText}`;
 
 
 
-// ============ 单人聊天核心逻辑 ============
+// ============ 单人聊天核心逻辑 ===========
 async function receiveAIReply() {
     isReceiving = true;
     
@@ -4376,8 +4364,13 @@ async function receiveAIReply() {
                 : Promise.resolve("（暂无朋友圈动态）"))
         ]);
 
+ const statusMonitorEnabled = characterInfo.statusMonitorEnabled || false;
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
         
+
+  
+
+
         // 3. 构建时间信息
         const today = new Date();
         const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
@@ -4610,6 +4603,9 @@ ${lines.length > 0 ? lines.join('\n') : '（空）'}
 
 }
 // ====== 日程注入 END：增强版 ======
+
+console.log('🔍 状态监控开关:', statusMonitorEnabled, characterInfo.statusMonitorEnabled);
+
 
 // 5. System Prompt，单人提示词
 let systemPrompt = `
@@ -4929,25 +4925,25 @@ ${momentsContext || "（近期双方无动态）"}
   [状态]路上堵车
 - 字数：4-10 个汉字优先（最多 12 个），禁止超过 14。
 
+${statusMonitorEnabled ? `
 【★★★ 心声更新（强制加长版）★★★】
-每次回复最后必须附上心声更新标记（用于“状态监控”面板）：
+每次回复最后必须附上心声更新标记（用于"状态监控"面板）：
 [心声更新]心情:...|心情值:数字|心跳:数字|穿着风格:...|穿着单品:...|行为:...|想法:...[/心声更新]
-
 【字数与内容密度硬性要求（任何不满足都必须自行重写）】
-心情：至少 10 字，最多 30 字；必须包含“情绪 + 触发原因 + 身体感受/生理反应”任意两项
-穿着风格：至少 18 字，最多 45 字；必须包含“整体风格 + 颜色/材质 + 气质/场景”
+心情：至少 10 字，最多 30 字；必须包含"情绪 + 触发原因 + 身体感受/生理反应"任意两项
+穿着风格：至少 18 字，最多 45 字；必须包含"整体风格 + 颜色/材质 + 气质/场景"
 穿着单品：必须 4-6 个单品，用逗号分隔；尽量具体到材质/颜色
-行为：至少 25 字，最多 70 字；必须包含“正在做什么 + 所在环境 + 一个细节动作”
-想法：至少 30 字，最多 90 字；必须包含“此刻真实念头 + 对对方的一个指向 + 一个期待/担忧/小矛盾”
+行为：至少 25 字，最多 70 字；必须包含"正在做什么 + 所在环境 + 一个细节动作"
+想法：至少 30 字，最多 90 字；必须包含"此刻真实念头 + 对对方的一个指向 + 一个期待/担忧/小矛盾"
 心情值/心跳：必须为纯数字（心情值 0-100；心跳 60-180），且与情绪相符
 严禁换行：心声更新块内部严禁出现任何换行符
-
 **强制要求：**
 1. 每次回复都必须包含这个标记，不能遗漏
 2. 标记必须在回复的最后
 3. 各字段用 | 分隔，不能用其他符号
 4. 心情值和心跳必须是数字
 5. 严禁在标记内部出现换行符
+` : ''}
 
 【绝对禁区】
 ❌ 禁止包含括号内的动作描写（如：(摸摸头)）。
@@ -5405,6 +5401,18 @@ if (cardBlocks.length > 0) {
             .split('|||')
             .map(m => m.trim())
             .filter(m => m.length > 0);
+
+// ★★★ 强制规则：HTML 必须单独一个气泡 ★★★
+messageList = messageList.flatMap(msg => {
+    // 检测是否包含 [[CARD_HTML]] 标记
+    if (!/\[\[CARD_HTML\]\]/.test(msg)) return [msg];
+    
+    // 提取 HTML 块和前后文本
+    const parts = msg.split(/(\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\])/);
+    return parts.filter(p => p.trim().length > 0);
+});
+
+
 
       messageList = messageList
     .map(msg => String(msg || '').trim())
@@ -6214,26 +6222,7 @@ container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging
     }
 }
 
-// ============ 补回丢失的函数：更新撤回按钮状态 ============
-function updateRetryButtonState() {
-    const retryBtn = document.getElementById('retryBtn');
-    if (!retryBtn) return;
-    
-    if (allMessages.length === 0) {
-        retryBtn.disabled = true;
-        retryBtn.style.opacity = '0.3';
-        return;
-    }
-    
-    const lastMessage = allMessages[allMessages.length - 1];
-    if (lastMessage && lastMessage.senderId !== 'me') {
-        retryBtn.disabled = false;
-        retryBtn.style.opacity = '1';
-    } else {
-        retryBtn.disabled = true;
-        retryBtn.style.opacity = '0.3';
-    }
-}
+
 // 4. 显示记忆详情弹窗
 function showMemoryDetail(memoryId) {
     loadFromDB('memories', (data) => {
@@ -6457,52 +6446,14 @@ function getZodiacSign(dateStr) {
     return null;
 }
 
-// 5. 编辑拓展档案逻辑
-function openEditArchiveModal() {
-    loadFromDB('characterInfo', (data) => {
-        const charData = data && data[currentChatId] ? data[currentChatId] : {};
-        const ext = charData.extendedProfile || {};
-        
-        // 填充表单
-        document.getElementById('editArcHeight').value = ext.height || '';
-        document.getElementById('editArcWeight').value = ext.weight || '';
-        document.getElementById('editArcMbti').value = ext.mbti || '';
-        document.getElementById('editArcBlood').value = ext.blood || '';
-        document.getElementById('editArcSecret').value = ext.secret || '';
-        
-        document.getElementById('editArchiveModal').style.display = 'flex';
-    });
-}
+
 
 function closeEditArchiveModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('editArchiveModal').style.display = 'none';
 }
 
-function saveExtendedArchive() {
-    const extData = {
-        height: document.getElementById('editArcHeight').value.trim(),
-        weight: document.getElementById('editArcWeight').value.trim(),
-        mbti: document.getElementById('editArcMbti').value.trim(),
-        blood: document.getElementById('editArcBlood').value.trim(),
-        secret: document.getElementById('editArcSecret').value.trim()
-    };
-    
-    // 保存到 characterInfo 里的 extendedProfile 字段
-    loadFromDB('characterInfo', (data) => {
-        const allData = data || {};
-        if (!allData[currentChatId]) allData[currentChatId] = {};
-        
-        // 更新拓展字段
-        allData[currentChatId].extendedProfile = extData;
-        
-        saveToDB('characterInfo', allData);
-        
-        // 刷新显示
-        loadArchives();
-        closeEditArchiveModal();
-    });
-}
+
 
 // 修复：更新 renderMemoryTags 里的容器ID
 // 请确保你原来的 renderMemoryTags 函数里，容器获取 ID 已经改成 'tagsContainer'
@@ -7982,6 +7933,29 @@ function initHeartbeatSimulation() {
 // 启动！
 window.addEventListener('DOMContentLoaded', function() {
     initHeartbeatSimulation();
+    const noteImageInput = document.getElementById('noteImageInput');
+if (noteImageInput) {
+    noteImageInput.addEventListener('change', function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            noteTempImage = ev.target.result;
+
+            const preview = document.getElementById('noteImagePreview');
+            if (preview) {
+                preview.style.display = 'block';
+                preview.style.backgroundImage = `url(${noteTempImage})`;
+            }
+        };
+        reader.readAsDataURL(file);
+
+        noteImageInput.value = '';
+    });
+}
+
+    
 });
 
 // ============ 🌟 新增：智能历史记录提取器 (按轮次合并，过滤图片) ============
@@ -8065,15 +8039,7 @@ async function getSmartAnalysisHistory(limitRounds = 20) {
 }
 
 
-// ============ 通话气泡主题切换 ============
 
-function applyCallTheme(theme) {
-    const callScreen = document.getElementById('callScreen');
-    if (callScreen) {
-        callScreen.classList.remove('light-theme', 'dark-theme');
-        callScreen.classList.add(theme + '-theme');
-    }
-}
 // ============ 小窗 (PIP) 功能与用户头像 ============
 
 // 显示/隐藏小窗

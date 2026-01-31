@@ -136,29 +136,18 @@
 <div class="widgets-row">
               <div class="widget-box music-widget" onclick="openWidgetSettings('music')">
                   <div class="music-ring">
-    <img id="musicCoverDisplay" class="music-cover-img" style="display:none;"> <div class="music-icon">▶</div> 
+   <div class="music-icon" style="display:none;">▶</div>
 </div>
                     <div class="music-title">Lover</div>
                     <div class="music-desc">Taylor Swift</div>
                 </div>
 
-               <div class="widget-box note-widget" onclick="openWidgetSettings('note')">
-                    <div class="note-header">
-                        <span>TO DO LIST</span>
-                        <span>✏️</span>
-                    </div>
-                    <div class="note-list">
-                        <div class="note-item">
-                            <span class="note-checkbox"></span> 记得喝水
-                        </div>
-                        <div class="note-item">
-                            <span class="note-checkbox"></span> 早点睡觉
-                        </div>
-                        <div class="note-item">
-                            <span class="note-checkbox" style="background:white; border-color:white;"></span> 永远开心
-                        </div>
-                    </div>
-                </div>
+             <div class="widget-box note-widget note-image-widget" onclick="openWidgetSettings('note')">
+    <div class="note-image-frame" id="noteImageFrame">
+        <img id="noteImageDisplay" class="note-image" style="display:none;" alt="">
+    </div>
+</div>
+
             </div>
   
             
@@ -2050,36 +2039,27 @@
 <div class="modal-overlay" id="noteSettingsModal" onclick="closeWidgetSettings('note')">
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-title">便签组件设置</div>
-        
-        <div class="form-group">
-            <label class="form-label">组件背景图</label>
-            <div class="file-input-area" onclick="document.getElementById('noteBgInput').click()" style="padding: 10px;">
-                <div style="font-size: 12px;">点击更换背景</div>
-                <input type="file" id="noteBgInput" accept="image/*" style="display: none;" onchange="handleWidgetImage(this, 'noteBgPreview')">
-            </div>
-            <div id="noteBgPreview" style="height: 40px; margin-top: 5px; border-radius: 8px; background: #f0f0f0; display: none; background-size: cover; background-position: center;"></div>
-            <button class="api-btn" onclick="clearWidgetImage('noteBg')" style="margin-top: 5px; background: #f0f0f0; color: #666;">恢复默认透明</button>
-        </div>
 
         <div class="form-group">
-            <label class="form-label">字体颜色</label>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="color" id="noteTextColorInput" class="form-input" style="height: 40px; padding: 2px; width: 60px; flex: none;">
-                <div style="font-size: 12px; color: #999;">修改清单文字颜色</div>
-            </div>
-        </div>
+            <label class="form-label">便签图片</label>
 
-        <div class="form-group">
-            <label class="form-label">待办事项 (每行一条)</label>
-            <textarea id="noteContentInput" class="form-input" rows="5" placeholder="记得喝水&#10;早点睡觉&#10;永远开心"></textarea>
+            <div class="file-input-area" onclick="document.getElementById('noteImageInput').click()" style="padding: 10px;">
+                <div style="font-size: 12px;">点击选择图片</div>
+                <input type="file" id="noteImageInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div id="noteImagePreview" style="height: 40px; margin-top: 5px; border-radius: 8px; background: #f0f0f0; display: none; background-size: cover; background-position: center;"></div>
+
+            <button class="api-btn" onclick="clearNoteImage()" style="margin-top: 8px; background: #f0f0f0; color: #666;">清除图片</button>
         </div>
 
         <div class="modal-buttons">
             <button class="btn btn-cancel" onclick="closeWidgetSettings('note')">取消</button>
-            <button class="btn btn-save" onclick="saveNoteSettings()">保存</button>
+            <button class="btn btn-save" onclick="saveNoteImage()">保存</button>
         </div>
     </div>
 </div>
+
 
 
 <!-- 世界书编辑弹窗 -->

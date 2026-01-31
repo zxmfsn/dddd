@@ -2299,6 +2299,76 @@ function playNotificationSound() {
 let tempUserPlan = "";
 let tempCharRoutine = "";
 
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (typeof resetSchedulesIfNewDayForAllChats === 'function') {
+            resetSchedulesIfNewDayForAllChats();
+        }
+    }, 1200);
+});
+
+
+
+function getTodayKey() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+function resetScheduleIfNewDayForChat(allData, chatId) {
+    if (!allData || !chatId) return false;
+
+    if (!allData[chatId]) allData[chatId] = {};
+    const charData = allData[chatId];
+    const scheduleData = charData.scheduleData || {};
+
+    const todayKey = getTodayKey();
+    const lastKey = scheduleData.lastScheduleDate;
+
+    // 第一次使用：只写入日期，不清空
+    if (!lastKey) {
+        charData.scheduleData = { ...scheduleData, lastScheduleDate: todayKey };
+        return { changed: true, cleared: false };
+    }
+
+    // 同一天：不动
+    if (lastKey === todayKey) return { changed: false, cleared: false };
+
+    // 跨天：清用户计划 + 今日行程；保留 charRoutine
+    charData.scheduleData = {
+        ...scheduleData,
+        lastScheduleDate: todayKey,
+        userPlan: '',
+        todayTimeline: []
+        // charRoutine 保留（因为 ...scheduleData 里已带着）
+    };
+
+    return { changed: true, cleared: true };
+}
+
+function resetSchedulesIfNewDayForAllChats() {
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        let anyChanged = false;
+
+        (chats || []).forEach(c => {
+            if (!c || !c.id) return;
+            const res = resetScheduleIfNewDayForChat(allData, c.id);
+            if (res && res.changed) anyChanged = true;
+        });
+
+        if (anyChanged) {
+            saveToDB('characterInfo', allData);
+            console.log('🧹 已执行跨天日程清理（全角色）');
+        }
+    });
+}
+
+
+
+
 // 打开日程页面
 function openScheduleScreen() {
     if (!currentChatId) return;
@@ -2314,8 +2384,22 @@ function openScheduleScreen() {
 
     // 加载已有数据
     loadFromDB('characterInfo', (data) => {
-        const charData = data && data[currentChatId] ? data[currentChatId] : {};
-        const scheduleData = charData.scheduleData || {};
+        const allData = data || {};
+const res = resetScheduleIfNewDayForChat(allData, currentChatId);
+if (res.changed) saveToDB('characterInfo', allData);
+
+const charData = allData[currentChatId] || {};
+
+if (res.cleared) {
+    const area = document.getElementById('scheduleResultArea');
+    const container = document.getElementById('scheduleTimeline');
+    if (area) area.style.display = 'none';
+    if (container) container.innerHTML = '';
+    const charData2 = allData[currentChatId] || {};
+const scheduleData = charData2.scheduleData || {};
+
+}
+
 
         // 回显文本
         tempUserPlan = scheduleData.userPlan || "";
@@ -2345,6 +2429,9 @@ function updateScheduleUIPreview() {
     if (tempCharRoutine) routinePreview.textContent = "已填写：" + tempCharRoutine.substring(0, 15) + "...";
     else routinePreview.textContent = "默认按人设自由发挥";
 }
+
+
+
 
 // 关闭日程页面
 function closeScheduleScreen() {
@@ -2396,6 +2483,7 @@ function saveScheduleDataToDB(timeline = null) {
         const oldSchedule = allData[currentChatId].scheduleData || {};
         
         allData[currentChatId].scheduleData = {
+            lastScheduleDate: getTodayKey(),
             ...oldSchedule,
             userPlan: tempUserPlan,
             charRoutine: tempCharRoutine,
@@ -2559,4 +2647,7 @@ ${tempUserPlan ? tempUserPlan : '（用户没写具体计划：你就按人设�
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(resetSchedulesIfNewDayForAllChats, 1200);
+});
 
