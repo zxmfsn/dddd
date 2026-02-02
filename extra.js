@@ -4963,6 +4963,20 @@ ${statusMonitorEnabled ? `
 ❌ 禁止评价用户的文字描述（必须看作图）。
 ❌ 禁止说教或总结对话。
 
+【★★★ 格式自检（发送前必读）★★★】
+发送前请确认：
+1. 是否使用了 ||| 分隔每条气泡？
+2. 是否每条气泡都是独立完整的句子？
+3. 是否误把多个句子挤在一条气泡里？
+4. 状态更新是否放在了最后？
+
+❌ 错误示例：
+早上好呀|||今天天气不错，我准备出去逛街，你要一起吗？
+
+✅ 正确示例：
+早上好呀|||今天天气不错|||我准备出去逛街|||你要一起吗？
+
+
 【范例：多模态流畅回复】
 User: 【图片：一只被淋湿的小狗蹲在路边】
 Bot: 天哪，好可怜...|||它看起来好冷，是你刚捡到的吗？|||【发送语音:你现在在哪？要不先把它抱到车上？】
@@ -5075,22 +5089,28 @@ Bot: 咋了|||我也没睡|||【图片：昏暗的房间，只有电脑屏幕亮
 // ===== 抽签事件：仅注入本次 messages，不落库 =====
 const fortuneEventForThisRequest = pendingFortuneEvent ? String(pendingFortuneEvent).trim() : '';
 if (fortuneEventForThisRequest) {
-const fortunePrompt =
-  `你是${chat.name}，不是AI。` +
-  `刚刚你亲身经历了：${fortuneEventForThisRequest}。` +
-  `现在请你直接像微信发消息一样开口：先随口吐槽/反应两句，再自然把话题接着聊下去（问对方在干嘛/顺便聊相关事）。` +
-  `不要写说明文，不要总结，不要提“系统/提示/规则/记录/仅你可见/例如”。` +
-  `不要照抄事件原句，要用你自己的口吻改写。`;
+    const fortunePrompt = `【角色沉浸模式】
+你是${chat.name}，此刻你正经历着：${fortuneEventForThisRequest}
 
+这件事刚刚发生，你的第一反应是什么？请像平时聊天一样自然地告诉对方。
 
+💬 聊天风格：
+- 先表达情绪（惊讶/开心/郁闷/无语等）
+- 简单说说发生了什么（用你自己的话）
+- 顺便问问对方在干嘛，或者聊聊相关的事
 
+📱 发送方式（重要）：
+每个想法单独发一条消息，用 ||| 分隔（8-12条）
+每条消息 10-40 字，一行发完，不要换行
+最后加上 [心声更新]xxx[/心声更新]
 
-    // 插入到主 systemPrompt 后、历史消息前（索引 1）
-   messages.splice(1, 0, { role: 'system', content: fortunePrompt });
+示例：
+天哪|||你猜我刚才遇到什么了|||简直离谱|||不过还挺有意思的|||对了你现在在忙吗？|||我跟你讲讲|||[心声更新]心情:xxx|心情值:75|心跳:80|穿着风格:xxx|穿着单品:xxx|行为:xxx|想法:xxx[/心声更新]`;
 
-
+    messages.splice(1, 0, { role: 'system', content: fortunePrompt });
     pendingFortuneEvent = null;
 }
+
 
 
 
@@ -5417,31 +5437,39 @@ aiReply = aiReply.replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, (m) =
     return key;
 });
 
-        // 11. 清理回复内容
-      let messageContent = aiReply
-            .replace(/^(Assistant|AI|Role)[:：]\s*/i, '') // 去除开头的 "Assistant:"
-            .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
-            .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
-            .replace(/\[消息\]\s*[:：]?/g, '')
-            .replace(/【消息】\s*[:：]?/g, '')
-         .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
-   .replace(/[【\[]\s*(?!EMOJI[:：]|转账[:：]|发送语音[:：]|领取转账|搜表情[:：]|图片[:：]|引用[:：]|确认代付|状态[】\]]|Status[】\]]|心声更新)[^【\[\]】]*[】\]]\s*[:：]?/g, '')
-            .replace(/^\|\|\|+/g, '')
-            .replace(/\|\|\|+$/g, '')
-            .replace(/\|\|\|{3,}/g, '|||')
-            .trim();
-            messageContent = messageContent.replace(/(^|\|\|\|)\s*[：:\-—]+\s*/g, '$1');
+      // 11. 清理回复内容（增强版：过滤元信息泄露）
+let messageContent = aiReply
+    .replace(/^(Assistant|AI|Role)[:：]\s*/i, '') // 去除开头的 "Assistant:"
+    .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
+    .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
+    .replace(/\[消息\]\s*[:：]?/g, '')
+    .replace(/【消息】\s*[:：]?/g, '')
+    .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
+    .replace(/[【\[]\s*(?!EMOJI[:：]|转账[:：]|发送语音[:：]|领取转账|搜表情[:：]|图片[:：]|引用[:：]|确认代付|状态[】\]]|Status[】\]]|心声更新)[^【\[\]】]*[】\]]\s*[:：]?/g, '')
+    
+    // ★★★ 新增：过滤元信息泄露（抽签Bug修复核心） ★★★
+    .replace(/[（(]\s*这是.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令|格式).*?[)）]/gi, '')
+    .replace(/【.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令).*?】/g, '')
+    .replace(/这是(?:系统|提示|规则|记录)[^。！？]*?[。！？]/g, '')
+    .replace(/(?:请勿|不要|禁止).*?(?:直接)?(?:提及|复述|说出)[^。！？]*?[。！？]/g, '')
+    // ★★★ 过滤结束 ★★★
+    
+    .replace(/^\|\|\|+/g, '')
+    .replace(/\|\|\|+$/g, '')
+    .replace(/\|\|\|{3,}/g, '|||')
+    .trim();
+
+messageContent = messageContent.replace(/(^|\|\|\|)\s*[：:\-—]+\s*/g, '$1');
 messageContent = messageContent.replace(/\b20\d{2}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\b/g, '');
 
-            // ★★★ 新增：清理 [[/CARD_HTML]] 后面泄露的 HTML 闭合标签 ★★★
+// ★★★ 新增：清理 [[/CARD_HTML]] 后面泄露的 HTML 闭合标签 ★★★
 messageContent = messageContent.replace(/(\[\[\/CARD_HTML\]\])\s*(<\/[^>]+>)+/g, '$1');
 // ★★★ 新增：清理 [[CARD_HTML]] 前面可能的 HTML 开始标签 ★★★
 messageContent = messageContent.replace(/(<[^/>]+>)+\s*(\[\[CARD_HTML\]\])/g, '$2');
 
-     messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
+messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
     let emoji = searchEmojiByKeyword(keyword.trim());
     if (!emoji && emojiList.length > 0) {
-   
         emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
     }
     if (emoji) {
@@ -5449,6 +5477,13 @@ messageContent = messageContent.replace(/(<[^/>]+>)+\s*(\[\[CARD_HTML\]\])/g, '$
     }
     return ""; 
 });
+
+// ★★★ 新增：调试日志（可选，方便你排查问题） ★★★
+console.log('🔍 清理后内容预览:', messageContent.substring(0, 150) + '...');
+if (messageContent.includes('系统') || messageContent.includes('提示')) {
+    console.warn('⚠️ 警告：清理后仍包含元信息关键词！');
+}
+
 
 
 
@@ -5474,13 +5509,39 @@ if (cardBlocks.length > 0) {
             '[[CARD_HTML]]$1[[/CARD_HTML]]'
         );
 
-        // 12. 分割消息
-        let messageList = messageContent
-            .replace(/^\|\|\|+/g, '')
-            .replace(/\|\|\|+$/g, '')
-            .split('|||')
-            .map(m => m.trim())
-            .filter(m => m.length > 0);
+
+// 12. 分割消息（增强版：先验证格式）
+let messageList = [];
+
+// 先检查是否包含分隔符
+if (messageContent.includes('|||')) {
+    messageList = messageContent
+        .split('|||')
+        .map(m => m.trim())
+        .filter(m => m.length > 0);
+    
+    console.log(`✅ 成功分割成 ${messageList.length} 条气泡`);
+} else {
+    // 如果没有分隔符，说明 AI 没按格式回复
+    console.warn('⚠️ AI 回复中没有 ||| 分隔符，尝试智能分割');
+    
+    // 智能分割：按句号、问号、感叹号切分
+    let smartContent = messageContent.replace(/([。！？!?\n\r]+)/g, "$1|||");
+    messageList = smartContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
+    
+    // 如果智能分割后还是只有 1 条且超过 100 字，强制截断
+    if (messageList.length === 1 && messageList[0].length > 100) {
+        const text = messageList[0];
+        messageList = [];
+        for (let i = 0; i < text.length; i += 50) {
+            messageList.push(text.substring(i, i + 50));
+        }
+    }
+}
+
+console.log('📝 最终气泡列表:', messageList.map(m => m.substring(0, 30) + '...'));
+
+       
 
 // ★★★ 强制规则：HTML 必须单独一个气泡 ★★★
 messageList = messageList.flatMap(msg => {
