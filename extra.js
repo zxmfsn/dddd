@@ -5632,6 +5632,45 @@ messageList = messageList.flatMap(msg => {
             await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
             let msgText = messageList[i];
 
+
+// ===== 世界书图隐藏指令：【图片：关键词】=====
+// 只要检测到【图片：xxx】，这条气泡就不作为文字发送；只尝试发真实图片
+const wbImgMatch = msgText.match(/[【\[]\s*图片\s*[:：]\s*([^】\]]+)\s*[】\]]/);
+if (wbImgMatch) {
+    const keyword = (wbImgMatch[1] || '').trim();
+
+    // 仅在 worldbook / coexist 模式下才查世界书图
+    const mode = characterInfo.imageMode || 'coexist';
+    if (mode === 'worldbook' || mode === 'worldbook_only' || mode === 'coexist') {
+        const url = await findImageInWorldbook(keyword);
+        if (url) {
+            // 插入真实图片（ID 保证唯一且顺序跟随当前气泡）
+            const imgMsgId = Date.now() + i + 2;
+            allMessages.push({
+                id: imgMsgId,
+                chatId: currentChatId,
+                senderId: chat.name,
+                time: getCurrentTime(),
+                isRevoked: false,
+                type: 'image',
+                content: url
+            });
+
+            saveMessages();
+            updateChatLastMessage(currentChatId, '[图片]');
+            visibleMessagesCount = allMessages.length;
+            renderMessages();
+            scrollToBottom();
+            playNotificationSound();
+        }
+    }
+
+    // 关键：无论找没找到，都让这条【图片：】气泡消失
+    continue;
+}
+// ===== 世界书图隐藏指令结束 =====
+
+
             // ★ 修改：购物逻辑（支持送礼物和代付两种情况）
         if (giftData && i === 0) {
             console.log('🎁 触发礼物逻辑，giftData:', giftData);
@@ -5779,38 +5818,26 @@ if (cardPart) {
 }
 // ▲▲▲ 世界书图处理 + HTML 拆分结束 ▲▲▲
 
-// 3. 插入世界书图（如果有）★★★ 这里是关键修复点 ★★★
-if (imageMessage && typeof imageMessage === 'object' && imageMessage.content) {
-    const imgMsgId = Date.now() + i + 2;
-    const imgMessage = {
-        id: imgMsgId,
-        chatId: currentChatId,
-        senderId: chat.name,
-        time: getCurrentTime(),
-        isRevoked: false,
-        type: 'image',
-        content: imageMessage.content
-    };
-    allMessages.push(imgMessage);
-}
+
 
 // 处理 AI 的引用（兼容【】和[]）
 if (aiQuotes.length > 0) {
     for (const quote of aiQuotes) {
         // 用正则判断（更宽容），防止 includes 因空格/格式微小差异失败
         const quoteRegex = /[【\[]\s*引用\s*[:：]\s*[^【\[\]】]+?\s*[】\]]/;
-        if (quoteRegex.test(msgText)) {
-            newMessage.quotedMessageId = quote.quotedMessageId;
-            newMessage.quotedAuthor = '我';
-            newMessage.quotedContent = quote.quotedContent;
-            newMessage.quotedTime = quote.quotedTime;
-            
-            // 删除引用标记（兼容两种括号）
-            msgText = msgText.replace(quoteRegex, '').trim();
-            newMessage.content = msgText;
-            
-            break; // 每条消息只处理一个引用
-        }
+      if (quoteRegex.test(msgText)) {
+    if (newMessage) {
+        newMessage.quotedMessageId = quote.quotedMessageId;
+        newMessage.quotedAuthor = '我';
+        newMessage.quotedContent = quote.quotedContent;
+        newMessage.quotedTime = quote.quotedTime;
+
+        msgText = msgText.replace(quoteRegex, '').trim();
+        newMessage.content = msgText;
+    }
+    break;
+}
+
     }
 }
 
@@ -5822,14 +5849,20 @@ const quoteMatch =
 if (quoteMatch) {
     const quotedId = parseInt(quoteMatch[1]);
     const originalMsg = allMessages.find(m => m.id === quotedId);
-    if (originalMsg) {
-        newMessage.quotedMessageId = originalMsg.id;
-        newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
-        newMessage.quotedContent = originalMsg.content;
-        newMessage.quotedTime = formatMessageTime(originalMsg.time);
-        msgText = msgText.replace(/[【\[]\s*引用\s*[:：]\s*\d+\s*[】\]]/, '').replace(/\$\$\s*引用\s*[:：]\s*\d+\s*\$\$/, '').trim();
-        newMessage.content = msgText;
-    }
+   if (originalMsg && newMessage) {
+    newMessage.quotedMessageId = originalMsg.id;
+    newMessage.quotedAuthor = originalMsg.senderId === 'me' ? '我' : originalMsg.senderId;
+    newMessage.quotedContent = originalMsg.content;
+    newMessage.quotedTime = formatMessageTime(originalMsg.time);
+
+    msgText = msgText
+      .replace(/[【\[]\s*引用\s*[:：]\s*\d+\s*[】\]]/, '')
+      .replace(/\$\$\s*引用\s*[:：]\s*\d+\s*\$\$/, '')
+      .trim();
+
+    newMessage.content = msgText;
+}
+
 }
 
 
@@ -5851,37 +5884,35 @@ const textImageMatch =
     msgText.match(/^\s*[【\[]\s*图片\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/) ||
     msgText.match(/^\s*\$\$\s*图片\s*[:：]\s*([\s\S]*?)\s*\$\$\s*$/);
 
-if (emojiMatch) {
-    const emoji = emojiList.find(e => e.id == emojiMatch[1]);
-    if (emoji) {
-        newMessage.type = 'image';
-        newMessage.content = emoji.url;
-        newMessage.altText = emoji.text;
-        newMessage.isSticker = true;
+if (newMessage) {
+    if (emojiMatch) {
+        const emoji = emojiList.find(e => e.id == emojiMatch[1]);
+        if (emoji) {
+            newMessage.type = 'image';
+            newMessage.content = emoji.url;
+            newMessage.altText = emoji.text;
+            newMessage.isSticker = true;
+        }
+    } else if (transferMatch) {
+        const amount = parseFloat(transferMatch[1]);
+        const note = (transferMatch[2] || '').trim();
+        newMessage.type = 'transfer';
+        newMessage.transferData = { amount, note, status: 'pending' };
+    } else if (voiceMatch) {
+        let voiceText = (voiceMatch[1] || '').trim();
+        voiceText = voiceText.replace(/[\]】]\s*$/, '').trim();
+        newMessage.type = 'voice';
+        newMessage.content = voiceText;
+        newMessage.voiceDuration = calculateVoiceDuration(voiceText);
+    } else if (textImageMatch) {
+        newMessage.type = 'text_image';
+        newMessage.content = (textImageMatch[1] || '').trim();
     }
-} else if (transferMatch) {
-    const amount = parseFloat(transferMatch[1]);
-    const note = (transferMatch[2] || '').trim();
-    newMessage.type = 'transfer';
-    newMessage.transferData = { amount: amount, note: note, status: 'pending' };
-} else if (voiceMatch) {
-    let voiceText = (voiceMatch[1] || '').trim();
-    voiceText = voiceText.replace(/[\]】]\s*$/, '').trim();
-    newMessage.type = 'voice';
-    newMessage.content = voiceText;
-    newMessage.voiceDuration = calculateVoiceDuration(voiceText);
-} else if (textImageMatch) {
-    newMessage.type = 'text_image';
-    newMessage.content = (textImageMatch[1] || '').trim();
+}
+if (triggeredMemoryId && newMessage && newMessage.type === 'text' && i === messageList.length - 1) {
+    newMessage.memoryId = triggeredMemoryId;
 }
 
-
-
-
-
-            if (triggeredMemoryId && newMessage.type === 'text' && i === messageList.length - 1) {
-                newMessage.memoryId = triggeredMemoryId;
-            }
 
             // ★★★ 核心修复：按顺序插入文字、卡片、图片（如果有） ★★★
 
