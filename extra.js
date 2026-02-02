@@ -4335,7 +4335,8 @@ ${commentsText}`;
 
 // ============ 单人聊天核心逻辑 ===========
 async function receiveAIReply() {
-    
+    console.log('RECEIVE_AI_REPLY_START', { currentChatId, pendingFortuneEvent });
+
     isReceiving = true;
     
     // 1. 基础检查
@@ -5107,8 +5108,8 @@ if (fortuneEventForThisRequest) {
 // ★★★ 新增：如果有抽签事件，追加为最后一条消息 ★★★
 if (fortuneEventForThisRequest) {
     messages.push({
-        role: 'system',
-        content: `【系统通知 - 仅你可见】刚刚发生在你身上的事：${fortuneEventForThisRequest}
+        role: 'user',
+        content: `刚刚你遇到了一件事：${fortuneEventForThisRequest}。你用正常聊天口吻跟我说说刚发生了什么，并顺带聊下去。
 
 这件事刚刚发生在你身上，现在请你立刻把这件事告诉我！
 
@@ -5138,7 +5139,14 @@ if (fortuneEventForThisRequest) {
 
         const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
 
-
+console.log('AI_REQUEST_READY', {
+  url: requestUrl,
+  model: modelToUse,
+  msgCount: messages.length,
+  sysLen: (systemPrompt || '').length,
+  lastRole: messages[messages.length - 1]?.role,
+  lastPreview: String(messages[messages.length - 1]?.content || '').slice(0, 120)
+});
 
 
         const response = await fetch(requestUrl, {
@@ -5154,7 +5162,7 @@ if (fortuneEventForThisRequest) {
                 stream: false
             })
         });
-
+console.log('AI_RESPONSE_STATUS', response.status);
         //ai回复失败打印
         const rawText = await response.text();
 let data;
@@ -5563,12 +5571,27 @@ if (messageContent.includes('|||')) {
 } else {
     // 如果没有分隔符，说明 AI 没按格式回复
     console.warn('⚠️ AI 回复中没有 ||| 分隔符，尝试智能分割');
-    
-    // 智能分割：按句号、问号、感叹号切分
-    let smartContent = messageContent.replace(/([。！？!?\n\r]+)/g, "$1|||");
+
+    // ===== 新增：先保护 CARD_HTML 块，避免智能分割把卡片切碎 =====
+    const protectedRes = protectCardBlocks(messageContent);
+    let smartBase = protectedRes.out;
+
+    // 智能分割：按句号、问号、感叹号切分（保留你原逻辑）
+    let smartContent = smartBase.replace(/([。！？!?\n\r]+)/g, "$1|||");
+
+    // ===== 新增：让卡片占位符前后强制断开成独立气泡 =====
+    smartContent = smartContent
+        .replace(/(__CARD_BLOCK_\d+__)/g, '|||$1|||')
+        .replace(/\|\|\|{2,}/g, '|||')
+        .replace(/^\|\|\|/, '')
+        .replace(/\|\|\|$/, '');
+
     messageList = smartContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
-    
-    // 如果智能分割后还是只有 1 条且超过 100 字，强制截断
+
+    // ===== 新增：还原 CARD_HTML 块 =====
+    messageList = messageList.map(m => restoreCardBlocks(m, protectedRes.blocks));
+
+    // 如果智能分割后还是只有 1 条且超过 100 字，强制截断（保留你原逻辑）
     if (messageList.length === 1 && messageList[0].length > 100) {
         const text = messageList[0];
         messageList = [];
@@ -5577,6 +5600,7 @@ if (messageContent.includes('|||')) {
         }
     }
 }
+
 
 console.log('📝 最终气泡列表:', messageList.map(m => m.substring(0, 30) + '...'));
 
@@ -5994,6 +6018,26 @@ playNotificationSound();
         if (chatInput) chatInput.disabled = false;
     }
 }
+
+//智能分割保护卡片//
+function protectCardBlocks(text) {
+    const blocks = [];
+    const out = String(text || '').replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, (m) => {
+        const key = `__CARD_BLOCK_${blocks.length}__`;
+        blocks.push({ key, raw: m });
+        return key;
+    });
+    return { out, blocks };
+}
+
+function restoreCardBlocks(text, blocks) {
+    let s = String(text || '');
+    (blocks || []).forEach(b => {
+        s = s.replaceAll(b.key, b.raw);
+    });
+    return s;
+}
+
 
 
 // ============ 补充缺失的 helper 函数 ============

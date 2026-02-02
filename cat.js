@@ -2848,17 +2848,25 @@ async function viewLotDetail() {
     content.style.display = 'none';
 
     try {
-        // 第一次调用：生成事件（短prompt、小输出）
         const ev = await generateFortuneEventByAI(lotType);
         currentLotEvent = ev;
 
         eventText.textContent = ev;
-        loading.style.display = 'none';
-        content.style.display = 'block';
     } catch (e) {
+        // 本地兜底：从事件库里随机抽一句
+        const pool = (eventLibrary && eventLibrary[lotType] && eventLibrary[lotType].length > 0)
+            ? eventLibrary[lotType]
+            : (eventLibrary && eventLibrary['平'] ? eventLibrary['平'] : []);
+
+        const fallback = pool.length > 0
+            ? pool[Math.floor(Math.random() * pool.length)]
+            : '今天发生了一件说不上好坏的小事';
+
+        currentLotEvent = fallback;
+        eventText.textContent = fallback;
+    } finally {
         loading.style.display = 'none';
         content.style.display = 'block';
-        eventText.textContent = '生成失败：' + (e && e.message ? e.message : '请重试');
     }
 }
 
@@ -2895,7 +2903,8 @@ pendingFortuneEvent = ev;
         type: 'system',
         isRevoked: false,
         time: getCurrentTime(),
-        content: `【系统消息】${chat.name}刚刚遇到了新事件`
+       content: `${chat.name}遇到新事件：${ev}
+`
     };
 
     allMessages.push(sysMsg);
@@ -2909,6 +2918,7 @@ console.log('LOT_SYSMSG_SAVED:', allMessages.slice(-3).map(m => ({type:m.type, s
 
     // 自动触发AI回复（失败也不删系统消息）
     receiveAIReply();
+    console.log('LOT_PENDING_EVENT_SET:', pendingFortuneEvent);
 }
 
 async function generateFortuneEventByAI(lotType) {
