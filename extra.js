@@ -5138,7 +5138,7 @@ if (fortuneEventForThisRequest) {
 
         const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
 
-console.log('FORTUNE_INJECT_CHECK:', messages.filter(m => m.role==='system').slice(0,3));
+
 
 
         const response = await fetch(requestUrl, {
@@ -5709,13 +5709,46 @@ if (/[【\[]\s*确认代付\s*[】\]]/.test(msgText)) {
 // 构建消息对象
 const newId = Date.now() + i;
 
-// ▼▼▼ 世界书图处理 ▼▼▼
-const { finalText, imageMessage } = await processWorldbookImage(msgText);
+// ★★★ 新增：根据发图模式控制世界书图处理 ★★★
+let finalText = msgText;
+let imageMessage = null;
+
+const imageMode = characterInfo.imageMode || 'coexist';
+
+
+if (imageMode === 'text' || imageMode === 'text_image_only') {
+    // 【文字图模式】：不查找世界书图
+    finalText = msgText;
+    imageMessage = null;
+ 
+    
+} else if (imageMode === 'worldbook' || imageMode === 'worldbook_only') {
+    // 【世界书模式】：强制查找世界书图
+    const result = await processWorldbookImage(msgText);
+    finalText = result.finalText;
+    imageMessage = result.imageMessage;
+ 
+    
+} else {
+    // 【共存模式】：优先世界书，找不到用文字图
+    const result = await processWorldbookImage(msgText);
+    
+    if (result.imageMessage) {
+        finalText = result.finalText;
+        imageMessage = result.imageMessage;
+      
+    } else {
+        finalText = msgText;
+        imageMessage = null;
+      
+    }
+}
 
 // ★★★ 核心修复：拆分文字和 HTML 卡片 ★★★
 const parts = splitHtmlCardFromText(finalText);
 const textPart = (parts.text || '').trim();
 const cardPart = parts.cardHtml;
+
 
 // 1. 如果有文字部分，创建文字消息
 let newMessage = null;
@@ -5746,7 +5779,20 @@ if (cardPart) {
 }
 // ▲▲▲ 世界书图处理 + HTML 拆分结束 ▲▲▲
 
-
+// 3. 插入世界书图（如果有）★★★ 这里是关键修复点 ★★★
+if (imageMessage && typeof imageMessage === 'object' && imageMessage.content) {
+    const imgMsgId = Date.now() + i + 2;
+    const imgMessage = {
+        id: imgMsgId,
+        chatId: currentChatId,
+        senderId: chat.name,
+        time: getCurrentTime(),
+        isRevoked: false,
+        type: 'image',
+        content: imageMessage.content
+    };
+    allMessages.push(imgMessage);
+}
 
 // 处理 AI 的引用（兼容【】和[]）
 if (aiQuotes.length > 0) {
@@ -5849,20 +5895,31 @@ if (cardMessage) {
     allMessages.push(cardMessage);
 }
 
-// 3. 插入世界书图（如果有）
-if (imageMessage) {
-    const imgMsgId = Date.now() + i + 2;
-    const imgMessage = {
-        id: imgMsgId,
-        chatId: currentChatId,
-        senderId: chat.name,
-        time: getCurrentTime(),
-        isRevoked: false,
-        type: 'image',
-        content: imageMessage.content
-    };
-    allMessages.push(imgMessage);
+
+// 3. 插入世界书图（如果有）★★★ 加强检查，防止 null 报错 ★★★
+if (imageMessage && typeof imageMessage === 'object' && imageMessage.content) {
+    // ★★★ 二次确认：文字图模式时绝对不插入 ★★★
+    const imageMode = characterInfo.imageMode || 'coexist';
+    
+    if (imageMode === 'text' || imageMode === 'text_image_only') {  // ✅ 兼容两种值
+        console.warn('⚠️ 检测到文字图模式，跳过世界书图插入');
+    } else {
+        const imgMsgId = Date.now() + i + 2;
+        const imgMessage = {
+            id: imgMsgId,
+            chatId: currentChatId,
+            senderId: chat.name,
+            time: getCurrentTime(),
+            isRevoked: false,
+            type: 'image',
+            content: imageMessage.content
+        };
+        allMessages.push(imgMessage);
+        console.log('✅ 已插入世界书图:', imageMessage.content.substring(0, 50));
+    }
 }
+
+
 
 // 保存消息
 saveMessages();
@@ -6309,31 +6366,33 @@ let isTransparentBubble = false;
 if (msg.type === 'image') {
     messageContent = `<img src="${msg.content}" class="message-image" alt="图片" onclick="viewImage('${msg.content}')">`;
 } else if (msg.type === 'text_image') {
-    isTransparentBubble = true;
+   isTransparentBubble = true;
     const fakeImage = "https://img.heliar.top/file/1769009400004_IMG_9811.jpeg";
     
-    // ★★★ 关键修复：防止内容里有单引号/双引号破坏 onclick ★★★
     const rawContent = String(msg.content || '');
     
-    // 先转义特殊字符（防止 HTML 注入和 JS 语法错误）
-    const escapedForJs = rawContent
-        .replace(/\\/g, '\\\\')   // 转义反斜杠
-        .replace(/'/g, "\\'")     // 转义单引号
-        .replace(/"/g, '\\"')     // 转义双引号
-        .replace(/\r/g, '\\r')    // 转义回车
-        .replace(/\n/g, '\\n');   // 转义换行
-    
-    // 再 URL 编码（双重保险）
-    const encodedDesc = encodeURIComponent(rawContent);
-    
-
-    
-    messageContent = `
-        <div class="text-image-card" onclick="showTextImageDetail('${encodedDesc}')">
-            <img src="${fakeImage}" class="text-image-cover" alt="文字图">
-        </div>
-    `;
-} else {
+    // ★★★ 新增：检测内容是否被污染为URL ★★★
+    if (rawContent.startsWith('http://') || rawContent.startsWith('https://')) {
+        console.error('❌ 文字图内容被污染为URL，阻止渲染:', rawContent);
+        // 降级为普通文字显示
+        messageContent = `<div style="color:#999;font-size:12px;">【图片加载失败】</div>`;
+    } else {
+        // 正常渲染文字图
+        const escapedForJs = rawContent
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n');
+        
+        const encodedDesc = encodeURIComponent(rawContent);
+        
+        messageContent = `
+            <div class="text-image-card" onclick="showTextImageDetail('${encodedDesc}')">
+                <img src="${fakeImage}" class="text-image-cover" alt="文字图">
+            </div>
+        `;}
+}else {
     // 普通文本（支持附加 HTML 卡片协议）
     const rawText = String(msg.content || '');
     
@@ -6355,7 +6414,7 @@ if (msg.type === 'image') {
     // 把卡片HTML临时存到消息对象上（不要直接拼到 messageContent）
     if (cardHtml && htmlCardAllowed) {
         msg._htmlCard = buildHtmlCardContainer(cardHtml, msg.id);
-        console.log('  ✅ 卡片已暂存到 msg._htmlCard');
+     
     } else {
         msg._htmlCard = null;
     }

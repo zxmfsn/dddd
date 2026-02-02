@@ -4688,69 +4688,97 @@ function extractImageDescription(text) {
 // aiText: AI 原始回复文本
 // 返回: { finalText, imageMessage } 
 // imageMessage 为 null 表示不需要插入图片消息
-async function processWorldbookImage(aiText) {
-    // ★★★ 添加调试日志 ★★★
-
-    
-    // 1. 提取【图片：xxx】
-    const desc = extractImageDescription(aiText);
-    if (!desc) {
-      
-        return { finalText: aiText, imageMessage: null };
+/**
+ * 从世界书中查找图片（仅在世界书模式或共存模式下调用）
+ * @param {string} text - 消息文本
+ * @returns {Promise<{finalText: string, imageMessage: object|null}>}
+ */
+async function processWorldbookImage(text) {
+    // 1. 提取【图片：...】标记中的关键词
+    const imageDescMatch = text.match(/【图片[:：]\s*([^】]+)】/);
+    if (!imageDescMatch) {
+        // 没有图片标记，直接返回
+        return { finalText: text, imageMessage: null };
     }
     
-    console.log('  - 提取到图片描述:', desc);
-
-    // 2. 读取当前角色的发图模式
-    const imageMode = characterInfoData?.imageMode || 'text';
-    console.log('  - 发图模式:', imageMode);
-
-    // 3. 按模式处理
-    if (imageMode === 'text') {
-      
-        return { finalText: aiText, imageMessage: null };
+    const keyword = imageDescMatch[1].trim();
+    console.log('🔍 世界书查找关键词:', keyword);
+    
+    // 2. 从世界书中查找匹配的图片
+    const worldbookImage = await findImageInWorldbook(keyword);
+    
+    if (worldbookImage) {
+        // 找到了世界书图：删除【图片：】标记，返回图片URL
+        const cleanText = text.replace(/【图片[:：][^】]+】/g, '').trim();
+        console.log('✅ 世界书图已找到:', worldbookImage);
+        
+        return {
+            finalText: cleanText,
+            imageMessage: { content: worldbookImage }
+        };
+    } else {
+        // 没找到：保持原文不变（包括【图片：】标记）
+        console.log('❌ 世界书图未找到，保留文字图标记');
+        return {
+            finalText: text,
+            imageMessage: null
+        };
     }
-
-    if (imageMode === 'worldbook' || imageMode === 'hybrid') {
-        
-        
-        // 搜索世界书图
-        const url = await searchWorldbookImage(desc);
-        
-      
-
-        if (url) {
-            console.log('  ✅ 找到世界书图，去除文本标记');
-            // 找到了！把【图片：xxx】从文本中去掉，单独发一条图片消息
-            const cleanText = aiText.replace(/【图片[：:]([^】]+)】/, '').trim();
-            return {
-                finalText: cleanText,
-                imageMessage: {
-                    type: 'image',
-                    content: url
-                }
-            };
-        }
-
-        console.log('  - 未找到世界书图');
-        
-        // 没找到
-        if (imageMode === 'worldbook') {
-            console.log('  - 纯世界书图模式：去掉标记');
-            // 纯世界书图模式：找不到就不发图，去掉标记
-            const cleanText = aiText.replace(/【图片[：:]([^】]+)】/, '').trim();
-            return { finalText: cleanText, imageMessage: null };
-        }
-
-        if (imageMode === 'hybrid') {
-            console.log('  - 共存模式：降级为文字图');
-            // 共存模式：找不到降级为文字图，保持原样
-            return { finalText: aiText, imageMessage: null };
-        }
-    }
-
-    return { finalText: aiText, imageMessage: null };
 }
+
+/**
+ * 在世界书中查找图片URL
+ * @param {string} keyword - 搜索关键词
+ * @returns {Promise<string|null>} - 图片URL或null
+ */
+async function findImageInWorldbook(keyword) {
+    if (!currentChatId) return null;
+    
+    // 获取角色关联的世界书
+    const charInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    const linkedWorldbooks = charInfo.linkedWorldbooks || [];
+    if (linkedWorldbooks.length === 0) return null;
+    
+    // 获取所有世界书内容
+    const allWorldbooks = await new Promise(resolve => {
+        loadFromDB('worldbooks', data => {
+            resolve(Array.isArray(data) ? data : []);
+        });
+    });
+    
+ 
+
+
+// ✅ 修复后的代码（兼容多种分类名）
+const imageWorldbooks = allWorldbooks.filter(wb => 
+    linkedWorldbooks.includes(wb.id) && 
+    (wb.category === 'image' || wb.category === 'ai发图' || wb.category === '图片')
+);
+
+
+    
+    // 查找匹配的图片
+    for (const wb of imageWorldbooks) {
+        const content = String(wb.content || '');
+        
+        // 检查关键词是否在内容中
+        if (content.includes(keyword)) {
+            // 提取图片URL（支持 http/https 开头）
+            const urlMatch = content.match(/(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/);
+            if (urlMatch) {
+                return urlMatch[1];
+            }
+        }
+    }
+    
+    return null;
+}
+
 
 
 

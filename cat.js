@@ -2931,14 +2931,20 @@ if (currentChatId) {
     const ids = Array.isArray(thisChar.fortuneWorldbooks) ? thisChar.fortuneWorldbooks : [];
 
     if (ids.length > 0) {
+        // 有绑定抽签世界书 → 使用世界书内容
         const allWorldbooks = await new Promise(resolve => loadFromDB('worldbooks', d => resolve(d || [])));
         const picked = allWorldbooks.filter(wb => ids.includes(wb.id));
-
-        // 拼接：标题+内容，限制长度（例如最多1200字）
         const joined = picked.map(wb => `【${wb.title || '未命名'}】\n${wb.content || ''}`).join('\n\n');
         wbText = joined.slice(0, 1200);
+    } else {
+        // 没有绑定抽签世界书 → 使用角色人设
+        const chat = chats.find(c => String(c.id) === String(currentChatId));
+        if (chat && chat.prompt) {
+            wbText = chat.prompt.slice(0, 1200);  // 限制长度防止token过多
+        }
     }
 }
+
 
 
 
