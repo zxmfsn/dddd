@@ -1542,10 +1542,11 @@ function injectBubbleStyleTag(aiCss, userCss) {
         document.head.appendChild(styleTag);
     }
     styleTag.innerHTML = `
-        .message-item:not(.me) .message-bubble { ${aiCss} }
-        .message-item.me .message-bubble { ${userCss} }
+        .message-item:not(.me):not(.html-card) .message-bubble { ${aiCss} }
+        .message-item.me:not(.html-card) .message-bubble { ${userCss} }
     `;
 }
+
 
 // 9. 恢复默认
 function resetBubbleEditor() {
@@ -1739,24 +1740,10 @@ function getBubbleEffectCss(effect, bgColor, radius) {
         );
     }
 
-    if (effect === 'highlight') {
-        // 高光短横线：使用 ::before，不与贴纸 ::after 冲突
-        return (
-            `overflow: hidden;\n` +
-            `}\n\n/* 高光短横线 */\n` +
-            `::before {\n` +
-            `content: '';\n` +
-            `position: absolute;\n` +
-            `left: 18%;\n` +
-            `top: 7px;\n` +
-            `width: 42%;\n` +
-            `height: 2px;\n` +
-            `border-radius: 999px;\n` +
-            `background: rgba(255,255,255,0.65);\n` +
-            `pointer-events: none;\n` +
-            `}\n`
-        );
-    }
+if (effect === 'highlight') {
+    // 只返回主气泡属性；伪元素规则由专用 style 标签注入
+    return `overflow: hidden;\n`;
+}
 
 
 
@@ -1772,6 +1759,31 @@ function getBubbleEffectCss(effect, bgColor, radius) {
     return '';
 }
 
+let bubbleEffectsCache = { ai: '', user: '' };
+function injectBubbleEffectsStyle() {
+    const styleId = 'bubble-effects-style';
+    let styleTag = document.getElementById(styleId);
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = styleId;
+        document.head.appendChild(styleTag);
+    }
+
+    styleTag.innerHTML = `${bubbleEffectsCache.ai}\n${bubbleEffectsCache.user}`.trim();
+}
+
+// 颜色选择器更新函数（最终修复版）
+function updateColorFromPicker(type, hexColor) {
+    if (type === 'bg') {
+        const preview = document.getElementById('creatorBgPreview');
+        if (preview) preview.style.background = hexColor;
+    } else if (type === 'text') {
+        const preview = document.getElementById('creatorTextPreview');
+        if (preview) preview.style.background = hexColor;
+    }
+    generateBubbleCSS(); // 实时生成CSS
+}
+
 
 
 // 8. ★★★ 核心：生成 CSS (支持外部贴纸的 Breakout 模式) ★★★
@@ -1784,8 +1796,14 @@ function generateBubbleCSS() {
     const selector = targetType === 'ai' ? '.message-item:not(.me) .message-bubble' : '.message-item.me .message-bubble';
     
     // 获取颜色和圆角
-    const bgColor = document.getElementById('creatorBgColor').value;
-    const textColor = document.getElementById('creatorTextColor').value;
+const bgPicker = document.getElementById('creatorBgPicker');
+const textPicker = document.getElementById('creatorTextPicker');
+const bgColor = bgPicker ? bgPicker.value : '#ffffff';
+const textColor = textPicker ? textPicker.value : '#333333';
+
+
+
+
     const radius = document.getElementById('creatorRadius').value;
 
     // ★★★ 修复重点：这里加了检测，找不到滑块就用默认值 12px，不会报错卡死 ★★★
@@ -1801,52 +1819,73 @@ css += `border-radius: ${radius}px;\n`;
 css += `border: 1px solid rgba(0,0,0,0.05);\n`;
 css += `padding: ${padY}px ${padX}px;\n`;
 css += `position: relative; overflow: visible;\n`;
+css += `writing-mode: horizontal-tb;\n`;
+css += `text-orientation: mixed;\n`;
 
-// 1.1 追加质感效果
 const effect = getCreatorEffectValue();
 const effectCss = getBubbleEffectCss(effect, bgColor, radius);
+css += effectCss;
 
-if (effect === 'highlight') {
-    const patched = effectCss.replace(/\n::before\s*\{/g, `\n\n${selector}::before {\n`);
-    css += patched;
-} else {
-    css += effectCss;
-}
 
 
     
     // 2. 贴纸逻辑
     const validLayers = activeStickerLayers.filter(l => l.url && l.url.trim() !== '');
-    
-    if (validLayers.length > 0) {
-        css += `}\n\n/* 贴纸层 */\n${selector}::after {\n`;
-        css += `content: '';\n`;
-        css += `position: absolute;\n`;
-        css += `top: -50px; left: -50px; right: -50px; bottom: -50px;\n`; 
-        css += `pointer-events: none;\n`; 
-        
-        let bgImages = [];
-        let bgPositions = [];
-        let bgSizes = [];
-        let bgRepeats = [];
-        
-        validLayers.forEach(l => {
-            bgImages.push(`url('${l.url}')`);
-            bgSizes.push(`${l.size}px`);
-            bgRepeats.push('no-repeat');
-            
-            const offsetBase = 50; 
-            let posX = l.anchor.includes('left') ? `left ${offsetBase + parseInt(l.x)}px` : `right ${offsetBase - parseInt(l.x)}px`;
-            let posY = l.anchor.includes('top') ? `top ${offsetBase + parseInt(l.y)}px` : `bottom ${offsetBase - parseInt(l.y)}px`;
-            
-            bgPositions.push(`${posX} ${posY}`);
-        });
-        
-        css += `background-image: ${bgImages.join(', ')};\n`;
-        css += `background-position: ${bgPositions.join(', ')};\n`;
-        css += `background-size: ${bgSizes.join(', ')};\n`;
-        css += `background-repeat: ${bgRepeats.join(', ')};\n`;
-    }
+    let effectsCss = '';
+
+    if (effect === 'highlight') {
+    effectsCss += `\n/* 高光短横线 */\n${selector}::before {\n`;
+    effectsCss += `content: '';\n`;
+    effectsCss += `position: absolute;\n`;
+    effectsCss += `left: 18%;\n`;
+    effectsCss += `top: 7px;\n`;
+    effectsCss += `width: 42%;\n`;
+    effectsCss += `height: 2px;\n`;
+    effectsCss += `border-radius: 999px;\n`;
+    effectsCss += `background: rgba(255,255,255,0.65);\n`;
+    effectsCss += `pointer-events: none;\n`;
+    effectsCss += `}\n`;
+}
+
+if (validLayers.length > 0) {
+    effectsCss += `\n/* 贴纸层 */\n${selector}::after {\n`;
+    effectsCss += `content: '';\n`;
+    effectsCss += `position: absolute;\n`;
+    effectsCss += `top: -50px; left: -50px; right: -50px; bottom: -50px;\n`;
+    effectsCss += `pointer-events: none;\n`;
+
+    const bgImages = [];
+    const bgPositions = [];
+    const bgSizes = [];
+    const bgRepeats = [];
+
+    validLayers.forEach(l => {
+        bgImages.push(`url('${l.url}')`);
+        bgSizes.push(`${l.size}px`);
+        bgRepeats.push('no-repeat');
+
+        const offsetBase = 50;
+        const posX = l.anchor.includes('left')
+            ? `left ${offsetBase + parseInt(l.x)}px`
+            : `right ${offsetBase - parseInt(l.x)}px`;
+        const posY = l.anchor.includes('top')
+            ? `top ${offsetBase + parseInt(l.y)}px`
+            : `bottom ${offsetBase - parseInt(l.y)}px`;
+
+        bgPositions.push(`${posX} ${posY}`);
+    });
+
+    effectsCss += `background-image: ${bgImages.join(', ')};\n`;
+    effectsCss += `background-position: ${bgPositions.join(', ')};\n`;
+    effectsCss += `background-size: ${bgSizes.join(', ')};\n`;
+    effectsCss += `background-repeat: ${bgRepeats.join(', ')};\n`;
+    effectsCss += `}\n`;
+}
+if (targetType === 'ai') bubbleEffectsCache.ai = effectsCss;
+else bubbleEffectsCache.user = effectsCss;
+
+injectBubbleEffectsStyle();
+
     
     // 输出 CSS 并刷新预览
     const outputArea = document.getElementById(targetInputId);
@@ -2066,19 +2105,35 @@ function syncCreatorControlsFromCss(css) {
         updateControl('creatorRadius', rMatch[1]);
     }
 
-    // 3. 同步背景色
-    const bgMatch = css.match(/background(?:-color)?:\s*(#[0-9a-fA-F]{6})/);
-    if (bgMatch) {
-        const el = document.getElementById('creatorBgColor');
-        if (el) el.value = bgMatch[1];
-    }
+// 3. 同步背景色（HEX版本）
+const bgRgb = css.match(/background-color:\s*rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+if (bgRgb) {
+    const r = parseInt(bgRgb[1]);
+    const g = parseInt(bgRgb[2]);
+    const b = parseInt(bgRgb[3]);
+    const hexColor = '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+    const bgPicker = document.getElementById('creatorBgPicker');
+    const bgPreview = document.getElementById('creatorBgPreview');
+    if (bgPicker) bgPicker.value = hexColor;
+    if (bgPreview) bgPreview.style.background = hexColor;
+}
 
-    // 4. 同步文字色
-    const textMatch = css.match(/[\s;]color:\s*(#[0-9a-fA-F]{6})/);
-    if (textMatch) {
-        const el = document.getElementById('creatorTextColor');
-        if (el) el.value = textMatch[1];
-    }
+// 4. 同步文字色（HEX版本）
+const txRgb = css.match(/[\s;]color:\s*rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+if (txRgb) {
+    const r = parseInt(txRgb[1]);
+    const g = parseInt(txRgb[2]);
+    const b = parseInt(txRgb[3]);
+    const hexColor = '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+    const textPicker = document.getElementById('creatorTextPicker');
+    const textPreview = document.getElementById('creatorTextPreview');
+    if (textPicker) textPicker.value = hexColor;
+    if (textPreview) textPreview.style.background = hexColor;
+}
+
+
+
+  
 
     // 5. 同步质感下拉框（从 CSS 反推）
 const effectSelect = document.getElementById('creatorEffect');
@@ -2099,6 +2154,16 @@ if (effectSelect) {
     effectSelect.value = effect;
 }
 
+ // ★★★ 新增：强制确保横向文字 ★★★
+    if (!/writing-mode:\s*horizontal-tb/i.test(css)) {
+        // 如果 CSS 里没有横向设置，强制加上
+        const bgPicker = document.getElementById('creatorBgPicker');
+        const textPicker = document.getElementById('creatorTextPicker');
+        if (bgPicker && textPicker) {
+            // 触发一次生成，会自动加上 writing-mode
+            generateBubbleCSS();
+        }
+    }
 }
 
 // ============ 角色语音功能 ============
@@ -2549,6 +2614,7 @@ async function generateDaySchedule() {
             loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {}));
         });
 
+        
         // 4. 构建 Prompt (★ 重点修改了这里：强调“计划感”和“将来时”)
      const prompt = `你现在是【${chat.name}】本人，在手机里给自己写【今天的行程计划】。这是一份“还没发生的计划”，不是回忆录/日记。
 
@@ -2651,3 +2717,405 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(resetSchedulesIfNewDayForAllChats, 1200);
 });
 
+
+
+
+// ============ 抽签功能 ============
+
+// 抽签事件：仅用于本次请求注入，不落库
+let pendingFortuneEvent = null;
+let currentLotType = '平'; // 记录本次抽到的类型（吉/平/凶）
+let tempSelectedFortuneWorldbooks = [];
+
+
+// 事件库
+const eventLibrary = {
+    吉: [
+        "路上捡到了一张咖啡优惠券",
+        "遇到了很久不见的老朋友",
+        "喜欢的奶茶店今天在打折",
+        "收到了一份意外的小礼物",
+        "今天天气特别好，心情舒畅",
+        "公交车刚到站就赶上了",
+        "买彩票中了小奖",
+        "老板突然说今天可以早点下班"
+    ],
+    平: [
+        "在便利店买了瓶水",
+        "路过公园看到小孩在玩",
+        "午饭吃了平时常吃的便当",
+        "地铁上看到有人在看书",
+        "收到了一条普通的短信",
+        "路边的花开得正好",
+        "超市买了些日用品",
+        "看了会儿手机视频"
+    ],
+    凶: [
+        "路上踩了狗屎",
+        "出门忘带钥匙了",
+        "买的奶茶洒了一半",
+        "手机突然没电了",
+        "等了很久的公交车刚开走",
+        "衣服被门夹住撕了个口子",
+        "刚洗的头发被雨淋湿了",
+        "重要文件忘在家里了"
+    ]
+};
+
+let currentLotEvent = '';
+
+// 打开抽签弹窗
+function openDrawLotModal() {
+    const modal = document.getElementById('drawLotModal');
+    modal.style.display = 'flex';
+    
+    // 重置状态
+    document.getElementById('lotBucket').style.display = 'flex';
+    document.getElementById('drawnLot').style.display = 'none';
+    document.getElementById('lotDetailCard').style.display = 'none';
+    currentLotEvent = '';
+}
+
+// 关闭抽签弹窗
+function closeDrawLotModal(event) {
+    if (event && event.target.id !== 'drawLotModal') return;
+    document.getElementById('drawLotModal').style.display = 'none';
+}
+
+// 抽签
+function drawLot() {
+    const bucket = document.getElementById('lotBucket');
+    const drawnLot = document.getElementById('drawnLot');
+    const resultEl = document.getElementById('lotResult');
+    
+    // 签桶抖动
+    bucket.style.animation = 'shake 0.5s ease';
+    
+    setTimeout(() => {
+        // 随机抽签
+        const lotTypes = ['吉', '平', '凶'];
+        const weights = [0.3, 0.4, 0.3];
+        const random = Math.random();
+        let cumulative = 0;
+        let result = '平';
+        
+        for (let i = 0; i < lotTypes.length; i++) {
+            cumulative += weights[i];
+            if (random < cumulative) {
+                result = lotTypes[i];
+                break;
+            }
+        }
+        
+        // 显示结果
+        resultEl.textContent = result;
+        resultEl.setAttribute('data-type', result);
+        currentLotType = result;
+        
+        bucket.style.display = 'none';
+        drawnLot.style.display = 'block';
+        
+    }, 500);
+}
+
+// 抖动动画
+if (!document.getElementById('shake-animation-style')) {
+    const style = document.createElement('style');
+    style.id = 'shake-animation-style';
+    style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+    `;
+    document.head.appendChild(style);
+}
+
+// 查看签文详情
+async function viewLotDetail() {
+    const drawnLot = document.getElementById('drawnLot');
+    const detailCard = document.getElementById('lotDetailCard');
+    const loading = document.getElementById('lotLoading');
+    const content = document.getElementById('lotContent');
+    const eventText = document.getElementById('lotEventText');
+
+    const lotType = document.getElementById('lotResult').getAttribute('data-type') || currentLotType || '平';
+
+    drawnLot.style.display = 'none';
+    detailCard.style.display = 'block';
+    loading.style.display = 'block';
+    content.style.display = 'none';
+
+    try {
+        // 第一次调用：生成事件（短prompt、小输出）
+        const ev = await generateFortuneEventByAI(lotType);
+        currentLotEvent = ev;
+
+        eventText.textContent = ev;
+        loading.style.display = 'none';
+        content.style.display = 'block';
+    } catch (e) {
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        eventText.textContent = '生成失败：' + (e && e.message ? e.message : '请重试');
+    }
+}
+
+
+
+function acceptLotAndClose() {
+    closeDrawLotModal({ target: { id: 'drawLotModal' } });
+
+    if (!currentChatId) {
+        alert('请先选择一个聊天对象');
+        return;
+    }
+
+    const chat = chats.find(c => String(c.id) === String(currentChatId));
+    if (!chat) {
+        alert('找不到当前聊天对象');
+        return;
+    }
+
+    const ev = String(currentLotEvent || '').trim();
+    if (!ev) {
+        alert('签文为空，请重新抽签');
+        return;
+    }
+
+pendingFortuneEvent = ev;
+
+
+    // 插播一条可见系统消息（进入历史）
+    const sysMsg = {
+        id: Date.now(),
+        chatId: currentChatId,
+        senderId: 'system',
+        type: 'system',
+        isRevoked: false,
+        time: getCurrentTime(),
+        content: `【系统消息】${chat.name}刚刚遇到了新事件`
+    };
+
+    allMessages.push(sysMsg);
+    console.log('LAST_MSG_AFTER_LOT:', allMessages[allMessages.length - 1]);
+
+    saveMessages();
+console.log('LOT_SYSMSG_SAVED:', allMessages.slice(-3).map(m => ({type:m.type, senderId:m.senderId, content:m.content})));
+
+    // 更新聊天列表预览
+    updateChatLastMessage(currentChatId, '【系统消息】TA遇到新事件');
+
+    // 自动触发AI回复（失败也不删系统消息）
+    receiveAIReply();
+}
+
+async function generateFortuneEventByAI(lotType) {
+    // 基础检查：必须已配置API
+    if (!currentApiConfig || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        throw new Error('请先在API设置中配置');
+    }
+
+    const requestUrl = currentApiConfig.baseUrl.endsWith('/')
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+
+    const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+
+// 抽签专用世界书绑定（不影响 linkedWorldbooks）
+let wbText = '';
+if (currentChatId) {
+    const charInfo = await new Promise(resolve => loadFromDB('characterInfo', d => resolve(d || {})));
+    const thisChar = charInfo[currentChatId] || {};
+    const ids = Array.isArray(thisChar.fortuneWorldbooks) ? thisChar.fortuneWorldbooks : [];
+
+    if (ids.length > 0) {
+        const allWorldbooks = await new Promise(resolve => loadFromDB('worldbooks', d => resolve(d || [])));
+        const picked = allWorldbooks.filter(wb => ids.includes(wb.id));
+
+        // 拼接：标题+内容，限制长度（例如最多1200字）
+        const joined = picked.map(wb => `【${wb.title || '未命名'}】\n${wb.content || ''}`).join('\n\n');
+        wbText = joined.slice(0, 1200);
+    }
+}
+
+
+
+const prompt = wbText
+    ? (
+        `你是“事件生成器”。下面是角色人设/素材（可能是设定或事件池），请严格围绕它生成一条具体日常事件（20-40字）。` +
+        `事件倾向为：${lotType}。` +
+        `要求：贴合素材设定，不夸张，不玄学，不要解释原因。` +
+        `只输出事件本身，不要换行。\n\n` +
+        `【素材】\n${wbText}`
+      )
+    : (
+        `你是“日常事件生成器”。请随机生成一条非常具体的日常小事件（20-40字），` +
+        `事件倾向为：${lotType}。` +
+        `要求：贴近现实生活，不夸张，不玄学，不要解释原因。` +
+        `只输出事件本身，不要输出任何前后缀，不要换行。`
+      );
+
+
+    const payload = {
+        model: modelToUse,
+        messages: [
+            { role: 'system', content: '你只输出事件文本本身。' },
+            { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        stream: false,
+        max_tokens: 120
+    };
+
+    const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const rawText = await response.text();
+    let data;
+    try {
+        data = JSON.parse(rawText);
+    } catch (e) {
+        throw new Error('API返回非JSON');
+    }
+
+    if (!response.ok) {
+        const msg = (data && data.error && data.error.message) ? data.error.message : rawText;
+        throw new Error(msg);
+    }
+
+    // 兼容空choices
+    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        throw new Error('模型返回空回复（choices为空）');
+    }
+
+    const txt = data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content === 'string'
+        ? data.choices[0].message.content.trim()
+        : '';
+
+    if (!txt) throw new Error('模型返回空内容');
+
+    //可能清理的编号，多余的片段//
+   let cleaned = txt.trim();
+
+// 只取第一行（防止模型输出多段解释）
+cleaned = cleaned.split('\n')[0].trim();
+cleaned = cleaned.replace(/^[：:\-—\s]+/, '').trim();
+
+
+// 如果还带有“：”“解释”“因为”等，把前缀解释砍掉（保守处理）
+cleaned = cleaned.replace(/^.*?(事件[:：]|签文[:：]|结果[:：])/i, '').trim();
+
+// 再限制长度，防止长篇大论
+if (cleaned.length > 60) cleaned = cleaned.slice(0, 60).trim();
+
+return cleaned
+  .replace(/^["'“”]+|["'“”]+$/g, '')
+  .replace(/^\s*[-\d\.、]+\s*/, '')
+  .trim();
+
+}
+
+
+function openFortuneWorldbookModal() {
+    if (!currentChatId) {
+        alert('请先进入某个角色聊天页');
+        return;
+    }
+
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+
+        tempSelectedFortuneWorldbooks = Array.isArray(charData.fortuneWorldbooks) ? [...charData.fortuneWorldbooks] : [];
+
+        renderFortuneWorldbookModalList();
+
+        document.getElementById('fortuneWorldbookModal').style.display = 'flex';
+    });
+}
+
+function closeFortuneWorldbookModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('fortuneWorldbookModal').style.display = 'none';
+}
+
+function renderFortuneWorldbookModalList() {
+    const listEl = document.getElementById('fortuneWorldbookSelectorList');
+    const countEl = document.getElementById('fortuneWorldbookSelectedCount');
+    if (!listEl || !countEl) return;
+
+    loadFromDB('worldbooks', (data) => {
+        const allWorldbooks = Array.isArray(data) ? data : (data && data.list ? data.list : []);
+        const selected = tempSelectedFortuneWorldbooks || [];
+        countEl.textContent = selected.length;
+
+        if (!allWorldbooks || allWorldbooks.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无世界书，请先在世界书页面添加</div>';
+            return;
+        }
+
+        listEl.innerHTML = allWorldbooks.map(wb => {
+            const title = wb.title || '未命名世界书';
+            const category = wb.category || '默认分类';
+            const isChecked = selected.includes(wb.id);
+
+            return `
+                <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0; background: ${isChecked ? '#f0f8ff' : 'white'};">
+                    <input type="checkbox"
+                        id="fortune-wb-${wb.id}"
+                        value="${wb.id}"
+                        ${isChecked ? 'checked' : ''}
+                        onchange="toggleFortuneWorldbook(${wb.id})"
+                        style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer; flex-shrink: 0;">
+                    <label for="fortune-wb-${wb.id}" style="flex: 1; cursor: pointer; font-size: 15px; line-height: 1.5;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 3px;">${title}</div>
+                        <div style="font-size: 12px; color: #999;">分类：${category}</div>
+                    </label>
+                </div>
+            `;
+        }).join('');
+    });
+}
+
+function toggleFortuneWorldbook(id) {
+    if (!Array.isArray(tempSelectedFortuneWorldbooks)) tempSelectedFortuneWorldbooks = [];
+    const idx = tempSelectedFortuneWorldbooks.indexOf(id);
+    if (idx >= 0) tempSelectedFortuneWorldbooks.splice(idx, 1);
+    else tempSelectedFortuneWorldbooks.push(id);
+
+    const countEl = document.getElementById('fortuneWorldbookSelectedCount');
+    if (countEl) countEl.textContent = tempSelectedFortuneWorldbooks.length;
+}
+
+function saveFortuneWorldbookSelection() {
+    if (!currentChatId) {
+        alert('未找到当前聊天ID');
+        closeFortuneWorldbookModal();
+        return;
+    }
+
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        if (!allCharData[currentChatId]) allCharData[currentChatId] = {};
+
+        allCharData[currentChatId].fortuneWorldbooks = [...(tempSelectedFortuneWorldbooks || [])];
+
+        saveToDB('characterInfo', allCharData);
+
+        setTimeout(() => {
+            closeFortuneWorldbookModal();
+        }, 150);
+    });
+}
+
+
+
+// ============ 抽签功能end ============

@@ -1913,14 +1913,19 @@ const allowHtmlCard = (characterInfo.htmlPluginEnabled === true) && (String(html
         const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
             let content;
 
-      if (msg.type === 'image') {
-    // ★★★ 修改：所有图片都转为文字描述，不发送真实图片数据 ★★★
+if (msg.type === 'image') {
+    // ★★★ 修改：区分表情包、世界书图、普通图片 ★★★
     if (msg.isSticker) {
         content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
+    } else if (msg.content && (msg.content.startsWith('http://') || msg.content.startsWith('https://'))) {
+        // 世界书图：URL格式的图片，不显示"发送了一张图片"，直接跳过或标记为背景
+        content = `[ID:${msg.id}] [图片]`;
     } else {
+        // 用户上传的图片：base64格式
         content = `[ID:${msg.id}] [发送了一张图片: ${msg.altText || '图片'}]`;
     }
 }
+
 
             // --- 以下部分严禁修改，保持你原有的逻辑完整性 ---
             else if (msg.type === 'transfer') {
@@ -4330,6 +4335,7 @@ ${commentsText}`;
 
 // ============ 单人聊天核心逻辑 ===========
 async function receiveAIReply() {
+    
     isReceiving = true;
     
     // 1. 基础检查
@@ -4363,7 +4369,7 @@ async function receiveAIReply() {
                 ? getRecentMomentsContext(currentChatId)
                 : Promise.resolve("（暂无朋友圈动态）"))
         ]);
-
+characterInfoData = characterInfo;
  const statusMonitorEnabled = characterInfo.statusMonitorEnabled || false;
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
         
@@ -4741,6 +4747,13 @@ ${momentsContext || "（近期双方无动态）"}
 - 严禁使用 $$...$$ 包裹格式；所有指令一律使用【】（允许偶尔用[]但不推荐）。
 - 严禁在指令外壳里混用中英文括号；同一条指令必须成对闭合（例如【...】或[...]）。
 
+【HTML 卡片输出规则（强制）】
+- 如果你要输出包含 <style> 或 <div> 的 HTML 内容，必须用 [[CARD_HTML]] 和 [[/CARD_HTML]] 包裹。
+- 格式：[[CARD_HTML]]你的HTML内容[[/CARD_HTML]]
+- 禁止裸露输出任何 HTML 标签到普通文本气泡里。
+- 正确示范：嗯，稀客啊。|||[[CARD_HTML]]<style>...</style><div>...</div>[[/CARD_HTML]]
+
+
 【输出前自检（必须执行）】
 在输出前你必须在心里检查：
 是否 8-12 条气泡 + 最后一条状态更新块
@@ -5058,11 +5071,38 @@ Bot: 咋了|||我也没睡|||【图片：昏暗的房间，只有电脑屏幕亮
 
         // 7. API 请求
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
+
+// ===== 抽签事件：仅注入本次 messages，不落库 =====
+const fortuneEventForThisRequest = pendingFortuneEvent ? String(pendingFortuneEvent).trim() : '';
+if (fortuneEventForThisRequest) {
+const fortunePrompt =
+  `你是${chat.name}，不是AI。` +
+  `刚刚你亲身经历了：${fortuneEventForThisRequest}。` +
+  `现在请你直接像微信发消息一样开口：先随口吐槽/反应两句，再自然把话题接着聊下去（问对方在干嘛/顺便聊相关事）。` +
+  `不要写说明文，不要总结，不要提“系统/提示/规则/记录/仅你可见/例如”。` +
+  `不要照抄事件原句，要用你自己的口吻改写。`;
+
+
+
+
+    // 插入到主 systemPrompt 后、历史消息前（索引 1）
+   messages.splice(1, 0, { role: 'system', content: fortunePrompt });
+
+
+    pendingFortuneEvent = null;
+}
+
+
+
+
         const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions' 
             : currentApiConfig.baseUrl + '/chat/completions';
 
         const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+
+console.log('FORTUNE_INJECT_CHECK:', messages.filter(m => m.role==='system').slice(0,3));
+
 
         const response = await fetch(requestUrl, {
             method: 'POST',
@@ -5078,9 +5118,37 @@ Bot: 咋了|||我也没睡|||【图片：昏暗的房间，只有电脑屏幕亮
             })
         });
 
-        if (!response.ok) throw new Error('API请求失败');
-        const data = await response.json();
-        let aiReply = data.choices[0].message.content.trim();
+        //ai回复失败打印
+        const rawText = await response.text();
+let data;
+try {
+    data = JSON.parse(rawText);
+} catch (e) {
+    throw new Error('API返回非JSON：' + rawText.slice(0, 200));
+}
+
+if (!response.ok) {
+    const msg = (data && data.error && data.error.message) ? data.error.message : rawText;
+    throw new Error(msg);
+}
+
+// 关键：处理 choices 为空
+if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+    // 这里不崩溃成“AI未返回可用文本”，而是给出明确原因提示
+    console.warn('AI empty choices:', data);
+    throw new Error('模型返回空回复（choices为空）。请重试一次，或更换模型/降低提示词长度。');
+}
+
+const msg0 = data.choices[0];
+const content = msg0 && msg0.message && typeof msg0.message.content === 'string' ? msg0.message.content : '';
+let aiReply = content.trim();
+
+if (!aiReply) {
+    console.warn('AI empty content:', data);
+    throw new Error('模型返回了空内容。请重试一次，或更换模型。');
+}
+
+
 
   // ★ 新增：提取礼物信息（超级宽容版，自动修正AI造词）
 let giftData = null;
@@ -5178,7 +5246,7 @@ if (jsonStrRaw) {
                         product_name: nameMatch ? nameMatch[1] : '礼物',
                         price: priceMatch ? parseFloat(priceMatch[1]) : 0
                     };
-                    console.log('✅ 正则提取并修正成功:', giftData);
+                   
                     aiReply = aiReply.replace(jsonStrRaw, '').trim();
                 }
             }
@@ -5257,7 +5325,7 @@ if (statusText) {
 const statusUpdateMatch = aiReply.match(/\[心声更新\](.*?)\[\/心声更新\]/s);
 if (statusUpdateMatch) {
     const statusStr = statusUpdateMatch[1];
-    console.log('🔍 捕获到心声更新:', statusStr);
+   
 
     const parseField = (field) => {
         const regex = new RegExp(field + '[:：]([^|]+)');
@@ -5275,7 +5343,7 @@ if (statusUpdateMatch) {
         thoughts: parseField('想法') || '...',
     };
 
-    console.log('✅ 解析后的心声状态:', newStatus);
+
 
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
@@ -5285,7 +5353,7 @@ if (statusUpdateMatch) {
             allData[currentChatId].statusMonitor = newStatus;
             saveToDB('characterInfo', allData);
 
-            console.log('💾 心声状态已保存到数据库');
+            
 
             loadStatusMonitorData();
             updateHeartbeatBarVisibility();
@@ -5362,11 +5430,18 @@ aiReply = aiReply.replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, (m) =
             .replace(/\|\|\|+$/g, '')
             .replace(/\|\|\|{3,}/g, '|||')
             .trim();
+            messageContent = messageContent.replace(/(^|\|\|\|)\s*[：:\-—]+\s*/g, '$1');
+messageContent = messageContent.replace(/\b20\d{2}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\b/g, '');
+
+            // ★★★ 新增：清理 [[/CARD_HTML]] 后面泄露的 HTML 闭合标签 ★★★
+messageContent = messageContent.replace(/(\[\[\/CARD_HTML\]\])\s*(<\/[^>]+>)+/g, '$1');
+// ★★★ 新增：清理 [[CARD_HTML]] 前面可能的 HTML 开始标签 ★★★
+messageContent = messageContent.replace(/(<[^/>]+>)+\s*(\[\[CARD_HTML\]\])/g, '$2');
 
      messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
     let emoji = searchEmojiByKeyword(keyword.trim());
     if (!emoji && emojiList.length > 0) {
-        console.log(`关键词 [${keyword}] 没搜到，随机兜底一个`);
+   
         emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
     }
     if (emoji) {
@@ -5392,7 +5467,12 @@ if (cardBlocks.length > 0) {
     });
 }
 
-
+ // ★★★ 新增：自动检测并包裹裸露的 HTML ★★★
+        // 如果 AI 自己写了 <style> 或 <div> 等 HTML 但没用 [[CARD_HTML]] 包裹，自动包裹
+        messageContent = messageContent.replace(
+            /(<style[\s\S]*?<\/style>[\s\S]*?<\/div>)/g,
+            '[[CARD_HTML]]$1[[/CARD_HTML]]'
+        );
 
         // 12. 分割消息
         let messageList = messageContent
@@ -5526,18 +5606,47 @@ if (/[【\[]\s*确认代付\s*[】\]]/.test(msgText)) {
 }
 
 
+// 构建消息对象
+const newId = Date.now() + i;
 
-            // 构建消息对象
-            const newId = Date.now() + i;
-            let newMessage = {
-                id: newId,
-                chatId: currentChatId,
-                senderId: chat.name,
-                time: getCurrentTime(),
-                isRevoked: false,
-                type: 'text',
-                content: msgText
-            };
+// ▼▼▼ 世界书图处理 ▼▼▼
+const { finalText, imageMessage } = await processWorldbookImage(msgText);
+
+// ★★★ 核心修复：拆分文字和 HTML 卡片 ★★★
+const parts = splitHtmlCardFromText(finalText);
+const textPart = (parts.text || '').trim();
+const cardPart = parts.cardHtml;
+
+// 1. 如果有文字部分，创建文字消息
+let newMessage = null;
+if (textPart) {
+    newMessage = {
+        id: newId,
+        chatId: currentChatId,
+        senderId: chat.name,
+        time: getCurrentTime(),
+        isRevoked: false,
+        type: extractImageDescription(textPart) ? 'text_image' : 'text',
+        content: textPart
+    };
+}
+
+// 2. 如果有卡片部分，创建卡片消息（延迟100ms，确保顺序）
+let cardMessage = null;
+if (cardPart) {
+    cardMessage = {
+        id: newId + 1,
+        chatId: currentChatId,
+        senderId: chat.name,
+        time: getCurrentTime(),
+        isRevoked: false,
+        type: 'text',
+        content: `[[CARD_HTML]]${cardPart}[[/CARD_HTML]]` // 完整保留卡片标记
+    };
+}
+// ▲▲▲ 世界书图处理 + HTML 拆分结束 ▲▲▲
+
+
 
 // 处理 AI 的引用（兼容【】和[]）
 if (aiQuotes.length > 0) {
@@ -5628,18 +5737,58 @@ if (emojiMatch) {
                 newMessage.memoryId = triggeredMemoryId;
             }
 
-            allMessages.push(newMessage);
-            saveMessages();
-              const previewText = newMessage.type === 'text_image' ? '[文字图]' : (newMessage.type === 'text' ? msgText : `[${newMessage.type}]`);
-            updateChatLastMessage(currentChatId, newMessage.type === 'text' ? msgText : `[${newMessage.type}]`);
-            if (typeof playIncomingSound === 'function') {
-                playIncomingSound();
-            }
-            visibleMessagesCount = allMessages.length;
-            renderMessages();
-            scrollToBottom();
-            playNotificationSound();
-        }
+            // ★★★ 核心修复：按顺序插入文字、卡片、图片（如果有） ★★★
+
+// 1. 插入文字消息（如果有）
+if (newMessage) {
+    allMessages.push(newMessage);
+}
+
+// 2. 插入卡片消息（如果有）
+if (cardMessage) {
+    allMessages.push(cardMessage);
+}
+
+// 3. 插入世界书图（如果有）
+if (imageMessage) {
+    const imgMsgId = Date.now() + i + 2;
+    const imgMessage = {
+        id: imgMsgId,
+        chatId: currentChatId,
+        senderId: chat.name,
+        time: getCurrentTime(),
+        isRevoked: false,
+        type: 'image',
+        content: imageMessage.content
+    };
+    allMessages.push(imgMessage);
+}
+
+// 保存消息
+saveMessages();
+
+// 更新预览（取最后一条的内容）
+let previewText = '[消息]';
+if (cardMessage) previewText = '[HTML卡片]';
+else if (imageMessage) previewText = '[图片]';
+else if (newMessage) {
+    previewText = newMessage.type === 'text_image' ? '[文字图]' : (newMessage.type === 'text' ? textPart : `[${newMessage.type}]`);
+}
+
+updateChatLastMessage(currentChatId, previewText);
+
+if (typeof playIncomingSound === 'function') {
+    playIncomingSound();
+}
+
+visibleMessagesCount = allMessages.length;
+renderMessages();
+scrollToBottom();
+playNotificationSound();
+
+ }
+
+
   // ★★★ 新增：循环结束后统一刷新一次，确保所有状态更新生效 ★★★
         visibleMessagesCount = allMessages.length;
         renderMessages();
@@ -5675,36 +5824,33 @@ function setCharacterStatusForChat(chatId, statusText) {
     });
 }
 
-// ================================
-// HTML卡片协议：[[CARD_HTML]]...[[/CARD_HTML]]
-// 中文注释：只做“提取/剔除/渲染容器/安全净化”，不做生成逻辑
-// ================================
 function splitHtmlCardFromText(text) {
     const s = String(text || '');
-
     const startTag = '[[CARD_HTML]]';
     const endTag = '[[/CARD_HTML]]';
 
     const start = s.indexOf(startTag);
     const end = s.indexOf(endTag);
 
-    // 中文注释：找不到完整区块 -> 当作纯文本
     if (start === -1 || end === -1 || end < start) {
         return { text: s, cardHtml: null };
     }
 
     const before = s.slice(0, start);
     const inside = s.slice(start + startTag.length, end);
-    const after = s.slice(end + endTag.length);
+    let after = s.slice(end + endTag.length);
 
-    // 中文注释：text = 去掉卡片后的正常文本（保留前后文本）
+    // ★★★ 核心修复：清理 after 里泄露的 HTML 闭合标签 ★★★
+    after = after.replace(/^\s*(<\/[^>]+>)+\s*/g, ''); // 去掉开头的所有 </xxx> 标签
+    after = after.replace(/\s*(<\/[^>]+>)+\s*$/g, ''); // 去掉结尾的所有 </xxx> 标签
+
     const cleanText = (before + after).trim();
-
-    // 中文注释：cardHtml = 卡片内部原始HTML
     const cardHtml = inside.trim();
+
 
     return { text: cleanText, cardHtml: cardHtml || null };
 }
+
 
 function sanitizeHtmlCard(dirtyHtml) {
     let html = String(dirtyHtml || '');
@@ -5782,23 +5928,17 @@ function sanitizeHtmlCard(dirtyHtml) {
 // ================================
 function buildHtmlCardContainer(cardHtml, msgId) {
     const safeId = String(msgId || '');
-
-    // 中文注释：先净化再渲染
     const safeHtml = sanitizeHtmlCard(cardHtml);
 
+    // ★★★ 极简模式：只返回卡片内容本身，不加任何容器样式 ★★★
     return `
-        <div class="html-card-wrap" data-card-msg-id="${safeId}"
-             style="width:240px; max-width:240px; height:270px; max-height:270px; overflow:hidden; border-radius:14px; border:1px solid rgba(0,0,0,0.08); background:#fff; box-shadow: 0 8px 18px rgba(0,0,0,0.08);">
-            <div class="html-card-inner"
-                 style="width:100%; height:100%; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; box-sizing:border-box;">
-                <div class="html-card-content"
-                     style="width:100%; box-sizing:border-box; overflow-wrap:anywhere; word-break:break-word;">
-                    ${safeHtml}
-                </div>
-            </div>
+        <div class="html-card-wrap" data-card-msg-id="${safeId}">
+            ${safeHtml}
         </div>
     `;
 }
+
+
 
 // ================================
 // 中文注释：初始化卡片分页（每条消息渲染后调用一次）
@@ -5915,9 +6055,7 @@ async function isHtmlCardAllowedForCurrentChat() {
 }
 
 
-
-
-// ============ 修复版：渲染消息列表 (解决文字竖排问题) ============
+// ============ 修复版：渲染消息列表 (HTML 卡片独立于气泡) ============
 async function renderMessages() {
     const container = document.getElementById('messagesList');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
@@ -5935,9 +6073,8 @@ async function renderMessages() {
         return;
     }
     
-// 中文注释：只计算一次“本聊天是否允许HTML卡片”，避免每条消息都查DB
-const htmlCardAllowed = await isHtmlCardAllowedForCurrentChat();
-
+    // 中文注释：只计算一次"本聊天是否允许HTML卡片"，避免每条消息都查DB
+    const htmlCardAllowed = await isHtmlCardAllowedForCurrentChat();
 
     container.innerHTML = visibleMessages.map((msg) => {
         const isMe = msg.senderId === 'me';
@@ -5949,13 +6086,9 @@ const htmlCardAllowed = await isHtmlCardAllowedForCurrentChat();
             return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">${checkbox}<div class="message-bubble"><div class="revoked-message" onclick="toggleRevokedContent(${msg.id})">此消息已撤回</div><div class="revoked-content" id="revoked-${msg.id}">${msg.content}</div></div><div class="message-time">${formatMessageTime(msg.time)}</div></div>`;
         }
         
-// ====== 隐藏转发上下文：不渲染 START ======
-// 中文注释：moment_forward_hidden 只用于 AI 上下文，不显示在聊天界面
-if (msg.type === 'moment_forward_hidden') return '';
-if (msg.type === 'moment_vision_hidden') return '';
-
-// ====== 隐藏转发上下文：不渲染 END ======
-
+        // 隐藏转发上下文：不渲染
+        if (msg.type === 'moment_forward_hidden') return '';
+        if (msg.type === 'moment_vision_hidden') return '';
 
         // 系统消息
         if (msg.type === 'system') return `<div class="system-message">${msg.content}</div>`;
@@ -5964,50 +6097,21 @@ if (msg.type === 'moment_vision_hidden') return '';
         if (msg.type === 'transfer') {
             const isSent = msg.senderId === 'me';
             const data = msg.transferData;
-            let statusClass = isSent ? (data.status === 'aiReceived' ? 'received' : 'sent') : data.status;
-            let statusText = (isSent && data.status === 'aiReceived') || (!isSent && data.status === 'received') ? '✓ 已领取' : (!isSent && data.status === 'pending' ? '点击领取' : '');
-            const clickEvent = (!isSent && data.status === 'pending') ? `onclick="receiveTransfer(${msg.id})"` : '';
-            return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">${checkbox}<div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}><div class="transfer-icon">🧧</div><div class="transfer-amount">¥${data.amount.toFixed(2)}</div>${data.note ? `<div class="transfer-note">${data.note}</div>` : ''}${statusText ? `<div class="transfer-status">${statusText}</div>` : ''}</div><div class="message-time">${formatMessageTime(msg.time)}</div></div>`;
-        }
-
-              // 转账消息
-        if (msg.type === 'transfer') {
-            const isSent = msg.senderId === 'me';
-            const data = msg.transferData;
-            
-            // 判断是否已领取
             const isReceived = (isSent && data.status === 'aiReceived') || (!isSent && data.status === 'received');
-            
-            // 状态类名
             const statusClass = isReceived ? 'received' : '';
-            
-            // 1. 标题：有备注显示备注，没有显示默认祝福
             const title = data.note ? data.note : '恭喜发财';
-            
-            // 2. 来源：显示名字
             const currentChat = chats.find(c => c.id === currentChatId);
             const chatName = currentChat ? currentChat.name : 'TA';
             const fromName = isSent ? '我' : chatName;
-            
-            // 3. 底部文案
             const remarkText = '大吉大利，万事如意';
-            
-            // 4. 按钮文字
             let actionText = '';
             if (isReceived) actionText = '已领取';
             else if (isSent) actionText = '等待领取';
             else actionText = '领取红包';
-            
-            // 点击事件
             const clickEvent = (!isSent && data.status === 'pending') ? `onclick="receiveTransfer(${msg.id})"` : '';
-
-            // 礼物图标 SVG
             const giftIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`;
-
-            // 爱心图标 SVG
             const heartIconSvg = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="margin-left:4px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
 
-            // ★★★ 这里生成了新的 HTML 结构，包含了 .transfer-title (显示备注) ★★★
             return `
             <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                 ${checkbox}
@@ -6031,132 +6135,131 @@ if (msg.type === 'moment_vision_hidden') return '';
             </div>`;
         }
 
-// ============ 🎁 礼物卡片渲染 (点击弹窗显示小票) ============
-if (msg.type === 'shopping_order') {
-    const data = msg.orderData;
-    
-    // ★ 根据订单类型决定显示文案
-    let cardText = '礼物来了喵';
-    if (data.orderType === 'ask_ta_pay' || data.orderType === 'ai_ask_user_pay') {
-        cardText = '请帮喵代付';
-    }
-
-    return `
-        <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
-            ${checkbox}
-            <div class="gift-card" onclick="openReceiptModal(${msg.id})">
-                <div class="gift-card-main">
-                    <div class="gift-card-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M20 12v10H4V12"></path>
-                            <path d="M2 7h20v5H2z"></path>
-                            <path d="M12 22V7"></path>
-                            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-                        </svg>
+        // 礼物卡片渲染
+        if (msg.type === 'shopping_order') {
+            const data = msg.orderData;
+            let cardText = '礼物来了喵';
+            if (data.orderType === 'ask_ta_pay' || data.orderType === 'ai_ask_user_pay') {
+                cardText = '请帮喵代付';
+            }
+            return `
+                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                    ${checkbox}
+                    <div class="gift-card" onclick="openReceiptModal(${msg.id})">
+                        <div class="gift-card-main">
+                            <div class="gift-card-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M20 12v10H4V12"></path>
+                                    <path d="M2 7h20v5H2z"></path>
+                                    <path d="M12 22V7"></path>
+                                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                                </svg>
+                            </div>
+                            <div class="gift-card-btn">${cardText}</div>
+                        </div>
                     </div>
-                    <div class="gift-card-btn">${cardText}</div>
-                </div>
-            </div>
-            <div class="message-time">${formatMessageTime(msg.time)}</div>
-        </div>
-    `;
-}
-
-
-// 语音消息
-if (msg.type === 'voice') {
-    // 生成引用 HTML
-    let voiceQuoteHtml = '';
-    if (msg.quotedMessageId) {
-        let shortContent = msg.quotedContent;
-        if (shortContent && shortContent.length > 15) {
-            shortContent = shortContent.substring(0, 15) + '...';
-        }
-        voiceQuoteHtml = `
-            <div class="message-quoted-outside" onclick="scrollToMessage(${msg.quotedMessageId})">
-                <span class="quoted-author">${msg.quotedAuthor}</span>
-                <span class="quoted-text">${shortContent}</span>
-            </div>
-        `;
-    }
-
-    return `
-        <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
-            ${checkbox}
-            <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
-                ${voiceQuoteHtml}
-                <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id});${msg.senderId !== 'me' ? `checkAndPlayVoice('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')` : ''}">
-                    <div class="voice-play-btn"><i class="fa fa-play"></i></div>
-                    <div class="voice-wave">
-                        <span class="wave-bar"></span>
-                        <span class="wave-bar"></span>
-                        <span class="wave-bar"></span>
-                        <span class="wave-bar"></span>
-                        <span class="wave-bar"></span>
-                    </div>
-                    <div class="voice-duration">${msg.voiceDuration}"</div>
-                </div>
-                <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
-            </div>
-            <div class="message-time">${formatMessageTime(msg.time)}</div>
-        </div>
-    `;
-}
-
-
- // ============ 修改开始 ============
-        // 普通/图片/文字图 消息处理
-        let messageContent = '';
-        let isTransparentBubble = false; // 新增标记：是否透明气泡
-        if (msg.type === 'image') {
-            // 图片
-            messageContent = `<img src="${msg.content}" class="message-image" alt="图片" onclick="viewImage('${msg.content}')">`;
-            // 图片通常也可以去掉气泡背景，看你喜好，这里暂时保留或根据需要开启
-            // isTransparentBubble = true; 
-        }else if (msg.type === 'text_image') {
-            // ★★★ 文字图 (核心修改) ★★★
-            isTransparentBubble = true; // 去掉气泡背景
-            
-            // 固定的伪装图 URL
-            const fakeImage = "https://img.heliar.top/file/1769009400004_IMG_9811.jpeg";
-            
-            // 对描述内容进行编码，防止 HTML 注入破坏 onclick
-            const encodedDesc = encodeURIComponent(msg.content);
-            
-            messageContent = `
-                <div class="text-image-card" onclick="showTextImageDetail('${encodedDesc}')">
-                    <img src="${fakeImage}" class="text-image-cover" alt="文字图">
-                  
+                    <div class="message-time">${formatMessageTime(msg.time)}</div>
                 </div>
             `;
-        } else {
-            
-            
+        }
+
+        // 语音消息
+        if (msg.type === 'voice') {
+            let voiceQuoteHtml = '';
+            if (msg.quotedMessageId) {
+                let shortContent = msg.quotedContent;
+                if (shortContent && shortContent.length > 15) {
+                    shortContent = shortContent.substring(0, 15) + '...';
+                }
+                voiceQuoteHtml = `
+                    <div class="message-quoted-outside" onclick="scrollToMessage(${msg.quotedMessageId})">
+                        <span class="quoted-author">${msg.quotedAuthor}</span>
+                        <span class="quoted-text">${shortContent}</span>
+                    </div>
+                `;
+            }
+            return `
+                <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+                    ${checkbox}
+                    <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
+                        ${voiceQuoteHtml}
+                        <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id});${msg.senderId !== 'me' ? `checkAndPlayVoice('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')` : ''}">
+                            <div class="voice-play-btn"><i class="fa fa-play"></i></div>
+                            <div class="voice-wave">
+                                <span class="wave-bar"></span>
+                                <span class="wave-bar"></span>
+                                <span class="wave-bar"></span>
+                                <span class="wave-bar"></span>
+                                <span class="wave-bar"></span>
+                            </div>
+                            <div class="voice-duration">${msg.voiceDuration}"</div>
+                        </div>
+                        <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
+                    </div>
+                    <div class="message-time">${formatMessageTime(msg.time)}</div>
+                </div>
+            `;
+        }
+
+       // 普通/图片/文字图 消息处理
+let messageContent = '';
+let isTransparentBubble = false;
+
+if (msg.type === 'image') {
+    messageContent = `<img src="${msg.content}" class="message-image" alt="图片" onclick="viewImage('${msg.content}')">`;
+} else if (msg.type === 'text_image') {
+    isTransparentBubble = true;
+    const fakeImage = "https://img.heliar.top/file/1769009400004_IMG_9811.jpeg";
+    
+    // ★★★ 关键修复：防止内容里有单引号/双引号破坏 onclick ★★★
+    const rawContent = String(msg.content || '');
+    
+    // 先转义特殊字符（防止 HTML 注入和 JS 语法错误）
+    const escapedForJs = rawContent
+        .replace(/\\/g, '\\\\')   // 转义反斜杠
+        .replace(/'/g, "\\'")     // 转义单引号
+        .replace(/"/g, '\\"')     // 转义双引号
+        .replace(/\r/g, '\\r')    // 转义回车
+        .replace(/\n/g, '\\n');   // 转义换行
+    
+    // 再 URL 编码（双重保险）
+    const encodedDesc = encodeURIComponent(rawContent);
+    
+
+    
+    messageContent = `
+        <div class="text-image-card" onclick="showTextImageDetail('${encodedDesc}')">
+            <img src="${fakeImage}" class="text-image-cover" alt="文字图">
+        </div>
+    `;
+} else {
     // 普通文本（支持附加 HTML 卡片协议）
     const rawText = String(msg.content || '');
-
-    // 1) 先按协议拆分：正常文本 + 卡片区块
-    const parts = splitHtmlCardFromText(rawText);
-    const cleanText = parts.text;       // 去掉卡片后的文本
-    const cardHtml = parts.cardHtml;    // 卡片HTML（可能为null）
-
-    // 2) 文本部分永远正常显示（如果为空就显示空）
-    // 中文注释：你之前要求“正常回复 + 卡片”，所以这里永远以文本为主
-    messageContent = cleanText;
-
-    // 3) 卡片展示策略：
-    // - 允许渲染：追加卡片容器
-    // - 不允许渲染：直接丢弃卡片（不显示任何[[CARD_HTML]]残留）
-    if (cardHtml && htmlCardAllowed) {
-        messageContent += buildHtmlCardContainer(cardHtml, msg.id);
+    
+    // ★★★ 增加调试日志 ★★★
+    if (rawText.includes('[[CARD_HTML]]')) {
+     
     }
+    
+    const parts = splitHtmlCardFromText(rawText);
+    const cleanText = parts.text || '';
+    const cardHtml = parts.cardHtml;
+    
 
-    // 4) 如果文本为空但卡片存在且允许渲染，仍然可以只显示卡片
-    // （如果你不想允许“只卡片”，后续我们可以强制要求必须有文本）
-}
-
-        // 记忆回溯提示条
+   
+    
+    // ★★★ 核心修复：只把文本放进气泡，卡片单独存储 ★★★
+    messageContent = cleanText;
+    
+    // 把卡片HTML临时存到消息对象上（不要直接拼到 messageContent）
+    if (cardHtml && htmlCardAllowed) {
+        msg._htmlCard = buildHtmlCardContainer(cardHtml, msg.id);
+        console.log('  ✅ 卡片已暂存到 msg._htmlCard');
+    } else {
+        msg._htmlCard = null;
+    }
+}        // 记忆回溯提示条
         let memoryHintHtml = '';
         if (msg.memoryId) {
             memoryHintHtml = `
@@ -6165,11 +6268,11 @@ if (msg.type === 'voice') {
                 </div>
             `;
         }
+
         // 引用消息渲染
         let quoteHtml = '';
         if (msg.quotedMessageId) {
             let displayQuoteContent = msg.quotedContent || '';
-            // 简单判断引用的是否为图片
             if (displayQuoteContent.startsWith('data:image') || displayQuoteContent.length > 500) { 
                 displayQuoteContent = '【图片/长内容】';
             }
@@ -6177,7 +6280,6 @@ if (msg.type === 'voice') {
                 displayQuoteContent = displayQuoteContent.substring(0, 30) + '...';
             }
             const quoteAuthor = msg.quotedAuthor || '未知';
-            
             quoteHtml = `
                 <div class="message-quoted-outside" onclick="scrollToMessage(${msg.quotedMessageId})">
                     <span class="quoted-author">${quoteAuthor}：</span>
@@ -6185,34 +6287,65 @@ if (msg.type === 'voice') {
                 </div>
             `;
         }
-        // 动态计算气泡样式：如果是文字图，则背景透明、无阴影、无内边距
+
+     // 气泡样式
         const bubbleStyle = isTransparentBubble 
             ? 'background:transparent !important; box-shadow:none !important; padding:0 !important; border:none !important;' 
             : 'max-width: 100%; box-sizing: border-box;';
+
+        // ★★★ 核心修复：气泡包裹文本，卡片在气泡下方独立渲染 ★★★
+        let cardHtml = msg._htmlCard || '';
+
+     // ★★★ 判断是否是纯卡片消息（没有文字，只有卡片） ★★★
+const isPureCard = cardHtml && (
+    !messageContent || 
+    messageContent.trim().length === 0 ||
+    messageContent.trim() === '' ||
+    /^\s*$/.test(messageContent)  // 正则匹配：只有空白字符
+);
+
+
+
+
+// 如果是纯卡片消息，不要气泡包裹
+if (isPureCard) {
+
+    return `
+        <div class="message-item pure-card ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+            ${checkbox}
+            <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
+                ${quoteHtml}
+                ${cardHtml}
+                ${memoryHintHtml}
+            </div>
+            <div class="message-time">${formatMessageTime(msg.time)}</div>
+        </div>
+    `;
+}
+
+
+        // 普通消息：用气泡包裹
         return `
             <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                 ${checkbox}
-                <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
+                <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
                     ${quoteHtml}
-                    <!-- 注意这里应用了 bubbleStyle -->
                     <div class="message-bubble" data-msg-id="${msg.id}" style="${bubbleStyle}">
                         ${messageContent}
                     </div>
+                    ${cardHtml}
                     ${memoryHintHtml}
                 </div>
                 <div class="message-time">${formatMessageTime(msg.time)}</div>
             </div>
         `;
-        // ============ 修改结束 ============
-
 
     }).join('');
 
-// 中文注释：初始化本次渲染出来的所有卡片分页（默认显示第一页）
-container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging(wrap));
 
+    // 初始化卡片分页
+    container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging(wrap));
 
-    // 调用那个“丢失”的函数
     updateRetryButtonState();
     
     if (!isMultiSelectMode) {
@@ -6221,6 +6354,10 @@ container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging
         });
     }
 }
+
+
+
+
 
 
 // 4. 显示记忆详情弹窗

@@ -488,6 +488,7 @@ window.addEventListener('storage', function(e) {
         });
         // 世界书功能
 let worldbooks = [];
+let tempSelectedWorldbooks = [];
 let categories = ['默认分类'];
 let currentCategory = 'all';
 
@@ -497,21 +498,252 @@ let currentCategory = 'all';
 // - 用于后续“HTML卡片插件”读取模板参考
 // ========================
 function ensureFixedCategories() {
-    // 中文注释：防御性处理，确保 categories 一定是数组
     if (!Array.isArray(categories)) {
         categories = [];
     }
 
-    // 中文注释：保证“默认分类”存在（你原本就是默认有的，这里做保险）
     if (!categories.includes('默认分类')) {
         categories.unshift('默认分类');
     }
 
-    // 中文注释：保证固定分类 html 永远存在
     if (!categories.includes('html')) {
         categories.push('html');
     }
+
+    // ▼▼▼ 新增：固定分类【ai发图】▼▼▼
+    if (!categories.includes('ai发图')) {
+        categories.push('ai发图');
+    }
+    // ▲▲▲ 新增结束 ▲▲▲
 }
+
+// ====== 关联世界书弹窗相关函数 START ======
+function openWorldbookSelectorModal() {
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        
+        // 初始化临时选中列表（现在是ID数组）
+        tempSelectedWorldbooks = charData.linkedWorldbooks || [];
+        currentFilterCategory = 'all';
+        
+        // 渲染分类筛选标签
+        renderWorldbookCategoryFilter();
+        
+        // 渲染世界书列表
+        renderWorldbookSelectorModal();
+        
+        // 显示弹窗
+        document.getElementById('worldbookSelectorModal').style.display = 'flex';
+    });
+}
+// 渲染分类筛选标签
+function renderWorldbookCategoryFilter() {
+    const container = document.getElementById('worldbookCategoryFilter');
+    
+    loadFromDB('categories', (data) => {
+        const allCategories = Array.isArray(data) ? data : (categories || ['默认分类']);
+        
+        container.innerHTML = `
+            <div onclick="filterWorldbooksByCategory('all')" style="
+                padding: 6px 14px;
+                background: ${currentFilterCategory === 'all' ? '#667eea' : '#f0f0f0'};
+                color: ${currentFilterCategory === 'all' ? 'white' : '#666'};
+                border-radius: 16px;
+                font-size: 13px;
+                cursor: pointer;
+                white-space: nowrap;
+                font-weight: 500;
+            ">全部</div>
+        ` + allCategories.map(cat => `
+            <div onclick="filterWorldbooksByCategory('${cat}')" style="
+                padding: 6px 14px;
+                background: ${currentFilterCategory === cat ? '#667eea' : '#f0f0f0'};
+                color: ${currentFilterCategory === cat ? 'white' : '#666'};
+                border-radius: 16px;
+                font-size: 13px;
+                cursor: pointer;
+                white-space: nowrap;
+                font-weight: 500;
+            ">${cat}</div>
+        `).join('');
+    });
+}
+// 按分类筛选世界书
+function filterWorldbooksByCategory(category) {
+    currentFilterCategory = category;
+    renderWorldbookCategoryFilter();
+    renderWorldbookSelectorModal();
+}
+// 渲染世界书列表
+function renderWorldbookSelectorModal() {
+    const container = document.getElementById('worldbookSelectorList');
+    const countSpan = document.getElementById('worldbookSelectedCount');
+    
+    loadFromDB('worldbooks', (data) => {
+        let allWorldbooks = [];
+        if (Array.isArray(data)) {
+            allWorldbooks = data;
+        } else if (data && Array.isArray(data.list)) {
+            allWorldbooks = data.list;
+        }
+        
+        // 按分类筛选
+        const filteredBooks = currentFilterCategory === 'all' 
+            ? allWorldbooks 
+            : allWorldbooks.filter(wb => wb.category === currentFilterCategory);
+        
+        if (filteredBooks.length === 0) {
+            container.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: #999; font-size: 14px;">该分类下暂无世界书</div>';
+            countSpan.textContent = tempSelectedWorldbooks.length;
+            return;
+        }
+        
+container.innerHTML = filteredBooks.map(wb => {
+    const isChecked = tempSelectedWorldbooks.includes(wb.id);
+    return `
+        <label style="
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 0.5px solid #f5f5f5;
+            cursor: pointer;
+        ">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 15px; color: #333; font-weight: 500;">${wb.title || '无标题'}</span>
+                <span style="font-size: 12px; color: #999;">${wb.category || '默认分类'}</span>
+            </div>
+            <input type="checkbox" 
+                   id="wb-checkbox-${wb.id}"
+                   value="${wb.id}" 
+                   ${isChecked ? 'checked' : ''}
+                   onchange="toggleWorldbookItem(${wb.id}, this.checked)"
+                   style="margin-left: 12px; accent-color: #667eea; transform: scale(1.2); cursor: pointer;">
+        </label>
+    `;
+}).join('');
+
+
+        
+        // 更新已选数量
+        countSpan.textContent = tempSelectedWorldbooks.length;
+    });
+}
+// 切换世界书选中状态
+function toggleWorldbookItem(id, isChecked) {
+    console.log('切换世界书:', id, '选中状态:', isChecked);
+    
+    if (isChecked) {
+        if (!tempSelectedWorldbooks.includes(id)) {
+            tempSelectedWorldbooks.push(id);
+        }
+    } else {
+        tempSelectedWorldbooks = tempSelectedWorldbooks.filter(wbId => wbId !== id);
+    }
+    
+    console.log('当前临时选择列表:', tempSelectedWorldbooks);
+    
+    // 更新已选数量
+    document.getElementById('worldbookSelectedCount').textContent = tempSelectedWorldbooks.length;
+}
+
+// 保存世界书选择
+// 保存世界书选择
+function saveWorldbookSelection() {
+    if (!currentChatId) {
+        alert('未找到当前聊天ID');
+        closeWorldbookSelectorModal();
+        return;
+    }
+
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        
+        // 确保当前角色数据存在
+        if (!allCharData[currentChatId]) {
+            allCharData[currentChatId] = {};
+        }
+        
+        const charData = allCharData[currentChatId];
+        
+        // 更新关联世界书（保存ID数组）
+        charData.linkedWorldbooks = [...tempSelectedWorldbooks];
+        
+        // 保存到数据库
+        saveToDB('characterInfo', allCharData);
+        
+        console.log('💾 世界书已保存:', tempSelectedWorldbooks);
+        
+        // ★★★ 延迟200ms后刷新显示，确保数据库写入完成 ★★★
+        setTimeout(() => {
+            // 更新全局变量
+            characterInfoData = charData;
+            
+            // 强制刷新显示
+            renderWorldbookCount();
+            
+            // 关闭弹窗
+            closeWorldbookSelectorModal();
+            
+            console.log('✅ 显示已刷新');
+        }, 200);
+    });
+}
+
+
+
+// 关闭弹窗
+function closeWorldbookSelectorModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('worldbookSelectorModal').style.display = 'none';
+    tempSelectedWorldbooks = [];
+    currentFilterCategory = 'all';
+}
+
+// 渲染已选世界书数量（简洁版）
+function renderWorldbookCount() {
+    const countText = document.getElementById('worldbookCountText');
+    
+    if (!countText) {
+        console.error('❌ 未找到 worldbookCountText 元素');
+        return;
+    }
+    
+    if (!currentChatId) {
+        countText.textContent = '未选择';
+        countText.style.color = '#999';
+        console.log('⚠️ currentChatId 为空');
+        return;
+    }
+    
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        const linked = charData.linkedWorldbooks || [];
+        
+     
+        
+        if (linked.length === 0) {
+            countText.textContent = '未选择';
+            countText.style.color = '#999';
+            console.log('  - 显示：未选择');
+        } else {
+            countText.textContent = `已选择 ${linked.length} 本`;
+            countText.style.color = '#667eea';
+            countText.style.fontWeight = '500';
+            console.log(`  - 显示：已选择 ${linked.length} 本`);
+        }
+    });
+}
+
+
+// ▼▼▼ 兼容旧函数名 ▼▼▼
+function renderWorldbookTags() {
+    renderWorldbookCount();
+}
+
+
+// ====== 关联世界书弹窗相关函数 END ======
 
 
 // API设置相关变量
@@ -772,19 +1004,19 @@ function closeCategoryModal(event) {
 function renderCategoryList() {
     const container = document.getElementById('categoryList');
     
-    // ▼▼▼ 优化：Ins 风格的列表布局 ▼▼▼
     container.innerHTML = categories.map(cat => `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f5f5f5;">
             <span style="font-size: 15px; color: #333; font-weight: 500;">${cat}</span>
-         ${(cat !== '默认分类' && cat !== 'html') ? 
+         ${(cat !== '默认分类' && cat !== 'html' && cat !== 'ai发图') ? 
     `<button class="ins-action-btn ins-btn-del" onclick="deleteCategory('${cat}')" style="padding: 6px 14px; font-size: 12px;">删除</button>` 
-    : (cat === 'html'
+    : (cat === 'html' || cat === 'ai发图'
         ? '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">固定分类</span>'
         : '<span style="font-size: 12px; color: #ccc; background: #f9f9f9; padding: 4px 8px; border-radius: 6px;">系统默认</span>')}
 
         </div>
     `).join('');
 }
+
 
 function addCategory() {
     const name = document.getElementById('newCategoryName').value.trim();
@@ -1142,6 +1374,7 @@ function loadChats() {
         renderChatList();
     });
 }
+bindChatItemClickDelegation();
 
 // 切换聊天/朋友圈/钱包 Tab
 function switchChatTab(tab) {
@@ -2527,18 +2760,20 @@ if (chat.avatarImage) {
     }
 
         // 填充表单
-      // 填充表单（添加空值检查）
+// 填充表单（添加空值检查）
 const remarkEl = document.getElementById('charRemark');
 const birthdayEl = document.getElementById('charBirthday');
-const addressEl = document.getElementById('charAddress');
+
 const personalityEl = document.getElementById('charPersonality');
 const myPersonalityEl = document.getElementById('myPersonality');
 
 if (remarkEl) remarkEl.value = charData.remark || '';      
 if (birthdayEl) birthdayEl.value = charData.birthday || '';
-if (addressEl) addressEl.value = charData.address || '';
+
+
 if (personalityEl) personalityEl.value = charData.personality || '';
 if (myPersonalityEl) myPersonalityEl.value = charData.myPersonality || '';
+
 
        
   // 加载上下文参考设置
@@ -2566,37 +2801,39 @@ if (autoSummaryCheckbox && autoSummaryPanel && autoSummaryThreshold) {
 // ▲▲▲ 新增结束 ▲▲▲
 
       
-     // 设置角色人设
-document.getElementById('charPersonality').value = charData.personality || '';
-document.getElementById('myPersonality').value = charData.myPersonality || '';
-// 加载关联世界书选择器
-renderWorldbookSelector(charData.linkedWorldbooks || []);
+    
+//设置任务角色//
+
+// ▼▼▼ 修改：使用新的标签渲染函数 ▼▼▼
+renderWorldbookTags();
+// ▲▲▲ 修改结束 ▲▲▲
       
 // 加载城市信息复选框状态
+const cityCheckbox = document.getElementById('cityInfoCheckbox');
+if (cityCheckbox) {
+    cityCheckbox.checked = charData.cityInfoEnabled === true;
+}
 
-        const cityCheckbox = document.getElementById('cityInfoCheckbox');
-        if (cityCheckbox) {
-            // 强制转换为布尔值，防止 undefined 导致错误
-            cityCheckbox.checked = charData.cityInfoEnabled === true;
-        }
-
-// 中文注释：回填 HTML 插件开关（默认关闭）
+// 中文注释:回填 HTML 插件开关（默认关闭）
 const htmlPluginCheckbox = document.getElementById('htmlPluginCheckbox');
 if (htmlPluginCheckbox) {
     htmlPluginCheckbox.checked = charData.htmlPluginEnabled === true;
 }
 
+// ▼▼▼ 新增：加载角色发图模式 ▼▼▼
+const imageModeSelect = document.getElementById('charImageMode');
+if (imageModeSelect) {
+    imageModeSelect.value = charData.imageMode || 'text';
+}
+// ▲▲▲ 新增结束 ▲▲▲
 
-     // 控制查看按钮的显示
+// 控制查看按钮的显示
 const viewBtn = document.getElementById('viewWeatherBtn');
 if (viewBtn) {
     viewBtn.style.display = charData.cityInfoEnabled ? 'block' : 'none';
 }
 
-// 加载关联世界书选择器（延迟执行确保DOM已渲染）
-setTimeout(() => {
-    renderWorldbookSelector(charData.linkedWorldbooks || []);
-}, 500);
+
 
         
       // 更新显示（添加空值检查）
@@ -2614,6 +2851,7 @@ if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
   // 更新日记数量
 updateDiaryCount();
 updateArchiveCount();
+renderWorldbookCount();
 
 }
       // 同步上下文参考的滑动条和输入框
@@ -2664,11 +2902,13 @@ function saveCharacterInfo() {
             // address: getInputValue('charAddress'), // 如果你把地址栏删了，这行可以注释掉
             personality: getInputValue('charPersonality'),
             myPersonality: getInputValue('myPersonality'),
-            linkedWorldbooks: getSelectedWorldbooks() || [],
+           linkedWorldbooks: characterInfoData?.linkedWorldbooks || [],
+
              htmlPluginEnabled: document.getElementById('htmlPluginCheckbox')?.checked === true,
             contextRounds: parseInt(document.getElementById('contextRoundsInput').value) || 30,
              autoSummaryEnabled: document.getElementById('autoSummaryCheckbox')?.checked || false,
     autoSummaryThreshold: parseInt(document.getElementById('autoSummaryThresholdInput')?.value) || 50,
+     imageMode: document.getElementById('charImageMode')?.value || 'text',
         };
         
         // 3. 保存回数据库
@@ -2779,6 +3019,7 @@ function saveBasicInfo() {
             
             // 保存 characterInfo 表
             saveToDB('characterInfo', allCharData);
+               renderWorldbookTags();
             
             // 3. 刷新所有受影响的 UI
             // 刷新聊天列表
@@ -3502,26 +3743,15 @@ container.innerHTML = allWorldbooks.map(wb => {
 
 // 获取选中的世界书ID列表
 function getSelectedWorldbooks() {
-    const container = document.getElementById('worldbookSelector');
-    if (!container) {
-   
-        return [];
-    }
-    
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-    if (!checkboxes || checkboxes.length === 0) {
-    
-        return [];
-    }
-    
-    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
- 
-    return ids;
+    // 直接从全局变量读取（同步）
+    if (!currentChatId || !characterInfoData) return [];
+    return characterInfoData.linkedWorldbooks || [];
 }
+
+
 
 // 获取关联世界书的内容（修复版）
 async function getLinkedWorldbooksContent(linkedIds) {
-    // 1. 基础检查
     if (!linkedIds || !Array.isArray(linkedIds) || linkedIds.length === 0) {
         return '无';
     }
@@ -3529,8 +3759,6 @@ async function getLinkedWorldbooksContent(linkedIds) {
     return new Promise((resolve) => {
         loadFromDB('worldbooks', (data) => {
             try {
-                // 2. 强制数据安全检查
-                // 无论数据库返回什么，我们都确保 allWorldbooks 是一个数组
                 let allWorldbooks = [];
                 if (Array.isArray(data)) {
                     allWorldbooks = data;
@@ -3538,8 +3766,7 @@ async function getLinkedWorldbooksContent(linkedIds) {
                     allWorldbooks = data.list;
                 }
                 
-                // 3. 安全过滤
-                // 增加 wb && wb.id 的判断，防止空数据导致报错
+                // 按ID过滤世界书
                 const linkedBooks = allWorldbooks.filter(wb => wb && linkedIds.includes(wb.id));
                 
                 if (linkedBooks.length === 0) {
@@ -3547,7 +3774,6 @@ async function getLinkedWorldbooksContent(linkedIds) {
                     return;
                 }
                 
-                // 4. 生成内容
                 const content = linkedBooks.map(wb => 
                     `【${wb.title || '无标题'}】\n${wb.content || ''}`
                 ).join('\n\n');
@@ -3555,13 +3781,14 @@ async function getLinkedWorldbooksContent(linkedIds) {
                 resolve(content);
                 
             } catch (error) {
-                // 5. 错误兜底：如果发生任何错误，打印日志并返回"无"，防止卡死
                 console.error("读取世界书出错:", error);
                 resolve('无'); 
             }
         });
     });
 }
+
+
 
 // ================================
 // 中文注释：只提取“关联世界书”里 category=html 的内容
@@ -4329,9 +4556,7 @@ function sendTextImage() {
         id: newId,
         chatId: currentChatId,
         type: 'text_image',
-        // ★★★ 修改这里：使用 [图片：...] 格式，这是最通用的 RP 格式 ★★★
-        // 这样 AI 就会明白：方括号里的内容是对图片的描述，而不是你在说话
-        content: `[图片：${content}]`, 
+        content: content, // ← 确认这里没有 `[图片：${content}]`
         senderId: 'me',
         time: getCurrentTime(),
         isRevoked: false
@@ -4349,22 +4574,185 @@ function sendTextImage() {
 }
 
 
+
 // ============ 文字图详情展示 (兼容：旧壳/新纯描述) ============
 function showTextImageDetail(encodedContent) {
-    let content = decodeURIComponent(encodedContent || '');
-    content = String(content).trim();
+    try {
+        console.log('🔍 收到编码内容:', encodedContent?.slice(0, 100));
+        
+        let content = decodeURIComponent(encodedContent || '');
+        content = String(content).trim();
 
-    // 兼容去壳：
-    // 【图片：xxx】 / [图片：xxx] / 【图片:xxx】 / [图片:xxx]
-    // 如果没有壳，就原样显示
-    const m = content.match(/^[【\[]\s*图片\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/);
-    if (m && m[1] != null) {
-        content = String(m[1]).trim();
+        console.log('📝 解码后内容:', content);
+
+        // 兼容去壳：
+        // 【图片：xxx】 / [图片：xxx] / 【图片:xxx】 / [图片:xxx]
+        const m = content.match(/^[【\[]\s*图片\s*[:：]\s*([\s\S]*?)\s*[】\]]\s*$/);
+        if (m && m[1] != null) {
+            content = String(m[1]).trim();
+            console.log('📝 去壳后内容:', content);
+        }
+
+        const displayEl = document.getElementById('textImageDetailContent');
+        if (!displayEl) {
+            console.error('❌ 未找到 textImageDetailContent 元素');
+            alert('未找到显示元素 textImageDetailContent，请检查HTML');
+            return;
+        }
+
+        displayEl.textContent = content; // ← 用 textContent 而不是 innerHTML
+        
+        const modal = document.getElementById('textImageDetailModal');
+        if (!modal) {
+            console.error('❌ 未找到 textImageDetailModal 元素');
+            alert('未找到弹窗元素 textImageDetailModal，请检查HTML');
+            return;
+        }
+        
+        modal.style.display = 'flex';
+        console.log('✅ 文字图弹窗已打开');
+        
+    } catch (e) {
+        console.error('❌ showTextImageDetail 出错:', e);
+        alert('显示文字图失败：' + e.message + '\n\n请查看控制台获取详细信息');
+    }
+}
+
+
+
+
+// ============ 世界书图功能模块 ============
+
+// 从【ai发图】分类中搜索匹配关键词的图片URL
+async function searchWorldbookImage(keyword) {
+    return new Promise((resolve) => {
+        loadFromDB('worldbooks', (data) => {
+            try {
+                let allWorldbooks = [];
+                if (Array.isArray(data)) {
+                    allWorldbooks = data;
+                } else if (data && Array.isArray(data.list)) {
+                    allWorldbooks = data.list;
+                }
+
+                // 只在【ai发图】分类中搜索
+                const aiImageBooks = allWorldbooks.filter(wb => wb && wb.category === 'ai发图');
+
+                if (aiImageBooks.length === 0) {
+                    resolve(null);
+                    return;
+                }
+
+                // 模糊匹配：keyword 的任意一个字都能匹配标题
+                const matched = aiImageBooks.filter(wb => {
+                    const title = (wb.title || '').toLowerCase();
+                    const key = keyword.toLowerCase();
+                    // 标题包含关键词 或 关键词包含标题
+                    return title.includes(key) || key.includes(title);
+                });
+
+                if (matched.length === 0) {
+                    resolve(null);
+                    return;
+                }
+
+                // 随机选一个
+                const picked = matched[Math.floor(Math.random() * matched.length)];
+
+                // 验证是否是完整的图床链接
+                const url = (picked.content || '').trim();
+                if (url.startsWith('http://') || url.startsWith('https://')) {
+                    resolve(url);
+                } else {
+                    resolve(null);
+                }
+
+            } catch (e) {
+                console.error('世界书图搜索出错:', e);
+                resolve(null);
+            }
+        });
+    });
+}
+
+// 从 AI 回复中提取【图片：xxx】的描述内容
+function extractImageDescription(text) {
+    const match = text.match(/【图片[：:]([^】]+)】/);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return null;
+}
+
+// 处理世界书图逻辑（在 AI 回复生成后调用）
+// aiText: AI 原始回复文本
+// 返回: { finalText, imageMessage } 
+// imageMessage 为 null 表示不需要插入图片消息
+async function processWorldbookImage(aiText) {
+    // ★★★ 添加调试日志 ★★★
+
+    
+    // 1. 提取【图片：xxx】
+    const desc = extractImageDescription(aiText);
+    if (!desc) {
+      
+        return { finalText: aiText, imageMessage: null };
+    }
+    
+    console.log('  - 提取到图片描述:', desc);
+
+    // 2. 读取当前角色的发图模式
+    const imageMode = characterInfoData?.imageMode || 'text';
+    console.log('  - 发图模式:', imageMode);
+
+    // 3. 按模式处理
+    if (imageMode === 'text') {
+      
+        return { finalText: aiText, imageMessage: null };
     }
 
-    document.getElementById('textImageDetailContent').innerText = content;
-    document.getElementById('textImageDetailModal').style.display = 'flex';
+    if (imageMode === 'worldbook' || imageMode === 'hybrid') {
+        
+        
+        // 搜索世界书图
+        const url = await searchWorldbookImage(desc);
+        
+      
+
+        if (url) {
+            console.log('  ✅ 找到世界书图，去除文本标记');
+            // 找到了！把【图片：xxx】从文本中去掉，单独发一条图片消息
+            const cleanText = aiText.replace(/【图片[：:]([^】]+)】/, '').trim();
+            return {
+                finalText: cleanText,
+                imageMessage: {
+                    type: 'image',
+                    content: url
+                }
+            };
+        }
+
+        console.log('  - 未找到世界书图');
+        
+        // 没找到
+        if (imageMode === 'worldbook') {
+            console.log('  - 纯世界书图模式：去掉标记');
+            // 纯世界书图模式：找不到就不发图，去掉标记
+            const cleanText = aiText.replace(/【图片[：:]([^】]+)】/, '').trim();
+            return { finalText: cleanText, imageMessage: null };
+        }
+
+        if (imageMode === 'hybrid') {
+            console.log('  - 共存模式：降级为文字图');
+            // 共存模式：找不到降级为文字图，保持原样
+            return { finalText: aiText, imageMessage: null };
+        }
+    }
+
+    return { finalText: aiText, imageMessage: null };
 }
+
+
 
 
 
@@ -7118,6 +7506,28 @@ function confirmMomentForward() {
 }
 // ====== 确认转发（仅系统提示 + 隐藏上下文）END ======
 
+function bindChatItemClickDelegation() {
+    const container = document.getElementById('chatListContainer');
+    if (!container) return;
+
+    if (container.dataset.clickBound === '1') return;
+    container.dataset.clickBound = '1';
+
+    container.addEventListener('click', (e) => {
+        const item = e.target.closest('.chat-item');
+        if (!item) return;
+
+        const m = String(item.id || '').match(/^chat-(\d+)$/);
+        if (!m) return;
+
+        const chatId = parseInt(m[1], 10);
+        if (!Number.isFinite(chatId)) return;
+
+        if (typeof openChatDetail === 'function') {
+            openChatDetail(chatId);
+        }
+    });
+}
 
 
 // 初始化，

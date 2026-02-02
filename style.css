@@ -4839,52 +4839,7 @@ color: #333;
     font-weight: 300;
 }
 
-/* === 右侧：便签组件样式 === */
-.note-widget {
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-}
 
-.note-header {
-    font-size: 12px;
-    font-weight: 600;
-    opacity: 0.6;
-    text-transform: uppercase; /* 英文大写更显高级 */
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.2); /* 标题分割线 */
-    padding-bottom: 5px;
-    display: flex;
-    justify-content: space-between;
-}
-
-.note-list {
-    list-style: none;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.note-item {
-    font-size: 13px;
-    font-weight: 400;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    opacity: 0.9;
-}
-
-/* 极简的勾选框装饰 */
-.note-checkbox {
-    width: 12px;
-    height: 12px;
-    border: 1.5px solid rgba(255,255,255,0.6);
-    border-radius: 4px;
-    display: inline-block;
-}
-/* 组件结束 */
 
 /* ============ API页面：Ins精致线条风重制版 ============ */
 
@@ -8846,7 +8801,8 @@ body.transparent-nav-mode .chat-input:focus {
 }
 
 .note-image-frame.is-empty {
-  background: #f2f2f2;
+ background: transparent;
+
 }
 
 .note-image {
@@ -8855,3 +8811,224 @@ body.transparent-nav-mode .chat-input:focus {
   object-fit: cover;
   display: block;
 }
+/* 强制修复 HTML 卡片文字方向 */
+.message-item .html-card-wrap,
+.message-item .html-card-wrap *,
+.message-item iframe,
+.message-item iframe * {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    direction: ltr !important;
+}
+
+/* ============ 抽签功能样式 (Ins极简风重制) ============ */
+
+/* 1. 弹窗容器 */
+.draw-lot-modal-clean {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 30px 25px;
+    width: 90%;
+    max-width: 320px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+/* 2. 顶部标题区 */
+.lot-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.lot-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.lot-subtitle {
+    font-size: 11px;
+    color: #999;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+/* 3. 签桶舞台 */
+.lot-stage-clean {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 260px;
+    position: relative;
+}
+
+/* 4. 签桶（极简圆形） */
+.lot-bucket-clean {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: #fafafa;
+    border: 2px solid #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.lot-bucket-clean:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+.lot-bucket-clean:active {
+    transform: scale(0.95);
+}
+
+.bucket-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+}
+
+.bucket-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    letter-spacing: 1px;
+}
+
+/* 5. 抽中的签（结果展示） */
+.drawn-lot-clean {
+    animation: lotAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+@keyframes lotAppear {
+    0% {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lot-result-clean {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #333;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    font-weight: 700;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* 吉/平/凶配色 */
+.lot-result-clean[data-type="吉"] {
+    background: #333;
+}
+
+.lot-result-clean[data-type="平"] {
+    background: #999;
+}
+
+.lot-result-clean[data-type="凶"] {
+    background: #666;
+}
+
+/* 6. 签文详情卡 */
+.lot-detail-card-clean {
+    width: 100%;
+    animation: fadeIn 0.5s ease;
+}
+
+.loading-spinner-clean {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 0;
+}
+
+.spinner-clean {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #f0f0f0;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.lot-content-clean {
+    animation: fadeIn 0.4s ease;
+}
+
+.lot-event-text-clean {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #333;
+    text-align: center;
+    margin-bottom: 25px;
+    border: 1px solid #f0f0f0;
+}
+
+/* ============ 抽签功能补充样式 ============ */
+
+/* 签桶悬停效果 */
+#lotBucket:hover {
+    transform: scale(1.05);
+}
+
+#lotBucket:active {
+    transform: scale(0.95);
+}
+
+/* 抽签结果进入动画 */
+#drawnLot {
+    animation: lotFadeIn 0.6s ease;
+}
+
+@keyframes lotFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 不同结果的配色 */
+#lotResult[data-type="吉"] {
+    background: #333 !important;
+}
+
+#lotResult[data-type="平"] {
+    background: #999 !important;
+}
+
+#lotResult[data-type="凶"] {
+    background: #666 !important;
+}
+
+/* 旋转动画（如果没有的话） */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============ 抽签功能样式 (Ins极简风重制)end ============ */

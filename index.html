@@ -134,13 +134,17 @@
     </div>
 </div>
 <div class="widgets-row">
-              <div class="widget-box music-widget" onclick="openWidgetSettings('music')">
-                  <div class="music-ring">
-   <div class="music-icon" style="display:none;">▶</div>
+           <div class="widget-box music-widget" onclick="openWidgetSettings('music')">
+    <div class="music-ring">
+        <!-- 音乐封面图片 -->
+        <img id="musicCoverDisplay" class="music-cover-img" style="display:none;" alt="音乐封面">
+        <!-- 播放按钮（如果需要的话） -->
+        <div class="music-icon" style="display:none;">▶</div>
+    </div>
+    <div class="music-title">Lover</div>
+    <div class="music-desc">Taylor Swift</div>
 </div>
-                    <div class="music-title">Lover</div>
-                    <div class="music-desc">Taylor Swift</div>
-                </div>
+
 
              <div class="widget-box note-widget note-image-widget" onclick="openWidgetSettings('note')">
     <div class="note-image-frame" id="noteImageFrame">
@@ -689,18 +693,36 @@
         <!-- 5. 气泡制作器面板 -->
         <div id="bubbleCreatorPanel" style="display: none; background: #f9f9f9; padding: 15px; border-radius: 16px; border: 1px solid #eee; margin-top: 10px;">
             
-            <!-- 基础外观 -->
-            <div style="font-size: 12px; color: #999; margin-bottom: 10px; font-weight: 600;">🎨 基础外观</div>
-            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                <div style="flex: 1;">
-                    <div style="font-size: 11px; margin-bottom: 5px;">背景色</div>
-                    <input type="color" id="creatorBgColor" value="#ffffff" style="width: 100%; height: 35px; padding: 0; border: none; border-radius: 8px;" oninput="generateBubbleCSS()">
-                </div>
-                <div style="flex: 1;">
-                    <div style="font-size: 11px; margin-bottom: 5px;">文字色</div>
-                    <input type="color" id="creatorTextColor" value="#333333" style="width: 100%; height: 35px; padding: 0; border: none; border-radius: 8px;" oninput="generateBubbleCSS()">
-                </div>
-            </div>
+
+<!-- 🎨 基础外观 -->
+<div style="font-size: 12px; color: #999; margin-bottom: 10px; font-weight: 600;">🎨 基础外观</div>
+
+<div style="display: flex; gap: 15px; margin-bottom: 15px;">
+  <!-- 背景色 -->
+  <div style="flex: 1;">
+    <div style="font-size: 11px; margin-bottom: 8px; color: #666;">背景色</div>
+    <div 
+      id="creatorBgPreview" 
+      onclick="document.getElementById('creatorBgPicker').click()" 
+      style="width: 100%; height: 38px; background: #ffffff; cursor: pointer; border: 1px solid #e0e0e0;"
+    ></div>
+    <input type="color" id="creatorBgPicker" value="#ffffff" style="display: none;" oninput="updateColorFromPicker('bg', this.value)">
+  </div>
+
+  <!-- 文字色 -->
+  <div style="flex: 1;">
+    <div style="font-size: 11px; margin-bottom: 8px; color: #666;">文字色</div>
+    <div 
+      id="creatorTextPreview" 
+      onclick="document.getElementById('creatorTextPicker').click()" 
+      style="width: 100%; height: 38px; background: #1a1a1a; cursor: pointer; border: 1px solid #e0e0e0;"
+    ></div>
+    <input type="color" id="creatorTextPicker" value="#1a1a1a" style="display: none;" oninput="updateColorFromPicker('text', this.value)">
+  </div>
+</div>
+
+
+
             
 <!-- 气泡质感 -->
 <div style="margin-bottom: 15px;">
@@ -712,7 +734,6 @@
         <option value="none">无</option>
         <option value="glass">拟态玻璃</option>
         <option value="highlight">高光短横线</option>
-        <option value="dash-frame">短横线外框</option>
         <option value="jelly">果冻拟态</option>
     </select>
 </div>
@@ -1571,6 +1592,21 @@
             <path d="M16 10a4 4 0 0 1-8 0"></path>
         </svg>
     </button>
+
+    <!-- 抽签功能 -->
+<button class="emoji-btn" onclick="openDrawLotModal()" title="抽签">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+        <path d="M9 9h.01"></path>
+        <path d="M15 9h.01"></path>
+        <path d="M9 15h.01"></path>
+        <path d="M15 15h.01"></path>
+        <line x1="12" y1="2" x2="12" y2="4"></line>
+        <line x1="12" y1="20" x2="12" y2="22"></line>
+    </svg>
+</button>
+
+
 </div>
 
 
@@ -1782,15 +1818,7 @@
 
         
         <div class="ins-list-group">
-            <div style="padding: 15px 0;">
-                <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                    <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <div class="ins-item-label">角色人设</div>
-                </div>
-                <div class="ins-textarea-box">
-                    <textarea id="charPersonality" class="ins-textarea" rows="4" placeholder="TA是什么样的人？"></textarea>
-                </div>
-            </div>
+
 
             <div style="padding: 15px 0; border-top: 0.5px solid #f5f5f5;">
                 <div style="display: flex; align-items: center; margin-bottom: 8px;">
@@ -1804,13 +1832,34 @@
         </div>
 
         <div class="ins-list-group">
-            <div style="padding: 15px 0;">
-                <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                    <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                    <div class="ins-item-label">关联世界书</div>
-                </div>
-                <div id="worldbookSelector" style="max-height: 150px; overflow-y: auto;"></div>
-            </div>
+<div class="ins-list-item" onclick="openWorldbookSelectorModal()">
+    <svg class="ins-item-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+    <div class="ins-item-label">关联世界书</div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="worldbookCountText" style="font-size: 13px; color: #999;">未选择</span>
+        <div class="ins-arrow">›</div>
+    </div>
+</div>
+
+<!-- ▼▼▼ 新增：角色发图设置 ▼▼▼ -->
+<div style="padding: 15px 0; border-top: 0.5px solid #f5f5f5;">
+    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <div class="ins-item-label">角色发图模式</div>
+    </div>
+    
+    <select id="charImageMode" class="ins-input" style="width: 100%; padding: 12px; font-size: 14px; border-radius: 12px; border: 1px solid #f0f0f0; background: #f9f9f9; color: #333;">
+        <option value="text">文字图</option>
+        <option value="worldbook">世界书图</option>
+        <option value="hybrid">共存模式</option>
+    </select>
+</div>
+<!-- ▲▲▲ 新增结束 ▲▲▲ -->
+
 
             <div style="padding: 15px 0; border-top: 0.5px solid #f5f5f5;">
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
@@ -3058,7 +3107,32 @@
 </div>
 <!-- ====== 动态转发弹窗 END ====== -->
 
-
+<!-- ====== 关联世界书选择弹窗 START ====== -->
+<div class="modal-overlay" id="worldbookSelectorModal" onclick="closeWorldbookSelectorModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 360px;">
+        <div class="modal-title">选择关联世界书</div>
+        
+        <div style="background: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 14px; color: #666;">
+            已选：<span id="worldbookSelectedCount">0</span> 本
+        </div>
+        
+        <!-- 分类筛选标签 -->
+        <div id="worldbookCategoryFilter" style="display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 8px;">
+            <!-- JS 动态生成 -->
+        </div>
+        
+        <!-- 世界书列表 -->
+        <div id="worldbookSelectorList" style="max-height: 320px; overflow-y: auto; border-top: 1px solid #f0f0f0;">
+            <!-- JS 动态生成 -->
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeWorldbookSelectorModal()">取消</button>
+            <button class="btn btn-save" onclick="saveWorldbookSelection()">保存</button>
+        </div>
+    </div>
+</div>
+<!-- ====== 关联世界书选择弹窗 END ====== -->
 
 
 <!-- 用户计划弹窗 -->
@@ -3091,6 +3165,77 @@
     </div>
 </div>
 
+<!-- 抽签弹窗 -->
+<div class="modal-overlay" id="drawLotModal" onclick="closeDrawLotModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 320px; text-align: center;">
+        
+      <!-- 标题（右上角绑定按钮） -->
+<div style="position: relative; margin-bottom: 25px;">
+    <div class="modal-title" style="margin: 0;">今日运势</div>
+
+    <button class="back-btn" onclick="openFortuneWorldbookModal()" title="绑定世界书"
+        style="position:absolute; top:-6px; right:-6px; width: 32px; height: 32px; border: 1px solid #eee; border-radius: 12px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+    </button>
+</div>
+
+        
+        <!-- 舞台区域 -->
+        <div id="lotStage" style="min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            
+            <!-- 签桶 -->
+            <div id="lotBucket" onclick="drawLot()" style="width: 140px; height: 140px; border-radius: 50%; background: #fafafa; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s;">
+                <div style="font-size: 48px;">🎴</div>
+                <div style="font-size: 13px; font-weight: 600; color: #666; margin-top: 8px;">点击抽签</div>
+            </div>
+            
+            <!-- 抽中的签 -->
+            <div id="drawnLot" style="display: none;">
+                <div id="lotResult" style="width: 100px; height: 100px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: 700; margin-bottom: 20px;">吉</div>
+                <button class="btn btn-save" onclick="viewLotDetail()" style="width: 100%; padding: 12px; border-radius: 12px;">查看签文</button>
+            </div>
+            
+            <!-- 签文详情 -->
+            <div id="lotDetailCard" style="display: none; width: 100%;">
+                <div id="lotLoading" style="padding: 30px 0;">
+                    <div style="width: 36px; height: 36px; border: 3px solid #f0f0f0; border-top-color: #333; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 15px;"></div>
+                    <div style="color: #999; font-size: 13px;">生成签文中...</div>
+                </div>
+                <div id="lotContent" style="display: none;">
+                    <div id="lotEventText" style="background: #f9f9f9; padding: 20px; border-radius: 12px; font-size: 15px; line-height: 1.8; color: #333; margin-bottom: 20px; border: 1px solid #f0f0f0;"></div>
+                    <button class="btn btn-save" onclick="acceptLotAndClose()" style="width: 100%; padding: 14px; border-radius: 12px;">接受签文</button>
+                </div>
+            </div>
+            
+        </div>
+        
+    </div>
+</div>
+
+
+<!-- ====== 抽签专用：绑定世界书弹窗 START ====== -->
+<div class="modal-overlay" id="fortuneWorldbookModal" onclick="closeFortuneWorldbookModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 360px;">
+        <div class="modal-title">绑定抽签世界书</div>
+
+        <div style="background: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 14px; color: #666;">
+            已选：<span id="fortuneWorldbookSelectedCount">0</span> 本
+        </div>
+
+        <div id="fortuneWorldbookSelectorList" style="max-height: 320px; overflow-y: auto; border-top: 1px solid #f0f0f0;">
+            <!-- JS 动态生成 -->
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeFortuneWorldbookModal()">取消</button>
+            <button class="btn btn-save" onclick="saveFortuneWorldbookSelection()">保存</button>
+        </div>
+    </div>
+</div>
+<!-- ====== 抽签专用：绑定世界书弹窗 END ====== -->
 
 
 <script src="script.js"></script>
