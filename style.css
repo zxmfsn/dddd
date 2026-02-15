@@ -748,7 +748,7 @@
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     transition: all 0.3s;
-    z-index: 100;
+    z-index: 1000;
 }
 
 .add-btn:hover {
@@ -2660,35 +2660,21 @@ color: #333;
 
 /* ============ 转账消息卡片 (美化红包版) ============ */
 .transfer-card {
-    /* 1. 布局：改回 Flex，模仿红包条目 */
     display: flex !important;
     align-items: center !important;
-    /* 宽度稍微宽一点 */
-    width: 250px !important;
+    width: 280px !important;
     max-width: 100% !important;
     
-    /* 2. 背景：纯白卡片 */
     background: white !important;
-    
-    /* 3. 边框与圆角 */
-    border: none !important;
-    border-radius: 20px !important; /* 更大的圆角 */
-    
-    /* 4. 间距 */
+    border-radius: 20px !important;
     padding: 18px !important;
     margin: 8px 0 !important;
     
-    /* 5. 阴影：红色系的淡阴影 */
     box-shadow: 0 5px 15px rgba(233, 61, 61, 0.08) !important;
-    
     cursor: pointer !important;
     position: relative !important;
-    overflow: hidden !important; /* 用于裁剪装饰圆圈 */
+    overflow: hidden !important;
     transition: transform 0.3s ease !important;
-    
-    /* 重置之前的 Grid 布局 */
-    grid-template-columns: none !important;
-    grid-template-rows: none !important;
 }
 
 /* 装饰元素：右上角的圆圈 */
@@ -2705,7 +2691,6 @@ color: #333;
     pointer-events: none;
 }
 
-/* 悬停效果 */
 .transfer-card:hover {
     transform: translateY(-3px) !important;
 }
@@ -2716,103 +2701,99 @@ color: #333;
     width: 50px !important;
     height: 50px !important;
     border-radius: 16px !important;
-    
-    /* 渐变背景：复刻 .redpacket-icon */
     background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%) !important;
     box-shadow: 0 5px 10px rgba(255, 154, 158, 0.3) !important;
-    
-    border: none !important; /* 去掉之前的边框 */
     color: white !important;
     font-size: 24px !important;
     justify-content: center !important;
     align-items: center !important;
     margin-right: 15px !important;
-    z-index: 1; /* 确保在装饰圆圈上面 */
-    flex-shrink: 0;
-    
-    /* 重置 Grid 位置 */
-    grid-row: auto !important; 
-    grid-column: auto !important;
-    margin: 0 15px 0 0 !important;
+    flex-shrink: 0 !important;
+    z-index: 1;
 }
 
-/* 金额/标题文字 */
-.transfer-amount {
+/* 中间内容区域 */
+.transfer-content {
     flex: 1 !important;
-    font-size: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    z-index: 1;
+    min-width: 0 !important;
+}
+
+.transfer-title {
+    font-size: 15px !important;
     font-weight: 600 !important;
     color: #333 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    text-align: left !important;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    line-height: 1.4;
-    
-    /* 重置 Grid 位置 */
-    grid-column: auto !important;
-    grid-row: auto !important;
-    align-self: center !important;
+    margin-bottom: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
-/* 状态文字 (伪元素生成，模仿右侧的 Action 按钮) */
-.transfer-card::after {
-    content: "领取红包"; /* 默认状态 */
-    font-size: 12px !important;
+.transfer-from {
+    font-size: 12px ;
+    color: #999 !important;
+    margin-bottom: 2px !important;
+}
+
+.transfer-remark {
+    font-size: 11px !important;
+    color: #bbb !important;
+}
+
+/* 右侧状态列 */
+.transfer-status-col {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    margin-left: 12px !important;
+    flex-shrink: 0 !important;
+    z-index: 1;
+}
+
+.transfer-amount {
+    font-size: 18px !important;
+    font-weight: bold !important;
     color: #ff6b6b !important;
-    background: rgba(255, 107, 107, 0.1);
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-weight: 500 !important;
-    margin-left: auto; /* 挤到右边 */
-    z-index: 1;
-    white-space: nowrap;
-    margin-top: 0 !important;
+    margin-bottom: 4px !important;
 }
 
-/* === 已领取状态 (Received) === */
+.transfer-action {
+    font-size: 11px !important;
+    color: #ff6b6b !important;
+    background: rgba(255, 107, 107, 0.1) !important;
+    padding: 3px 10px !important;
+    border-radius: 10px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+}
+
+/* === 已领取状态 === */
 .transfer-card.received {
     box-shadow: 0 5px 15px rgba(161, 196, 253, 0.1) !important;
-    background: white !important;
 }
 
-/* 已领取 - 装饰圈变蓝 */
 .transfer-card.received::before {
     background: rgba(235, 245, 255, 0.5) !important;
 }
 
-/* 已领取 - 图标变蓝渐变 */
 .transfer-card.received .transfer-icon {
     background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%) !important;
     box-shadow: 0 5px 10px rgba(161, 196, 253, 0.3) !important;
-    color: white !important;
-    border: none !important;
 }
 
-/* 已领取 - 文字颜色 */
 .transfer-card.received .transfer-amount {
     color: #4dabf7 !important;
 }
 
-/* 已领取 - 状态标签 */
-.transfer-card.received::after {
-    content: "已领取" !important;
+.transfer-card.received .transfer-action {
     color: #4dabf7 !important;
     background: rgba(77, 171, 247, 0.1) !important;
 }
 
-/* 隐藏不需要的元素 */
-.transfer-status, .transfer-note {
-    display: none !important;
-}
 
-/* 强制覆盖之前可能存在的背景 */
-.transfer-card.sent, 
-.transfer-card.pending {
-    background: white !important;
-}
 /* ============ 语音消息气泡样式 (QQ风格美化版) ============ */
 .voice-bubble {
     display: flex;
@@ -3493,6 +3474,8 @@ color: #333;
     box-shadow: none;         /* 去除阴影 */
     border: 1.5px solid #f0f0f0; /* 极细灰色边框 */
     transition: border-color 0.3s;
+     width: 100%;  /* ← 确保有这一行 */
+    box-sizing: border-box;  /* ← 确保有这一行 */
 }
 
 .search-card:hover, 
@@ -3562,6 +3545,7 @@ color: #333;
     font-size: 15px;
     background: transparent;
     padding: 0;
+     min-width: 0;
 }
 
 .search-input::placeholder {
@@ -9032,3 +9016,84 @@ body.transparent-nav-mode .chat-input:focus {
 }
 
 /* ============ 抽签功能样式 (Ins极简风重制)end ============ */
+
+/* ============ 日记拍立得动画 ============ */
+/* 拍立得占位图动画 */
+.polaroid-placeholder .placeholder-icon {
+    animation: pulse 2s infinite;
+    opacity: 0.5;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 0.5; }
+}
+
+/* 图片加载完成后的淡入效果 */
+.polaroid-img img {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+/* ============ 日记拍立得end ============ */
+
+
+/* ============ 角色工作邮箱美化 ============ */
+     /* --- 工作邮箱页面样式 --- */
+    .email-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        z-index: 2000; /* 保证层级够高 */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .email-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        background: #f7f7f7; /* 浅灰底色，区分内容 */
+    }
+
+    /* 邮件空状态 */
+    .email-empty-state {
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        height: 100%; 
+        color: #ccc;
+    }
+
+    /* 邮件卡片（预留样式，生成功能做好了会用到） */
+    .email-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border: 1px solid #eee;
+    }
+
+/* 定义旋转动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ★★★ 关键修复：强制提高邮件详情弹窗的层级 ★★★ */
+#emailDetailModal {
+    z-index: 3000 !important; /* 必须比 email-screen (通常是2000) 高 */
+}
+    /* ============ 角色工作邮箱美化END ============ */
+
+    

@@ -2982,7 +2982,7 @@ const prompt = wbText
         ],
         temperature: 0.7,
         stream: false,
-        max_tokens: 120
+        max_tokens: 300
     };
 
     const response = await fetch(requestUrl, {
@@ -3018,24 +3018,36 @@ const prompt = wbText
 
     if (!txt) throw new Error('模型返回空内容');
 
-    //可能清理的编号，多余的片段//
-   let cleaned = txt.trim();
+// 清理可能的多余内容
+let cleaned = txt.trim();
 
-// 只取第一行（防止模型输出多段解释）
-cleaned = cleaned.split('\n')[0].trim();
-cleaned = cleaned.replace(/^[：:\-—\s]+/, '').trim();
+// 1. 移除首尾引号
+cleaned = cleaned.replace(/^["'""]+|["'""]+$/g, '');
 
+// 2. 移除开头的编号（如 "1. " "- "）
+cleaned = cleaned.replace(/^\s*[-\d\.、]+\s*/, '');
 
-// 如果还带有“：”“解释”“因为”等，把前缀解释砍掉（保守处理）
-cleaned = cleaned.replace(/^.*?(事件[:：]|签文[:：]|结果[:：])/i, '').trim();
+// 3. 移除开头的标签（如 "事件：" "签文："）
+cleaned = cleaned.replace(/^(事件|签文|结果)[:：\s]+/i, '');
 
-// 再限制长度，防止长篇大论
-if (cleaned.length > 60) cleaned = cleaned.slice(0, 60).trim();
+// 4. 如果有"解释性后缀"，只保留事件本身
+const explainIndex = cleaned.search(/[。！\n](因为|解释|原因|注意|说明)[：:]/);
+if (explainIndex > 0) {
+    cleaned = cleaned.slice(0, explainIndex + 1);
+}
 
-return cleaned
-  .replace(/^["'“”]+|["'“”]+$/g, '')
-  .replace(/^\s*[-\d\.、]+\s*/, '')
-  .trim();
+// 5. 只取第一个完整句子（遇到句号就停）
+const firstSentence = cleaned.match(/^[^。！？\n]+[。！？]?/);
+if (firstSentence) {
+    cleaned = firstSentence[0];
+}
+
+// 6. 最终长度保险
+if (cleaned.length > 100) {
+    cleaned = cleaned.slice(0, 100);
+}
+
+return cleaned.trim();
 
 }
 
@@ -3134,4 +3146,918 @@ function saveFortuneWorldbookSelection() {
 
 
 
-// ============ 抽签功能end ============
+// ============ 抽签功能end ============\
+
+
+// ============ 角色邮件功能 (AI生成 + 加载动画 + 详情修复版) ============
+
+// ============ 邮件分页和长按删除变量 ============
+let loadedEmailCount = 20;
+const EMAIL_PAGE_SIZE = 20;
+let emailLongPressTimer = null;  // ★ 改名
+let emailLongPressTarget = null; // ★ 改名
+
+
+// 1. 打开邮箱页面
+function openEmailScreen() {
+    if (!currentChatId) {
+        alert("请先在首页选择一个角色！");
+        return;
+    }
+    
+    loadedEmailCount = 20; // ★ 重置分页
+    document.getElementById('emailScreen').style.display = 'flex';
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        const charData = allData[currentChatId] || {};
+        const emails = charData.emails || [];
+        
+        renderEmailList(emails);
+    });
+}
+
+// 2. 关闭邮箱页面
+function backToCharacterInfoFromEmail() {
+    document.getElementById('emailScreen').style.display = 'none';
+}
+
+// 3. 渲染邮件列表 (点击修复版)
+function renderEmailList(emails) {
+    const container = document.getElementById('emailItemsArea');
+    const emptyState = document.getElementById('emailEmptyState');
+    const countBadge = document.getElementById('charItinerary'); 
+
+    container.innerHTML = '';
+
+    // 更新首页计数
+    if (countBadge) countBadge.textContent = emails.length;
+
+    if (!emails || emails.length === 0) {
+        emptyState.style.display = 'flex';
+        loadedEmailCount = 20; // 重置
+        return;
+    }
+
+    emptyState.style.display = 'none';
+
+    // 倒序显示
+    const reversedEmails = [...emails].reverse();
+    
+    // ★ 只渲染前 loadedEmailCount 封
+    const emailsToShow = reversedEmails.slice(0, loadedEmailCount);
+
+    emailsToShow.forEach((email, reversedIndex) => {
+        const originalIndex = emails.length - 1 - reversedIndex;
+        
+        const typeMap = {
+            'work': { label: '工作', color: '#e3f2fd', text: '#2196f3' },
+            'social': { label: '社交', color: '#e8f5e9', text: '#4caf50' },
+            'spam': { label: '垃圾', color: '#ffebee', text: '#f44336' },
+            'system': { label: '系统', color: '#f3e5f5', text: '#9c27b0' }
+        };
+        
+        const style = typeMap[email.type] || { label: '其他', color: '#eee', text: '#999' };
+        
+        const unreadDot = email.isRead ? '' : `<div style="width:8px; height:8px; background:#ff4757; border-radius:50%; margin-right:6px;"></div>`;
+        
+        const commentHtml = email.comment ? `
+            <div style="margin-top: 8px; padding: 6px 10px; background: #fffbf0; border-radius: 6px; border: 1px dashed #ffe58f; display: flex; align-items: flex-start; gap: 5px;">
+                <span style="font-size: 14px;">💭</span>
+                <span style="font-size: 12px; color: #8a6d3b; font-style: italic; line-height: 1.4;">${email.comment}</span>
+            </div>
+        ` : '';
+
+        // ★ 添加 data-email-index 属性用于长按识别
+        const html = `
+            <div class="email-card" 
+                data-email-index="${originalIndex}"
+                style="background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #eee; cursor: pointer; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center;">
+                        ${unreadDot}
+                        <span style="font-weight: 700; font-size: 15px; color: #333;">${email.sender}</span>
+                        <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; background: ${style.color}; color: ${style.text};">
+                            ${style.label}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #bbb;">${email.time}</div>
+                </div>
+                
+                <div style="font-size: 14px; font-weight: 600; color: #555; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${email.subject}
+                </div>
+                
+            <div style="font-size: 13px; color: #888; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+    ${email.content.length > 50 ? email.content.substring(0, 50) + '...' : email.content}
+</div>
+
+                ${commentHtml}
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', html);
+    });
+
+    // ★ 绑定长按事件
+    bindLongPressToEmails();
+
+    // ★ 显示"加载更多"按钮或结束提示
+    if (loadedEmailCount < emails.length) {
+        const loadMoreBtn = `
+            <div style="text-align: center; padding: 20px;">
+                <button onclick="loadMoreEmails()" style="padding: 10px 24px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                    加载更多 (还有 ${emails.length - loadedEmailCount} 封)
+                </button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', loadMoreBtn);
+    } else {
+        const endHint = `
+            <div style="text-align: center; padding: 20px; color: #999; font-size: 13px;">
+                已加载全部邮件
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', endHint);
+    }
+}
+
+// 4. 清空邮件
+function clearEmails() {
+    if(!confirm('确定要清空所有邮件吗？')) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (allData[currentChatId]) {
+            allData[currentChatId].emails = [];
+            saveToDB('characterInfo', allData);
+            loadedEmailCount = 20; // ★ 重置分页
+            renderEmailList([]);
+        }
+    });
+}
+
+// 5. 生成邮件 (AI 核心逻辑 - 修复加载动画版)
+async function generateEmail() {
+    // 基础检查
+    if (!currentApiConfig || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在设置中配置 API');
+        return;
+    }
+    if (!currentChatId) {
+        alert('请先选择一个角色');
+        return;
+    }
+
+    // ★★★ 修复重点：稳健获取按钮 ★★★
+    // 优先找 ID，找不到就用 event.currentTarget
+    let btn = document.getElementById('emailGenBtn');
+    if (!btn && window.event) {
+        btn = window.event.currentTarget;
+    }
+    
+    // 如果还是找不到按钮对象，就不做动画了，直接继续运行
+    let originalContent = '';
+    if (btn) {
+        originalContent = btn.innerHTML; // 保存原始SVG
+        // 设置为转圈动画 (SVG)
+        btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 0.8s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`;
+        btn.disabled = true; // 禁止重复点击
+        btn.style.opacity = '0.6';
+    }
+
+    try {
+        // --- 1. 强制读取最新人设 ---
+        const allCharData = await new Promise(resolve => {
+            loadFromDB('characterInfo', d => resolve(d || {}));
+        });
+        const charData = allCharData[currentChatId] || {};
+        
+        // 获取角色名
+        const chat = chats.find(c => c.id === currentChatId);
+        const charName = chat ? chat.name : "角色";
+        
+        // 获取详细人设 (优先 characterInfo > chat.prompt > 默认)
+        let personality = charData.personality;
+        if (!personality && chat) personality = chat.prompt; 
+        if (!personality) personality = "无特殊设定";
+        
+        console.log("生成邮件 Prompt 参数:", { charName, personality });
+
+      //2. 获取已有邮件标题（用于去重）
+
+const existingTitles = (charData.emails || [])
+    .map(e => e.subject)
+    .slice(-20) // 只取最近20封的标题
+    .join('\n- ');
+
+// --- 3. 构建 工作邮箱提示词 ---
+const prompt = `
+你现在是【${charName}】所在世界的"真实邮箱后台"。
+请根据该角色的【人设】、【职业】和【生活背景】，生成 7-10 封**全新的**未读邮件。
+【重要：去重规则】
+下面是 TA 最近收到的邮件标题，**你生成的邮件标题必须与这些完全不同**：
+${existingTitles ? '- ' + existingTitles : '（暂无历史邮件）'}
+
+**禁止生成：**
+1. 标题相似的邮件（如"报销单又填错了"和"报销单填错了"）
+2. 同一发件人的重复邮件（除非是合理的后续邮件，如"Re: 上次那个事"）
+3. 同类型的垃圾邮件（如已经有"重金求子"就不要再来"富婆求子"）
+**生成策略：**
+- 优先生成角色当前可能遇到的**时效性事件**（如账单、快递、会议通知）
+- 混入一些**意外事件**（如中奖、被投诉、旧友联系）
+- 垃圾邮件要**脑洞大开**，每次都不一样
+
+【角色人设 (核心)】
+${personality}
+
+【生成原则：拒绝AI味，要"活人味"！】
+1. **标题要真实**：可以使用 "Re:", "Fwd:", "【紧急】", "自动回复:", "退信:", "？？？", "救命" 等前缀。
+2. **发件人要多样**：不要总是"老板"、"朋友"，可以是具体的"财务部-王姐"、"顺丰快递"、"拼多多"、"你妈"、"隔壁老王"。
+3. **内容要具体且有画面感**：不要写"请完成工作"，要写"那个PPT的字体再改大点，老板说看不清"。
+4. **正文要完整**：content 字段是邮件的完整正文，不是摘要！要写成真实邮件的样子：
+   - 工作邮件：要有称呼、具体要求、截止时间等，如"小王你好，上次那个方案PPT的字体再改大点，老板说坐后排看不清。另外第3页的数据图表也调整一下，明天下午2点前发我，谢谢。"
+   - 社交邮件：要有聊天的语气，如"在吗？急事！我这个月房租还差500，能不能先借我一下？下周发工资就还你，真的急用！拜托了兄弟🙏"
+   - 垃圾邮件：要有诱导性的完整话术，如"恭喜您！您的手机号被抽中为本期幸运用户，可0元领取iPhone 15 Pro Max一部！请在24小时内点击链接完成认证，逾期作废。客服电话：xxx"
+   - 系统邮件：要有完整的通知内容，如"尊敬的用户，您的信用卡账单已出，本期应还金额12,450.00元，最低还款1,245.00元。请在本月25日前完成还款，逾期将影响征信。"
+
+【邮件类型分布 - 必须混合且有创意】
+1. 💼 **工作/正事 (Work)** - 占 20-30%
+   - 职场推锅、甲方无理要求、报销单退回、面试通知、项目延期
+   - 学生：催作业、教务处通知、选课失败、论文查重不过
+   - 特殊职业：悬赏令、任务变更、装备损坏赔偿
+2. 🤝 **社交/生活 (Social)** - 占 20-30%
+   - 八卦、借钱、约饭、家里的唠叨、前任发来的消息
+   - 语气要随意，可以有错别字、网络用语、emoji堆叠
+   - 例如："在吗？借我200块急用！！！"、"你妈喊你回家吃饭"
+3. 🗑️ **垃圾/广告 (Spam)** - 占 20-30%
+   - **必须离谱且好笑**：
+     * 诈骗类："秦始皇打钱"、"FBI通缉令"、"你的快递在海关被扣"
+     * 玄学类："修仙速成班"、"转运符特价"、"前世今生测算"
+     * 成人向："重金求子"、"脱发困扰"、"增高秘方"
+     * 营销类："拼多多砍一刀"、"0元领手机"、"澳门博彩"
+   - 或者是视频网站会员到期、游戏充值返利
+4. ⚠️ **系统/账单 (System)** - 占 10-20%
+   - 信用卡逾期警告、快递滞留、验证码、密码修改提示
+   - 水电费催缴、话费欠费停机、社保公积金通知
+5. 🎭 **戏剧性/意外 (Drama)** - 占 10-20% ⭐ 新增
+   - **制造冲突和悬念**：
+     * "你被投诉了"、"有人在背后说你坏话"
+     * "你中奖了（但可能是诈骗）"
+     * "你的账号在异地登录"、"有人盗用你的照片"
+     * "旧情人发来的邮件"、"多年未见的同学找你借钱"
+   - 这类邮件要让角色产生强烈情绪反应
+6. 🎮 **娱乐/兴趣 (Entertainment)** - 占 5-10% ⭐ 新增
+   - 游戏更新通知、漫展门票、演唱会抢票失败
+   - B站UP主更新提醒、小说网站催更、追的剧完结了
+   - Steam 愿望单打折、Switch 游戏发售
+7. 🏥 **生活琐事 (Daily)** - 占 5-10% ⭐ 新增
+   - 体检报告出来了、牙医预约提醒、健身房会员到期
+   - 外卖超时赔付、网购退款到账、快递代收点催取
+   - 宠物医院疫苗提醒、理发店会员充值
+8. 🌈 **荒诞/无厘头 (Absurd)** - 占 5-10% ⭐ 新增
+   - **完全不合常理但很好笑**：
+     * "你的外卖被外星人劫持了"
+     * "恭喜你成为第100万个访客（1999年的网页）"
+     * "你的影子在eBay上被拍卖"
+     * "时间管理局：你透支了3小时寿命"
+     * "平行世界的你发来求救信号"
+【关键：角色评语 (Comment)】
+- 这是 ${charName} 看到邮件时的**第一反应 (内心OS)**。
+- **必须极其贴合人设**！
+- 如果 TA 很高冷，就回"..."、"无聊"、"关我屁事"。
+- 如果 TA 很暴躁，就回"滚"、"想死吗"、"烦死了"。
+- 如果 TA 很缺钱，看到账单要崩溃："完了完了完了"。
+- 如果 TA 很中二，可能会说："哼，凡人的把戏"。
+- **评语要口语化，不要书面语，可以用语气词、emoji、网络梗。**
+【输出格式】
+严格只输出 JSON 数组，不要有任何解释。
+字段：sender, subject, content (正文内容，50-300字，要写完整的邮件正文，不是摘要！), type (work/social/spam/system/drama/entertainment/daily/absurd), time (如"刚刚","凌晨3点","3天前"), comment
+【创意示例（仅供参考，不要照抄）】
+[
+  {"sender":"HR-张姐","subject":"Re: 你的年假还有3天没用","content":"12月31日前不用就作废了哦~","type":"work","time":"上午10点","comment":"又想骗我加班。"},
+  {"sender":"你妈","subject":"（无主题）","content":"晚上早点回来，给你炖了汤。","type":"social","time":"刚刚","comment":"完了，肯定又要催婚。"},
+  {"sender":"时间管理局","subject":"⚠️ 警告：您透支了2小时寿命","content":"请立即充值或接受惩罚...","type":"absurd","time":"凌晨3点","comment":"？？？哪来的神经病"},
+  {"sender":"Steam","subject":"🎮 您的愿望单游戏打折了","content":"《艾尔登法环》史低价仅需...","type":"entertainment","time":"昨天","comment":"钱包：不要过来啊啊啊"},
+  {"sender":"未知号码","subject":"你被人举报了","content":"有人匿名举报你在公司摸鱼...","type":"drama","time":"5分钟前","comment":"谁？站出来，我保证不打死你。"},
+  {"sender":"顺丰快递","subject":"您的快递已到代收点3天","content":"再不取我们要退回了哦~","type":"daily","time":"今天","comment":"草，忘了。"},
+  {"sender":"拼多多","subject":"好友邀你砍一刀💰","content":"就差0.01元了！帮帮忙~","type":"spam","time":"2小时前","comment":"滚。"},
+  {"sender":"建设银行","subject":"【账单】本期应还12,450元","content":"最低还款1,245元，请按时...","type":"system","time":"刚刚","comment":"我上个月到底买了什么？？？"}
+]
+【最后提醒】
+- 每次生成的邮件要**尽可能不同**，发挥想象力！
+- 垃圾邮件和荒诞邮件要**脑洞大开**，越离谱越好。
+- 戏剧性邮件要**制造冲突**，让角色有情绪波动。
+- 评语是灵魂，必须**符合角色性格**，不要千篇一律。
+`;
+
+        // --- 3. 调用 API ---
+        const url = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
+            
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.85
+            })
+        });
+
+        if (!response.ok) throw new Error('API请求失败');
+
+        const resData = await response.json();
+        let content = resData.choices[0].message.content.trim();
+        
+        // 清洗 JSON
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        let newEmails = [];
+        try {
+            newEmails = JSON.parse(content);
+        } catch (e) {
+            console.error("JSON解析失败", content);
+            throw new Error("AI生成格式错误，请重试");
+        }
+
+
+        // 数据处理：添加生成时间戳，方便后续去重
+const timestamp = Date.now();
+newEmails.forEach((e, idx) => {
+    e.isRead = false;
+    e.generatedAt = timestamp; // 标记生成批次
+    e.uniqueId = `${timestamp}_${idx}`; // 唯一ID
+});
+        
+        // 保存到 DB
+        loadFromDB('characterInfo', (latestData) => {
+            const finalData = latestData || {};
+            if (!finalData[currentChatId]) finalData[currentChatId] = {};
+            
+            const oldEmails = finalData[currentChatId].emails || [];
+            finalData[currentChatId].emails = [...oldEmails, ...newEmails];
+            
+            saveToDB('characterInfo', finalData);
+            renderEmailList(finalData[currentChatId].emails);
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert("生成失败：" + error.message);
+    } finally {
+        // ★★★ 4. 恢复按钮状态 ★★★
+        if (btn) {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
+}
+// 6. 打开邮件详情 (纯净版 - 只看邮件原件)
+function openEmailDetail(index) {
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        const emails = allData[currentChatId]?.emails || [];
+        
+        // ★ 修复：倒序显示的列表，点击时需要计算回原始索引
+        // 如果你的列表是倒序渲染的，这里 index 传进来应该是 originalIndex
+        // (在 renderEmailList 里我们已经计算好了 originalIndex 传进来，所以这里直接用)
+        const email = emails[index];
+        
+        if (!email) {
+            console.error("未找到邮件，索引:", index);
+            return;
+        }
+
+        // 1. 标记为已读并保存
+        if (!email.isRead) {
+            email.isRead = true;
+            emails[index] = email;
+            allData[currentChatId].emails = emails;
+            saveToDB('characterInfo', allData);
+            
+            // 刷新列表（主要是为了消掉红点）
+            renderEmailList(emails); 
+        }
+
+        // 2. 填充弹窗内容
+        const subjectEl = document.getElementById('emailDetailSubject');
+        const senderEl = document.getElementById('emailDetailSender');
+        const timeEl = document.getElementById('emailDetailTime');
+        const bodyEl = document.getElementById('emailDetailBody');
+
+        if (subjectEl) subjectEl.textContent = email.subject;
+        if (senderEl) senderEl.textContent = `发件人: ${email.sender}`;
+        if (timeEl) timeEl.textContent = `时间: ${email.time}`;
+        
+   
+       // 3. 构造正文（显示完整内容，保留换行）
+if (bodyEl) {
+    const fullContent = email.content ? email.content.trim().replace(/\n/g, '<br>') : '（无内容）';
+    bodyEl.innerHTML = `<div style="line-height: 1.8; color: #333; font-size: 15px; text-align: left; white-space: pre-wrap; word-wrap: break-word;">${fullContent}</div>`;
+}
+        // 3. 显示弹窗
+        document.getElementById('emailDetailModal').style.display = 'flex';
+    });
+}
+// 7. 关闭邮件详情
+function closeEmailDetail(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('emailDetailModal').style.display = 'none';
+}
+
+
+// ===========================================
+// ★★★ 自动同步邮件数量 (新增) ★★★
+// ===========================================
+
+function syncEmailCount() {
+    if (!currentChatId) return;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        const charData = allData[currentChatId] || {};
+        const emails = charData.emails || [];
+        
+        // 更新界面上的数字
+        const countEl = document.getElementById('charItinerary');
+        if (countEl) {
+            countEl.textContent = emails.length;
+        }
+    });
+}
+
+// 监听角色信息页的显示，一旦显示就刷新数字
+function initEmailCountObserver() {
+    const targetNode = document.getElementById('characterInfoScreen');
+    if (!targetNode) return;
+
+    const config = { attributes: true, attributeFilter: ['style'] };
+
+    const callback = function(mutationsList) {
+        for(let mutation of mutationsList) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                if (targetNode.style.display !== 'none') {
+                    // 页面可见了，立即同步数字
+                    syncEmailCount();
+                }
+            }
+        }
+    };
+
+    const observer = new MutationObserver(callback);
+    observer.observe(targetNode, config);
+}
+
+// 启动监听
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initEmailCountObserver, 1000); // 延时启动确保DOM加载
+});
+
+
+
+// ============ 邮件分页和长按删除功能 ============
+
+// 加载更多邮件
+function loadMoreEmails() {
+    loadedEmailCount += EMAIL_PAGE_SIZE;
+    
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        const charData = allData[currentChatId] || {};
+        const emails = charData.emails || [];
+        renderEmailList(emails);
+    });
+}
+
+// 绑定长按事件到所有邮件卡片
+function bindLongPressToEmails() {
+    const cards = document.querySelectorAll('.email-card');
+    
+    cards.forEach(card => {
+        const index = parseInt(card.getAttribute('data-email-index'));
+        
+        // 移动端
+        card.addEventListener('touchstart', (e) => {
+            startLongPress(e, index);
+        });
+        
+        card.addEventListener('touchend', (e) => {
+            cancelLongPress(e, index);
+        });
+        
+        card.addEventListener('touchmove', () => {
+           clearTimeout(emailLongPressTimer);
+        });
+        
+        // PC端
+        card.addEventListener('mousedown', (e) => {
+            startLongPress(e, index);
+        });
+        
+        card.addEventListener('mouseup', (e) => {
+            cancelLongPress(e, index);
+        });
+        
+        card.addEventListener('mouseleave', () => {
+          clearTimeout(emailLongPressTimer);
+        });
+    });
+}
+
+// 开始长按计时
+function startLongPress(event, index) {
+    emailLongPressTarget = index;  // ★ 改名
+    
+    emailLongPressTimer = setTimeout(() => {  // ★ 改名
+        showDeleteEmailConfirm(index);
+    }, 500);
+}
+
+// 取消长按（正常点击）
+function cancelLongPress(event, index) {
+    clearTimeout(emailLongPressTimer);  // ★ 改名
+    
+    if (emailLongPressTarget === index) {  // ★ 改名
+        setTimeout(() => {
+            openEmailDetail(index);
+        }, 50);
+    }
+    
+    emailLongPressTarget = null;  // ★ 改名
+}
+
+// 显示删除确认
+function showDeleteEmailConfirm(index) {
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+    
+    const confirmed = confirm('确定要删除这封邮件吗？');
+    
+    if (confirmed) {
+        deleteEmail(index);
+    }
+}
+
+// 删除邮件
+function deleteEmail(index) {
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        const charData = allData[currentChatId] || {};
+        const emails = charData.emails || [];
+        
+        emails.splice(index, 1);
+        
+        allData[currentChatId].emails = emails;
+        saveToDB('characterInfo', allData);
+        
+        renderEmailList(emails);
+        syncEmailCount();
+    });
+}
+
+
+
+    // ============ 角色邮件功能end ============\
+
+    // ==========================================
+// 编辑消息功能 (请复制到 script.js 最末尾)
+// ==========================================
+
+// 定义一个变量来临时存储正在编辑的消息ID
+let currentEditingMessageId = null;
+
+// 1. 打开编辑弹窗
+function openEditMessageModal() {
+    // 获取当前选中的消息ID (全局变量 selectedMessageId)
+    if (typeof selectedMessageId === 'undefined' || !selectedMessageId) {
+        console.error("未选中消息");
+        closeMessageMenu();
+        return;
+    }
+
+    // 记录下来，防止关闭菜单后 selectedMessageId 丢失
+    currentEditingMessageId = selectedMessageId;
+
+    // 在所有消息中找到这一条
+    const message = allMessages.find(m => m.id === currentEditingMessageId);
+    
+    if (!message) {
+        alert("未找到消息数据");
+        closeMessageMenu();
+        return;
+    }
+
+    // 只能编辑文本
+    if (message.type !== 'text') {
+        alert("只能编辑文字消息");
+        closeMessageMenu();
+        return;
+    }
+
+    // 将消息内容填入输入框
+    const input = document.getElementById('editMessageContent');
+    if (input) {
+        input.value = message.content;
+    }
+
+    // 显示弹窗
+    const modal = document.getElementById('editMessageModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+
+    // 最后关闭菜单
+    closeMessageMenu();
+}
+
+// 2. 关闭编辑弹窗
+function closeEditMessageModal(event) {
+    if (event) event.stopPropagation();
+    const modal = document.getElementById('editMessageModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    currentEditingMessageId = null; // 清理临时ID
+}
+
+// 3. 保存编辑 (这就是报错找不到的函数)
+function saveEditedMessage() {
+    const input = document.getElementById('editMessageContent');
+    const newText = input.value.trim();
+
+    if (!newText) {
+        alert("消息内容不能为空");
+        return;
+    }
+
+    if (!currentEditingMessageId) {
+        alert("编辑出错：丢失消息ID");
+        closeEditMessageModal();
+        return;
+    }
+
+    // 找到内存中的那条消息
+    const message = allMessages.find(m => m.id === currentEditingMessageId);
+    
+    if (message) {
+        // A. 更新内存数据
+        message.content = newText;
+        
+        // B. 保存到数据库 (调用你原有的函数)
+        if (typeof saveMessages === 'function') {
+            saveMessages(); 
+        }
+        
+        // C. 刷新界面 (调用你原有的函数)
+        if (typeof renderMessages === 'function') {
+            renderMessages();
+        }
+    }
+
+    // 关闭弹窗
+    closeEditMessageModal();
+}
+
+// ============ 🎨 AI 绘图配置逻辑 (新版) ============
+
+// 全局变量：存储绘图配置
+let currentImageApiConfig = {
+    enabled: false,
+    baseUrl: "https://api.openai.com/v1",
+    apiKey: "",
+    model: "dall-e-3"
+};
+
+// 1. 加载绘图配置 (页面加载时调用)
+function loadImageApiConfig() {
+    loadFromDB('imageApiSettings', (data) => {
+        if (data) {
+            currentImageApiConfig = data;
+        }
+        
+        // 更新 UI
+        const enableCheckbox = document.getElementById('imageApiEnabled');
+        if (enableCheckbox) {
+            enableCheckbox.checked = currentImageApiConfig.enabled;
+            toggleImageConfigArea(currentImageApiConfig.enabled);
+            
+            document.getElementById('imageApiBaseUrl').value = currentImageApiConfig.baseUrl || '';
+            document.getElementById('imageApiKey').value = currentImageApiConfig.apiKey || '';
+            document.getElementById('imageApiModel').value = currentImageApiConfig.model || '';
+        }
+    });
+}
+
+// 2. 监听开关变化
+document.addEventListener('DOMContentLoaded', () => {
+    const checkbox = document.getElementById('imageApiEnabled');
+    if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+            toggleImageConfigArea(e.target.checked);
+        });
+    }
+    // 初始化加载
+    setTimeout(loadImageApiConfig, 500);
+});
+
+// 3. 切换配置区域显隐
+function toggleImageConfigArea(show) {
+    const area = document.getElementById('imageApiConfigArea');
+    if (area) {
+        area.style.display = show ? 'block' : 'none';
+    }
+}
+
+// 4. 保存绘图配置 (供外部调用)
+function saveImageApiConfig() {
+    const checkbox = document.getElementById('imageApiEnabled');
+    // 如果页面上没有这个元素，说明可能没加载出来，不保存空值
+    if (!checkbox) return;
+
+    const enabled = checkbox.checked;
+    const baseUrl = document.getElementById('imageApiBaseUrl').value.trim();
+    const apiKey = document.getElementById('imageApiKey').value.trim();
+    const model = document.getElementById('imageApiModel').value.trim();
+
+    // 自动修正 URL
+    let finalUrl = baseUrl;
+    if (finalUrl && finalUrl.endsWith('/')) finalUrl = finalUrl.slice(0, -1);
+
+    const newConfig = {
+        enabled: enabled,
+        baseUrl: finalUrl,
+        apiKey: apiKey,
+        model: model
+    };
+
+    currentImageApiConfig = newConfig;
+    saveToDB('imageApiSettings', newConfig);
+    console.log('🎨 绘图配置已保存:', newConfig);
+}
+
+// ============ 🎨 AI 生图核心逻辑 (异步处理) ============
+
+async function triggerAiImageGeneration(messageId, prompt) {
+    console.log(`🎨 开始为消息 ${messageId} 生成图片，提示词: ${prompt}`);
+
+  // 👇 新增：如果没有传入 prompt，从最新消息中提取
+    if (!prompt || prompt.trim() === '') {
+        const lastUserMsg = allMessages.slice().reverse().find(m => m.role === 'user');
+        if (lastUserMsg && lastUserMsg.content) {
+            prompt = lastUserMsg.content;
+            console.log('📝 从最新用户消息提取提示词:', prompt);
+        } else {
+            updateMessageToError(messageId, '❌ 绘图失败: 无法获取提示词');
+            return;
+        }
+    }
+
+    // 1. 检查 Key
+    if (!currentImageApiConfig.apiKey) {
+        updateMessageToError(messageId, '❌ 绘图失败: 未配置 API Key');
+        return;
+    }
+
+    try {
+        // 2. AI生图提示词 Prompt 
+        const enhancedPrompt = prompt;
+
+        // 3. 构建 URL
+        let url = currentImageApiConfig.baseUrl;
+        if (!url.endsWith('/images/generations')) {
+            url = url + '/images/generations';
+        }
+
+        // 4. 请求
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentImageApiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: currentImageApiConfig.model,
+                prompt: enhancedPrompt,
+                n: 1,
+                size: "1024x1024"
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            const errMsg = data.error ? data.error.message : '未知错误';
+            updateMessageToError(messageId, `❌ 绘图失败: ${errMsg}`);
+            return;
+        }
+
+        if (data.data && data.data.length > 0 && data.data[0].url) {
+            updateMessageToImage(messageId, data.data[0].url);
+        } else {
+            updateMessageToError(messageId, '❌ 绘图失败: API 返回数据异常');
+        }
+
+    } catch (error) {
+        updateMessageToError(messageId, `❌ 网络错误: ${error.message}`);
+    }
+}
+
+// 辅助：更新为图片
+function updateMessageToImage(msgId, url) {
+    const msg = allMessages.find(m => m.id === msgId);
+    if (msg) {
+        // 👇 保存原始提示词，方便后续回溯
+        const originalPrompt = msg.content; // 保存loading时的提示词
+        
+        msg.type = 'image';
+        msg.content = url;
+        msg.role = 'assistant';
+        msg.aiPrompt = originalPrompt; // 👈 新增：存储提示词
+        
+        saveMessages();
+        renderMessages();
+        scrollToBottom();
+    }
+}
+
+// 辅助：更新为错误 (方案 A)
+function updateMessageToError(msgId, errorText) {
+    const msg = allMessages.find(m => m.id === msgId);
+    if (msg) {
+        msg.type = 'system';
+        msg.content = errorText;
+        saveMessages();
+        renderMessages();
+    }
+}
+
+// 5. 获取绘图模型列表
+async function getImageModels() {
+    const baseUrl = document.getElementById('imageApiBaseUrl').value.trim();
+    const apiKey = document.getElementById('imageApiKey').value.trim();
+    const btn = event.target; // 获取点击的按钮
+    
+    if (!baseUrl || !apiKey) {
+        alert('请先填写绘图 API 地址和 Key');
+        return;
+    }
+    
+    const originalText = btn.textContent;
+    btn.textContent = '正在获取...';
+    btn.disabled = true;
+    try {
+        // 自动补全 /models 路径
+        let url = baseUrl;
+        if (url.endsWith('/')) url = url.slice(0, -1);
+        if (!url.endsWith('/models')) url += '/models';
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        
+        const data = await response.json();
+        const models = Array.isArray(data.data) ? data.data : [];
+        
+        if (models.length === 0) {
+            alert('未获取到模型数据');
+            return;
+        }
+        // 渲染下拉框
+        const select = document.getElementById('imageModelSelect');
+        const group = document.getElementById('imageModelSelectGroup');
+        
+        // 尝试智能筛选（把包含 image, dall-e, flux 的排在前面）
+        models.sort((a, b) => {
+            const keyA = (a.id || '').toLowerCase();
+            const keyB = (b.id || '').toLowerCase();
+            const scoreA = (keyA.includes('image') || keyA.includes('dall') || keyA.includes('flux')) ? 1 : 0;
+            const scoreB = (keyB.includes('image') || keyB.includes('dall') || keyB.includes('flux')) ? 1 : 0;
+            return scoreB - scoreA;
+        });
+        select.innerHTML = '<option value="">▼ 请选择模型填入上方</option>' + 
+            models.map(m => `<option value="${m.id}">${m.id}</option>`).join('');
+        
+        group.style.display = 'block';
+        alert(`成功获取 ${models.length} 个模型，请在下方列表选择`);
+    } catch (error) {
+        console.error(error);
+        alert('获取失败：' + error.message + '\n请检查地址和Key是否正确，或者直接手动填写模型名称。');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ============ 🎨 AI 绘图配置逻辑END ============

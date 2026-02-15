@@ -37,6 +37,8 @@
         overflow-x: hidden !important;
     }
     
+
+    
     .phone-screen {
         width: 100% !important;
         height: 100% !important;
@@ -47,6 +49,7 @@
     }
 </style>
 
+<meta name="robots" content="noindex, nofollow">
 
 </head>
 <body>
@@ -324,8 +327,71 @@
                 <select id="modelSelect" class="ins-input">
                 </select>
             </div>
+<!-- 新增：模型温度设置 -->
+<div class="ins-input-group" style="margin-top: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <label class="ins-label" style="margin: 0;">模型温度 (Temperature)</label>
+        <span id="tempValueDisplay" style="font-size: 12px; color: #667eea; font-weight: bold;">0.7</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 12px; color: #999;">严谨</span>
+        <input type="range" id="apiTemperature" class="ins-range" min="0" max="2" step="0.1" value="0.7" style="flex: 1; accent-color: #667eea;" oninput="document.getElementById('tempValueDisplay').textContent = this.value">
+        <span style="font-size: 12px; color: #999;">发散</span>
+    </div>
+    <div style="font-size: 10px; color: #ccc; margin-top: 4px;">推荐值：0.5-1.0 (默认0.7)</div>
+</div>
+
         </div>
         
+        <!-- ============ 修正版：AI 绘图配置卡片 (修复对齐问题) ============ -->
+        <div class="api-card" style="margin-top: 20px;">
+            <div class="api-section-title">
+                <span>🎨 PAINTING</span>
+                <span>AI 绘图配置</span>
+            </div>
+            
+            <!-- 总开关：增加 display:flex 确保横向对齐，使用原生样式保持一致 -->
+            <div class="ins-input-group" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding-right: 5px; margin-bottom: 15px;">
+                <label class="ins-label" style="margin-bottom: 0;">启用 AI 生图功能</label>
+                <!-- 使用项目通用的 checkbox 样式 -->
+                <input type="checkbox" id="imageApiEnabled" style="accent-color: #333; transform: scale(1.3); cursor: pointer;">
+            </div>
+
+            <!-- 配置区域 -->
+            <div id="imageApiConfigArea" style="display: none; border-top: 1px solid #f5f5f5; margin-top: 5px; padding-top: 15px;">
+                <div class="ins-input-group">
+                    <label class="ins-label">绘图 API 地址 (Base URL)</label>
+                    <input type="url" id="imageApiBaseUrl" class="ins-input" placeholder="例如 https://api.openai.com/v1">
+                    <div style="font-size: 10px; color: #999; margin-top: 6px;">* 必须填写完整，通常包含 /v1</div>
+                </div>
+
+                <div class="ins-input-group">
+                    <label class="ins-label">绘图 API Key (令牌)</label>
+                    <input type="password" id="imageApiKey" class="ins-input" placeholder="sk-...">
+                </div>
+
+                           <!-- 模型配置区 (带拉取功能) -->
+                <div class="ins-input-group">
+                    <label class="ins-label">绘图模型 (Model)</label>
+                    <input type="text" id="imageApiModel" class="ins-input" placeholder="dall-e-3 或 flux-schnell">
+                </div>
+
+                <!-- 拉取按钮 -->
+                <button class="ins-line-btn ins-btn-blue-line" onclick="getImageModels()" style="width: 100%; margin-top: 5px; margin-bottom: 10px;">
+                    📡 点击获取AI生图模型列表
+                </button>
+
+                <!-- 隐藏的下拉选择框 -->
+                <div class="ins-input-group" id="imageModelSelectGroup" style="display: none;">
+                    <label class="ins-label">请选择</label>
+                    <select id="imageModelSelect" class="ins-input" onchange="document.getElementById('imageApiModel').value = this.value">
+                        <option value="">请选择模型...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <!-- ============ 修正结束 ============ -->
+
         <div class="api-footer-actions">
             <div class="ins-btn-row">
                 <button class="ins-line-btn" onclick="testConnection()">
@@ -374,7 +440,7 @@
                 </div>
 
                 <!-- 3. 清除缓存 -->
-                <div class="ins-list-item" onclick="clearAppCache()" style="border-bottom: none;">
+                <div class="ins-list-item" onclick="openSmartCleanerModal()" style="border-bottom: none;">
                     <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     <div class="ins-item-label">清除缓存</div>
                     <div class="ins-arrow">›</div>
@@ -1111,6 +1177,51 @@
                 </div>
             </div>
 
+
+<!-- 角色动态配图 -->
+<div class="form-group" style="margin-top: 15px;">
+    <label class="form-label">角色动态配图</label>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; background:#f9f9f9; border:1px solid #eee; padding: 12px; border-radius: 12px;">
+        <span style="font-size: 14px; color:#333;">启用角色配图</span>
+        <input type="checkbox" id="characterImageToggle" onchange="handleMomentsSettingsChange()" style="accent-color: #333; transform: scale(1.2); cursor:pointer;">
+    </div>
+
+    <div id="characterImagePanel" style="display:none; margin-top: 10px; background:#fff; border:1px solid #eee; padding: 12px; border-radius: 12px;">
+        
+        <!-- 配图模式 -->
+        <div style="margin-bottom: 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 13px; color:#333;">配图模式</span>
+                <select id="characterImageModeSelect" class="form-input" style="width: 140px;" onchange="handleMomentsSettingsChange()">
+                    <option value="text">文字图</option>
+                    <option value="worldbook">世界书图</option>
+                    <option value="ai">AI生图</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- 配图概率 -->
+        <div style="margin-bottom: 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 13px; color:#333;">配图概率</span>
+                <span id="characterImageProbDisplay" style="font-size: 13px; color:#999;">50%</span>
+            </div>
+            <input type="range" id="characterImageProbSlider" min="0" max="100" value="50" 
+                   oninput="updateCharacterImageProbDisplay()" 
+                   onchange="handleMomentsSettingsChange()"
+                   style="width: 100%; accent-color: #333; cursor: pointer;">
+        </div>
+        
+        <!-- 状态检查 -->
+        <div id="characterImageStatusBox" style="padding: 10px; background: #f9f9f9; border-radius: 8px; font-size: 12px; line-height: 1.4; color: #666; white-space: pre-line;">
+            📊 状态检查中...
+        </div>
+        
+    </div>
+</div>
+
+
             <div class="form-group" style="margin-top: 15px;">
                 <label class="form-label">自动发布动态</label>
 
@@ -1466,7 +1577,7 @@
     <div id="chatHeaderAvatar" class="header-avatar"></div>
     
     <div style="flex: 1; display: flex; flex-direction: column;">
-        <div class="chat-detail-title" id="chatDetailTitle">张三</div>
+       <div class="chat-detail-title" id="chatDetailTitle" onclick="openDeleteLastMsgModal()" style="cursor:pointer;">张三</div>
         <div class="character-status" id="characterStatus" style="display: none;"></div>
     </div>
     <!-- ★★★ 在这里插入搜索按钮 (更多按钮的上面) ★★★ -->
@@ -1747,7 +1858,8 @@
              <div class="ins-stat-item" onclick="openMemoryScreen()"> <div class="stat-number ins-stat-num" id="charFollowing">0</div>
     <div class="stat-label ins-stat-label">档案</div>
 </div>
-                <div class="ins-stat-item">
+                            <!-- 邮件入口 -->
+                <div class="ins-stat-item" onclick="openEmailScreen()">
                     <div class="stat-number ins-stat-num" id="charItinerary">0</div>
                     <div class="stat-label ins-stat-label">邮件</div>
                 </div>
@@ -1866,7 +1978,7 @@
     <select id="charImageMode" class="ins-input" style="width: 100%; padding: 12px; font-size: 14px; border-radius: 12px; border: 1px solid #f0f0f0; background: #f9f9f9; color: #333;">
         <option value="text">文字图</option>
         <option value="worldbook">世界书图</option>
-        <option value="hybrid">共存模式</option>
+        <option value="hybrid">AI生图</option>
     </select>
 </div>
 <!-- ▲▲▲ 新增结束 ▲▲▲ -->
@@ -1978,6 +2090,47 @@
     </div>
 </div>
 
+<!-- 工作邮箱页面 -->
+<div class="email-screen" id="emailScreen" style="display: none;">
+    <div class="chat-detail-header">
+        <!-- 左侧返回按钮 -->
+        <button class="back-btn" onclick="backToCharacterInfoFromEmail()">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        
+        <!-- 标题 -->
+        <div class="chat-detail-title">工作邮箱</div>
+        
+        <!-- 右侧功能按钮组 -->
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
+            <!-- 清空按钮 -->
+            <button class="back-btn" onclick="clearEmails()" title="清空" style="width: 32px; padding: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </button>
+    <!-- 找到原来的生成按钮，替换成这一行 -->
+<button class="back-btn" id="emailGenBtn" onclick="generateEmail()" title="生成" style="width: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+    </svg>
+</button>
+        </div>
+    </div>
+    
+    <!-- 邮件列表容器 -->
+    <div class="email-list-container" id="emailListContainer" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9;">
+         <div class="empty-state" id="emailEmptyState" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #999;">
+            <div style="font-size: 48px; margin-bottom: 15px;">📮</div>
+            <div style="font-size: 14px;">暂无工作邮件</div>
+         </div>
+         <!-- 邮件内容将在这里动态生成 -->
+         <div id="emailItemsArea"></div>
+    </div>
+</div>
 
     </div>
 <div class="modal-overlay" id="condenseModal" onclick="closeCondenseModal(event)">
@@ -2002,7 +2155,7 @@
         </div>
     </div>
 </div>
-<!-- 编辑弹窗 -->
+<!-- 主屏幕用户信息编辑弹窗 -->
 <div class="modal-overlay" id="editModal" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()" style="max-height: 80vh; overflow-y: auto; width: 90%; max-width: 320px; padding: 20px;">
         <div class="modal-title" style="font-size: 17px; margin-bottom: 18px;">编辑个人信息</div>
@@ -2041,6 +2194,25 @@
                 <div id="appTextColorPreview" style="width: 38px; height: 38px; border-radius: 6px; border: 2px solid #e1e5e9; background: #ffffff; flex-shrink: 0;"></div>
             </div>
         </div>
+
+<!-- 新增：App图标字体大小 -->
+<div class="form-group" style="margin-bottom: 14px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <label class="form-label" style="font-size: 13px;">App图标字体大小</label>
+        <span id="appTextSizeDisplay" style="font-size: 12px; color: #667eea; font-weight: bold;">12px</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 10px; color: #999;">小</span>
+    <input type="range" id="appTextSizeInput" class="form-input" min="0" max="20" step="1" value="12" 
+    style="flex: 1; padding: 0; margin: 0; accent-color: #667eea;" 
+    oninput="
+        document.getElementById('appTextSizeDisplay').textContent = this.value + 'px'; 
+        document.querySelectorAll('.app-name').forEach(el => el.style.fontSize = this.value + 'px');
+    ">
+        <span style="font-size: 10px; color: #999;">大</span>
+    </div>
+</div>
+
 
         <div style="text-align: center; font-size: 10px; color: #999; margin-top: 12px; padding: 8px; background: #f9f9f9; border-radius: 6px;">
             天气数据由 <a href="https://openweathermap.org" target="_blank" style="color: #667eea; text-decoration: none;">OpenWeatherMap</a> 提供
@@ -2217,6 +2389,9 @@
        <button class="message-menu-btn" id="deleteMessageBtn" onclick="startMultiSelectMode()">
     删除
 </button>
+<button class="message-menu-btn" id="editMessageBtn" onclick="openEditMessageModal()">
+    编辑
+</button>
 <button class="message-menu-btn" id="quoteMessageBtn" onclick="quoteSelectedMessage()">
     引用
 </button>
@@ -2229,6 +2404,21 @@
 
     </div>
 </div>
+
+<!-- 编辑消息弹窗 (新增) -->
+<div class="modal-overlay" id="editMessageModal" onclick="closeEditMessageModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">编辑消息</div>
+        <div class="form-group">
+            <textarea id="editMessageContent" class="form-input" rows="5" placeholder="修改消息内容..." style="resize: none; font-size: 14px; line-height: 1.5;"></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeEditMessageModal()">取消</button>
+            <button class="btn btn-save" onclick="saveEditedMessage()">保存</button>
+        </div>
+    </div>
+</div>
+
 <!-- 基本信息编辑弹窗 -->
 <div class="modal-overlay" id="editBasicInfoModal" onclick="closeEditBasicInfo(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -2570,6 +2760,22 @@
         </div>
     </div>
     
+<!-- 世界书设定按钮 (插入到购物车按钮左边) -->
+<button class="back-btn" onclick="openShoppingWorldbookModal()" style="position: relative;" title="世界书设定">
+    🌍
+    <span id="shoppingWorldbookBadge" style="
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #667eea;
+        color: white;
+        font-size: 10px;
+        padding: 2px 5px;
+        border-radius: 8px;
+        display: none;
+    ">0</span>
+</button>
+
     <button class="back-btn" onclick="openShoppingCart()" style="position: relative;">
         🛒
         <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
@@ -3048,13 +3254,11 @@
 
         <div style="font-size: 12px; color: #999; line-height: 1.6; margin-bottom: 12px;">
             这里写下 TA 的朋友圈关系网。<br>
-            聊天列表角色：写聊天列表里的角色名字。<br>
-            人设好友：用 <strong>@名字</strong> 标注，例如：<br>
-            <span style="font-family: monospace;">@路人甲：邻居，爱八卦；@小夏：闺蜜，嘴碎但心软。</span>
+        
         </div>
 
         <div class="form-group">
-            <textarea id="relationshipTextInput" class="form-input" rows="8" placeholder="例如：&#10;张三：从小一起长大，互怼但很照顾我。&#10;@路人甲：楼下邻居，喜欢插科打诨。&#10;@小夏：闺蜜，爱吐槽，信息很灵通。"></textarea>
+            <textarea id="relationshipTextInput" class="form-input" rows="8" placeholder="例如：&#10;张三：从小一起长大，互怼但很照顾我。&#10;路人甲：楼下邻居，喜欢插科打诨。&#10;小夏：闺蜜，爱吐槽，信息很灵通。"></textarea>
         </div>
 
         <div class="modal-buttons">
@@ -3247,6 +3451,154 @@
     </div>
 </div>
 <!-- ====== 抽签专用：绑定世界书弹窗 END ====== -->
+
+<!-- 邮件详情弹窗 (修复版) -->
+<div class="modal-overlay" id="emailDetailModal" onclick="closeEmailDetail(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 320px; height: 60vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px;">
+        
+        <div style="padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <div style="font-weight: 700; font-size: 16px;">邮件详情</div>
+            <button onclick="closeEmailDetail()" style="border: none; background: none; font-size: 20px; color: #999;">×</button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 20px;">
+            <div id="emailDetailSubject" style="font-size: 18px; font-weight: 700; margin-bottom: 12px; line-height: 1.4; color: #333;"></div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; color: #999; font-size: 12px;">
+                <span id="emailDetailSender">发件人: --</span>
+                <span id="emailDetailTime">时间: --</span>
+            </div>
+            
+            <div style="height: 1px; background: #f5f5f5; margin-bottom: 20px;"></div>
+            
+            <div id="emailDetailBody" style="font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap;"></div>
+        </div>
+
+        <div style="padding: 15px; border-top: 1px solid #f0f0f0; background: #fff;">
+            <button class="btn btn-save" onclick="closeEmailDetail()" style="width: 100%; background: #333; color: white; border-radius: 12px;">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 智能空间管理弹窗 (移动端优化版) -->
+<div class="modal-overlay" id="smartCleanerModal" onclick="closeSmartCleanerModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 90%; max-width: 340px; max-height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+        
+        <!-- 固定顶部 -->
+        <div style="padding: 20px 20px 15px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;">
+            <div class="modal-title" style="margin: 0;">存储空间管理</div>
+        </div>
+        
+        <!-- 可滚动内容区 -->
+        <div style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px;">
+            
+            <!-- 仪表盘 -->
+            <div style="background: linear-gradient(135deg, #f6f8fd 0%, #f1f4f9 100%); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 5px;">当前预估占用</div>
+                <div id="cleanerTotalSize" style="font-size: 32px; font-weight: 700; color: #333;">0 MB</div>
+                <div style="font-size: 11px; color: #999; margin-top: 5px;">* 仅计算聊天记录中的媒体文件</div>
+            </div>
+
+            <!-- 选项列表 -->
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                
+                <label style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 10px; cursor: pointer; min-height: 60px;">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                        <span style="font-size: 14px; font-weight: 600; color: #333;">🖼️ 图片缓存</span>
+                        <span style="font-size: 11px; color: #999; margin-top: 3px; word-break: break-all;" id="cleanerImageSize">计算中...</span>
+                    </div>
+                    <input type="checkbox" id="cleanImageCheck" checked style="accent-color: #333; transform: scale(1.2); margin-left: 10px; flex-shrink: 0;">
+                </label>
+
+                <label style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 10px; cursor: pointer; min-height: 60px;">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                        <span style="font-size: 14px; font-weight: 600; color: #333;">🤪 表情包缓存</span>
+                        <span style="font-size: 11px; color: #999; margin-top: 3px; word-break: break-all;" id="cleanerStickerCheckSize">计算中...</span>
+                    </div>
+                    <input type="checkbox" id="cleanStickerCheck" checked style="accent-color: #333; transform: scale(1.2); margin-left: 10px; flex-shrink: 0;">
+                </label>
+
+                <label style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 10px; cursor: pointer; min-height: 60px;">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                        <span style="font-size: 14px; font-weight: 600; color: #333;">📄 HTML卡片</span>
+                        <span style="font-size: 11px; color: #999; margin-top: 3px; word-break: break-all;" id="cleanerCardSize">计算中...</span>
+                    </div>
+                    <input type="checkbox" id="cleanCardCheck" style="accent-color: #333; transform: scale(1.2); margin-left: 10px; flex-shrink: 0;">
+                </label>
+                
+                <label style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff; border: 1px solid #eee; border-radius: 10px; cursor: pointer; min-height: 60px;">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                        <span style="font-size: 14px; font-weight: 600; color: #333;">🎤 语音消息</span>
+                        <span style="font-size: 11px; color: #999; margin-top: 3px; word-break: break-all;" id="cleanerVoiceSize">计算中...</span>
+                    </div>
+                    <input type="checkbox" id="cleanVoiceCheck" style="accent-color: #333; transform: scale(1.2); margin-left: 10px; flex-shrink: 0;">
+                </label>
+
+            </div>
+
+            <!-- 安全提示 -->
+            <div style="background: #e6fffa; border: 1px solid #b2f5ea; color: #2c7a7b; padding: 12px; border-radius: 8px; font-size: 11px; display: flex; align-items: flex-start; line-height: 1.5;">
+                <span style="margin-right: 6px; flex-shrink: 0;">🛡️</span>
+                <span><strong>提醒：</strong>只保留最新300条消息的缓存。</span>
+            </div>
+            
+            <!-- 底部留白，防止按钮遮挡 -->
+            <div style="height: 20px;"></div>
+        </div>
+
+        <!-- 固定底部按钮 -->
+        <div style="padding: 15px 20px; border-top: 1px solid #f0f0f0; background: #fff; flex-shrink: 0;">
+            <div class="modal-buttons" style="margin: 0; display: flex; gap: 10px;">
+                <button class="btn btn-cancel" onclick="closeSmartCleanerModal()" style="flex: 1;">取消</button>
+                <button class="btn btn-save" onclick="executeSmartClean()" style="flex: 1; background: #333; color: white;">立即瘦身</button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+
+<div class="modal-overlay" id="deleteLastMsgModal" onclick="closeDeleteLastMsgModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 280px; text-align: center;">
+        <div class="modal-title" style="color: #ff4757; margin-bottom: 10px;">撤销回复</div>
+        
+        <div style="font-size: 14px; color: #666; margin-bottom: 25px; line-height: 1.6;">
+            确定删除 TA 的最新一次回复吗？<br>
+            <strong>本次将删除 <span id="deleteLastMsgCount">0</span> 条消息</strong>
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeDeleteLastMsgModal()">取消</button>
+            <button class="btn btn-save" onclick="confirmDeleteLastMsg()" style="background: #ff4757; color: white; border: none;">删除</button>
+        </div>
+    </div>
+</div>
+
+<!-- 购物世界书选择弹窗 -->
+<div class="modal-overlay" id="shoppingWorldbookModal" onclick="closeShoppingWorldbookModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 90%; width: 360px;">
+        <div class="modal-title">购物世界书设定</div>
+        
+        <div style="background: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 14px; color: #666;">
+            已选：<span id="shoppingWorldbookSelectedCount">0</span> 本
+        </div>
+        
+        <div style="font-size: 12px; color: #999; margin-bottom: 15px; line-height: 1.5;">
+            选择后，AI 生成的商品将遵循世界书风格。<br>
+            未选择时按现代风格生成。
+        </div>
+        
+        <!-- 世界书列表 -->
+        <div id="shoppingWorldbookList" style="max-height: 320px; overflow-y: auto; border-top: 1px solid #f0f0f0;">
+            <!-- JS 动态生成 -->
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="closeShoppingWorldbookModal()">取消</button>
+            <button class="btn btn-save" onclick="saveShoppingWorldbookSelection()">保存</button>
+        </div>
+    </div>
+</div>
 
 
 <script src="script.js"></script>

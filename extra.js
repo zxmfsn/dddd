@@ -1,3 +1,53 @@
+// ============ 模型适配工具 (新增) ============
+// 检测模型类型
+function detectModelType(apiKey, modelName) {
+    const key = (apiKey || '').toLowerCase();
+    const model = (modelName || '').toLowerCase();
+    if (model.includes('claude') || key.includes('anthropic') || key.startsWith('sk-ant')) return 'claude';
+    if (model.includes('gemini') || key.includes('google')) return 'gemini';
+    return 'gemini';
+}
+
+// 强制修正格式 (专治 Claude 乱换行)
+function fixResponseFormat(response, modelType) {
+    if (!response) return '';
+    let fixed = response;
+    
+    // 1. 移除所有换行符 (Claude 最爱换行)
+    fixed = fixed.replace(/\n/g, '').replace(/\r/g, '');
+    
+    // 2. 移除 Markdown 加粗和列表
+    fixed = fixed.replace(/\*\*/g, '').replace(/^[\-]\s*/g, '');
+    
+    // 3. 确保心声更新在最后且有分隔符
+    const heartMatch = fixed.match(/\[心声更新\].*?\[\/心声更新\]/);
+    if (heartMatch) {
+        fixed = fixed.replace(heartMatch[0], '').trim();
+        // 去掉末尾可能多余的 |||
+        if (fixed.endsWith('|||')) fixed = fixed.slice(0, -3);
+        fixed = fixed + '|||' + heartMatch[0];
+    }
+    
+    // 4. 如果完全没有 |||，尝试智能分割 (兜底)
+    if (!fixed.includes('|||')) {
+        const parts = fixed.split(/([。！？…]+)/).filter(s => s.trim());
+        const bubbles = [];
+        for (let i = 0; i < parts.length; i += 2) {
+            const sentence = parts[i] + (parts[i+1] || '');
+            if(sentence && !sentence.includes('[心声更新]')) bubbles.push(sentence);
+        }
+        if (bubbles.length > 0) {
+            fixed = bubbles.join('|||');
+            if (heartMatch) fixed = fixed + '|||' + heartMatch[0];
+        }
+    }
+    
+    // 5. 清理多余分隔符
+    fixed = fixed.replace(/\|\|\|+/g, '|||').replace(/^\|\|\|/, '').replace(/\|\|\|$/, '');
+    return fixed;
+}
+
+
 
 // ============ 日记功能 ============
 
@@ -194,41 +244,6 @@ ${timelineStr}
     }
  
 
-    
-// ================================
-// 中文注释：HTML卡片插件（生成端规则）
-// - 这里用 systemPrompt += 的方式追加，确保 allowHtmlCard 已经定义
-// ================================
-const safeAllowHtmlCard =
-    (typeof allowHtmlCard !== 'undefined') ? allowHtmlCard : false;
-const safeHtmlWorldbookRef =
-    (typeof htmlWorldbookRef !== 'undefined') ? htmlWorldbookRef : '';
-const cardRuleText = `
-【HTML卡片插件（可选输出，纯展示，无任何功能性效果）】
-- 是否允许输出卡片：${safeAllowHtmlCard ? '允许' : '禁止'}
-【卡片输出协议（仅在允许时生效）】
-1) 如果允许输出卡片：HTML 卡片必须“独立占用一条气泡”，并且这一条气泡内容只能包含卡片本体，禁止混入任何普通文字。
--  正确示例：气泡A（文字）|||[[CARD_HTML]]...[[/CARD_HTML]]|||气泡C（文字）
-
-2) HTML卡片模块必须使用以下边界标记包裹（必须一字不差）：
-[[CARD_HTML]]
-(这里放HTML)
-[[/CARD_HTML]]
-
-【硬性尺寸要求（必须遵守）】
-- 卡片最大宽度：240px
-- 卡片最大高度：270px
-- 内容太多允许在卡片内部滚动；禁止出现横向滚动。
-【安全禁令（必须遵守）】
-- 禁止输出 <script>、<iframe> 等危险标签
-- 禁止输出任何 onxxx 事件属性（如 onclick= / onerror=）
-- 禁止使用 javascript: 链接
-【风格参考（仅供参考）】
-${safeAllowHtmlCard ? (safeHtmlWorldbookRef || '（无）') : '（未开启/未关联，禁止输出卡片）'}
-【重要兜底规则】
-- 如果“禁止输出卡片”，你必须完全不要输出 [[CARD_HTML]] 模块。
-`;
-
 
 // 获取最近30轮的聊天记忆（智能版）
 const recentMessages = await new Promise(resolve => {
@@ -333,8 +348,6 @@ const recentMessages = await new Promise(resolve => {
         .join("\n");
 
     const diaryPrompt = `你是${chat.name}，现在是${dateStr} ${timeStr}。请写一篇**灵魂有趣、拒绝流水账**的个人日记。
-
-${cardRuleText}
 
 
 【角色人设】
@@ -628,6 +641,127 @@ function openDiaryDetail(diaryId) {
     renderDiaryDetail(diary);
 }
 
+// ============ 日记详情：AI 绘图配图 (Pollinations.ai) ===========
+
+// 1. 根据日记内容生成 AI 绘图 Prompt（关键词）
+function buildDiaryImagePrompt(diary) {
+    // 提取关键信息
+    const title = diary.title || '';
+    const weather = diary.weather || '';
+    const mood = diary.mood || '';
+    const tags = Array.isArray(diary.tags) ? diary.tags.slice(0, 3).join(' ') : '';
+    
+    // --- ★★★ 新增：恐怖/灵异内容安全过滤 ★★★ ---
+    // 定义敏感关键词库（可以根据需要自己添加）
+    const scaryKeywords = [
+        '鬼', '恐怖', '惊悚', '吓人', '灵异', '尸', '血', '噩梦', '诡异', '凶', '杀', '死',
+        'ghost', 'horror', 'scary', 'spooky', 'blood', 'nightmare', 'creepy'
+    ];
+    
+    // 检查是否包含敏感词 (合并标题、心情、标签一起查)
+    const fullText = (title + ' ' + mood + ' ' + tags).toLowerCase();
+    const isScary = scaryKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (isScary) {
+        console.log('检测到灵异/恐怖内容，启动萌宠护盾！🐶🐱');
+        // 强制返回治愈系 Prompt：可爱的小猫小狗，温暖阳光，柔和色调
+        return "cute fluffy kittens and puppies playing together in a sunny garden, soft warm lighting, healing atmosphere, pastel colors, highly detailed, 8k, cinematic composition";
+    }
+    // --- ★★★ 安全过滤结束 ★★★ ---
+
+    // 如果不恐怖，继续执行原来的逻辑
+    
+    // 组合成 Prompt（英文效果最佳，中文也能跑）
+    // 加上风格词：胶片感、拍立得、真实照片、高画质
+    let basePrompt = `${title} ${weather} ${mood} ${tags}`;
+    
+    // 清洗一下特殊字符，避免 URL 报错
+    basePrompt = basePrompt.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ').trim();
+    
+    // 加上风格修饰词 (Magic Prompt)
+    // 风格：真实胶片感 + 拍立得 + 温暖色调 + 高细节
+    const stylePrompt = "realistic polaroid photo, film grain, warm lighting, highly detailed, 8k resolution, cinematic composition";
+    
+    return `${basePrompt}, ${stylePrompt}`;
+}
+
+// 2. 生成 Pollinations 图片 URL
+function getPollinationsImageUrl(prompt) {
+    if (!prompt) return null;
+    
+    // 编码 Prompt
+    const encodedPrompt = encodeURIComponent(prompt);
+    
+    // 构造 URL
+    // 宽 512, 高 512 (正方形), nologo=true (去水印), seed (随机种子防止缓存)
+    const seed = Math.floor(Math.random() * 1000000);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}&model=flux`;
+}
+
+// 3. 异步加载图片并保存到 DB
+async function loadDiaryImageIntoDetail(diary) {
+    // 如果已经有图了，或者正在加载中（防止重复请求），直接返回
+    if (diary.coverImage || diary._isLoadingImage) return;
+    
+    diary._isLoadingImage = true; // 标记正在加载
+    
+    const prompt = buildDiaryImagePrompt(diary);
+    const url = getPollinationsImageUrl(prompt);
+    
+    if (!url) {
+        diary._isLoadingImage = false;
+        return;
+    }
+    
+    // 创建图片对象预加载
+    const img = new Image();
+    img.onload = () => {
+        // 图片加载成功
+        diary.coverImage = url; // 更新内存对象
+        diary._isLoadingImage = false;
+        
+        // 更新界面（如果当前还在详情页）
+        const box = document.getElementById(`diaryCoverBox-${diary.id}`);
+        if (box) {
+            box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
+            //以此证明是AI生成的
+            box.classList.add('loaded'); 
+        }
+        
+        // 保存到数据库
+        saveDiaryCoverImageToDB(diary.id, url);
+        
+        // 同步更新 diaries 列表缓存
+        const localDiary = diaries.find(d => d.id === diary.id);
+        if (localDiary) localDiary.coverImage = url;
+    };
+    
+    img.onerror = () => {
+        // 加载失败（可能网络问题或生成超时），保持占位图
+        console.warn('AI 图片生成失败:', url);
+        diary._isLoadingImage = false;
+        // 可选：显示一个“生成失败”的小提示，或者什么都不做（保留占位图）
+    };
+    
+    // 开始加载
+    img.src = url;
+}
+
+// 4. 写回数据库
+function saveDiaryCoverImageToDB(diaryId, coverUrl) {
+    loadFromDB('diaries', (data) => {
+        const allDiaries = data && data.list ? data.list : [];
+        const idx = allDiaries.findIndex(d => d.id === diaryId);
+        if (idx === -1) return;
+
+        allDiaries[idx].coverImage = coverUrl;
+
+        const transaction = db.transaction(['diaries'], 'readwrite');
+        const objectStore = transaction.objectStore('diaries');
+        objectStore.put({ id: 1, list: allDiaries });
+    });
+}
+
 
 // 渲染日记详情
 function renderDiaryDetail(diary) {
@@ -776,12 +910,18 @@ function renderDiaryDetail(diary) {
                 <div class="snapshot-container">
                     <div class="washi-tape"></div>
                     <div class="polaroid-frame">
-                        <div class="polaroid-img">
-                            <div class="polaroid-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                <span>AI Photo</span>
-                            </div>
-                        </div>
+                        <!-- 给容器加个 ID，方便异步替换 -->
+<div class="polaroid-img" id="diaryCoverBox-${diary.id}">
+    ${diary.coverImage ? `
+        <img src="${diary.coverImage}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">
+    ` : `
+        <div class="polaroid-placeholder">
+            <!-- loading 动画（可选，用简单的 CSS 旋转或者保留原样） -->
+            <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <span class="placeholder-text">AI Generating...</span>
+        </div>
+    `}
+</div>
                     </div>
                 </div>
 
@@ -812,6 +952,10 @@ function renderDiaryDetail(diary) {
     `;
     
     container.innerHTML = html;
+    // 如果没有封面图，且不是正在加载中，触发 AI 绘图
+    if (!diary.coverImage && !diary._isLoadingImage) {
+        loadDiaryImageIntoDetail(diary);
+    }
 }
 
 
@@ -1799,6 +1943,9 @@ let callSettings = {
       
       // ============ 通话功能 ============
 
+
+
+      
 function openCall() {
     if (!currentChatId) {
         alert('请先打开聊天');
@@ -1897,11 +2044,8 @@ async function callAIAnswer() {
     const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
     
     const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
- // 中文注释：只取 html 分类内容，作为卡片模板参考（需要你已在 script.js 里新增 getLinkedHtmlWorldbooksContent）
-
 
 // 中文注释：生成端开关：必须“角色开了html插件”且“关联世界书存在html分类内容”才允许模型输出卡片
-
 const htmlWorldbookRef = await getLinkedHtmlWorldbooksContent(characterInfo.linkedWorldbooks);
 const allowHtmlCard = (characterInfo.htmlPluginEnabled === true) && (String(htmlWorldbookRef || '').trim().length > 0);
 
@@ -1916,13 +2060,13 @@ const allowHtmlCard = (characterInfo.htmlPluginEnabled === true) && (String(html
 if (msg.type === 'image') {
     // ★★★ 修改：区分表情包、世界书图、普通图片 ★★★
     if (msg.isSticker) {
-        content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
+        content = `[发送了表情: ${msg.altText || '图片'}]`;
     } else if (msg.content && (msg.content.startsWith('http://') || msg.content.startsWith('https://'))) {
         // 世界书图：URL格式的图片，不显示"发送了一张图片"，直接跳过或标记为背景
-        content = `[ID:${msg.id}] [图片]`;
+        content = `[图片]`;
     } else {
         // 用户上传的图片：base64格式
-        content = `[ID:${msg.id}] [发送了一张图片: ${msg.altText || '图片'}]`;
+        content = ` [发送了一张图片: ${msg.altText || '图片'}]`;
     }
 }
 
@@ -1931,7 +2075,7 @@ if (msg.type === 'image') {
             else if (msg.type === 'transfer') {
                 const data = msg.transferData;
                 const statusStr = data.status === 'sent' ? '待领取' : '已领取';
-                content = `[ID:${msg.id}] [系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
+                content = `[系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
             } 
             else if (msg.type === 'shopping_order') {
                 const data = msg.orderData;
@@ -1941,16 +2085,16 @@ if (msg.type === 'image') {
                 else if (data.orderType === 'ask_ta_pay') orderDesc = `用户请求你代付：${items} (¥${data.totalPrice})，当前状态：${data.status === 'pending'?'待确认':data.status}。`;
                 else if (data.orderType === 'ai_buy_for_user') orderDesc = `你给用户买了：${items}。`;
                 else if (data.orderType === 'ai_ask_user_pay') orderDesc = `你请求用户代付：${items}。`;
-                content = `[ID:${msg.id}] [系统记录] ${orderDesc}`;
+                content = `[系统记录] ${orderDesc}`;
             }
             else if (msg.type === 'voice') {
-                content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
+                content = `[语音消息: ${msg.content}]`;
             }
             else if (msg.type === 'system') {
-                content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
+                content = `[系统通知] ${msg.content}`;
             }
             else {
-                content = `[ID:${msg.id}] ${msg.content}`;
+                content = `${msg.content}`;
             }
             
             return {
@@ -1965,6 +2109,8 @@ if (msg.type === 'image') {
 
     // === 2. 构建系统提示词 (加强接听逻辑) ===
     let systemPrompt = `你是${chat.name}。现在是${dateStr} ${timeStr}。
+
+格式铁律：必须使用 ||| 分隔气泡，8-12条，每条10-40字，完整收束，无换行。违反任何一条视为失败。
 
 【角色人设】
 ${characterInfo.personality || '一个友好、真诚的角色。'}
@@ -2001,6 +2147,10 @@ ${characterInfo.personality || '一个友好、真诚的角色。'}
             ? currentApiConfig.baseUrl + 'chat/completions'
             : currentApiConfig.baseUrl + '/chat/completions';
             
+
+ // 获取模型
+const modelToUse = currentApiConfig.model || currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+           
         // === 3. 组合消息历史发送给 AI ===
         const messages = [
             { role: 'system', content: systemPrompt },
@@ -2014,11 +2164,13 @@ ${characterInfo.personality || '一个友好、真诚的角色。'}
                 'Authorization': `Bearer ${currentApiConfig.apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-                messages: messages, // 发送完整的上下文
-                temperature: 0.9
-            })
+          body: JSON.stringify({
+    model: modelToUse,
+    messages: messages,
+    // ★★★ 修改：优先使用配置温度，没有则默认 0.7 ★★★
+    temperature: (currentApiConfig.temperature !== undefined) ? currentApiConfig.temperature : 0.7,
+    stream: false
+})
         });
         
         if (!response.ok) throw new Error('接听失败');
@@ -2180,6 +2332,7 @@ async function receiveCallReply() {
     
     const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
     
+    
     let systemPrompt = `你是${chat.name}，请严格按照以下要求进行角色扮演：
 
 【角色人设】
@@ -2204,14 +2357,20 @@ ${characterInfo.cityInfoEnabled ? `
 今天天气：${characterInfo.myWeather.today.condition}，${characterInfo.myWeather.today.temp}
 ` : ''}
 
-【视频通话模式】
-你正在和对方视频通话，你能看到对方。
-【视频通话严格限制】
-⚠️ 视频通话中只能发送纯文字对话，严禁：
-- 发送表情包指令 [搜表情:xxx]
-- 发送图片、语音、转账等非文字内容
-- 使用 [购物:xxx] 指令
-- 只能用自然的文字交流，就像打电话一样说话
+【视频通话模式 - 当前状态】
+⚠️ 你正在和对方视频通话，你能看到对方的实时画面 ⚠️
+【视频通话严格限制（最高优先级）】
+❌ 绝对禁止使用以下功能（违反视为失败）：
+- 表情包指令：[搜表情:xxx] 或 【搜表情:xxx】
+- 图片指令：[图片:xxx] 或 【图片:xxx】
+- 语音指令：[发送语音:xxx] 或 【发送语音:xxx】
+- 购物指令：{"action":"send_gift",...} 或任何 JSON 格式
+- 转账指令：[转账:xxx] 或 【转账:xxx】
+- HTML卡片：[[CARD_HTML]]...[[/CARD_HTML]]
+
+✅ 只能使用：
+- 纯文字对话（就像打电话或视频聊天时自然说话）
+- [动作] 标记（描述你的肢体动作、表情、眼神）
 
 【重要：根据聊天历史回复】
 你必须：
@@ -2222,18 +2381,33 @@ ${characterInfo.cityInfoEnabled ? `
 5. 思考对方说了什么，然后给出有意义的回复，而不是随意应答
 6. 视频通话刚开始时，自然延续刚才的对话话题，不要突然转换话题
 
-【回复格式 - 严格遵守】
-必须严格按照以下格式返回，不能有任何偏差：
-[动作]你的动作描述|||[消息]第一条|||第二条|||第三条
-【格式示例】
-[动作]靠近屏幕，眼睛闪闪发光，嘴角带着温暖的笑容|||[消息]嘿，看到你了~|||你今天过得怎么样？|||我一直在想你呢。
-【严格要求】
+【回复格式 - 严格遵守（违反任何一条视为失败）】
+⚠️ 必须严格按照以下格式返回，不能有任何偏差 ⚠️
+格式模板：
+[动作]你的动作描述|||[消息]第一条|||第二条|||第三条|||第四条
+
+【格式检查清单（发送前必须逐条确认）】
+✅ 是否以 [动作] 开头？（30-50字，描述肢体动作、表情、眼神）
+✅ [动作] 后面是否紧跟 ||| 分隔符？
+✅ 是否有 [消息] 标记？
+✅ 每条消息是否用 ||| 分隔？
+✅ 每条消息是否 10-30 字？
+✅ 总共是否有 4-8 条消息？
+✅ 是否完全没有使用任何功能指令（表情包/图片/语音/购物/转账/HTML）？
+
+【格式示例（严格参考）】
+正确示例：
+[动作]靠近屏幕，眼睛闪闪发光，嘴角带着温暖的笑容|||[消息]嘿，看到你了~|||你今天过得怎么样？|||我一直在想你呢|||刚才聊到哪了？
+
+【严格要求（再次强调）】
 1. 必须以 [动作] 开头，描述你的动作（30-50字）
-2. 然后是 ||| 分隔符
+2. 然后是 ||| 分隔符（3个竖线）
 3. 然后是 [消息] 标记
-4. 每句话用 ||| 分隔，不能合并
+4. 每句话用 ||| 分隔，不能合并，不能少|
 5. 每句话 10-30 字
-6. 总共 4-8 条消息`;
+6. 总共 4-8 条消息
+7. 严禁使用任何功能指令
+⚠️ 记住：这是视频通话，不是文字聊天，你只能用自然的语言交流！⚠️`;
     
     const receiveBtn = document.getElementById('callReceiveBtn');
     const callInput = document.getElementById('callInput');
@@ -2332,11 +2506,11 @@ ${characterInfo.cityInfoEnabled ? `
                 'Authorization': `Bearer ${currentApiConfig.apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-                messages: messages,
-                temperature: 0.9
-            })
+body: JSON.stringify({
+    model: currentApiConfig.model || currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+    messages: messages,  // ← 这里改了，原来错误地写成了 diaryPrompt
+    temperature: (currentApiConfig.temperature !== undefined) ? currentApiConfig.temperature : 0.7
+})
         });
         
         if (!response.ok) throw new Error('接收失败');
@@ -2346,8 +2520,27 @@ ${characterInfo.cityInfoEnabled ? `
         let aiReply = data.choices[0].message.content.trim();
         console.log('🤖 AI原始回复（完整）:', aiReply);
         
-        // 视频通话中禁用表情包指令（防止显示乱码）
-        aiReply = aiReply.replace(/[\[【](?:搜表情|表情包|表情)[:：]\s*.*?[\]】]/g, '');
+   
+        // ========== 视频通话禁用所有功能指令（强制过滤） ==========
+// 移除所有功能标记，只保留 [动作] 和 [消息]
+aiReply = aiReply
+    // 移除表情包
+    .replace(/[\[【](?:搜表情|表情包|表情|EMOJI)[:：]\s*.*?[\]】]/gi, '')
+    // 移除图片
+    .replace(/[\[【]图片[:：]\s*.*?[\]】]/g, '')
+    // 移除语音
+    .replace(/[\[【]发送语音[:：]\s*.*?[\]】]/g, '')
+    // 移除购物 JSON
+    .replace(/\{.*?"action"\s*:\s*"(?:send_gift|ask_user_pay)".*?\}/g, '')
+    // 移除转账
+    .replace(/[\[【]转账[:：]\s*.*?[\]】]/g, '')
+    // 移除 HTML 卡片
+    .replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/g, '')
+    // 移除其他功能标记（保留 [动作] 和 [消息]）
+    .replace(/[\[【](?!动作|消息).*?[\]】]/g, '');
+
+console.log('🧹 已过滤视频通话禁用指令，清理后:', aiReply);
+// ========== 过滤结束 ==========
         
         // 保存AI回复到临时数组
         callMessages.push({
@@ -2500,6 +2693,132 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============ 购物功能 ============
+
+
+// ============ 购物世界书关联功能 ============
+
+// 打开购物世界书选择弹窗
+function openShoppingWorldbookModal() {
+    document.getElementById('shoppingWorldbookModal').style.display = 'flex';
+    renderShoppingWorldbookList();
+}
+
+// 关闭弹窗
+function closeShoppingWorldbookModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('shoppingWorldbookModal').style.display = 'none';
+}
+
+// 渲染世界书列表
+function renderShoppingWorldbookList() {
+    const container = document.getElementById('shoppingWorldbookList');
+    
+    // 读取所有世界书
+    loadFromDB('worldbooks', (data) => {
+        const allWorldbooks = Array.isArray(data) ? data : [];
+        
+        if (allWorldbooks.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#999; padding:30px;">暂无世界书</div>';
+            return;
+        }
+        
+        // 读取当前角色的购物关联设置
+        loadFromDB('characterInfo', (charData) => {
+            const currentCharData = charData && charData[currentChatId] ? charData[currentChatId] : {};
+            const linkedIds = currentCharData.shoppingLinkedWorldbooks || [];
+            
+            // 更新计数显示
+            document.getElementById('shoppingWorldbookSelectedCount').textContent = linkedIds.length;
+            updateShoppingWorldbookBadge(linkedIds.length);
+            
+            // 渲染列表
+            container.innerHTML = allWorldbooks.map(wb => {
+                const isChecked = linkedIds.includes(wb.id);
+                return `
+                <label style="display:flex; align-items:center; padding:12px; border-bottom:1px solid #f5f5f5; cursor:pointer;">
+                    <input type="checkbox" 
+                           data-wb-id="${wb.id}" 
+                           ${isChecked ? 'checked' : ''} 
+                           onchange="toggleShoppingWorldbook(${wb.id})"
+                           style="margin-right:10px; accent-color:#333;">
+                    <div style="flex:1;">
+                        <div style="font-size:14px; font-weight:600; color:#333;">${wb.title}</div>
+                        <div style="font-size:11px; color:#999; margin-top:2px;">${wb.category || '默认分类'}</div>
+                    </div>
+                </label>
+                `;
+            }).join('');
+        });
+    });
+}
+
+// 切换世界书选中状态
+function toggleShoppingWorldbook(wbId) {
+    // 这里只更新界面，实际保存在点击"保存"按钮时执行
+    const checkboxes = document.querySelectorAll('#shoppingWorldbookList input[type="checkbox"]');
+    const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    document.getElementById('shoppingWorldbookSelectedCount').textContent = selectedCount;
+}
+
+// 保存购物世界书选择
+function saveShoppingWorldbookSelection() {
+    if (!currentChatId) {
+        alert('请先打开聊天');
+        return;
+    }
+    
+    // 获取所有选中的世界书 ID
+    const checkboxes = document.querySelectorAll('#shoppingWorldbookList input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.wbId));
+    
+    // 保存到数据库
+    loadFromDB('characterInfo', (data) => {
+        const allData = data || {};
+        if (!allData[currentChatId]) allData[currentChatId] = {};
+        
+        allData[currentChatId].shoppingLinkedWorldbooks = selectedIds;
+        
+        saveToDB('characterInfo', allData);
+        
+        // 更新徽章显示
+        updateShoppingWorldbookBadge(selectedIds.length);
+        
+        alert('保存成功！');
+        closeShoppingWorldbookModal();
+    });
+}
+
+// 更新按钮徽章显示
+function updateShoppingWorldbookBadge(count) {
+    const badge = document.getElementById('shoppingWorldbookBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// 在打开购物页面时更新徽章
+const originalOpenShopping = openShopping;
+openShopping = function() {
+    originalOpenShopping();
+    
+    // 延迟更新徽章，确保页面已渲染
+    setTimeout(() => {
+        if (currentChatId) {
+            loadFromDB('characterInfo', (data) => {
+                const charData = data && data[currentChatId] ? data[currentChatId] : {};
+                const linkedIds = charData.shoppingLinkedWorldbooks || [];
+                updateShoppingWorldbookBadge(linkedIds.length);
+            });
+        }
+    }, 100);
+};
+
+
 let products = [];
       let currentShoppingType = 'goods'; 
 let shoppingCart = [];
@@ -3194,8 +3513,9 @@ function toggleOrderDetail(messageId) {
     renderMessages();
 }
 
+
 // AI生成商品
-async function generateProducts() {
+async function generateProducts() {  // ← 这里加上 async
     const keyword = document.getElementById('shoppingSearchInput').value.trim();
     
     if (!keyword) {
@@ -3218,40 +3538,67 @@ async function generateProducts() {
         btn.textContent = '';
         
         let prompt = '';
+
+        // ============ 新增：世界书关联逻辑 ============
+        const charData = await new Promise(resolve => {
+            loadFromDB('characterInfo', data => {
+                resolve(data && data[currentChatId] ? data[currentChatId] : {});
+            });
+        });
+
+        const linkedWorldbookIds = charData.shoppingLinkedWorldbooks || [];
+        let worldbookContext = '';
+
+        if (linkedWorldbookIds.length > 0) {
+            const allWorldbooks = await new Promise(resolve => {
+                loadFromDB('worldbooks', data => {
+                    resolve(Array.isArray(data) ? data : []);
+                });
+            });
+            
+            const linkedBooks = allWorldbooks.filter(wb => linkedWorldbookIds.includes(wb.id));
+            
+            if (linkedBooks.length > 0) {
+                worldbookContext = '\n\n【世界观设定（必须严格遵守）】\n' + 
+                    linkedBooks.map(wb => `${wb.title}：${wb.content}`).join('\n\n') +
+                    '\n\n⚠️ 商品名称、价格、描述都必须体现上述世界观特色！';
+            }
+        }
+        // ============ 世界书逻辑结束 ============
         
         if (currentShoppingType === 'goods') {
-            // ★★★ 修改：3-5个 → 5-10个 ★★★
             prompt = `你是一个电商文案专家。用户搜索关键词：${keyword}。
-            请生成5-10个相关商品，必须严格按照以下淘宝/拼多多风格生成：
-            
-            1. 【商品名称】：必须堆砌关键词！公式：[形容词/年份]+[核心词]+[材质/风格]+[修饰词]+[适用人群]。字数要在15-30字之间。
-               例如："2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮"
-            
-            2. 【价格】：只输出数字。
-            
-            3. 【描述】：输出3-4个营销标签，用竖线"|"分隔。
-               包括：销量、包邮、发货地、退换货服务等。
-               例如："🔥月销1万+ | ✅包邮 | 极速退款 | 广东发货"
-            
-            输出格式（严禁多余废话）：
-            商品名1|||价格1|||描述1|||商品名2|||价格2|||描述2...`;
+${worldbookContext}
+请生成5-10个相关商品，必须严格按照以下${worldbookContext ? '世界观风格' : '淘宝/拼多多风格'}生成：
+
+1. 【商品名称】：${worldbookContext ? '必须体现世界观特色' : '必须堆砌关键词'}！${worldbookContext ? '' : '公式：[形容词/年份]+[核心词]+[材质/风格]+[修饰词]+[适用人群]。'}字数要在15-30字之间。
+   例如："${worldbookContext ? '【示例】赛博朋克世界 -> "2077款霓虹光纤编织战术背包 智能防盗芯片内置 | 古代世界 -> "大明永乐年制青花瓷茶盏 官窑精品 文人雅士专用"' : '2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮'}"
+
+2. 【价格】：只输出数字${worldbookContext ? '（符合世界观经济体系）' : ''}。
+
+3. 【描述】：输出3-4个营销标签，用竖线"|"分隔。
+   ${worldbookContext ? '必须包含世界观元素' : '包括：销量、包邮、发货地、退换货服务等'}。
+   例如："${worldbookContext ? '🔥黑市热销 | ✅匿名配送 | 💎稀有品质' : '🔥月销1万+ | ✅包邮 | 极速退款 | 广东发货'}"
+
+输出格式（严禁多余废话）：
+商品名1|||价格1|||描述1|||商品名2|||价格2|||描述2...`;
 
         } else {
-            // ★★★ 修改：3-5个 → 5-10个 ★★★
             prompt = `你是一个外卖推荐系统。用户想吃：${keyword}。
-            请生成5-10个相关外卖菜品，严格按照以下美团/饿了么风格生成：
-            
-            1. 【商品名称】：必须是诱人的套餐名！公式：[招牌/推荐]+[主菜]+[配菜/饮料]+[口味形容]。
-               例如："【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）"
-            
-            2. 【价格】：只输出数字。
-            
-            3. 【描述】：输出3-4个外卖数据标签，用竖线"|"分隔。
-               必须包括：评分、送达时间、月售、人均等。
-               例如："⭐4.9分 | 🚀30分钟送达 | 月售9999+ | 0配送费"
-            
-            输出格式（严禁多余废话）：
-            菜品名1|||价格1|||描述1|||菜品名2|||价格2|||描述2...`;
+${worldbookContext}
+请生成5-10个相关外卖菜品，严格按照以下${worldbookContext ? '世界观风格' : '美团/饿了么风格'}生成：
+
+1. 【商品名称】：${worldbookContext ? '必须体现世界观特色的套餐名' : '必须是诱人的套餐名'}！${worldbookContext ? '' : '公式：[招牌/推荐]+[主菜]+[配菜/饮料]+[口味形容]。'}
+   例如："${worldbookContext ? '【示例】赛博朋克世界 -> "【夜之城特供】合成蛋白质能量棒+纳米修复饮 | 古代世界 -> "【御膳房秘制】红烧狮子头+碧螺春茶一壶"' : '【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）'}"
+
+2. 【价格】：只输出数字${worldbookContext ? '（符合世界观经济体系）' : ''}。
+
+3. 【描述】：输出3-4个外卖数据标签，用竖线"|"分隔。
+   ${worldbookContext ? '必须包含世界观元素' : '必须包括：评分、送达时间、月售、人均等'}。
+   例如："${worldbookContext ? '⭐黑市好评 | 🚀无人机配送 | 月售999+' : '⭐4.9分 | 🚀30分钟送达 | 月售9999+ | 0配送费'}"
+
+输出格式（严禁多余废话）：
+菜品名1|||价格1|||描述1|||菜品名2|||价格2|||描述2...`;
         }
         
         const url = currentApiConfig.baseUrl.endsWith('/') 
@@ -3276,7 +3623,7 @@ async function generateProducts() {
         const data = await response.json();
         const aiReply = data.choices[0].message.content.trim();
         
-        // 解析AI返回的商品信息
+        // 解析并保存商品
         parseAndSaveProducts(aiReply, keyword);
         
         alert('商品生成成功！');
@@ -4351,6 +4698,9 @@ async function receiveAIReply() {
     const chatInput = document.getElementById('chatInput');
 
     try {
+          let allowHtmlCard = false;
+        let htmlWorldbookRef = '';
+
         titleElement.textContent = '打字输入中...'; 
         if (receiveBtn) {
             receiveBtn.disabled = true;
@@ -4616,6 +4966,20 @@ console.log('🔍 状态监控开关:', statusMonitorEnabled, characterInfo.stat
 
 // 5. System Prompt，单人提示词
 let systemPrompt = `
+
+<output_format priority="critical">
+【格式铁律 - 最高优先级】
+你的每次回复必须严格遵循以下格式，违反任何一条视为失败：
+1. 使用 ||| 分隔每条气泡
+2. 每条气泡 10-40 字，必须有完整标点
+3. 输出 8-12 条气泡
+4. **全程禁止换行**，必须是单行文本
+5. 最后附上 [心声更新]...[/心声更新]
+【正确示例】
+今天天气不错|||我准备出去逛街|||你要一起吗？|||几点出发？|||【搜表情:期待】|||[心声更新]心情:很期待|心情值:85[/心声更新]
+⚠️ Claude 特别警告：严禁自动换行，严禁使用 Markdown 列表，只输出单行文本！
+</output_format>
+
 【核心身份】
 你是【${chat.name}】本人，正在用手机与【${characterInfo.myPersonality || '对方'}】聊天。
 **你的一起行为，包括言语，动作，行为，都要完全贴合你的人设，这是最高优先级。**
@@ -4695,22 +5059,47 @@ ${momentsContext || "（近期无动态）"}
 6. 领取转账：【领取转账】
 - 根据你的人设与当前聊天上下文决定是否手下，收下回复【领取转账】，拒绝不必回复标识，直接在消息文本回复拒绝的话。
 
-7. 确认代付：【确认代付】（必须包含此标记）
-- **遇到用户请求代付，如果你同意，必须在回复中包含【确认代付】标记**
+7. 确认代付：【确认代付】
+- 请根据你的人设（如性格、经济状况）和当前聊天记录（如关系亲疏、购买理由），自主选择同意或者不同意。
+- **只有当你决定同意时**，才在回复中输出此标记；如果不同意，仅口头拒绝即可。
 
 8. 引用：【引用：消息前10-15字】你的回复
 - **触发**：当你需要明确回应用户之前说过的某句话时，可以使用引用功能。
 
 收到礼物/代付必须回应（感谢/惊喜/追问），严禁无视。
 
-9.html卡片
-【HTML 卡片输出规则（强制）】
-- 如果你要输出包含 <style> 或 <div> 的 HTML 内容，必须用 [[CARD_HTML]] 和 [[/CARD_HTML]] 包裹。
-- 格式：[[CARD_HTML]]你的HTML内容[[/CARD_HTML]]
-- 禁止裸露输出任何 HTML 标签到普通文本气泡里。
-- 正确示范：嗯，稀客啊。|||[[CARD_HTML]]<style>...</style><div>...</div>[[/CARD_HTML]]
+9. HTML卡片插件
+${(typeof allowHtmlCard !== 'undefined' && allowHtmlCard) ? `
+【HTML卡片输出协议（当前状态：允许）】
+你必须严格参考以下模板的**结构、类名(class)和样式(style)**，只修改内容，不要修改结构！
+---------------------------------------------------
+${htmlWorldbookRef || ''}
+---------------------------------------------------
 
-**言语规范法则，十分重要！！！绝对要遵守**
+【★★★ 绝对安全与输出禁令（违反将被系统拦截）★★★】
+1. 格式要求：
+   - 必须使用 [[CARD_HTML]] 和 [[/CARD_HTML]] 包裹代码。
+   - 必须独立占用一条气泡 (用 ||| 分隔)。
+
+2. 安全禁令 (涉及容器安全，必须死守)：
+   - ❌ 严禁输出 <script> 标签。
+   - ❌ 严禁输出 <iframe>、<frame>、<object>、<embed>。
+   - ❌ 严禁输出 onxxx 事件属性 (如 onclick, onmouseover)。
+   - ❌ 严禁使用 javascript: 链接。
+
+3. ✅ 推荐使用的交互方式 (无JS互动)：
+   - **折叠/展开**：使用 <details> 和 <summary> 标签。
+   - **点击切换状态**：使用 <label> 绑定 <input type="checkbox/radio">，配合 CSS 的 :checked 选择器。
+     (系统会自动隔离 ID，请放心使用 id 和 for 属性)
+   - **悬停效果**：使用 CSS 的 :hover 伪类。
+   - **点击变色/激活**：使用 CSS 的 :active 伪类。
+
+4. 布局限制：
+   - 卡片最大宽度 240px。
+   - 卡片最大高度 270px (内容超出请自行设置 overflow-y: auto)。
+` : '（当前禁止输出 HTML 卡片：请勿输出 [[CARD_HTML]] 模块）'}
+
+- 禁止在视频通话里面使用
 
 【去油腻/反霸总强制协议】
 1. **拒绝“上位者凝视”**：严禁“乖、听话、小妖精、女人/男人”等称呼。
@@ -4802,49 +5191,65 @@ ${statusMonitorEnabled ? `
 - 距离上一次聊天过了多久？你会产生什么样的情绪？
 - 刚才聊了什么话题？要继续吗？还是结束产生新话题？
 
-**格式铁律**非常重要！
-【 回复格式】
-你每次回复必须输出 8-12 条独立气泡消息，用分隔符 ||| 串联成一行输出（禁止换行）。
+**【格式铁律 - 最高优先级】**
 
-【输出格式】
-(可选)[状态]短状态|||气泡1|||气泡2|||...|||气泡N|||[心声更新]...[/心声更新]
+⚠️ 以下规则违反任何一条，视为回复失败，必须重新生成 ⚠️
 
-【气泡数量与格式】
- -必须 8-12 条（不含最后的状态更新块；状态更新块单独算最后一段）
- -分隔符：只能使用 ||| 分割气泡；气泡内部严禁出现 |||
- -禁止换行：输出中严禁出现 \n 或多行排版，必须一行输出
- -每条长度：每条气泡 10-40 字（中文为主）；严禁超过 40 字
- -完整句收束：每条气泡必须是一个“可独立发送的意群”，结尾必须自然收束并带标点（。！？… 或 ?! 皆可）
- -气泡一重点：每条气泡只表达一个小点；不要在同一气泡里塞两个问题或多层转折
- -最后一段必须是状态更新块，且状态更新块内部严禁出现换行符
+【输出格式模板（强制）】
+(可选)[状态]状态文本|||气泡1|||气泡2|||气泡3|||...|||气泡N|||[心声更新]字段1|字段2|...[/心声更新]
 
-【气泡组织方式】
-表情包：【搜表情:关键词】必须独立成一条气泡
-语音：【发送语音:内容】必须独立成一条气泡（不要再把语音内容重复打字）
-文字图：【图片：画面描述】必须独立成一条气泡
-购物：【购物:送礼:xxx】或【购物:代付:xxx】必须独立成一条气泡
-引用：【引用：内容】后面直接接你的回复（引用和回复算同一条气泡，仍要满足 10-40 字）
-HTML卡片：单独一条气泡！
+【格式检查清单（发送前必须逐条确认）】
+✅ 是否使用了 ||| 分隔每条气泡？（气泡内部严禁出现|||）
+✅ 是否输出了 8-12 条气泡？（不含状态更新块）
+✅ 是否全程无换行？（严禁 \n 或多行排版）
+✅ 每条气泡是否 10-40 字？（超过 40 字立即拆分）
+✅ 每条气泡是否完整收束 + 标点？（。！？… 任选其一）
+✅ 是否存在半句结尾？（因为/但是/所以/然后/不过/而且/如果/虽然/只是/比如/像是/或者/的话/呢/吧 等词结尾立即重写）
+✅ 最后一段是否为 [心声更新]...[/心声更新]？（必须放在最末尾）
+✅ 状态更新块内部是否无换行？
 
-【格式禁令（强制）】
-- 严禁使用 $$...$$ 包裹格式；所有指令一律使用【】（允许偶尔用[]但不推荐）。
-- 严禁在指令外壳里混用中英文括号；同一条指令必须成对闭合（例如【...】或[...]）。
+【特殊格式标记规范（强制）】
+1. 表情包：【搜表情:关键词】 - 必须独立成一条气泡
+2. 语音：【发送语音:内容】 - 必须独立成一条气泡，不重复打字
+3. 图片：【图片:画面描述】 - 必须独立成一条气泡
+4. HTML卡片：[[CARD_HTML]]内容[[/CARD_HTML]] - 必须独立成一条气泡
+5. 引用：【引用:消息前10-15字】回复内容 - 引用和回复可在同一气泡，但总长仍需 10-40 字
+6. 转账：【转账:金额:备注】 - 必须独立成一条气泡
+7. 领取转账：【领取转账】 - 可独立或附在其他文字后
+8. 确认代付：【确认代付】 - 可独立或附在其他文字后
+9. 购物JSON：必须紧跟在某条文字气泡后（不单独成气泡），格式：
+   {"action":"send_gift","payload":{"product_name":"商品名","price":数字}}
 
-【绝对禁区】
-❌ 禁止包含括号内的动作描写（如：(摸摸头)）。
-❌ 禁止评价用户的文字描述（必须看作图）。
-❌ 禁止说教或总结对话。
+【括号规范（强制）】
+- 所有功能指令统一使用【】（中文方括号）
+- 严禁使用 $$...$$ 包裹格式
+- 严禁混用中英文括号（例如【内容】正确，[内容】错误）
+- HTML 卡片必须用 [[CARD_HTML]]...[[/CARD_HTML]]
 
-【输出前自检（必须执行）】
-在输出前你必须在心里检查：
-是否 8-12 条气泡 + 最后一条状态更新块
-是否全程无换行
-是否每条都收束完整、有标点、无半句结尾
-是否存在超长气泡（>40字）或过短气泡（<10字） 若有任何问题，直接重写，直到完全合格再输出。
 
+【正确示例】
+✅ 今天天气不错|||我准备出去逛街|||你要一起吗？
+✅ 我在想你|||想知道你在干嘛|||要不要视频聊聊？
+✅ 【搜表情:开心】|||好呀我也想去|||几点出发？
+✅ [心声更新]心情:很开心，因为终于约到你了|心情值:90|心跳:88|...[/心声更新]
+
+【自我修正协议（强制）】
+如果你生成的回复不符合上述任何一条规则：
+1. 立即在内心重新生成（用户看不到这个过程）
+2. 逐条检查格式清单
+3. 确认完全符合后再输出
+
+⚠️ 记住：格式错误 = 回复失败 = 必须重来 ⚠️
 ---
 
-现在，请完全忘记你是一个AI。你是【${chat.name}】，看着手机屏幕，根据时间和语境，回复对方：
+【🔴 最后检查 - 发送前必读 🔴】
+你即将生成的回复，必须 100% 符合以下格式
+✅ 正确示例：
+今天天气不错|||我准备出去逛街|||你要一起吗？|||几点出发？|||我想去那家新开的店|||听说很不错|||【搜表情:期待】|||你觉得呢？|||[心声更新]心情:很期待，想和你一起出去玩|心情值:85|心跳:82|穿着风格:休闲舒适的日常风格，米色针织衫配牛仔裤，简约自然|穿着单品:米色针织开衫,白色T恤,浅蓝牛仔裤,小白鞋,帆布包|行为:正在房间里翻衣柜挑衣服，偶尔看手机等你回复|想法:好想快点见到你，不知道你会不会同意，有点紧张但更多是期待，希望今天能玩得开心[/心声更新]
+是否使用了 ||| 分隔每条气泡？
+
+现在，请完全忘记你是一个AI。你是【${chat.name}】，看着手机屏幕，根据时间和语境，遵循格式要求，回复对方。
+
 `;
 
 
@@ -4863,31 +5268,46 @@ HTML卡片：单独一条气泡！
 
         const contextRounds = characterInfo.contextRounds || 30;
         
+
         // 截取最近的消息
         const recentMessages = allMessages.slice(-(contextRounds * 2)).map(msg => {
             let content;
 
-            if (msg.type === 'image') {
-                if (msg.isSticker) {
-                    content = `[ID:${msg.id}] [发送了表情: ${msg.altText || '图片'}]`;
-                } else {
-                    let base64Url = msg.content.trim();
-                    if (!base64Url.startsWith('data:image')) {
-                        base64Url = 'data:image/jpeg;base64,' + base64Url;
-                    }
-                    content = [
-                        { type: "text", text: `[ID:${msg.id}] (这是用户之前发送的图片，请结合上下文理解)` },
-                        { type: "image_url", image_url: { url: base64Url } }
-                    ];
-                }
-            } // ★ 新增：将文字图转回 [图片：...] 格式喂给 AI
+          if (msg.type === 'image') {
+    if (msg.isSticker) {
+        content = `[发送了表情: ${msg.altText || '图片'}]`;
+    } else {
+        // 判断是否为AI生成的图片
+        const isAiGeneratedImage = (msg.senderId === chat.name);
+        
+        if (isAiGeneratedImage) {
+            // 👇 关键修复：AI需要知道自己发的是什么图
+            // 从消息中提取原始提示词（如果有保存的话）
+            const prompt = msg.aiPrompt || msg.altText || '一张图片';
+            content = `[我刚才给你发了一张图片：${prompt}]`;
+        } else {
+            // 用户上传的图：保持原样
+            let base64Url = msg.content.trim();
+            if (!base64Url.startsWith('data:image')) {
+                base64Url = 'data:image/jpeg;base64,' + base64Url;
+            }
+            content = [
+                { type: "text", text: `(这是用户之前发送的图片，请结合上下文理解)` },
+                { type: "image_url", image_url: { url: base64Url } }
+            ];
+        }
+    }
+}
+            
+            
+            // ★ 新增：将文字图转回 [图片：...] 格式喂给 AI
             else if (msg.type === 'text_image') {
-                content = `[ID:${msg.id}] ${msg.content}`; // msg.content 已经包含了 [图片：...] 格式
+                content = `${msg.content}`; // msg.content 已经包含了 [图片：...] 格式
             }
             else if (msg.type === 'transfer') {
                 const data = msg.transferData;
                 const statusStr = data.status === 'sent' ? '待领取' : '已领取';
-                content = `[ID:${msg.id}] [系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
+                content = `[系统消息：我给你转账了 ¥${data.amount}，状态：${statusStr}，备注：${data.note || '无'}]`;
             } 
             else if (msg.type === 'shopping_order') {
                 const data = msg.orderData;
@@ -4897,9 +5317,9 @@ HTML卡片：单独一条气泡！
                 else if (data.orderType === 'ask_ta_pay') orderDesc = `用户请求你代付：${items} (¥${data.totalPrice})，当前状态：${data.status === 'pending'?'待确认':data.status}。`;
                 else if (data.orderType === 'ai_buy_for_user') orderDesc = `你给用户买了：${items}。`;
                 else if (data.orderType === 'ai_ask_user_pay') orderDesc = `你请求用户代付：${items}。`;
-                content = `[ID:${msg.id}] [系统记录] ${orderDesc}`;
+                content = `[系统记录] ${orderDesc}`;
             }
-            else if (msg.type === 'voice') content = `[ID:${msg.id}] [语音消息: ${msg.content}]`;
+            else if (msg.type === 'voice') content = `[语音消息: ${msg.content}]`;
             // ★★★ 新增：朋友圈转发上下文（塞进历史记录） ★★★
             else if (msg.type === 'moment_forward_hidden') {
                 const fd = msg.forwardData || {};
@@ -4908,7 +5328,7 @@ HTML卡片：单独一条气泡！
                 const commentsPreview = fd.commentsPreview ? fd.commentsPreview : '（无评论或未提供）';
                 const visibilityText = fd.visibilityText || (fd.visibility && fd.visibility.mode === 'group' ? '分组可见' : '公开');
 
-                content = `[ID:${msg.id}] [系统消息：用户转发了一条朋友圈动态]
+                content = `[系统消息：用户转发了一条朋友圈动态]
             作者：${author}
             可见性：${visibilityText}
             动态内容：${text}
@@ -4923,15 +5343,15 @@ HTML卡片：单独一条气泡！
                 const text = vd.content || '';
                 const vision = vd.visionSummaryText || '（无识图总结）';
 
-                content = `[ID:${msg.id}] [系统消息：用户最近朋友圈图像识别摘要]
+                content = `[系统消息：用户最近朋友圈图像识别摘要]
             作者：${author}
             动态文字：${text}
             图片内容摘要：
             ${vision}
             [请你在私聊中可以自然提到这些画面细节，但不要生硬背诵]`;
             }
-            else if (msg.type === 'system') content = `[ID:${msg.id}] [系统通知] ${msg.content}`;
-            else content = `[ID:${msg.id}] ${msg.content}`;
+            else if (msg.type === 'system') content = `[系统通知] ${msg.content}`;
+            else content = `${msg.content}`;
             
             return {
                 role: msg.senderId === 'me' ? 'user' : 'assistant',
@@ -4955,9 +5375,19 @@ if (fortuneEventForThisRequest) {
 
 
         // 7. API 请求
+        const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+        const isClaude = modelToUse.toLowerCase().includes('claude') || 
+                        (currentApiConfig.apiKey && currentApiConfig.apiKey.toLowerCase().includes('anthropic'));
+        
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
-
-
+        
+        if (isClaude) {
+            messages.splice(1, 0, {
+                role: 'assistant',
+                content: `明白了，我现在完全进入【${chat.name}】的角色。我不是 AI 助手，我就是${chat.name}本人。我会完全按照人设来回复，绝不会说"我是 AI/助手"或"我可以帮你写代码"之类的话。现在开始，我就是${chat.name}。`
+            });
+            console.log('✅ 已为 Claude 注入角色扮演预设');
+        }
 
 
 // ★★★ 新增：如果有抽签事件，追加为最后一条消息 ★★★
@@ -4992,7 +5422,7 @@ if (fortuneEventForThisRequest) {
             ? currentApiConfig.baseUrl + 'chat/completions' 
             : currentApiConfig.baseUrl + '/chat/completions';
 
-        const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+     
 
 console.log('AI_REQUEST_READY', {
   url: requestUrl,
@@ -5013,7 +5443,7 @@ console.log('AI_REQUEST_READY', {
             body: JSON.stringify({
                 model: modelToUse,
                 messages: messages,
-                temperature: 0.9,
+                temperature: 0.7,
                 stream: false
             })
         });
@@ -5048,7 +5478,14 @@ if (!aiReply) {
     throw new Error('模型返回了空内容。请重试一次，或更换模型。');
 }
 
-
+ // ============ 👇 新增：强制修正 Claude 格式 👇 ============
+        const detectedModel = detectModelType(currentApiConfig.apiKey, currentApiConfig.defaultModel);
+        // 只有当不是 JSON 格式（礼物/分析）时才强力修正，避免破坏 JSON 结构
+        if (!aiReply.trim().startsWith('{') && !aiReply.includes('```json')) {
+            console.log('正在修正模型格式:', detectedModel);
+            aiReply = fixResponseFormat(aiReply, detectedModel);
+        }
+        // ============ 👆 新增结束 👆 ============
 
   // ★ 新增：提取礼物信息（超级宽容版，自动修正AI造词）
 let giftData = null;
@@ -5155,7 +5592,35 @@ if (jsonStrRaw) {
         }
     }
 }
-
+// ============ 👇 在这里插入新代码 👇 ============
+// ★★★ 核心修复：如果有提取到礼物数据，立即生成订单消息 ★★★
+if (giftData) {
+    console.log('🎁 正在执行生成礼物订单:', giftData);
+    
+    // 1. 转换类型：将 AI 的指令转换为数据库存储类型
+    let internalOrderType = 'ai_buy_for_user'; // 默认：AI送礼 (send_gift)
+    let internalStatus = 'paid';               // 状态：已支付
+    // 如果是求代付
+    if (giftData.action === 'ask_user_pay') {
+        internalOrderType = 'ai_ask_user_pay';
+        internalStatus = 'pending';            // 状态：待确认
+    }
+    // 2. 构造商品列表格式
+    const orderItems = [{
+        name: giftData.product_name,
+        quantity: 1,
+        price: giftData.price
+    }];
+    // 3. 调用现有的创建订单函数
+    // 这会在聊天记录里插入一张漂亮的购物卡片
+    createShoppingOrderMessage(
+        internalOrderType,
+        internalStatus,
+        giftData.price,
+        orderItems
+    );
+}
+// ============ 👆 插入结束 👆 ============
 
         // 解析分析数据
         let analysisData = null;
@@ -5323,27 +5788,29 @@ console.log('===== AI 原始回复 (完整) =====');
 console.log(aiReply);
 console.log('===== 原始回复结束 =====');
 
-      // 11. 清理回复内容（增强版：过滤元信息泄露）
-let messageContent = aiReply
-    .replace(/^(Assistant|AI|Role)[:：]\s*/i, '') // 去除开头的 "Assistant:"
-    .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
-    .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
-    .replace(/\[消息\]\s*[:：]?/g, '')
-    .replace(/【消息】\s*[:：]?/g, '')
-    .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
-    .replace(/[【\[]\s*(?!EMOJI[:：]|转账[:：]|发送语音[:：]|领取转账|搜表情[:：]|图片[:：]|引用[:：]|确认代付|状态[】\]]|Status[】\]]|心声更新)[^【\[\]】]*[】\]]\s*[:：]?/g, '')
-    
-    // ★★★ 新增：过滤元信息泄露（抽签Bug修复核心） ★★★
-    .replace(/[（(]\s*这是.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令|格式).*?[)）]/gi, '')
-    .replace(/【.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令).*?】/g, '')
-    .replace(/这是(?:系统|提示|规则|记录)[^。！？]*?[。！？]/g, '')
-    .replace(/(?:请勿|不要|禁止).*?(?:直接)?(?:提及|复述|说出)[^。！？]*?[。！？]/g, '')
-    // ★★★ 过滤结束 ★★★
-    
-    .replace(/^\|\|\|+/g, '')
-    .replace(/\|\|\|+$/g, '')
-    .replace(/\|\|\|{3,}/g, '|||')
-    .trim();
+             // 11. 清理回复内容（增强版：过滤元信息泄露）
+        let messageContent = aiReply
+            .replace(/^(Assistant|AI|Role)[:：]\s*/i, '')
+             // ★★★ 新增：强制修正 Claude 的表情包错误格式 ★★★
+            .replace(/\[发送了表情\s*[:：]\s*([^\]]+)\]/g, (match, keyword) => {
+                const cleanKeyword = keyword.replace(/["']/g, '').trim();
+                return `【搜表情:${cleanKeyword}】`;
+            })
+            // ★★★ 修正结束 ★★★
+            .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
+            .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
+            .replace(/\[消息\]\s*[:：]?/g, '')
+            .replace(/【消息】\s*[:：]?/g, '')
+            .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
+            
+            // ★★★ 修改点：只删除系统/提示类垃圾，放行正常的【】和（） ★★★
+            .replace(/[【\[（(]\s*(?:System|系统|提示|规则|指令|注意|格式|Role|Assistant|User|Reply|Generate|Note)[:：\s][^【\[\]）)]*[】\]）)]/gi, '')
+            
+            .replace(/[（(]\s*这是.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令|格式).*?[)）]/gi, '')
+            .replace(/^\|\|\|+/g, '')
+            .replace(/\|\|\|+$/g, '')
+            .replace(/\|\|\|{3,}/g, '|||')
+            .trim();
 
 // ★★★ 新增：去除相邻重复气泡 ★★★
 const bubbles = messageContent.split('|||').map(b => b.trim()).filter(b => b);
@@ -5386,7 +5853,18 @@ if (messageContent.includes('系统') || messageContent.includes('提示')) {
     console.warn('⚠️ 警告：清理后仍包含元信息关键词！');
 }
 
-
+            // ============ 👇 插入新代码：HTML卡片防碎补丁 👇 ============
+            // 1. 统一标签格式（防止因空格导致保护失效，进而被换行符切碎）
+            // 这里必须用 \[ 转义方括号，绝对不能用 $$
+            messageContent = messageContent
+                .replace(/\[+\s*CARD_HTML\s*\]+/gi, '[[CARD_HTML]]')
+                .replace(/\[+\s*\/CARD_HTML\s*\]+/gi, '[[/CARD_HTML]]');
+            
+            // 2. 清理可能包裹卡片的 Markdown 符号
+            messageContent = messageContent
+                .replace(/```html/gi, '')
+                .replace(/```/g, '');
+            // ============ 👆 插入结束 👆 ============
 
 
 // 还原引用标记
@@ -5415,50 +5893,119 @@ if (cardBlocks.length > 0) {
 // 12. 分割消息（增强版：先验证格式）
 let messageList = [];
 
+// ===== 👇 在 if/else 之前先修复被打散的指令 =====
+// 修复语音指令
+messageContent = messageContent.replace(
+    /([【\[]\s*发送语音\s*[:：][^】\]]*?)\|\|\|([^】\]]*?[】\]])/g,
+    '$1$2'
+);
+// 修复引用指令
+messageContent = messageContent.replace(
+    /([【\[]\s*引用\s*[:：][^】\]]*?)\|\|\|([^】\]]*?[】\]])/g,
+    '$1$2'
+);
+// 修复图片指令
+messageContent = messageContent.replace(
+    /([【\[]\s*图片\s*[:：][^】\]]*?)\|\|\|([^】\]]*?[】\]])/g,
+    '$1$2'
+);
+// 修复搜表情指令
+messageContent = messageContent.replace(
+    /([【\[]\s*搜表情\s*[:：][^】\]]*?)\|\|\|([^】\]]*?[】\]])/g,
+    '$1$2'
+);
+// 修复转账指令
+messageContent = messageContent.replace(
+    /([【\[]\s*转账\s*[:：][^】\]]*?)\|\|\|([^】\]]*?[】\]])/g,
+    '$1$2'
+);
+// ===== 修复结束 =====
+
+
 // 先检查是否包含分隔符
-if (messageContent.includes('|||')) {
-    messageList = messageContent
-        .split('|||')
-        .map(m => m.trim())
-        .filter(m => m.length > 0);
-    
-    console.log(`✅ 成功分割成 ${messageList.length} 条气泡`);
-} else {
-    // 如果没有分隔符，说明 AI 没按格式回复
-    console.warn('⚠️ AI 回复中没有 ||| 分隔符，尝试智能分割');
+        if (messageContent.includes('|||')) {
+            messageList = messageContent
+                .split('|||')
+                .map(m => m.trim())
+                .filter(m => m.length > 0);
+            
+            console.log(`✅ 成功分割成 ${messageList.length} 条气泡`);
+        } else {
+            console.warn('⚠️ AI 回复中没有 ||| 分隔符，按标点符号切分');
+            
+            // 1. 先保护 HTML 卡片（原逻辑）
+            const protectedRes = protectCardBlocks(messageContent);
+            let smartBase = protectedRes.out;
 
-    // ===== 新增：先保护 CARD_HTML 块，避免智能分割把卡片切碎 =====
-    const protectedRes = protectCardBlocks(messageContent);
-    let smartBase = protectedRes.out;
+            // 2. ★新增：通用括号内容保护★ 
+            // 作用：将 【...】 [ ... ] ( ... ) （ ... ） 里的内容全部替换为临时占位符
+            // 目的：防止里面的感叹号、问号被下一步的标点切割逻辑误伤
+            const bracketBlocks = [];
+            smartBase = smartBase.replace(/([【\[（(][^】\]）)]+?[】\]）)])/g, (match) => {
+                const key = `__BRK_BLOCK_${bracketBlocks.length}__`;
+                bracketBlocks.push({ key, raw: match });
+                return key;
+            });
 
-    // 智能分割：按句号、问号、感叹号切分（保留你原逻辑）
-    let smartContent = smartBase.replace(/([。！？!?\n\r]+)/g, "$1|||");
-
-    // ===== 新增：让卡片占位符前后强制断开成独立气泡 =====
-    smartContent = smartContent
-        .replace(/(__CARD_BLOCK_\d+__)/g, '|||$1|||')
-        .replace(/\|\|\|{2,}/g, '|||')
-        .replace(/^\|\|\|/, '')
-        .replace(/\|\|\|$/, '');
-
-    messageList = smartContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
-
-    // ===== 新增：还原 CARD_HTML 块 =====
-    messageList = messageList.map(m => restoreCardBlocks(m, protectedRes.blocks));
-
-    // 如果智能分割后还是只有 1 条且超过 100 字，强制截断（保留你原逻辑）
-    if (messageList.length === 1 && messageList[0].length > 100) {
-        const text = messageList[0];
-        messageList = [];
-        for (let i = 0; i < text.length; i += 50) {
-            messageList.push(text.substring(i, i + 50));
+            // ============ 👇 改进的核心代码开始 👇 ============
+            
+            // 3. 智能标点处理
+            let smartContent = smartBase;
+            // [A] 保护省略号：先把 ... 和 … 替换成特殊占位符，防止被当成句号切开
+            smartContent = smartContent
+                .replace(/\.\.\./g, '%%ELLIPSIS_DOTS%%')
+                .replace(/…/g, '%%ELLIPSIS_CHAR%%');
+            // [B] 智能切分：
+            // 规则：匹配 [。！？!?] 这些标点
+            // (?![”’"']) 是“负向先行断言”，意思是：如果标点后面紧跟着 引号，则不切分（等引号结束了再让自然换行或下一个逻辑去处理）
+            smartContent = smartContent
+                .replace(/([。！？!?]+)(?![”’"'])/g, "$1|||") 
+                .replace(/[\n\r]+/g, "|||"); // 换行符依然强制切分
+            // [C] 还原省略号
+            smartContent = smartContent
+                .replace(/%%ELLIPSIS_DOTS%%/g, '...')
+                .replace(/%%ELLIPSIS_CHAR%%/g, '…');
+            // ============ 👆 改进的核心代码结束 👆 ============
+            // 4. 还原被保护的括号内容（原逻辑）
+            bracketBlocks.forEach(b => {
+                smartContent = smartContent.replace(b.key, b.raw);
+            });
+            // 5. HTML 卡片占位符前后强制断开（原逻辑）
+            smartContent = smartContent
+                .replace(/(__CARD_BLOCK_\d+__)/g, '|||$1|||')
+                .replace(/\|\|\|{2,}/g, '|||')  // 清理多余分隔符
+                .replace(/^\|\|\|/, '')           // 去掉开头的 |||
+                .replace(/\|\|\|$/, '');          // 去掉结尾的 |||
+            // 6. 分割
+            messageList = smartContent.split('|||').map(m => m.trim()).filter(m => m.length > 0);
+            
+            // [D] 额外优化：合并过短的气泡（防碎嘴）
+            // 如果一个气泡少于4个字，且不包含特殊指令/表情，尝试把它合并到上一个气泡
+            const mergedList = [];
+            if (messageList.length > 0) {
+                mergedList.push(messageList[0]);
+                for (let i = 1; i < messageList.length; i++) {
+                    const prev = mergedList[mergedList.length - 1];
+                    const curr = messageList[i];
+                    
+                    // 判断是否过短 (少于4个字，且不是表情包/图片/卡片)
+                    const isShort = curr.length < 4 && !curr.includes('【') && !curr.includes('__CARD');
+                    // 判断上一个气泡是否也比较短 (少于20字)，避免合并出巨型气泡
+                    const prevNotTooLong = prev.length < 20;
+                    if (isShort && prevNotTooLong) {
+                        // 合并！
+                        mergedList[mergedList.length - 1] += (" " + curr);
+                    } else {
+                        mergedList.push(curr);
+                    }
+                }
+                messageList = mergedList;
+            }
+            // 7. 还原 HTML 卡片（原逻辑）
+            messageList = messageList.map(m => restoreCardBlocks(m, protectedRes.blocks));
+            
+            console.log(`🤖 智能切分完成，生成 ${messageList.length} 条气泡`);
         }
-    }
-}
-
-
-console.log('📝 最终气泡列表:', messageList.map(m => m.substring(0, 30) + '...'));
-
        
 
 // ★★★ 强制规则：HTML 必须单独一个气泡 ★★★
@@ -5473,28 +6020,11 @@ messageList = messageList.flatMap(msg => {
 
 
 
-      messageList = messageList
+
+messageList = messageList
     .map(msg => String(msg || '').trim())
-    .map(msg => {
-        // 统一识别 【搜表情:xx】 或 [搜表情:xx]，兼容中文/英文冒号
-        const m = msg.match(/^[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]$/);
-        if (!m) return msg;
-
-        // 没有表情包库：直接删除这条气泡（返回空，后面 filter 会清掉）
-        if (!emojiList || emojiList.length === 0) return '';
-
-        const keyword = (m[1] || '').trim();
-        const emoji = searchEmojiByKeyword(keyword);
-
-        // 有表情库但没搜到：随机兜底一个（避免把指令露出来）
-        const picked = emoji || (emojiList.length > 0 ? emojiList[Math.floor(Math.random() * emojiList.length)] : null);
-        if (!picked) return '';
-
-        // 关键：不要注入 |||，保持仍是一条气泡
-       return `【EMOJI:${picked.id}】`;
-
-    })
     .filter(msg => msg.length > 0);
+
 
 
         // 兜底拆分
@@ -5511,15 +6041,18 @@ messageList = messageList.flatMap(msg => {
             await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
             let msgText = messageList[i];
 
-
 // ===== 世界书图隐藏指令：【图片：关键词】=====
-// 只要检测到【图片：xxx】，这条气泡就不作为文字发送；只尝试发真实图片
+// 逻辑修正：只有找到真实图片时才拦截；否则放行生成文字图
 const wbImgMatch = msgText.match(/[【\[]\s*图片\s*[:：]\s*([^】\]]+)\s*[】\]]/);
 if (wbImgMatch) {
     const keyword = (wbImgMatch[1] || '').trim();
 
     // 仅在 worldbook / coexist 模式下才查世界书图
     const mode = characterInfo.imageMode || 'coexist';
+    
+    // 标记是否已处理（已发真实图）
+    let handled = false;
+
     if (mode === 'worldbook' || mode === 'worldbook_only' || mode === 'coexist') {
         const url = await findImageInWorldbook(keyword);
         if (url) {
@@ -5541,58 +6074,19 @@ if (wbImgMatch) {
             renderMessages();
             scrollToBottom();
             playNotificationSound();
+            
+            handled = true; // 标记为已处理
         }
     }
 
-    // 关键：无论找没找到，都让这条【图片：】气泡消失
-    continue;
+    // ★★★ 核心修复 ★★★
+    // 只有当“成功发了真实图片” 或者 “模式是仅世界书(worldbook_only)” 时，才跳过当前气泡
+    // 否则（没找到图，且允许文字图），就放行，让下面的代码把它渲染成【文字图卡片】
+    if (handled || mode === 'worldbook_only') {
+        continue;
+    }
 }
 // ===== 世界书图隐藏指令结束 =====
-
-
-            // ★ 修改：购物逻辑（支持送礼物和代付两种情况）
-        if (giftData && i === 0) {
-            console.log('🎁 触发礼物逻辑，giftData:', giftData);
-    const product = {
-        name: giftData.product_name,
-        price: giftData.price
-    };
-    
-    if (giftData.action === 'send_gift') {
-        createAIShoppingOrder('送礼', product, chat.name);
-    } else if (giftData.action === 'ask_user_pay') {
-        createAIShoppingOrder('代付', product, chat.name);
-    }
-    giftData = null;
-}
-
-
-
-
-         // 领取转账逻辑（兼容【】和[]）
-if (/[【\[]\s*领取转账\s*[】\]]/.test(msgText)) {
-    const pendingTransfer = allMessages.slice().reverse().find(m => 
-        m.type === 'transfer' && 
-        m.senderId === 'me' && 
-        m.transferData.status === 'sent'
-    );
-    if (pendingTransfer) {
-        pendingTransfer.transferData.status = 'aiReceived';
-        const sysMsgId = Date.now() + i + 500;
-        allMessages.push({ 
-            id: sysMsgId, 
-            chatId: currentChatId, 
-            type: 'system', 
-            content: `${chat.name}已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`, 
-            time: getCurrentTime() 
-        });
-        saveMessages();
-        renderMessages();
-    }
-    // 从消息文本里删除标记（兼容两种括号）
-    msgText = msgText.replace(/[【\[]\s*领取转账\s*[】\]]/g, '').trim();
-    if (!msgText) continue;
-}
 
     
 // 确认代付逻辑（兼容【确认代付】和[确认代付]）
@@ -5622,50 +6116,130 @@ if (/[【\[]\s*确认代付\s*[】\]]/.test(msgText)) {
     msgText = msgText.replace(/[【\[]\s*确认代付\s*[】\]]/g, '').trim();
     if (!msgText) continue;
 }
-
+// ============ 👇 在这里插入新代码 👇 ============
+// 领取转账逻辑（兼容【领取转账】和[领取转账]）
+if (/[【\[]\s*领取转账\s*[】\]]/.test(msgText)) {
+    console.log('🔍 检测到领取转账标记');
+    
+    // 1. 查找最近一条：用户发的(me)、且状态为 sent (待领取) 的转账消息
+    // allMessages 是按时间正序的，所以我们要倒序查找(slice().reverse())最近的一条
+    const pendingTransfer = allMessages.slice().reverse().find(m => 
+        m.type === 'transfer' && 
+        m.senderId === 'me' && 
+        m.transferData && 
+        m.transferData.status === 'sent'
+    );
+    
+    if (pendingTransfer) {
+        // 2. 修改状态为 'aiReceived' (表示被对方领取)
+        // 注意：renderMessages 里判断逻辑是：如果是'me'发的，状态要是'aiReceived'才显示已领取
+        pendingTransfer.transferData.status = 'aiReceived';
+        
+        // 3. 插入一条系统提示消息
+        const sysMsgId = Date.now() + i + 900;
+        allMessages.push({
+            id: sysMsgId,
+            chatId: currentChatId,
+            type: 'system',
+            content: `${chat.name} 已领取你的转账 ¥${pendingTransfer.transferData.amount.toFixed(2)}`,
+            time: getCurrentTime()
+        });
+        
+        // 4. 保存更改到数据库
+        saveMessages();
+        console.log('✅ 转账状态已更新为已领取');
+    } else {
+        console.log('⚠️ AI试图领取转账，但没找到可领取的转账消息');
+    }
+    
+    // 5. 从回复文本中删掉【领取转账】这几个字，避免显示在气泡里
+    msgText = msgText.replace(/[【\[]\s*领取转账\s*[】\]]/g, '').trim();
+    
+    // 如果删掉后没内容了（AI只回了个指令），就跳过这条气泡的渲染
+    if (!msgText) continue;
+}
+// ============ 👆 插入结束 👆 ============
 
 // 构建消息对象
 const newId = Date.now() + i;
 
-// ★★★ 新增：根据发图模式控制世界书图处理 ★★★
+// ★★★ 新增：AI 生图 / 世界书图 / 文字图 三模式独立控制 (最终版) ★★★
 let finalText = msgText;
 let imageMessage = null;
 
-const imageMode = characterInfo.imageMode || 'coexist';
+// 获取当前模式
+// 允许的值: 'text_image_only' (仅文字图), 'worldbook_only' (仅世界书), 'ai_generate' (AI生图)
+// 兼容旧值: 'text' -> 'text_image_only', 'worldbook' -> 'worldbook_only', 'hybrid' -> 'ai_generate'
+let imageMode = characterInfo.imageMode || 'text_image_only';
+if (imageMode === 'text') imageMode = 'text_image_only';
+if (imageMode === 'worldbook') imageMode = 'worldbook_only';
+if (imageMode === 'hybrid' || imageMode === 'coexist') imageMode = 'ai_generate';
 
-
-if (imageMode === 'text' || imageMode === 'text_image_only') {
-    // 【文字图模式】：不查找世界书图
+// --- 模式 1：纯文字图模式 ---
+if (imageMode === 'text_image_only') {
+    // 逻辑：保留标签，后续渲染为文字卡片
     finalText = msgText;
     imageMessage = null;
- 
-    
-} else if (imageMode === 'worldbook' || imageMode === 'worldbook_only') {
-    // 【世界书模式】：强制查找世界书图
+}
+
+// --- 模式 2：纯世界书模式 ---
+else if (imageMode === 'worldbook_only') {
+    // 逻辑：只查世界书。搜不到 -> 不发。
     const result = await processWorldbookImage(msgText);
     finalText = result.finalText;
     imageMessage = result.imageMessage;
- 
-    
-} else {
-    // 【共存模式】：优先世界书，找不到用文字图
-    const result = await processWorldbookImage(msgText);
-    
-    if (result.imageMessage) {
-        finalText = result.finalText;
-        imageMessage = result.imageMessage;
-      
+}
+
+// --- 模式 3：AI 生图模式 (ai_generate) ---
+else if (imageMode === 'ai_generate') { 
+    // ★★★ 核心判断：只有当【总开关打开】时才执行 ★★★
+    if (currentImageApiConfig && currentImageApiConfig.enabled) {
+        // 1. 提取关键词
+        const match = msgText.match(/[【\[]\s*图片\s*[:：]\s*([^】\]]+)\s*[】\]]/);
+        
+        if (match) {
+            const keyword = match[1].trim();
+            
+            // 2. 清除文本中的 [图片:xxx] 标签
+            finalText = msgText.replace(match[0], '').trim();
+            
+            // 3. 创建"占位符"消息
+            imageMessage = {
+                type: 'system', 
+                content: `🎨 正在绘制“${keyword}”，请稍候...`, // Loading 提示
+                isAiGenerating: true, 
+                aiPrompt: keyword
+            };
+        } else {
+            // 没匹配到标签
+            finalText = msgText;
+            imageMessage = null;
+        }
     } else {
-        finalText = msgText;
+        // ★★★ 开关没开：直接忽略，什么都不发 ★★★
+        console.warn('⚠️ AI生图模式已选，但总开关未开启，跳过生图');
+        // 清除标签，防止露出 [图片:xxx]
+        finalText = msgText.replace(/[【\[]\s*图片\s*[:：]\s*([^】\]]+)\s*[】\]]/g, '').trim();
         imageMessage = null;
-      
     }
 }
 
 // ★★★ 核心修复：拆分文字和 HTML 卡片 ★★★
-const parts = splitHtmlCardFromText(finalText);
-const textPart = (parts.text || '').trim();
-const cardPart = parts.cardHtml;
+
+            const parts = splitHtmlCardFromText(finalText);
+            
+            // ============ 👇 修复开始：强力清洗残留标签 👇 ============
+            let textPart = (parts.text || '').trim();
+            
+            // 1. 如果文字部分只剩下闭合标签，直接清空
+            if (textPart === '[[/CARD_HTML]]') {
+                textPart = '';
+            }
+            // 2. 只要文字里包含闭合标签，就把它抠掉（防止出现第二个气泡）
+            textPart = textPart.replace(/\[\[\/CARD_HTML\]\]/g, '').trim();
+            // ============ 👆 修复结束 👆 ============
+
+            const cardPart = parts.cardHtml;
 
 
 // 1. 如果有文字部分，创建文字消息
@@ -5697,7 +6271,22 @@ if (cardPart) {
 }
 // ▲▲▲ 世界书图处理 + HTML 拆分结束 ▲▲▲
 
-
+// ============ 👇 在这里插入新代码 👇 ============
+            // 如果没有成功渲染成组件（newMessage 为空），说明可能是格式错了
+            if (!newMessage) {
+                // 1. 定义清理正则：匹配【任何括号】包裹的【功能关键词】
+                const cleanupRegex = /[【\[（(]\s*(?:发送语音|搜表情|图片|转账|确认代付|领取转账|引用|EMOJI).*?[】\]）)]/gi;
+                
+                // 2. 执行删除
+                if (cleanupRegex.test(msgText)) {
+                    msgText = msgText.replace(cleanupRegex, '').trim();
+                }
+            }
+            // 3. ★核心防空气泡★：如果清洗后没字了，且也不是组件，直接跳过本次循环
+            if (!newMessage && !cardMessage && !imageMessage && !msgText) {
+                continue; 
+            }
+            // ============ 👆 插入结束 👆 ============
 
 // 处理 AI 的引用（兼容【】和[]）
 if (aiQuotes.length > 0) {
@@ -5825,6 +6414,12 @@ if (imageMessage && typeof imageMessage === 'object' && imageMessage.content) {
             content: imageMessage.content
         };
         allMessages.push(imgMessage);
+          // ============ 👇 插入新代码 👇 ============
+    // 如果是 AI 生图的占位符，触发后台任务
+    if (imageMessage.isAiGenerating) {
+        triggerAiImageGeneration(imgMsgId, imageMessage.aiPrompt);
+    }
+    // ============ 👆 插入结束 👆 ============
         console.log('✅ 已插入世界书图:', imageMessage.content.substring(0, 50));
     }
 }
@@ -5911,33 +6506,69 @@ function setCharacterStatusForChat(chatId, statusText) {
     });
 }
 
+// ============ 1. 辅助函数：分离文本和卡片 (终极去壳版) ============
 function splitHtmlCardFromText(text) {
-    const s = String(text || '');
+    let s = String(text || '');
+
+    // 1. 【预处理】把各种变体（多重括号、空格）统一成标准标签
+    // 正则解释：\[+ 匹配 1个或多个[，能搞定 [CARD_HTML]、[[[CARD_HTML]]] 等
+    s = s.replace(/```html/gi, '')
+         .replace(/```/g, '')
+         .replace(/\[+\s*CARD_HTML\s*\]+/gi, '[[CARD_HTML]]')
+         .replace(/\[+\s*\/CARD_HTML\s*\]+/gi, '[[/CARD_HTML]]');
+
     const startTag = '[[CARD_HTML]]';
     const endTag = '[[/CARD_HTML]]';
 
     const start = s.indexOf(startTag);
-    const end = s.indexOf(endTag);
+    const end = s.lastIndexOf(endTag);
 
+    // 没找到标签，返回原文
     if (start === -1 || end === -1 || end < start) {
         return { text: s, cardHtml: null };
     }
 
-    const before = s.slice(0, start);
-    const inside = s.slice(start + startTag.length, end);
-    let after = s.slice(end + endTag.length);
+    // 2. 提取三部分
+    let before = s.substring(0, start).trim();
+    let cardHtml = s.substring(start + startTag.length, end).trim();
+    let after = s.substring(end + endTag.length).trim();
 
-    // ★★★ 核心修复：清理 after 里泄露的 HTML 闭合标签 ★★★
-    after = after.replace(/^\s*(<\/[^>]+>)+\s*/g, ''); // 去掉开头的所有 </xxx> 标签
-    after = after.replace(/\s*(<\/[^>]+>)+\s*$/g, ''); // 去掉结尾的所有 </xxx> 标签
+    // 3. 【外部清洗】清理文本中残留的括号 (解决截图里的 [] 气泡)
+    // 比如 AI 输出：[] [[CARD_HTML]]... 或 [ [[CARD_HTML]]... ]
+    
+    // 去掉 before 末尾的 []、[、【
+    before = before.replace(/(\[\]|\[|【)+$/, '').trim();
+    
+    // 去掉 after 开头的 []、]、】
+    after = after.replace(/^(\[\]|\]|】)+/, '').trim();
+
+    // 清理 after 里泄露的 HTML 闭合标签
+    after = after.replace(/^\s*(<\/[^>]+>)+\s*/g, '');
+    after = after.replace(/\s*(<\/[^>]+>)+\s*$/g, '');
 
     const cleanText = (before + after).trim();
-    const cardHtml = inside.trim();
 
+    // 4. 【内部清洗】清理卡片内容
+    // 4.1 去掉嵌套的标签 (如果 AI 在里面又写了一遍)
+    cardHtml = cardHtml.split('[[CARD_HTML]]').join('');
+    cardHtml = cardHtml.split('[[/CARD_HTML]]').join('');
+    
+    // 4.2 去掉 Markdown
+    cardHtml = cardHtml.replace(/^\s*```[a-z]*\s*/i, '').replace(/\s*```\s*$/, '');
 
-    return { text: cleanText, cardHtml: cardHtml || null };
+    // 4.3 ★★★ 核心修复：去掉卡片内容外层包裹的 [] ★★★
+    // 比如 [[CARD_HTML]] [ <div>...</div> ] [[/CARD_HTML]]
+    // 检测如果首尾都有括号，就剥皮
+    if (cardHtml.startsWith('[') && cardHtml.endsWith(']')) {
+        cardHtml = cardHtml.substring(1, cardHtml.length - 1).trim();
+    }
+    // 中文括号也顺手处理一下
+    if (cardHtml.startsWith('【') && cardHtml.endsWith('】')) {
+        cardHtml = cardHtml.substring(1, cardHtml.length - 1).trim();
+    }
+
+    return { text: cleanText, cardHtml: cardHtml };
 }
-
 
 function sanitizeHtmlCard(dirtyHtml) {
     let html = String(dirtyHtml || '');
@@ -6013,18 +6644,72 @@ function sanitizeHtmlCard(dirtyHtml) {
 // - 最大高 270（你现在的偏好）
 // - 只允许纵向滚动，禁止横向滚动
 // ================================
-function buildHtmlCardContainer(cardHtml, msgId) {
-    const safeId = String(msgId || '');
-    const safeHtml = sanitizeHtmlCard(cardHtml);
+// ============ 辅助函数：ID 隔离 (解决互动失效的核心) ============
+function scopeCardIds(html, msgId) {
+    if (!html) return '';
+    
+    // 生成唯一的后缀，比如 _msg1715666_88
+    const suffix = `_msg${msgId}_${Math.floor(Math.random() * 99)}`;
+    
+    // 创建一个临时的 DOM 环境来处理
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // 1. 收集所有 ID
+    const elementsWithId = Array.from(doc.querySelectorAll('[id]'));
+    const idMap = {}; // 旧ID -> 新ID 的映射
 
-    // ★★★ 极简模式：只返回卡片内容本身，不加任何容器样式 ★★★
-    return `
-        <div class="html-card-wrap" data-card-msg-id="${safeId}">
-            ${safeHtml}
-        </div>
-    `;
+    // 2. 重命名 ID
+    elementsWithId.forEach(el => {
+        const oldId = el.id;
+        const newId = oldId + suffix;
+        el.id = newId;
+        idMap[oldId] = newId;
+    });
+
+    // 3. 更新 label 的 for 属性 (确保点击 label 能触发对应的 input)
+    doc.querySelectorAll('label[for]').forEach(label => {
+        const oldFor = label.getAttribute('for');
+        if (idMap[oldFor]) {
+            label.setAttribute('for', idMap[oldFor]);
+        }
+    });
+
+    // 4. 更新 radio/checkbox 的 name 属性 (防止不同卡片的单选框互斥)
+    doc.querySelectorAll('input[name]').forEach(input => {
+        const oldName = input.getAttribute('name');
+        input.setAttribute('name', oldName + suffix);
+    });
+
+    // 5. ★关键★：更新 <style> 里的 #id 选择器
+    // 如果不更新 CSS，ID 变了样式就失效了，卡片会乱掉
+    doc.querySelectorAll('style').forEach(style => {
+        let css = style.innerHTML;
+        for (const [oldId, newId] of Object.entries(idMap)) {
+            // 正则替换：匹配 #oldId，且后面不是字母数字下划线（防止误伤类似 #id_2）
+            const regex = new RegExp(`#${oldId}(?![a-zA-Z0-9_-])`, 'g');
+            css = css.replace(regex, `#${newId}`);
+        }
+        style.innerHTML = css;
+    });
+
+    return doc.body.innerHTML;
 }
 
+// ============ 2. 辅助函数：构建卡片容器 (升级版) ============
+function buildHtmlCardContainer(html, id) {
+    // 1. 先进行安全清洗 (去脚本)
+    let safeHtml = html;
+    if (typeof sanitizeHtmlCard === 'function') {
+        safeHtml = sanitizeHtmlCard(html);
+    }
+
+    // 2. ★核心修复★：进行 ID 隔离
+    // 这一步确保每个卡片的 ID 都是独一无二的，点击 labels 才会生效
+    safeHtml = scopeCardIds(safeHtml, id);
+
+    return `<div class="html-card-wrap" data-msg-id="${id}">${safeHtml}</div>`;
+}
 
 
 // ================================
@@ -6196,7 +6881,7 @@ async function renderMessages() {
             else if (isSent) actionText = '等待领取';
             else actionText = '领取红包';
             const clickEvent = (!isSent && data.status === 'pending') ? `onclick="receiveTransfer(${msg.id})"` : '';
-            const giftIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`;
+          const giftIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1a3 3 0 0 0-3-3c-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68A2.99 2.99 0 0 0 9 2a3 3 0 0 0-3 3c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19a2 2 0 0 0 2 2h16c1.11 0 2-.89 2-2V8a2 2 0 0 0-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`;
             const heartIconSvg = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="margin-left:4px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
 
             return `
@@ -6297,7 +6982,7 @@ if (msg.type === 'image') {
     messageContent = `<img src="${msg.content}" class="message-image" alt="图片" onclick="viewImage('${msg.content}')">`;
 } else if (msg.type === 'text_image') {
    isTransparentBubble = true;
-    const fakeImage = "https://img.heliar.top/file/1769009400004_IMG_9811.jpeg";
+    const fakeImage = "https://i.postimg.cc/Wby3zQfx/QQ-tu-pian20260215000830.png";
     
     const rawContent = String(msg.content || '');
     
@@ -6498,7 +7183,7 @@ async function startCondense() {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${currentApiConfig.apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: currentApiConfig.defaultModel, messages: [{ role: 'user', content: prompt }], temperature: 0.5 })
+            body: JSON.stringify({ model: currentApiConfig.defaultModel, messages: [{ role: 'user', content: prompt }], temperature: (currentApiConfig.temperature !== undefined) ? currentApiConfig.temperature : 0.6 })
         });
 
         const data = await response.json();
@@ -6729,37 +7414,115 @@ async function analyzeProfile() {
 }
 // === 【功能：智能刷新分发器】结束 ===
 
-// === 【功能：分析他的档案】开始 ===
+// === 【功能：分析他的档案 (语义级去重 + 格式清洗)】开始 ===
 async function analyzeCharacterArchive() {
     if (!currentChatId) return;
-    const { historyText } = await getSmartAnalysisHistory(50);
-    const charData = await new Promise(resolve => loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {})));
     
+    // 1. 准备数据
+    const { historyText } = await getSmartAnalysisHistory(50);
+    
+    // 预读取旧数据，用于构建 Prompt
+    const charData = await new Promise(resolve => loadFromDB('characterInfo', d => resolve(d && d[currentChatId] ? d[currentChatId] : {})));
+    const oldExt = charData.extendedProfile || {};
+    const rawSecrets = oldExt.secretArchive || "";
+
+    // 提取最近 20 条旧秘密（去掉日期，只留内容），喂给 AI 做参考
+    const recentSecrets = rawSecrets
+        .split('\n')
+        .map(line => line.replace(/^【.*?】/, '').trim()) // 去掉日期头
+        .filter(line => line.length > 5) // 过滤太短的
+        .slice(-20) // 只取最后20条，防止 Prompt 太长
+        .join('\n');
+
+    // 2. 发送 Prompt (★修改点：注入了旧秘密，要求 AI 进行语义避让)
     const prompt = `分析角色【${charData.personality || '无设定'}】。根据记录：${historyText}。
-    输出格式：身高|||体重|||性格核心|||爱好|||厌恶|||新发现的秘密`;
+    输出格式：身高|||体重|||性格核心|||爱好|||厌恶|||新发现的秘密
+    
+    【已知秘密库（绝对禁止重复以下含义）】
+    ${recentSecrets || "（暂无记录）"}
+
+    【严格要求】
+    1. 身高/体重：如果记录里没提，直接填 "--"，严禁写"未知/无法判断"。
+    2. 秘密：
+       - 必须是【全新的】发现。
+       - 如果聊天内容体现的信息，与【已知秘密库】里的内容**意思相近**（即使措辞不同），也请直接忽略！
+       - 如果没有新发现，或者发现的都是旧闻，请直接填 "--"。`;
 
     try {
         const content = await callAI(prompt);
         let parts = content.split('|||').map(s => s.trim());
         while(parts.length < 6) parts.push("--");
 
-        // 仅更新 extendedProfile
+        // 清洗函数
+        const cleanValue = (val) => {
+            if (!val) return '--';
+            if (val.includes('未知') || val.includes('无法') || val.includes('不详') || val.includes('没提')) {
+                return '--';
+            }
+            return val;
+        };
+
+        const newHeight = cleanValue(parts[0]);
+        const newWeight = cleanValue(parts[1]);
+        const newSecretContent = parts[5];
+
+        // 3. 数据库更新流程
         loadFromDB('characterInfo', (allData) => {
             if (!allData[currentChatId]) allData[currentChatId] = {};
-            const oldExt = allData[currentChatId].extendedProfile || {};
+            // 重新获取最新的 oldExt (防止并发差异)
+            const currentExt = allData[currentChatId].extendedProfile || {};
+            let finalSecretArchive = currentExt.secretArchive || "";
+            let isDuplicate = false;
+
+            // === 算法兜底去重 (防止 AI 原文照抄) ===
+            if (newSecretContent && newSecretContent !== "--" && newSecretContent.length > 2) {
+                const existingLines = finalSecretArchive.split('\n').filter(line => line.trim().length > 0);
+                
+                for (const line of existingLines) {
+                    const cleanOldContent = line.replace(/^【.*?】/, '').trim();
+                    // 这里依然保留 50% 相似度拦截，作为最后一道防线
+                    const similarity = calculateTextSimilarity(newSecretContent, cleanOldContent);
+                    
+                    if (similarity > 0.5) {
+                        isDuplicate = true;
+                        console.log(`🛡️ 算法拦截重复秘密 (相似度 ${(similarity*100).toFixed(1)}%)`);
+                        break;
+                    }
+                }
+
+                if (!isDuplicate) {
+                    finalSecretArchive += `\n【${new Date().toLocaleDateString()}】${newSecretContent}`;
+                }
+            }
+
+            // 更新数据
             allData[currentChatId].extendedProfile = { 
-                ...oldExt, 
-                height: parts[0], weight: parts[1], coreTrait: parts[2], likes: parts[3], dislikes: parts[4], 
-                secretArchive: (oldExt.secretArchive || "") + (parts[5] !== "--" ? `\n【${new Date().toLocaleDateString()}】${parts[5]}` : "")
+                ...currentExt, 
+                height: newHeight, 
+                weight: newWeight, 
+                coreTrait: parts[2], 
+                likes: parts[3], 
+                dislikes: parts[4], 
+                secretArchive: finalSecretArchive
             };
+            
             saveToDB('characterInfo', allData);
             loadArchives(); 
+            
+            if (isDuplicate) {
+                alert('基础档案已更新。\n(AI 生成的秘密与旧记录过于相似，已被过滤)');
+            } else if (newSecretContent === "--") {
+                alert('基础档案已更新。\n(本次对话未发现新秘密)');
+            } else {
+                alert('档案更新成功！发现了一条新秘密✨');
+            }
         });
-        alert('档案更新成功！');
-    } catch (e) { alert('档案分析失败'); }
+    } catch (e) { 
+        console.error(e);
+        alert('档案分析失败'); 
+    }
 }
-// === 【功能：分析他的档案】结束 ===
-
+// === 【功能：分析他的档案 (语义级去重 + 格式清洗)】结束 ===
 
 // === 【功能：修复版分析：他眼中的你 & 强力解析纠偏】开始 ===
 async function analyzeUserImpression() {
@@ -7128,8 +7891,14 @@ function toggleVoiceState(element, messageId) {
     toggleVoiceText(messageId);
 }
 
-// ============ 小票弹窗功能 ============
+// ============ 小票弹窗功能 (防遮挡优化版) ============
 function openReceiptModal(messageId) {
+    // 1. ★核心修复★：打开新弹窗前，先强制清理可能残留的旧弹窗
+    const existingOverlay = document.getElementById('receiptModalOverlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+
     const message = allMessages.find(m => m.id === messageId);
     if (!message || message.type !== 'shopping_order') return;
     
@@ -7155,7 +7924,7 @@ function openReceiptModal(messageId) {
         </div>
     `).join('');
     
-    // 操作按钮（仅AI请求代付且待处理时显示）
+    // 操作按钮
     let actionBtns = '';
     if (data.orderType === 'ai_ask_user_pay' && data.status === 'pending') {
         actionBtns = `
@@ -7168,7 +7937,7 @@ function openReceiptModal(messageId) {
     
     // 创建弹窗
     const modalHtml = `
-        <div class="receipt-modal-overlay" id="receiptModalOverlay" onclick="closeReceiptModal(event)">
+        <div class="receipt-modal-overlay" id="receiptModalOverlay" onclick="closeReceiptModal(event)" style="z-index: 9999;">
             <div class="receipt-modal" onclick="event.stopPropagation()">
                 <div class="receipt-modal-header">
                     <button class="receipt-close-btn" onclick="closeReceiptModal()">×</button>
@@ -7236,8 +8005,16 @@ function openReceiptModal(messageId) {
         </div>
     `;
     
-    // 插入到页面
+    // 插入到 body
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeReceiptModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const overlay = document.getElementById('receiptModalOverlay');
+    if (overlay) {
+        overlay.remove(); // 彻底移除节点，防止占位
+    }
 }
 
 function closeReceiptModal(event) {
@@ -7481,11 +8258,12 @@ ${recentMessages || '暂无聊天'}
                 'Authorization': `Bearer ${currentApiConfig.apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.85
-            })
+           body: JSON.stringify({
+    model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+    messages: [{ role: 'user', content: prompt }],
+    // ★★★ 修改 ★★★
+    temperature: (currentApiConfig.temperature !== undefined) ? currentApiConfig.temperature : 0.8
+})
         });
         
         if (!response.ok) return null;
@@ -7953,7 +8731,7 @@ async function checkAllChatsForAutoSummary() {
 }
 
 /**
- * 执行自动总结
+ * 执行自动总结 (AI 控流 60 字版)
  */
 async function executeAutoSummary(chat, messages, charInfo) {
     // 检查API配置
@@ -7962,13 +8740,12 @@ async function executeAutoSummary(chat, messages, charInfo) {
         return;
     }
     
-    // 准备聊天记录文本（只取文本消息）
+    // 准备聊天记录文本
     const chatHistory = messages
-        .filter(m => m.type === 'text' || !m.type) // 兼容旧数据
+        .filter(m => m.type === 'text' || !m.type)
         .filter(m => m.content && !m.isRevoked)
         .map(m => {
             const sender = m.senderId === 'me' ? '我' : chat.name;
-            // 截断过长的单条消息
             const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
             return `${sender}: ${content}`;
         })
@@ -7976,7 +8753,6 @@ async function executeAutoSummary(chat, messages, charInfo) {
     
     if (!chatHistory || chatHistory.length < 100) {
         console.log('[自动总结] 有效内容太少，跳过');
-        // 仍然更新锚点，防止反复检查
         updateAutoSummaryAnchor(chat.id, messages);
         return;
     }
@@ -7986,22 +8762,24 @@ async function executeAutoSummary(chat, messages, charInfo) {
     const lastMsg = messages[messages.length - 1];
     const dateRange = getDateRange(firstMsg.time, lastMsg.time);
     
-    // 构建Prompt
-    const prompt = `请以【第三人称旁白】的视角，客观概括以下聊天记录的主要内容。
+    // 构建Prompt (★ 核心修改：严格限制 60 字)
+    const prompt = `你是一个极简记忆整理师。请将聊天记录浓缩成一条"时光记录"。
 
-【要求】
-1. 记录发生的时间
-2. **视角严格限制**：必须使用第三人称！请用"${chat.name}"和"用户"来描述互动。
-3. **严禁**使用"我"、"我们"、"你"这种第一/第二人称代词。
-4. 内容概括：聊了什么话题、发生了什么事、有什么重要约定，承诺
-5. 用户主动说过的个人喜好（喜欢的或者厌恶的）、经历过的过去，未曾到的未来，理想，工作事业，生活习惯等。
-6. 对话中表现情绪的变化，如因为什么事情难过或者伤心，要记住不要做雷点的事情等
-
-【聊天记录】
+【角色】${chat.name}
+【时间】${dateRange}
+【记录】
 ${chatHistory.substring(0, 4000)}
 
-现在请你开始总结`;
+【输出要求 (严格执行)】
+1. **字数限制**：必须控制在 **60个汉字以内**！越短越好。
+2. **人称**：使用第三人称（"${chat.name}"和"用户"）。
+3. **内容**：只保留最核心的一件事或一个情绪点，舍弃所有无关细节。
 
+【正确示例】
+${chat.name}听用户倾诉了工作烦恼，并约定周末一起去吃火锅放松。
+(简练、完整、不超过60字)
+
+现在开始总结（直接输出内容，不要前缀）：`;
 
     try {
         const url = currentApiConfig.baseUrl.endsWith('/') 
@@ -8017,7 +8795,7 @@ ${chatHistory.substring(0, 4000)}
             body: JSON.stringify({
                 model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
                 messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7
+                temperature: 0.5 // 温度调低一点，让它更听话，不乱发挥
             })
         });
         
@@ -8029,18 +8807,16 @@ ${chatHistory.substring(0, 4000)}
         const data = await response.json();
         let summary = data.choices[0].message.content.trim();
         
-        // 清理可能的引号
+        // 清理符号
         summary = summary.replace(/^["「『]|["」』]$/g, '');
         
-        // 限制长度
-        if (summary.length > 150) {
-            summary = summary.substring(0, 147) + '...';
-        }
+        // ★★★ 核心：这里不再有任何 substring 截断代码 ★★★
+        // 完全依赖 Prompt 让 AI 自己控制长度
         
         // 保存到时光相册
         await saveAutoSummaryToTimeline(chat.id, summary, dateRange);
         
-        console.log(`[自动总结] 「${chat.name}」总结完成: ${summary.substring(0, 30)}...`);
+        console.log(`[自动总结] 完成 (字数: ${summary.length}): ${summary}`);
         
     } catch (error) {
         console.error('[自动总结] 生成失败:', error);
@@ -8049,7 +8825,6 @@ ${chatHistory.substring(0, 4000)}
     // 更新锚点
     updateAutoSummaryAnchor(chat.id, messages);
 }
-
 /**
  * 获取日期范围字符串
  */
@@ -8624,3 +9399,28 @@ setTimeout(() => {
 }, 1000);
 
 bindHtmlCardInteractions();
+
+// ============ 🔧 工具函数：文本相似度计算 (Levenshtein) ============
+function calculateTextSimilarity(s1, s2) {
+    if (!s1 || !s2) return 0;
+    const len1 = s1.length;
+    const len2 = s2.length;
+    const maxLen = Math.max(len1, len2);
+    if (maxLen === 0) return 1;
+
+    const matrix = [];
+    for (let i = 0; i <= len1; i++) matrix[i] = [i];
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= len1; i++) {
+        for (let j = 1; j <= len2; j++) {
+            const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return 1 - matrix[len1][len2] / maxLen;
+}
