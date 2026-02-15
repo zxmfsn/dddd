@@ -1943,7 +1943,29 @@ let callSettings = {
       
       // ============ 通话功能 ============
 
+// 通话回复安全清洗：禁止 HTML / 卡片代码 / 功能指令泄露
+function sanitizeCallReplyForDisplay(rawText) {
+    if (!rawText) return '';
+    
+    let text = String(rawText);
 
+    // 1) 去掉 HTML 卡片块
+    text = text.replace(/\[\[CARD_HTML\]\][\s\S]*?\[\[\/CARD_HTML\]\]/gi, '');
+
+    // 2) 去掉 markdown 代码块
+    text = text.replace(/```[\s\S]*?```/g, '');
+
+    // 3) 去掉所有 HTML/XML 标签
+    text = text.replace(/<\/?[^>]+>/g, '');
+
+    // 4) 去掉通话中不允许的功能指令（保留 [动作]/[消息]）
+    text = text.replace(/[【\[]\s*(?!动作|消息)(?:[^】\]]+)\s*[】\]]/g, '');
+
+    // 5) 清理换行和多余空白
+    text = text.replace(/[\r\n]+/g, '').replace(/\s{2,}/g, ' ').trim();
+
+    return text;
+}
 
       
 function openCall() {
@@ -2176,7 +2198,8 @@ const modelToUse = currentApiConfig.model || currentApiConfig.defaultModel || 'g
         if (!response.ok) throw new Error('接听失败');
         
         const data = await response.json();
-        const aiReply = data.choices[0].message.content.trim();
+        let aiReply = data.choices[0].message.content.trim();
+aiReply = sanitizeCallReplyForDisplay(aiReply);
         
         // 接通成功，更新界面
         callConnected();
@@ -2217,6 +2240,7 @@ function callConnected() {
 // 解析并显示通话回复 (修复版：彻底去除方括号)
 function parseAndShowCallReply(aiReply) {
     const container = document.getElementById('callMessages');
+    aiReply = sanitizeCallReplyForDisplay(aiReply);
 
     // 1. 预处理：先按 ||| 拆分成独立的片段
     let segments = aiReply.split('|||').map(s => s.trim()).filter(s => s.length > 0);
@@ -2540,6 +2564,10 @@ aiReply = aiReply
     .replace(/[\[【](?!动作|消息).*?[\]】]/g, '');
 
 console.log('🧹 已过滤视频通话禁用指令，清理后:', aiReply);
+
+// 二次兜底：清理可能残留的 HTML 代码
+aiReply = sanitizeCallReplyForDisplay(aiReply);
+
 // ========== 过滤结束 ==========
         
         // 保存AI回复到临时数组
@@ -3569,7 +3597,7 @@ async function generateProducts() {  // ← 这里加上 async
         if (currentShoppingType === 'goods') {
             prompt = `你是一个电商文案专家。用户搜索关键词：${keyword}。
 ${worldbookContext}
-请生成5-10个相关商品，必须严格按照以下${worldbookContext ? '世界观风格' : '淘宝/拼多多风格'}生成：
+请生成12346789-=7890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789078907890789010个相关商品，必须严格按照以下${worldbookContext ? '世界观风格' : '淘宝/拼多多风格'}生成：
 
 1. 【商品名称】：${worldbookContext ? '必须体现世界观特色' : '必须堆砌关键词'}！${worldbookContext ? '' : '公式：[形容词/年份]+[核心词]+[材质/风格]+[修饰词]+[适用人群]。'}字数要在15-30字之间。
    例如："${worldbookContext ? '【示例】赛博朋克世界 -> "2077款霓虹光纤编织战术背包 智能防盗芯片内置 | 古代世界 -> "大明永乐年制青花瓷茶盏 官窑精品 文人雅士专用"' : '2025新款韩版宽松羽绒服女中长款白鸭绒连帽加厚保暖外套ins潮'}"
@@ -3586,7 +3614,7 @@ ${worldbookContext}
         } else {
             prompt = `你是一个外卖推荐系统。用户想吃：${keyword}。
 ${worldbookContext}
-请生成5-10个相关外卖菜品，严格按照以下${worldbookContext ? '世界观风格' : '美团/饿了么风格'}生成：
+请生成10个相关外卖菜品，严格按照以下${worldbookContext ? '世界观风格' : '美团/饿了么风格'}生成：
 
 1. 【商品名称】：${worldbookContext ? '必须体现世界观特色的套餐名' : '必须是诱人的套餐名'}！${worldbookContext ? '' : '公式：[招牌/推荐]+[主菜]+[配菜/饮料]+[口味形容]。'}
    例如："${worldbookContext ? '【示例】赛博朋克世界 -> "【夜之城特供】合成蛋白质能量棒+纳米修复饮 | 古代世界 -> "【御膳房秘制】红烧狮子头+碧螺春茶一壶"' : '【门店销冠】脆皮手枪腿饭 + 卤蛋 + 冰镇可乐（超级满足）'}"
@@ -4720,6 +4748,26 @@ async function receiveAIReply() {
                 ? getRecentMomentsContext(currentChatId)
                 : Promise.resolve("（暂无朋友圈动态）"))
         ]);
+
+// ★ 在这里生成表情包清单
+let emojiKeywordsPrompt = '';
+if (emojiList && emojiList.length > 0) {
+    const emojiKeywords = emojiList.map(e => e.text).join('、');
+    emojiKeywordsPrompt = `
+【你的表情包库】
+${emojiKeywords}
+【表情包使用规则（严格遵守）】
+1. 当你想发表情包时，必须从上面的关键词里选一个最合适的
+2. 格式：【表情包:关键词】
+3. 例如：今天好开心【表情包:开心】
+⚠️ 绝对禁止：
+- 不要自己编造关键词
+- 不要使用不在清单里的词
+- 如果清单里没有合适的，就不要发表情包
+`;
+}
+
+
 characterInfoData = characterInfo;
  const statusMonitorEnabled = characterInfo.statusMonitorEnabled || false;
         const worldbooksContent = await getLinkedWorldbooksContent(characterInfo.linkedWorldbooks);
@@ -5254,16 +5302,17 @@ ${statusMonitorEnabled ? `
 
 
 
-        // 动态追加表情包提示
-        if (emojiList.length > 0) {
-            const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
-            systemPrompt += `
-
+// ★ 在 systemPrompt 末尾追加
+systemPrompt += emojiKeywordsPrompt;
+// 动态追加表情包提示
+if (emojiList.length > 0) {
+    const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
+    systemPrompt += `
 【你的表情包库】
 你有：${emojiNames} 等${emojiList.length}个表情。
 这些是你表达自己的工具，根据情绪主动使用它们！
 格式：[搜表情:关键词]`;
-        }
+}
 
 
         const contextRounds = characterInfo.contextRounds || 30;
@@ -5836,12 +5885,30 @@ messageContent = messageContent.replace(/(\[\[\/CARD_HTML\]\])\s*(<\/[^>]+>)+/g,
 // ★★★ 新增：清理 [[CARD_HTML]] 前面可能的 HTML 开始标签 ★★★
 messageContent = messageContent.replace(/(<[^/>]+>)+\s*(\[\[CARD_HTML\]\])/g, '$2');
 
+// === 处理 AI 选择的表情包（新格式：【表情包:关键词】） ===
+messageContent = messageContent.replace(/[【\[]\s*表情包\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
+    const cleanKeyword = keyword.trim();
+    
+    // 精确匹配（不区分大小写）
+    const emoji = emojiList.find(e => e.text.toLowerCase() === cleanKeyword.toLowerCase());
+    
+    if (emoji) {
+        console.log('✅ AI 选择的表情包 - 关键词:', cleanKeyword, 'ID:', emoji.id, 'URL:', emoji.url);
+        return `|||【EMOJI:${emoji.id}】|||`;
+    } else {
+        console.warn('⚠️ AI 编造了不存在的关键词:', cleanKeyword, '- 已忽略，不发送表情包');
+        return ""; // 删除标记，不发表情包
+    }
+});
+
+// === 兼容旧格式：【搜表情:关键词】（可选，如果不需要可以删除） ===
 messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
     let emoji = searchEmojiByKeyword(keyword.trim());
     if (!emoji && emojiList.length > 0) {
         emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
     }
     if (emoji) {
+        console.log('🔵 旧格式搜表情 - 关键词:', keyword, 'ID:', emoji.id);
         return `|||【EMOJI:${emoji.id}】|||`;
     }
     return ""; 
@@ -6204,12 +6271,27 @@ else if (imageMode === 'ai_generate') {
             finalText = msgText.replace(match[0], '').trim();
             
             // 3. 创建"占位符"消息
-            imageMessage = {
-                type: 'system', 
-                content: `🎨 正在绘制“${keyword}”，请稍候...`, // Loading 提示
-                isAiGenerating: true, 
-                aiPrompt: keyword
-            };
+          const aiLoadingSvg = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f7fb"/>
+      <stop offset="100%" stop-color="#eceff5"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  <text x="50%" y="48%" text-anchor="middle" fill="#98a2b3" font-size="30" font-family="Arial">AI绘图生成中...</text>
+  <text x="50%" y="54%" text-anchor="middle" fill="#b0b8c5" font-size="22" font-family="Arial">请稍候</text>
+</svg>
+`);
+
+imageMessage = {
+    type: 'image',
+    content: aiLoadingSvg, // 合法图片src，避免破图
+    isAiGenerating: true,
+    aiPrompt: keyword,
+    altText: `AI生成中：${keyword}`
+};
         } else {
             // 没匹配到标签
             finalText = msgText;
@@ -6354,7 +6436,9 @@ const textImageMatch =
 
 if (newMessage) {
     if (emojiMatch) {
+         console.log('🟢 第二次查找 - 匹配到的 ID:', emojiMatch[1]);
         const emoji = emojiList.find(e => e.id == emojiMatch[1]);
+          console.log('🟢 第二次查找 - 找到的表情包:', emoji ? emoji.id : '未找到', emoji ? emoji.url : '');
         if (emoji) {
             newMessage.type = 'image';
             newMessage.content = emoji.url;
@@ -6404,15 +6488,18 @@ if (imageMessage && typeof imageMessage === 'object' && imageMessage.content) {
         console.warn('⚠️ 检测到文字图模式，跳过世界书图插入');
     } else {
         const imgMsgId = Date.now() + i + 2;
-        const imgMessage = {
-            id: imgMsgId,
-            chatId: currentChatId,
-            senderId: chat.name,
-            time: getCurrentTime(),
-            isRevoked: false,
-            type: 'image',
-            content: imageMessage.content
-        };
+      const imgMessage = {
+    id: imgMsgId,
+    chatId: currentChatId,
+    senderId: chat.name,
+    time: getCurrentTime(),
+    isRevoked: false,
+    type: 'image',
+    content: imageMessage.content,
+    isAiGenerating: !!imageMessage.isAiGenerating,
+    aiPrompt: imageMessage.aiPrompt || '',
+    altText: imageMessage.altText || 'AI生成中'
+};
         allMessages.push(imgMessage);
           // ============ 👇 插入新代码 👇 ============
     // 如果是 AI 生图的占位符，触发后台任务

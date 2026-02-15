@@ -4418,6 +4418,11 @@ function loadMoments() {
         // ★★★ 新增：修复破损的AI生图 ★★★
         let needSave = false;
         moments.forEach(m => {
+            // ★★★ 新增：历史数据迁移，补 imageModeSnapshot ★★★
+if (!m.imageModeSnapshot && m.imageType) {
+    m.imageModeSnapshot = m.imageType;
+    needSave = true;
+}
             if (m.imageType === 'ai_generating') {
                 // 生成中状态超过5分钟，标记为失败
                 const elapsed = Date.now() - (m.timestamp || 0);
@@ -4465,20 +4470,33 @@ function renderMomentsList() {
     const visibleList = moments.slice(0, visibleMomentsCount);
     
     const listHtml = visibleList.map(m => {
-        // 1. 图片处理
-        let imagesHtml = '';
-        if (m.images && m.images.length > 0) {
-             if (m.imageType === 'text_image') {
-                const textContent = m.images[0] && m.images[0].content ? m.images[0].content : (m.imageDesc || '图片');
-                const placeholderUrl = 'https://i.postimg.cc/XNhBhGcF/1771083959929.png';
-                imagesHtml = `<div class="fc-images"><img src="${placeholderUrl}" class="fc-img-single" onclick="showTextImageDetail('${encodeURIComponent(textContent)}')" style="cursor: pointer; width: 100%; border-radius: 8px;"></div>`;
-            } else if (m.imageType === 'ai_generating') {
-                imagesHtml = `<div class="fc-images"><div class="text-image-card" style="background: linear-gradient(135deg, #a8a8a8 0%, #6e6e6e 100%);"><div class="text-image-content">🎨 生成中...</div></div></div>`;
-            } else {
-                const imgClass = m.images.length === 1 ? 'fc-img-single' : 'fc-img-grid';
-                imagesHtml = `<div class="fc-images">${m.images.map(img => { if (typeof img === 'object') return ''; return `<img src="${img}" class="${imgClass}" onclick="viewImage('${img}')">`; }).join('')}</div>`;
-            }
-        }
+        // ★★★ 新增：渲染时优先使用历史快照 ★★★
+const lockedType = m.imageModeSnapshot || m.imageType;
+
+   
+       // 1. 图片处理
+let imagesHtml = '';
+
+
+
+if (m.images && m.images.length > 0) {
+    if (lockedType === 'text_image') {
+        const textContent = m.images[0] && m.images[0].content ? m.images[0].content : (m.imageDesc || '图片');
+        const placeholderUrl = 'https://i.postimg.cc/XNhBhGcF/1771083959929.png';
+        imagesHtml = `<div class="fc-images"><img src="${placeholderUrl}" class="fc-img-single" onclick="showTextImageDetail('${encodeURIComponent(textContent)}')" style="cursor: pointer; width: 100%; border-radius: 8px;"></div>`;
+    } else if (lockedType === 'ai_generating') {
+        imagesHtml = `<div class="fc-images"><div class="text-image-card" style="background: linear-gradient(135deg, #a8a8a8 0%, #6e6e6e 100%);"><div class="text-image-content">🎨 生成中...</div></div></div>`;
+    } else {
+        // lockedType === 'ai' / 'worldbook' / 其他图片类型，都走真实图片渲染
+        const imgClass = m.images.length === 1 ? 'fc-img-single' : 'fc-img-grid';
+        imagesHtml = `<div class="fc-images">${
+            m.images.map(img => {
+                if (typeof img === 'object') return '';
+                return `<img src="${img}" class="${imgClass}" onclick="viewImage('${img}')">`;
+            }).join('')
+        }</div>`;
+    }
+}
         
         // 2. 头像
         let avatarHtml = m.authorAvatar ? `<img src="${m.authorAvatar}">` : (m.authorName ? m.authorName[0] : '👤');
@@ -5901,22 +5919,27 @@ else if (mode === 'ai') {
 
 console.log('[DBG] 最终配图数据:', { momentImages, imageType });
 
-    const newMoment = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        authorId: chatId,
-        authorName: displayName,
-        authorAvatar: chat.avatarImage || null,
-        content: momentContent,
-      imageDesc: momentImageDesc,  // 👈 保存配图描述（不显示给用户）
-        images: momentImages,
-        imageType: imageType,
-        likes: 0,
-        isLiked: false,
-        comments: 0,
-        commentsList: [],
-        timestamp: Date.now(),
-        type: 'character'
-    };
+const newMoment = {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    authorId: chatId,
+    authorName: displayName,
+    authorAvatar: chat.avatarImage || null,
+    content: momentContent,
+    imageDesc: momentImageDesc,
+    images: momentImages,
+    imageType: imageType,
+    imageModeSnapshot: imageType || null, // ★ 历史锁：记录发布当下类型
+
+    // ★★★ 新增：发布当下图片模式快照（历史锁）★★★
+    imageModeSnapshot: imageType || null,
+
+    likes: 0,
+    isLiked: false,
+    comments: 0,
+    commentsList: [],
+    timestamp: Date.now(),
+    type: 'character'
+};
 
 if (needAsyncImageGeneration) {
     needAsyncImageGeneration.momentId = newMoment.id;
@@ -6076,6 +6099,7 @@ function updateMomentImageToSuccess(momentId, imageUrl) {
     // 更新内存
     moment.images = [imageUrl];
     moment.imageType = 'ai';
+    moment.imageModeSnapshot = 'ai'; // ★ 历史锁：这条动态永远按AI图
     
     // ★★★ 立即保存到数据库 ★★★
     saveToDB('moments', { list: moments });
@@ -8332,9 +8356,8 @@ function bindChatItemClickDelegation() {
         }
     });
 }
-
 // ============ 智能空间管理 (Smart Cleaner) ============
-const SMART_CLEAN_PROTECT_COUNT = 300; // 每个聊天保留最近300条
+const SMART_CLEAN_PROTECT_COUNT = 100; // 每个聊天保留最近100条
 let cleanerStats = {
     imageSize: 0,
     stickerSize: 0,
@@ -8342,20 +8365,22 @@ let cleanerStats = {
     voiceSize: 0,
     totalSize: 0
 };
-
+// ★★★ 新增：计算字符串的实际字节大小 ★★★
+function getByteSize(str) {
+    if (!str) return 0;
+    return new Blob([String(str)]).size;
+}
 function openSmartCleanerModal() {
     const modal = document.getElementById('smartCleanerModal');
     if (!modal) return;
     modal.style.display = 'flex';
     calculateCacheStats();
 }
-
 function closeSmartCleanerModal(event) {
     if (event && event.target !== event.currentTarget) return;
     const modal = document.getElementById('smartCleanerModal');
     if (modal) modal.style.display = 'none';
 }
-
 function smartCleanerFormatBytes(bytes, decimals = 2) {
     if (!bytes || bytes <= 0) return '0 B';
     const k = 1024;
@@ -8364,8 +8389,6 @@ function smartCleanerFormatBytes(bytes, decimals = 2) {
     const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
-
-// 清理占位文本（用于上下文过滤）
 function isSmartCleanPlaceholder(text) {
     const t = String(text || '').trim();
     return t === '[图片已过期/清理]' ||
@@ -8373,27 +8396,39 @@ function isSmartCleanPlaceholder(text) {
            t === '[卡片已清理]' ||
            t === '[语音已过期]';
 }
-
-// 更稳健的类型识别
+// ★★★ 修改：排除表情包 ★★★
 function isImageMessage(msg) {
     if (!msg) return false;
+    // 如果是表情包，不算图片
+    if (msg.isSticker === true) return false;
+    
     const c = String(msg.content || '');
     return msg.type === 'image' || c.startsWith('data:image/');
 }
 function isStickerMessage(msg) {
     if (!msg) return false;
-    // 关键：text 类型不按 sticker 清，避免误伤普通消息
     return msg.type === 'sticker' || (msg.isSticker === true && msg.type !== 'text');
 }
 function isCardMessage(msg) {
     if (!msg) return false;
     const c = String(msg.content || '');
-    return msg.type === 'card' || c.includes('<html') || c.includes('<div') || c.includes('</');
+    
+    // 1. 明确的卡片类型
+    if (msg.type === 'card') return true;
+    
+    // 2. 包含 HTML 卡片标记
+    if (c.includes('[[CARD_HTML]]') || c.includes('[[/CARD_HTML]]')) return true;
+    
+    // 3. 包含完整的 HTML 结构
+    if (c.includes('<html') && c.includes('</html>')) return true;
+    if (c.includes('<div') && c.includes('</div>')) return true;
+    if (c.includes('<style') && c.includes('</style>')) return true;
+    
+    return false;
 }
 function isVoiceMessage(msg) {
     return !!msg && msg.type === 'voice';
 }
-
 function calculateCacheStats() {
     cleanerStats = { imageSize: 0, stickerSize: 0, cardSize: 0, voiceSize: 0, totalSize: 0 };
 
@@ -8421,18 +8456,22 @@ function calculateCacheStats() {
         });
 
         Object.values(chatMap).forEach(chatMsgs => {
-            // 你原项目主要按 id 递增存储，沿用这个规则
             chatMsgs.sort((a, b) => (a.id || 0) - (b.id || 0));
 
-            const limit = Math.max(0, chatMsgs.length - SMART_CLEAN_PROTECT_COUNT);
-            for (let i = 0; i < limit; i++) {
+            // ★★★ 遍历所有消息 ★★★
+            for (let i = 0; i < chatMsgs.length; i++) {
                 const msg = chatMsgs[i];
-                const len = String(msg.content || '').length;
+                const byteSize = getByteSize(msg.content);
 
-                if (isImageMessage(msg)) cleanerStats.imageSize += len;
-                else if (isStickerMessage(msg)) cleanerStats.stickerSize += len;
-                else if (isCardMessage(msg)) cleanerStats.cardSize += len;
-                else if (isVoiceMessage(msg)) cleanerStats.voiceSize += len;
+                if (isStickerMessage(msg)) {
+                    cleanerStats.stickerSize += byteSize;
+                } else if (isImageMessage(msg)) {
+                    cleanerStats.imageSize += byteSize;
+                } else if (isCardMessage(msg)) {
+                    cleanerStats.cardSize += byteSize;
+                } else if (isVoiceMessage(msg)) {
+                    cleanerStats.voiceSize += byteSize;
+                }
             }
         });
 
@@ -8445,46 +8484,37 @@ function calculateCacheStats() {
         setText('cleanerVoiceSize', smartCleanerFormatBytes(cleanerStats.voiceSize));
     });
 }
-
 function executeSmartClean() {
     const doImage = document.getElementById('cleanImageCheck')?.checked === true;
     const doSticker = document.getElementById('cleanStickerCheck')?.checked === true;
     const doCard = document.getElementById('cleanCardCheck')?.checked === true;
     const doVoice = document.getElementById('cleanVoiceCheck')?.checked === true;
-
     if (!doImage && !doSticker && !doCard && !doVoice) {
         alert('请至少选择一项进行清理');
         return;
     }
-
     if (!confirm(`确定清理选中缓存吗？\n\n保护规则：每个聊天最近 ${SMART_CLEAN_PROTECT_COUNT} 条消息不会被清理。`)) {
         return;
     }
-
     loadFromDB('messages', (data) => {
         let allMessages = [];
         if (data && Array.isArray(data.list)) allMessages = data.list;
         else if (Array.isArray(data)) allMessages = data;
-
         const chatMap = {};
         allMessages.forEach(msg => {
             if (!msg || !msg.chatId) return;
             if (!chatMap[msg.chatId]) chatMap[msg.chatId] = [];
             chatMap[msg.chatId].push(msg);
         });
-
         let cleanedCount = 0;
         let freedBytes = 0;
-
         Object.values(chatMap).forEach(chatMsgs => {
             chatMsgs.sort((a, b) => (a.id || 0) - (b.id || 0));
-
             const limit = Math.max(0, chatMsgs.length - SMART_CLEAN_PROTECT_COUNT);
             for (let i = 0; i < limit; i++) {
                 const msg = chatMsgs[i];
                 const oldLen = String(msg.content || '').length;
                 let changed = false;
-
                 if (doImage && isImageMessage(msg)) {
                     msg.content = '[图片已过期/清理]';
                     msg.type = 'text';
@@ -8504,7 +8534,6 @@ function executeSmartClean() {
                     msg.type = 'text';
                     changed = true;
                 }
-
                 if (changed) {
                     cleanedCount++;
                     const newLen = String(msg.content || '').length;
@@ -8512,21 +8541,16 @@ function executeSmartClean() {
                 }
             }
         });
-
         const tx = db.transaction(['messages'], 'readwrite');
         tx.objectStore('messages').put({ id: 1, list: allMessages });
-
         tx.oncomplete = () => {
             alert(`✅ 清理完成\n处理消息：${cleanedCount} 条\n预计释放：${smartCleanerFormatBytes(freedBytes)}`);
             closeSmartCleanerModal();
-
-            // 若当前在聊天详情页，刷新
             const detail = document.getElementById('chatDetailScreen');
             if (currentChatId && detail && detail.style.display === 'flex') {
                 loadMessages(currentChatId);
             }
         };
-
         tx.onerror = (e) => {
             console.error('Smart clean save error:', e);
             alert('清理失败，请重试');
