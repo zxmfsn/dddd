@@ -98,6 +98,10 @@ function initializeApp() {
     loadWidgetSettings();
     loadFontSettings();
     loadChats(); // 加载聊天列表
+    // 旧头像迁移：后台压缩超大 base64，避免切换角色卡顿
+setTimeout(() => {
+    runAvatarMigrationOnce();
+}, 1200);
     loadMomentsSettings();
     
     if (db.objectStoreNames.contains('memories')) {
@@ -110,9 +114,10 @@ function initializeApp() {
 }
 
 
-function saveToDB(storeName, data) {
+function saveToDB(storeName, data, onComplete) {
     if (!db) {
         console.warn('数据库未连接，无法保存:', storeName);
+        if (typeof onComplete === 'function') onComplete(false);
         return;
     }
 
@@ -120,34 +125,35 @@ function saveToDB(storeName, data) {
         const transaction = db.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
         
-       if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments', 'chatGroups'].includes(storeName)) {
-            // 列表类数据
+        if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments', 'chatGroups'].includes(storeName)) {
             objectStore.put({ id: 1, list: data.list || data });
         } else if (storeName === 'characterInfo') {
-            // 角色信息
             const saveData = data.id ? data : { id: 1, ...data };
             objectStore.put(saveData);
         } else if (storeName === 'momentsProfile') {
-            // ★★★ 核心修复：朋友圈资料必须有 userId ★★★
-            // 如果 data 是 null 或 undefined，初始化为空对象
             let profileData = data || {};
-            
-            // 强制检查并补全 userId
             if (!profileData.userId) {
                 profileData.userId = 'me';
                 console.log('自动补全朋友圈 userId');
             }
-            
             objectStore.put(profileData);
         } else {
-            // 其他配置类数据
             objectStore.put({ id: 1, ...data });
         }
+
+        transaction.oncomplete = () => {
+            if (typeof onComplete === 'function') onComplete(true);
+        };
+
+        transaction.onerror = (e) => {
+            console.error(`保存事务失败 [${storeName}]:`, e);
+            if (typeof onComplete === 'function') onComplete(false);
+        };
     } catch (e) {
         console.error(`保存数据失败 [${storeName}]:`, e);
+        if (typeof onComplete === 'function') onComplete(false);
     }
 }
-
 
 function loadFromDB(storeName, callback) {
     // ★★★ 新增：如果数据库没连接成功，直接返回 ★★★
@@ -453,9 +459,18 @@ if (isNaN(appTextSize)) appTextSize = 12; // 只有真的是 NaN 才给默认值
         // 2. 处理头像逻辑
         if (avatarFile) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                performSave(e.target.result); // 用新头像保存
-            };
+          reader.onload = (e) => {
+    const raw = e.target.result;
+
+    // ★ 头像保存前压缩（显著减少切换角色卡顿）
+    if (typeof compressImageToDataUrl === 'function') {
+        compressImageToDataUrl(raw, 256, 0.78)
+            .then((compressed) => performSave(compressed))
+            .catch(() => performSave(raw));
+    } else {
+        performSave(raw);
+    }
+};
             reader.readAsDataURL(avatarFile);
         } else {
             performSave(oldData.avatar); // 用旧头像保存
@@ -1105,6 +1120,7 @@ function deleteCategory(categoryName) {
         // 4. 保存数据
         saveToDB('categories', categories);
         saveToDB('worldbooks', worldbooks);
+        if (window.__htmlCardAllowedCache) window.__htmlCardAllowedCache = {};
         
         // 5. 刷新界面
         renderCategories();      // 刷新顶部的胶囊条
@@ -1407,6 +1423,80 @@ window.addEventListener('DOMContentLoaded', function() {
 
 });
 // 聊天功能相关变量
+
+
+// ====== 头像字段兼容工具 START ======
+function isImageAvatarValue(v) {
+    if (typeof v !== 'string') return false;
+    const s = v.trim().toLowerCase();
+    return s.startsWith('data:image/') || s.startsWith('http://') || s.startsWith('https://');
+}
+
+// 统一取“最终头像图源”
+// 优先：avatarImage -> avatar
+function getChatAvatarSrc(chat) {
+    if (!chat) return '';
+    const a1 = typeof chat.avatarImage === 'string' ? chat.avatarImage.trim() : '';
+    const a2 = typeof chat.avatar === 'string' ? chat.avatar.trim() : '';
+
+    if (isImageAvatarValue(a1)) return a1;
+    if (isImageAvatarValue(a2)) return a2;
+    return '';
+}
+
+// 兼容迁移：把旧字段统一到新字段（以图片源为主）
+// 返回 true 表示发生了变更，需要回写DB
+function normalizeChatAvatarFields(chat) {
+    if (!chat) return false;
+    let changed = false;
+
+    const src = getChatAvatarSrc(chat);
+    if (src) {
+        if (chat.avatarImage !== src) {
+            chat.avatarImage = src;
+            changed = true;
+        }
+        if (chat.avatar !== src) {
+            chat.avatar = src;
+            changed = true;
+        }
+    } else {
+        // 没有图片头像时，保留emoji头像；avatarImage清空
+        if (!chat.avatarImage) {
+            // no-op
+        } else {
+            chat.avatarImage = '';
+            changed = true;
+        }
+        if (!chat.avatar) {
+            chat.avatar = '👤';
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+// ====== 头像字段兼容工具 END ======
+
+// ====== characterInfo 全量缓存（减少 IndexedDB 读取导致卡顿）START ======
+let characterInfoCache = null;
+
+function getCharacterInfoAllCached(force, callback) {
+    if (!force && characterInfoCache && typeof characterInfoCache === 'object') {
+        if (typeof callback === 'function') callback(characterInfoCache);
+        return;
+    }
+    loadFromDB('characterInfo', (data) => {
+        characterInfoCache = (data && typeof data === 'object') ? data : {};
+        if (typeof callback === 'function') callback(characterInfoCache);
+    });
+}
+
+function setCharacterInfoCache(allData) {
+    characterInfoCache = (allData && typeof allData === 'object') ? allData : {};
+}
+// ====== characterInfo 全量缓存 END ======
+
 let chats = [];
       // 钱包数据
 let walletData = {
@@ -1419,10 +1509,14 @@ let scheduleData = {
     userPlan: '',
     charRoutine: ''
 };
-// 加载聊天列表
-function loadChats() {
+// 加载聊天列表（内联迁移版，避免外部函数丢失）
+function loadChats(callback) {
+    if (window.__chatAvatarMigrationDone) {
+    renderChatList();
+    if (typeof callback === 'function') callback();
+    return;
+}
     loadFromDB('chats', (data) => {
-        // 确保数据是数组格式
         if (data && data.list) {
             chats = data.list;
         } else if (Array.isArray(data)) {
@@ -1430,7 +1524,99 @@ function loadChats() {
         } else {
             chats = [];
         }
-        renderChatList();
+
+        // 本地工具（内联，防止函数未定义）
+        const isImg = (v) => typeof v === 'string' && (
+            v.startsWith('data:image/') ||
+            v.startsWith('http://') ||
+            v.startsWith('https://')
+        );
+
+        const getSrc = (chat) => {
+            if (!chat) return '';
+            if (isImg(chat.avatarImage)) return chat.avatarImage;
+            if (isImg(chat.avatar)) return chat.avatar;
+            return '';
+        };
+
+// ★★★ 新增：头像迁移只在本次页面生命周期执行一次，避免反复遍历导致卡顿 ★★★
+if (window.__chatAvatarMigrationDone === true) {
+    renderChatList();
+    if (typeof callback === 'function') callback();
+    return;
+}
+
+        let needSaveChats = false;
+
+        // ① chats 表内部迁移
+        chats.forEach(chat => {
+            if (!chat) return;
+            const src = getSrc(chat);
+
+            if (src) {
+                if (chat.avatarImage !== src) {
+                    chat.avatarImage = src;
+                    needSaveChats = true;
+                }
+                if (chat.avatar !== src) {
+                    chat.avatar = src;
+                    needSaveChats = true;
+                }
+            } else {
+                if (!chat.avatar) {
+                    chat.avatar = '👤';
+                    needSaveChats = true;
+                }
+                if (chat.avatarImage) {
+                    chat.avatarImage = '';
+                    needSaveChats = true;
+                }
+            }
+        });
+
+        // ② 跨表迁移：characterInfo -> chats
+        loadFromDB('characterInfo', (charInfoData) => {
+            const allChar = (charInfoData && typeof charInfoData === 'object') ? charInfoData : {};
+            let needSaveCharInfo = false;
+
+            chats.forEach(chat => {
+                if (!chat) return;
+                const cid = chat.id;
+                const c = allChar[cid] || {};
+                const chatSrc = getSrc(chat);
+                const charSrc = isImg(c.avatarImage) ? c.avatarImage : (isImg(c.avatar) ? c.avatar : '');
+
+                // chats没图，charInfo有图 -> 补给 chats
+                if (!chatSrc && charSrc) {
+                    chat.avatarImage = charSrc;
+                    chat.avatar = charSrc;
+                    needSaveChats = true;
+                }
+
+                // chats有图，charInfo没图 -> 回写给 charInfo
+                if (chatSrc && !charSrc) {
+                    if (!allChar[cid]) allChar[cid] = {};
+                    allChar[cid].avatarImage = chatSrc;
+                    allChar[cid].avatar = chatSrc;
+                    needSaveCharInfo = true;
+                }
+            });
+
+            if (needSaveChats) {
+                saveToDB('chats', { list: chats });
+                console.log('✅ chats 头像字段迁移完成');
+            }
+            if (needSaveCharInfo) {
+                saveToDB('characterInfo', allChar);
+                console.log('✅ characterInfo 头像字段补齐完成');
+            }
+
+window.__chatAvatarMigrationDone = true;
+            renderChatList();
+            if (typeof callback === 'function') {
+    callback();
+}
+        });
     });
 }
 bindChatItemClickDelegation();
@@ -1541,7 +1727,9 @@ function renderChatList() {
         <div class="chat-item-wrapper" id="wrapper-${chat.id}">
             <div class="chat-item" id="chat-${chat.id}">
                 <div class="chat-avatar">
-                    ${chat.avatarImage ? `<img src="${chat.avatarImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` : chat.avatar}
+                  ${getChatAvatarSrc(chat)
+    ? `<img src="${getChatAvatarSrc(chat)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+    : (chat.avatar || '👤')}
                 </div>
                 <div class="chat-info">
                     <div class="chat-top">
@@ -1579,8 +1767,8 @@ function renderChatList() {
 }
 
 // 新增函数：异步更新聊天显示名称 (修复版)
-function updateChatDisplayName(chatId) {
-    loadFromDB('characterInfo', (data) => {
+function updateChatDisplayName(chatId, allCharInfo) {
+    const apply = (data) => {
         const charData = data && data[chatId] ? data[chatId] : {};
         const nameEl = document.querySelector(`.chat-name[data-chat-id="${chatId}"]`);
         
@@ -1606,11 +1794,36 @@ function updateChatDisplayName(chatId) {
             }
         }
    
-    updateArchiveCount(); 
+    // ★★★ 新增：同时更新头像 ★★★
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+            const avatarEl = document.querySelector(`#chat-${chatId} .chat-avatar`);
+            if (avatarEl) {
+                const avatarUrl = chat.avatarImage || chat.avatar;
+                
+                if (avatarUrl && avatarUrl !== '👤' && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image'))) {
+                    avatarEl.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                } else {
+                    avatarEl.textContent = chat.avatar || '👤';
+                }
+            }
+        }
    
-    });
+        updateArchiveCount(); 
+           // ★★★ 性能修复：列表渲染时不要为每个 chat 调 updateArchiveCount ★★★
+        // 只有当你当前正打开的 chatId 才需要更新档案数
+        if (currentChatId === chatId) {
+            updateArchiveCount();
+        }
+    };
 
+    if (allCharInfo) {
+        apply(allCharInfo);
+    } else {
+        getCharacterInfoAllCached(false, (data) => apply(data));
+    }
 }
+
 
 // ====== 新增：更新并保存角色状态（修复列表页不刷新问题）======
 function setChatStatus(chatId, statusText) {
@@ -1652,9 +1865,9 @@ function setChatStatus(chatId, statusText) {
     });
 }
 
-function updateChatStatusDisplay(chatId) {
-    loadFromDB('characterInfo', (data) => {
-        const charData = data && data[chatId] ? data[chatId] : {};
+function updateChatStatusDisplay(chatId, allCharInfo) {
+   const apply = (data) => {
+    const charData = data && data[chatId] ? data[chatId] : {};
         const status = charData.currentStatus || '在线-刚刚上线';  // ← 给默认值
         
         const statusTag = document.getElementById(`status-tag-${chatId}`);
@@ -1664,24 +1877,13 @@ function updateChatStatusDisplay(chatId) {
         } else if (statusTag) {
             statusTag.textContent = '';
         }
-    });
+    };
+if (allCharInfo) apply(allCharInfo);
+else getCharacterInfoAllCached(false, (data) => apply(data));
 }
 
 
-// 更新详情页状态显示
-function updateDetailPageStatus(chatId) {
-    loadFromDB('characterInfo', (data) => {
-        const charData = data && data[chatId] ? data[chatId] : {};
-        const status = charData.currentStatus || '在线-刚刚上线';
-        
-        const statusElement = document.getElementById('characterStatus');
-        if (statusElement) {
-            statusElement.textContent = status;
-            statusElement.style.display = 'flex';
-            
-        }
-    });
-}
+
 
 // 新增：保存状态的函数
 function setChatStatus(chatId, statusText) {
@@ -1707,7 +1909,33 @@ function updateDetailPageTitle(chatId, originalName) {
         document.getElementById('chatDetailTitle').textContent = displayName;
     });
 }
+// 新增：更新聊天详情页的角色状态（防止 updateDetailPageStatus 未定义报错）
+function updateDetailPageStatus(chatId) {
+    if (!chatId) return;
 
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[chatId] ? data[chatId] : {};
+        const statusText = charData.currentStatus || '在线-刚刚上线';
+
+        // 兼容：有些页面用 chatDetailStatus，有些用 characterStatus
+        const detailEl = document.getElementById('chatDetailStatus');
+        if (detailEl) {
+            detailEl.textContent = statusText;
+            detailEl.style.display = 'flex';
+        }
+
+        const statusEl = document.getElementById('characterStatus');
+        if (statusEl) {
+            statusEl.textContent = statusText;
+            statusEl.style.display = 'flex';
+        }
+
+        // 顺带刷新列表页的状态标签（如果存在）
+        if (typeof updateChatStatusDisplay === 'function') {
+            updateChatStatusDisplay(chatId);
+        }
+    });
+}
 
 // 打开添加聊天菜单
 function openAddChatMenu() {
@@ -1748,12 +1976,14 @@ function openChatDetail(chatId) {
     updateDetailPageTitle(chatId, chat.name);
     
     // 设置导航栏头像
-    const headerAvatar = document.getElementById('chatHeaderAvatar');
-    if (chat.avatarImage) {
-        headerAvatar.innerHTML = `<img src="${chat.avatarImage}">`;
-    } else {
-        headerAvatar.textContent = chat.avatar || '👤';
-    }
+ // 修复后的代码
+const headerAvatar = document.getElementById('chatHeaderAvatar');
+const avatarSrc = getChatAvatarSrc(chat);
+if (avatarSrc) {
+    headerAvatar.innerHTML = `<img src="${avatarSrc}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+} else {
+    headerAvatar.textContent = chat.avatar || '👤';
+}
 
     // 显示角色状态
     updateDetailPageStatus(chatId);
@@ -1781,57 +2011,44 @@ function openChatDetail(chatId) {
 
 // 关闭单聊弹窗
 function closeAddSingleModal(event) {
-    if (event && event.target !== event.currentTarget) return;
+    if (event && event.target.id !== 'addSingleChatModal') return;
     document.getElementById('addSingleChatModal').style.display = 'none';
+    // 清空输入框
+    document.getElementById('singleChatName').value = '';
+    document.getElementById('singleChatMyName').value = '';  // 新增
 }
 
 // 创建单聊
 function createSingleChat() {
     const name = document.getElementById('singleChatName').value.trim();
+    const myName = document.getElementById('singleChatMyName').value.trim();
     
     if (!name) {
         alert('请输入角色名字');
         return;
     }
     
-    // 生成新ID
-    const newId = chats.length > 0 ? Math.max(...chats.map(c => c.id)) + 1 : 1;
+    if (!myName) {
+        alert('请输入我的名字');
+        return;
+    }
     
-    // 创建单聊数据
-  const currentTime = getCurrentTime();
-const newChat = {
-    id: newId,
-    type: 'single',
-    name: name,
-    avatar: '👤',
-   avatarImage: null,
-    lastMessage: '',
-    time: '刚刚',
-    lastMessageTime: currentTime,
-    unread: 0,
-    isPinned: false,
-    members: [],
-    isPeek: false,
-    createTime: currentTime,
-  
-};
-    // 同步用户头像到新创建的单聊
-    loadFromDB('userInfo', (userData) => {
-        if (userData && userData.avatar) {
-            newChat.avatarImage = userData.avatar;
-            saveToDB('chats', { list: chats });
-            renderChatList();
-        }
-    });
-
-    // 添加到列表
-    chats.push(newChat);
- saveToDB('chats', { list: chats });
-
+    const newChat = {
+        id: Date.now(),
+        type: 'single',
+        name: name,
+        myName: myName,  // 新增
+        avatar: '👤',
+        myAvatar: '👤',  // 新增
+        lastMessage: '',
+        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        messages: []
+    };
     
-    // 刷新显示
-    renderChatList();
+ chats.push(newChat);
+saveToDB('chats', { list: chats });
     closeAddSingleModal();
+    renderChatList();
 }
 
 // 打开成员选择弹窗
@@ -1854,9 +2071,11 @@ function openMemberSelector(type) {
 const membersList = document.getElementById('membersList');
 membersList.innerHTML = singleChats.map(chat => {
     // 优先使用avatarImage，如果没有则用emoji
-    const avatarHtml = chat.avatarImage 
-        ? `<img src="${chat.avatarImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
-        : chat.avatar;
+ // 修复后的代码
+const avatarUrl = chat.avatarImage || chat.avatar;
+const avatarHtml = (avatarUrl && avatarUrl !== '👤' && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image')))
+    ? `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+    : (chat.avatar || '👤');
     
     return `
         <div class="member-item" onclick="toggleMemberSelection('${chat.name}', ${chat.id})">
@@ -2257,6 +2476,9 @@ function deleteChat(chatId) {
 let currentChatId = null;
 let allMessages = [];
 let visibleMessagesCount = 30;
+// ====== messages 按 chatId 缓存（切角色秒开）START ======
+window.__messagesCache = window.__messagesCache || {};
+// ====== messages 按 chatId 缓存 END ======
 
 // 返回聊天列表
 function backToChatList() {
@@ -2272,23 +2494,43 @@ function backToChatList() {
 
 // 加载消息
 function loadMessages(chatId) {
+    // ★★★ 优先走缓存，切换角色不读大表，解决明显卡顿 ★★★
+    if (window.__messagesCache && Array.isArray(window.__messagesCache[chatId])) {
+        allMessages = window.__messagesCache[chatId];
+
+        visibleMessagesCount = 30;
+        if (visibleMessagesCount > allMessages.length) visibleMessagesCount = allMessages.length;
+
+        const p = renderMessages();
+        if (p && typeof p.then === 'function') {
+            p.then(() => setTimeout(scrollToBottom, 0));
+        } else {
+            setTimeout(scrollToBottom, 0);
+        }
+        return;
+    }
+
     loadFromDB('messages', (data) => {
         const allData = data && data.list ? data.list : [];
-        // 只加载当前chatId的消息
         const chatMessages = allData.filter(m => m.chatId === chatId);
+
         allMessages = chatMessages;
-        
-        // ★★★ 核心修复：初始加载强制限制为 30 条 ★★★
-        // 无论数据库有多少条，初始只渲染最新的 30 条，防止进入卡顿
-        visibleMessagesCount = 30; 
+
+        // 写入缓存
+        window.__messagesCache = window.__messagesCache || {};
+        window.__messagesCache[chatId] = chatMessages;
+
+        visibleMessagesCount = 30;
         if (visibleMessagesCount > allMessages.length) {
             visibleMessagesCount = allMessages.length;
         }
-        
-        renderMessages();
-        
-        // 滚动到底部
-        setTimeout(scrollToBottom, 100);
+
+        const p = renderMessages();
+        if (p && typeof p.then === 'function') {
+            p.then(() => setTimeout(scrollToBottom, 0));
+        } else {
+            setTimeout(scrollToBottom, 0);
+        }
     });
 }
 
@@ -2531,6 +2773,9 @@ function saveMessages() {
         const transaction = db.transaction(['messages'], 'readwrite');
         const objectStore = transaction.objectStore('messages');
         objectStore.put({ id: 1, list: allChatsMessages });
+        // ★★★ 新增：同步消息缓存，保证切换角色不读DB且数据是最新的 ★★★
+window.__messagesCache = window.__messagesCache || {};
+window.__messagesCache[currentChatId] = Array.isArray(allMessages) ? allMessages : [];
     });
 }
 
@@ -2546,6 +2791,7 @@ function updateChatLastMessage(chatId, content) {
         saveToDB('chats', { list: chats });
     }
 }
+
 
 // 长按消息相关变量
 let longPressTimer = null;
@@ -2848,6 +3094,8 @@ function openCharacterInfo() {
     
     // 隐藏聊天详情，显示角色信息页
     document.getElementById('chatDetailScreen').style.display = 'none';
+    // 新增：更新双人档案显示
+updateDualProfileDisplay();
     document.getElementById('characterInfoScreen').style.display = 'flex';
     
     // 加载角色信息
@@ -2865,125 +3113,129 @@ function loadCharacterInfo(chatId) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
     
-    // 显示基本信息
-   const charAvatarEl = document.getElementById('charAvatar');
-if (chat.avatarImage) {
-    charAvatarEl.innerHTML = `<img src="${chat.avatarImage}" alt="头像">`;
-} else {
-    charAvatarEl.textContent = chat.avatar || '👤';
-}
-
-    document.getElementById('charDisplayName').textContent = chat.name;
+    // ★★★ 修复：显示双人档案时，优先从 chat 读取头像 ★★★
+    const dualCharAvatar = document.getElementById('dualCharAvatar');
+    const dualCharName = document.getElementById('dualCharName');
+    if (dualCharAvatar) {
+        const avatarUrl = chat.avatarImage || chat.avatar;
+        if (avatarUrl && avatarUrl !== '👤') {
+            dualCharAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            dualCharAvatar.style.backgroundSize = 'cover';
+            dualCharAvatar.style.backgroundPosition = 'center';
+            dualCharAvatar.textContent = '';
+        } else {
+            dualCharAvatar.style.backgroundImage = '';
+            dualCharAvatar.textContent = chat.avatar || '👤';
+        }
+    }
+    if (dualCharName) {
+        dualCharName.textContent = chat.name;
+    }
+    
+    // 同时更新"我的"信息（如果有数据）
+    const dualMyAvatar = document.getElementById('dualMyAvatar');
+    const dualMyName = document.getElementById('dualMyName');
+    if (dualMyAvatar) {
+        const myAvatarUrl = chat.myAvatar;
+        if (myAvatarUrl && myAvatarUrl !== '👤') {
+            dualMyAvatar.style.backgroundImage = `url(${myAvatarUrl})`;
+            dualMyAvatar.style.backgroundSize = 'cover';
+            dualMyAvatar.style.backgroundPosition = 'center';
+            dualMyAvatar.textContent = '';
+        } else {
+            dualMyAvatar.style.backgroundImage = '';
+            dualMyAvatar.textContent = '👤';
+        }
+    }
+    if (dualMyName) {
+        dualMyName.textContent = chat.myName || '我';
+    }
     
     // 尝试从数据库加载详细信息
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[chatId] ? data[chatId] : {};
         characterInfoData = charData;
-            // 如果没有状态，设置默认状态
-    if (!charData.currentStatus) {
-        charData.currentStatus = '在线-刚刚上线';
-    }
-
-        // 填充表单
-// 填充表单（添加空值检查）
-const remarkEl = document.getElementById('charRemark');
-const birthdayEl = document.getElementById('charBirthday');
-
-const personalityEl = document.getElementById('charPersonality');
-const myPersonalityEl = document.getElementById('myPersonality');
-
-if (remarkEl) remarkEl.value = charData.remark || '';      
-if (birthdayEl) birthdayEl.value = charData.birthday || '';
-
-
-if (personalityEl) personalityEl.value = charData.personality || '';
-if (myPersonalityEl) myPersonalityEl.value = charData.myPersonality || '';
-// 👇 新增：加载并显示状态
-const statusEl = document.getElementById('characterStatus');
-if (statusEl) {
-    const status = charData.currentStatus || '在线-刚刚上线';
-    statusEl.textContent = status;
-    statusEl.style.display = 'flex';
-}
-
-       
-  // 加载上下文参考设置
-const contextRounds = charData.contextRounds !== undefined ? charData.contextRounds : 30;
-const sliderEl = document.getElementById('contextRoundsSlider');
-const inputEl = document.getElementById('contextRoundsInput');
-const countEl = document.getElementById('contextMessagesCount');
-
-if (sliderEl) sliderEl.value = contextRounds;
-if (inputEl) inputEl.value = contextRounds;
-if (countEl) countEl.textContent = contextRounds * 2;
-// ▼▼▼ 新增：加载自动总结设置 ▼▼▼
-const autoSummaryCheckbox = document.getElementById('autoSummaryCheckbox');
-const autoSummaryPanel = document.getElementById('autoSummarySettingsPanel');
-const autoSummaryThreshold = document.getElementById('autoSummaryThresholdInput');
-
-if (autoSummaryCheckbox && autoSummaryPanel && autoSummaryThreshold) {
-    const isEnabled = charData.autoSummaryEnabled === true;
-    const threshold = charData.autoSummaryThreshold || 50;
-    
-    autoSummaryCheckbox.checked = isEnabled;
-    autoSummaryPanel.style.display = isEnabled ? 'block' : 'none';
-    autoSummaryThreshold.value = threshold;
-}
-// ▲▲▲ 新增结束 ▲▲▲
-
-      
-    
-//设置任务角色//
-
-// ▼▼▼ 修改：使用新的标签渲染函数 ▼▼▼
-renderWorldbookTags();
-// ▲▲▲ 修改结束 ▲▲▲
-      
-// 加载城市信息复选框状态
-const cityCheckbox = document.getElementById('cityInfoCheckbox');
-if (cityCheckbox) {
-    cityCheckbox.checked = charData.cityInfoEnabled === true;
-}
-
-// 中文注释:回填 HTML 插件开关（默认关闭）
-const htmlPluginCheckbox = document.getElementById('htmlPluginCheckbox');
-if (htmlPluginCheckbox) {
-    htmlPluginCheckbox.checked = charData.htmlPluginEnabled === true;
-}
-
-// ▼▼▼ 新增：加载角色发图模式 ▼▼▼
-const imageModeSelect = document.getElementById('charImageMode');
-if (imageModeSelect) {
-    imageModeSelect.value = charData.imageMode || 'text';
-}
-// ▲▲▲ 新增结束 ▲▲▲
-
-// 控制查看按钮的显示
-const viewBtn = document.getElementById('viewWeatherBtn');
-if (viewBtn) {
-    viewBtn.style.display = charData.cityInfoEnabled ? 'block' : 'none';
-}
-
-
-
         
-      // 更新显示（添加空值检查）
+        // 如果没有状态，设置默认状态
+        if (!charData.currentStatus) {
+            charData.currentStatus = '在线-刚刚上线';
+        }
 
-const followersEl = document.getElementById('charFollowers');
-const followingEl = document.getElementById('charFollowing');
-const itineraryEl = document.getElementById('charItinerary');
+        // 填充表单（添加空值检查）
+        const remarkEl = document.getElementById('charRemark');
+        const birthdayEl = document.getElementById('charBirthday');
+        const personalityEl = document.getElementById('charPersonality');
+        const myPersonalityEl = document.getElementById('myPersonality');
 
+        if (remarkEl) remarkEl.value = charData.remark || '';      
+        if (birthdayEl) birthdayEl.value = charData.birthday || '';
+        if (personalityEl) personalityEl.value = charData.personality || '';
+        if (myPersonalityEl) myPersonalityEl.value = charData.myPersonality || '';
+        
+        // 加载并显示状态
+        const statusEl = document.getElementById('characterStatus');
+        if (statusEl) {
+            const status = charData.currentStatus || '在线-刚刚上线';
+            statusEl.textContent = status;
+            statusEl.style.display = 'flex';
+        }
 
+        // 加载上下文参考设置
+        const contextRounds = charData.contextRounds !== undefined ? charData.contextRounds : 30;
+        const sliderEl = document.getElementById('contextRoundsSlider');
+        const inputEl = document.getElementById('contextRoundsInput');
+        const countEl = document.getElementById('contextMessagesCount');
 
+        if (sliderEl) sliderEl.value = contextRounds;
+        if (inputEl) inputEl.value = contextRounds;
+        if (countEl) countEl.textContent = contextRounds * 2;
+        
+        // 加载自动总结设置
+        const autoSummaryCheckbox = document.getElementById('autoSummaryCheckbox');
+        const autoSummaryPanel = document.getElementById('autoSummarySettingsPanel');
+        const autoSummaryThreshold = document.getElementById('autoSummaryThresholdInput');
 
-if (itineraryEl) itineraryEl.textContent = charData.itinerary || 0;
+        if (autoSummaryCheckbox && autoSummaryPanel && autoSummaryThreshold) {
+            const isEnabled = charData.autoSummaryEnabled === true;
+            const threshold = charData.autoSummaryThreshold || 50;
+            
+            autoSummaryCheckbox.checked = isEnabled;
+            autoSummaryPanel.style.display = isEnabled ? 'block' : 'none';
+            autoSummaryThreshold.value = threshold;
+        }
 
+        // 渲染世界书标签
+        renderWorldbookTags();
+        
+        // 加载城市信息复选框状态
+        const cityCheckbox = document.getElementById('cityInfoCheckbox');
+        if (cityCheckbox) {
+            cityCheckbox.checked = charData.cityInfoEnabled === true;
+        }
+
+        // 回填 HTML 插件开关（默认关闭）
+        const htmlPluginCheckbox = document.getElementById('htmlPluginCheckbox');
+        if (htmlPluginCheckbox) {
+            htmlPluginCheckbox.checked = charData.htmlPluginEnabled === true;
+        }
+
+        // 加载角色发图模式
+        const imageModeSelect = document.getElementById('charImageMode');
+        if (imageModeSelect) {
+            imageModeSelect.value = charData.imageMode || 'text';
+        }
+
+        // 控制查看按钮的显示
+        const viewBtn = document.getElementById('viewWeatherBtn');
+        if (viewBtn) {
+            viewBtn.style.display = charData.cityInfoEnabled ? 'block' : 'none';
+        }
     });
-  // 更新日记数量
-updateDiaryCount();
-updateArchiveCount();
-renderWorldbookCount();
-
+    
+    // 更新日记数量
+    updateDiaryCount();
+    updateArchiveCount();
+    renderWorldbookCount();
 }
       // 同步上下文参考的滑动条和输入框
 function syncContextRounds(source) {
@@ -3045,6 +3297,8 @@ function saveCharacterInfo() {
         // 3. 保存回数据库
         allCharData[currentChatId] = finalCharData;
         saveToDB('characterInfo', allCharData);
+        if (window.__htmlCardAllowedCache) delete window.__htmlCardAllowedCache[currentChatId];
+        setCharacterInfoCache(allCharData);
         
         // 4. 更新全局变量
         characterInfoData = finalCharData;
@@ -3077,31 +3331,37 @@ function openEditBasicInfo() {
     loadFromDB('characterInfo', (data) => {
         const charData = data && data[currentChatId] ? data[currentChatId] : {};
         
-        // 显示当前头像
+        // 显示当前头像（优先级：avatarImage > avatar > 默认）
         const avatarPreview = document.getElementById('editAvatarPreview');
-        if (chat.avatarImage) {
-            avatarPreview.innerHTML = `<img src="${chat.avatarImage}" alt="头像">`;
+        const currentAvatar = chat.avatarImage || chat.avatar;
+        
+        console.log('🖼️ 加载编辑弹窗头像:', {
+            avatarImage: chat.avatarImage ? '有' : '无',
+            avatar: chat.avatar,
+            finalAvatar: currentAvatar ? currentAvatar.substring(0, 50) + '...' : '无'
+        });
+        
+        if (currentAvatar && currentAvatar !== '👤') {
+            avatarPreview.innerHTML = `<img src="${currentAvatar}" alt="头像" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
         } else {
-            avatarPreview.textContent = chat.avatar || '👤';
+            avatarPreview.textContent = '👤';
         }
         
-        // 填充当前名字和地址
+        // 填充当前名字
         document.getElementById('editCharName').value = chat.name || '';
-     
         
         // 显示弹窗
         document.getElementById('editBasicInfoModal').style.display = 'flex';
     });
 }
-
 // 关闭基本信息编辑弹窗
 function closeEditBasicInfo(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('editBasicInfoModal').style.display = 'none';
 }
 
-// 保存基本信息
-// ============ 🔄 修复版：保存基本信息 (双向同步) ============
+// ============ 🔄 修复版：保存基本信息 
+
 function saveBasicInfo() {
     if (!currentChatId) return;
     
@@ -3117,70 +3377,133 @@ function saveBasicInfo() {
     if (!chat) return;
     
     // 内部处理函数
-    const processAvatar = (avatarData) => {
-        // 1. 更新聊天列表 (chats 表)
-        chat.name = newName;
-        if (avatarData) {
-            chat.avatarImage = avatarData;
-        } else if (!chat.avatarImage) {
-            // 如果没图且原来也没图，尝试用个人信息兜底(可选)
-            // chat.avatarImage = ... 
-        }
+    const performSave = (newAvatarData) => {
+        // 确定最终使用的头像（新上传 > 当前已有 > 默认）
+        let finalAvatar = newAvatarData || chat.avatarImage || chat.avatar || null;
         
-        // 保存 chats 表
-        saveToDB('chats', { list: chats });
-        
-        // 2. ★★★ 核心修复：同步更新角色详情 (characterInfo 表) ★★★
-        loadFromDB('characterInfo', (data) => {
-            const allCharData = data || {};
-            // 确保对象存在
-            if (!allCharData[currentChatId]) allCharData[currentChatId] = {};
-            
-            const charData = allCharData[currentChatId];
-            
-            // 强制同步名字
-            charData.name = newName;
-            // 强制同步头像 (如果有新头像)
-            if (avatarData) {
-                charData.avatarImage = avatarData;
-            } else if (chat.avatarImage) {
-                // 如果这次没传新图，但 chat 里有旧图，也要同步过来
-                charData.avatarImage = chat.avatarImage; 
-            }
-            
-            // 保存 characterInfo 表
-            saveToDB('characterInfo', allCharData);
-               renderWorldbookTags();
-            
-            // 3. 刷新所有受影响的 UI
-            // 刷新聊天列表
-            if (document.getElementById('chatScreen').style.display === 'flex') {
-                renderChatList();
-            }
-            // 刷新聊天详情页标题
-            updateDetailPageTitle(currentChatId, newName);
-            // 刷新角色信息页
-            loadCharacterInfo(currentChatId);
-            
-            // 关闭弹窗
-            closeEditBasicInfo();
-            
-            alert('基本信息已保存并同步！✨');
+        console.log('💾 保存头像:', {
+            newAvatarData: newAvatarData ? '有新图' : '无',
+            currentAvatarImage: chat.avatarImage ? '有' : '无',
+            currentAvatar: chat.avatar,
+            finalAvatar: finalAvatar ? finalAvatar.substring(0, 50) + '...' : '无'
         });
+        
+        // 1. 更新 chats 表
+        // 1. 更新 chats 表（先改内存，立即刷新界面）
+        chat.name = newName;
+        chat.avatarImage = finalAvatar;
+        chat.avatar = finalAvatar;
+
+        // 先即时刷新界面（立刻看到效果）
+        syncChatUIImmediately(currentChatId);
+
+        // 再保存 chats
+        saveToDB('chats', { list: chats }, (okChats) => {
+            if (!okChats) {
+                alert('保存失败：chats 写入失败');
+                return;
+            }
+            console.log('✅ chats 表已保存');
+
+            // 2. 更新 characterInfo 表
+            loadFromDB('characterInfo', (data) => {
+                const allCharData = data || {};
+                if (!allCharData[currentChatId]) allCharData[currentChatId] = {};
+
+                const charData = allCharData[currentChatId];
+                charData.name = newName;
+                charData.avatarImage = finalAvatar;
+                charData.avatar = finalAvatar;
+
+                saveToDB('characterInfo', allCharData, (okChar) => {
+                    if (!okChar) {
+                        alert('保存失败：characterInfo 写入失败');
+                        return;
+                    }
+                    console.log('✅ characterInfo 表已保存');
+
+                    // 写入完成后再做一次UI同步（不要 loadChats，避免回刷旧数据）
+                    syncChatUIImmediately(currentChatId);
+
+                    closeEditBasicInfo();
+                    alert('保存成功！✨');
+                });
+            });
+        });
+       
     };
     
-    // 处理文件读取
+    // 处理头像上传
     if (avatarFile) {
         const reader = new FileReader();
-        reader.onload = (e) => {
-            processAvatar(e.target.result);
-        };
+      reader.onload = (e) => {
+    console.log('📷 读取新头像文件');
+    const raw = e.target.result;
+
+    // ★ 角色头像保存前压缩（显著减少切换角色卡顿）
+    if (typeof compressImageToDataUrl === 'function') {
+        compressImageToDataUrl(raw, 256, 0.78)
+            .then((compressed) => performSave(compressed))
+            .catch(() => performSave(raw));
+    } else {
+        performSave(raw);
+    }
+};
         reader.readAsDataURL(avatarFile);
     } else {
-        // 没有新图片，传 null，复用旧图
-        processAvatar(null);
+        console.log('📷 保留当前头像');
+        performSave(null); // 传 null 会使用当前已有头像
     }
 }
+
+// ★★★ 新增：更新聊天详情页的头像显示 ★★★
+function updateDetailPageAvatar(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+    
+    const headerAvatar = document.getElementById('chatHeaderAvatar');
+    if (!headerAvatar) return;
+    
+    // 优先使用 avatarImage，其次 avatar
+    const avatarUrl = chat.avatarImage || chat.avatar;
+    
+    if (avatarUrl && avatarUrl !== '👤') {
+        headerAvatar.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+    } else {
+        headerAvatar.textContent = chat.avatar || '👤';
+    }
+}
+
+// 保存基本信息后：立即刷新列表 + 对话页 + 角色页（不等待切页）
+function syncChatUIImmediately(chatId) {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    // 1) 聊天列表容器
+    renderChatList();
+
+    // 2) 对话页容器（标题、头像、消息容器）
+    if (currentChatId === chatId) {
+        updateDetailPageTitle(chatId, chat.name || '');
+        updateDetailPageAvatar(chatId);
+
+        // ★ 新增：强制重绘消息容器，避免头部更新后消息区没重绘
+        if (typeof renderMessages === 'function') {
+            renderMessages();
+        }
+    }
+
+    // 3) 角色信息页容器
+    if (currentChatId === chatId) {
+        if (typeof updateDualProfileDisplay === 'function') {
+            updateDualProfileDisplay();
+        }
+        if (typeof loadCharacterInfo === 'function') {
+            loadCharacterInfo(chatId);
+        }
+    }
+}
+
 // 头像预览功能
 document.addEventListener('DOMContentLoaded', () => {
     const editAvatarInput = document.getElementById('editAvatarInput');
@@ -5831,20 +6154,22 @@ if (processedGapDesc && processedGapDesc !== '未知' && processedGapDesc !== '�
                      (Math.random() * 100 < momentsSettings.characterImageProb);
 
     // 构建提示词
-    const prompt = buildMomentPrompt({
-        displayName,
-        personality: charData.personality || '',
-        historyText,
-        timeDesc,
-        hhmm,
-        weekDesc,
-        cityName,
-        todayWeather,
-        tomorrowWeather,
-         lastChatGapDesc: processedGapDesc,
-        birthdayHintShort,
-        needImage: needImage  // 👈 传入是否配图
-    });
+const prompt = buildMomentPrompt({
+    displayName,
+    personality: charData.personality || '',
+    relationshipText: charData.relationshipText || '',
+    userName: (momentsProfile && momentsProfile.name) ? momentsProfile.name : '用户',
+    historyText,
+    timeDesc,
+    hhmm,
+    weekDesc,
+    cityName,
+    todayWeather,
+    tomorrowWeather,
+    lastChatGapDesc: processedGapDesc,
+    birthdayHintShort,
+    needImage: needImage
+});
 
 // 调用API生成
 const content = await callSubApiGenerateMoment({
@@ -6392,11 +6717,11 @@ function getBirthdayHintShort(birthdayStr) {
 
 
 
-// ====== Moments Prompt Builder (Final) START ======
-// ====== Moments Prompt Builder (修复人称版本) START ======
 function buildMomentPrompt(opts) {
     const displayName = (opts && opts.displayName) ? String(opts.displayName) : '角色';
     const personality = (opts && opts.personality) ? String(opts.personality) : '（未提供）';
+    const relationshipText = (opts && opts.relationshipText) ? String(opts.relationshipText) : '（未提供）';
+    const userName = (opts && opts.userName) ? String(opts.userName) : '用户';
     const historyText = (opts && opts.historyText) ? String(opts.historyText) : '（无）';
 
     const timeDesc = opts && opts.timeDesc ? String(opts.timeDesc) : '未知时间';
@@ -6409,10 +6734,9 @@ function buildMomentPrompt(opts) {
 
     const lastChatGapDesc = opts && opts.lastChatGapDesc ? String(opts.lastChatGapDesc) : '未知';
     const birthdayHintShort = opts && opts.birthdayHintShort ? String(opts.birthdayHintShort) : '';
-    
+
     const needImage = opts && opts.needImage === true;
 
-    // 环境块
     let envLines = [];
     envLines.push(`- 时间段：${timeDesc}${hhmm ? `（${hhmm}）` : ''}`);
     if (weekDesc) envLines.push(`- 星期：${weekDesc}`);
@@ -6420,87 +6744,68 @@ function buildMomentPrompt(opts) {
     if (todayWeather) envLines.push(`- 今天天气：${todayWeather}`);
     if (tomorrowWeather) envLines.push(`- 明天天气：${tomorrowWeather}`);
 
-    // ★★★ 核心修复：节奏感描述改为角色视角 ★★★
     let rhythmLines = [];
-    
-    // 修改前：距离上次和"你"聊天
-    // 修改后：距离上次和TA聊天（或：最近一次聊天）
     if (lastChatGapDesc && lastChatGapDesc !== '未知') {
-        rhythmLines.push(`- 最近一次聊天：${lastChatGapDesc}前`);
+        rhythmLines.push(`- 最近一次聊天：${lastChatGapDesc}`);
     }
-    
     if (birthdayHintShort) {
         rhythmLines.push(`- 生日提示：${birthdayHintShort}`);
     }
 
-    // 配图格式说明
     const outputFormat = needImage ? `
 【输出格式（必须严格遵守）】
 只输出严格 JSON（不要多余文字）：
 {"content":"动态文字", "imageDesc":"配图描述"}
 
-【配图描述要求（非常重要）】
-1. 配图描述是动态的延伸/补充/场景渲染
-2. **配图描述绝对不能出现在动态文字里**
-3. 配图描述要具体、有画面感（20-50字）
-4. 例如：
-   - 动态文字："今天心情不错"
-   - 配图描述："阳光透过窗帘洒在木质地板上，桌上放着半杯冒着热气的咖啡"
-   
-   错误示例（配图描述重复了文字）：
-   - 动态文字："今天在咖啡厅喝咖啡"
-   - 配图描述："在咖啡厅喝咖啡的场景" ❌
+【配图描述要求】
+1. 配图描述是动态延伸，不要把动态原句重复一遍
+2. 20-50字，具体、有画面感
 ` : `
 【输出格式】
 只输出严格 JSON（不要多余文字）：
 {"content":"动态文字"}
 `;
 
-    // ★★★ 核心修复：强化人称要求 ★★★
     return `
-你正在扮演：${displayName}。你要发一条朋友圈动态，像真实人在生活里随手发的。
+你正在扮演：${displayName}。你要发一条朋友圈，像真人一样自然、随手、生活化。
 
-【核心要求 - 人称视角（最高优先级）】
-1. **你必须以第一人称"我"的视角写动态**
-2. **禁止使用第二人称"你"来称呼任何人**
-3. **如果要提到聊天对象，用"TA"、"某人"、或直接用名字**
-4. **动态是你自己的生活记录，不是对别人说话**
+【最高优先级规则】
+1) 必须参考【角色人设】与【最新聊天记录】再写，不可脱离上下文硬编。
+2) 可以写：聊天相关、日常碎碎念、工作吐槽、临时想到什么就发什么。
+3) 可以提到用户（${userName}），但只允许依据【你与用户关系】来写，不能乱用亲密称呼。
+4) 若【你与用户关系】里没有亲密关系依据，禁止输出亲密称呼。
+5) 若关系里明确是亲密关系，允许自然出现炫耀式表达（例如收到礼物、被照顾等）。
+6) 朋友圈是“自我表达”，不是私聊回复；禁止写成对话格式。
+7) 若聊天记录为空，优先写纯日常；若聊天记录不为空，动态中至少体现一个与最近聊天相关的语义线索。
 
-错误示例：
-❌ "你今天怎么没理我"（这是在对用户说话）
-❌ "你说的那个地方我去了"（这是在回复用户）
-
-正确示例：
-✅ "今天有人没理我，有点失落"
-✅ "去了TA推荐的那个地方"
-✅ "某人今天又偷懒了哈哈"
-
-【人设】
+【角色人设】
 ${personality}
 
-【此刻环境碎片】
+【你与用户关系（必须参考）】
+${relationshipText}
+
+【此刻环境】
 ${envLines.join('\n')}
 
-【节奏感参考】
-${rhythmLines.length > 0 ? rhythmLines.join('\n') : '（无特殊节奏）'}
+【节奏参考】
+${rhythmLines.length > 0 ? rhythmLines.join('\n') : '（无）'}
 
-【最近聊天摘录（仅供参考，不要复述对话）】
+【最新聊天记录（重点参考）】
 ${historyText}
 
 【写作要求】
-1) 先在心里判断你此刻的心境（不需要输出心境标签）
-2) 只选 1-2 个"细节/情绪线索"暗示最近发生的事：不要复述对话，不要引用长句
-3) 风格：生活日常为主，可以提到"某人/TA/朋友"，但不要直接对"你"说话
-4) 允许计划感：可以顺带提一句"明天想…""等天气好点…""改天…"
-5) 字数：10-50 个汉字；允许少量颜文字（如(>_<)、(._.)、(ง •_•)ง），禁止emoji
-6) 避免AI味：不要"总的来说/我认为/我意识到/作为AI"等；不要每次都用"今天/突然/刚刚"开头
-7) **再次强调：禁止使用"你"来称呼任何人，这是朋友圈动态，不是私聊消息**
+- 字数：10-60字
+- 口吻：像真人，不要AI腔，不要总结腔
+- 允许少量颜文字，不要emoji堆砌
+- 内容方向示例（仅示例，不要照抄）：
+  - 日常碎碎念：今天看到一只猫，怪可爱的。
+  - 工作吐槽：不想上班。
+  - 与用户有关（需关系支持）：今天${userName}送了我xxx，不卖，纯炫耀。
+- 禁止空泛鸡汤、禁止“作为AI”之类表达
 
 ${outputFormat}
 `.trim();
 }
-// ====== Moments Prompt Builder (修复人称版本) END ======
-// ====== Moments Prompt Builder (Final) END ======
 
 // ====== Moments SubAPI Call DEBUG START ======
 async function callSubApiGenerateMoment(params) {
@@ -6753,12 +7058,36 @@ async function generateAiComments(momentId, btnEl) {
 }
 
 
-        // ====== 分支B：角色动态（沿用原有：同组+关系网，可楼中楼，可续聊） ======
-        const threadInfo = extractMomentThreadsForContinuation(moment, 2);
-        const mode = threadInfo.hasThread ? 'continue' : 'new';
+const threadInfo = extractMomentThreadsForContinuation(moment, 4);
+const chainInfo = getRoundChainInfo(moment);
+const mode = chainInfo.canContinue ? 'continue' : 'new';
 
-        const actors = await selectCommentActors(moment);
-        // 强制作者参与评论（提高参与感）
+let actors = [];
+let allowedNames = [];
+let ownerReplyContextMap = {};
+
+// 续写模式：只允许“上一轮里被主人回复过的人”
+if (mode === 'continue') {
+    allowedNames = [...chainInfo.allowedNames];
+    ownerReplyContextMap = { ...chainInfo.ownerReplyContextMap };
+
+    if (!allowedNames.length) {
+        alert('这个动态作者没有好友，无法生成评论');
+        return;
+    }
+
+    actors = resolveActorsByNamesFromMoment(moment, allowedNames);
+
+    if (!actors || actors.length === 0) {
+        alert('这个动态作者没有好友，无法生成评论');
+        return;
+    }
+} else {
+    // 首轮：按原逻辑选人
+    actors = await selectCommentActors(moment);
+}
+
+// 强制作者参与
 if (moment && moment.authorId && moment.authorId !== 'me') {
     const authorChat = Array.isArray(chats) ? chats.find(c => c.id === moment.authorId) : null;
     if (authorChat) {
@@ -6769,42 +7098,60 @@ if (moment && moment.authorId && moment.authorId !== 'me') {
     }
 }
 
-     const commentsData = await callApiToGenComments(moment, actors, {
+const commentsData = await callApiToGenComments(moment, actors, {
     mode,
     threadContext: threadInfo.contextText,
     minCount: 4,
-    maxCount: 8
+    maxCount: 8,
+    allowedNames,
+    ownerReplyContextMap
 });
 
-        if (!commentsData || !Array.isArray(commentsData) || commentsData.length === 0) {
-            alert('生成失败，AI 未返回有效内容。');
-            return;
-        }
+if (!commentsData || !Array.isArray(commentsData) || commentsData.length === 0) {
+    alert('生成失败，AI 未返回有效内容。');
+    return;
+}
 
-        if (!moment.commentsList) moment.commentsList = [];
+if (!moment.commentsList) moment.commentsList = [];
 
-        const newComments = commentsData.map(item => {
-            const roleId = typeof item.roleId === 'number' ? item.roleId : -9999;
-            const roleName = String(item.roleName || '未知');
-            const replyToName = item.replyToName ? String(item.replyToName) : null;
+// 先标准化
+const normalized = commentsData.map(item => ({
+    roleId: typeof item.roleId === 'number' ? item.roleId : -9999,
+    roleName: String(item.roleName || '未知'),
+    replyToName: item.replyToName ? String(item.replyToName) : null,
+    content: sanitizeCommentText(item.content)
+})).filter(c => c.content && c.content.trim().length > 0);
 
-            return {
-                id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-                senderId: roleId,
-                senderName: roleName,
-                replyToId: null,
-                replyToName: replyToName,
-                content: sanitizeCommentText(item.content),
-                time: Date.now(),
-                isAiGenerated: true
-            };
-        }).filter(c => c.content && c.content.trim().length > 0);
+// 再做硬过滤，防止AI跑偏
+const checked = applyRoundCommentRules(normalized, moment, mode, allowedNames);
+if (!checked.ok) {
+    alert(checked.message || '生成失败');
+    return;
+}
 
-        moment.commentsList.push(...newComments);
-        moment.comments = moment.commentsList.length;
+// 本轮ID
+const currentRoundId = 'round_' + Date.now() + '_' + Math.random().toString(16).slice(2);
 
-        saveToDB('moments', { list: moments });
-        renderMomentsList();
+const newComments = checked.list.map(item => ({
+    id: 'c_' + Date.now() + '_' + Math.random().toString(16).slice(2),
+    senderId: item.roleId,
+    senderName: item.roleName,
+    replyToId: null,
+    replyToName: item.replyToName,
+    content: item.content,
+    time: Date.now(),
+    isAiGenerated: true,
+    roundId: currentRoundId
+}));
+
+moment.commentsList.push(...newComments);
+moment.comments = moment.commentsList.length;
+
+// 记录“上一轮ID”，下一次只读这轮
+moment.lastCommentRoundId = currentRoundId;
+
+saveToDB('moments', { list: moments });
+renderMomentsList();
 
     } catch (e) {
         console.error('generateAiComments error:', e);
@@ -6942,6 +7289,29 @@ async function callApiToGenComments(moment, actors, options) {
         return '';
     }).filter(x => x).join('\n');
 
+const mode = options && options.mode === 'continue' ? 'continue' : 'new';
+const allowedNames = (options && Array.isArray(options.allowedNames)) ? options.allowedNames : [];
+const ownerReplyContextMap = (options && options.ownerReplyContextMap) ? options.ownerReplyContextMap : {};
+
+const continuationRuleBlock = mode === 'continue'
+    ? `
+【续写硬规则（最高优先级）】
+- 这是上一轮评论区续写，不是新开话题。
+- 非作者评论者只能从以下名单中选择，禁止引入新人物：
+${allowedNames.length > 0 ? allowedNames.join('、') : '（空）'}
+- 每位名单内人物必须基于“上一轮作者对TA说的话”来回复作者（replyToName="${authorName}"）。
+- 作者（${authorName}）本轮至少回复其中1人。
+
+【上一轮作者回复记录】
+${allowedNames.map((n, i) => `${i + 1}. 作者对 ${n} 说：${ownerReplyContextMap[n] || '（无）'}`).join('\n')}
+`
+    : `
+【新开模式】
+- 首次生成可自然起楼。
+- 作者至少回复1人。
+`;
+
+
     const prompt = `
 你是朋友圈评论生成器。从【人设】和【关系网】中提取人物，生成 ${actors.length} 条评论。
 
@@ -6959,6 +7329,8 @@ ${commentersIdentityMap ? `【评论者名字对照】\n${commentersIdentityMap}
 
 【动态】${moment.content}
 【已有评论】${threadContext || '无'}
+
+${continuationRuleBlock}
 
 【核心规则】
 1. 人物提取（双源头）：
@@ -7256,6 +7628,149 @@ function extractMomentThreadsForContinuation(moment, maxThreads) {
     };
 }
 // ====== 续聊：线程抽取工具 END ======
+
+
+// ====== 评论轮次链工具 START ======
+function getStableVirtualIdByName(name) {
+    const s = String(name || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return -200000 - Math.abs(hash);
+}
+
+function isMomentAuthorComment(comment, moment) {
+    if (!comment || !moment) return false;
+    const authorId = moment.authorId;
+    const authorName = String(moment.authorName || '').trim();
+    const senderName = String(comment.senderName || '').trim();
+
+    if (typeof authorId === 'number' && comment.senderId === authorId) return true;
+    if (authorName && senderName === authorName) return true;
+    return false;
+}
+
+// 读取“上一轮”里主人回复过谁，以及主人对他们说了什么
+function getRoundChainInfo(moment) {
+    const list = moment && Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    const lastRoundId = moment ? moment.lastCommentRoundId : null;
+
+    if (!lastRoundId) {
+        return {
+            canContinue: false,
+            allowedNames: [],
+            ownerReplyContextMap: {},
+            roundComments: []
+        };
+    }
+
+    const roundComments = list.filter(c => c && c.roundId === lastRoundId);
+    if (roundComments.length === 0) {
+        return {
+            canContinue: false,
+            allowedNames: [],
+            ownerReplyContextMap: {},
+            roundComments: []
+        };
+    }
+
+    const allowedNames = [];
+    const ownerReplyContextMap = {};
+
+    roundComments.forEach(c => {
+        if (!isMomentAuthorComment(c, moment)) return;
+        const toName = String(c.replyToName || '').trim();
+        if (!toName) return;
+
+        if (!allowedNames.includes(toName)) {
+            allowedNames.push(toName);
+        }
+        ownerReplyContextMap[toName] = String(c.content || '').trim();
+    });
+
+    return {
+        canContinue: allowedNames.length > 0,
+        allowedNames,
+        ownerReplyContextMap,
+        roundComments
+    };
+}
+
+// 根据名字恢复 actor（优先用最近评论中的 senderId）
+function resolveActorsByNamesFromMoment(moment, names) {
+    const list = moment && Array.isArray(moment.commentsList) ? moment.commentsList : [];
+    const out = [];
+
+    names.forEach(name => {
+        const n = String(name || '').trim();
+        if (!n) return;
+
+        let found = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+            const c = list[i];
+            if (!c) continue;
+            if (String(c.senderName || '').trim() !== n) continue;
+            if (c.senderId === 'me') continue;
+            if (isMomentAuthorComment(c, moment)) continue;
+            found = c;
+            break;
+        }
+
+        if (found && typeof found.senderId === 'number' && found.senderId > 0) {
+            out.push({ type: 'chat', id: found.senderId, name: n });
+        } else {
+            out.push({ type: 'virtual_slot', id: getStableVirtualIdByName(n), name: n });
+        }
+    });
+
+    return out;
+}
+
+// 对AI返回做硬过滤：保证链式规则不跑偏
+function applyRoundCommentRules(commentsData, moment, mode, allowedNames) {
+    const arr = Array.isArray(commentsData) ? commentsData : [];
+    const authorId = moment.authorId;
+    const authorName = String(moment.authorName || '').trim();
+    const allowedSet = new Set((allowedNames || []).map(x => String(x || '').trim()).filter(Boolean));
+
+    const filtered = arr.filter(item => {
+        const roleName = String(item.roleName || '').trim();
+        const isAuthor = (typeof authorId === 'number' && item.roleId === authorId) || (roleName === authorName);
+
+        if (mode === 'continue') {
+            if (isAuthor) {
+                const toName = String(item.replyToName || '').trim();
+                return !!toName && allowedSet.has(toName);
+            } else {
+                // 非作者：只能是 allowedNames 里的人
+                if (!allowedSet.has(roleName)) return false;
+                // 强制回复作者，形成你要的“接主人话头”
+                item.replyToName = authorName;
+                return true;
+            }
+        }
+
+        // new 模式不过滤
+        return true;
+    });
+
+    // 必须有“作者回复他人”，否则下一轮无法形成链
+    const authorReplyCount = filtered.filter(item => {
+        const roleName = String(item.roleName || '').trim();
+        const isAuthor = (typeof authorId === 'number' && item.roleId === authorId) || (roleName === authorName);
+        return isAuthor && String(item.replyToName || '').trim().length > 0;
+    }).length;
+
+    if (authorReplyCount === 0) {
+        return { ok: false, message: '生成失败：动态作者未回复任何人，请重试', list: [] };
+    }
+
+    return { ok: true, message: '', list: filtered };
+}
+// ====== 评论轮次链工具 END ======
+
 
 // ====== 用户评论输入栏控制（可收起）START ======
 function openCommentInput(momentId, replyToName, btnEl) {
@@ -8670,6 +9185,374 @@ function confirmDeleteLastMsg() {
     closeDeleteLastMsgModal();
 }
 
+// ========== 双人档案编辑功能 ==========
+
+
+// 打开编辑双人信息弹窗
+function openEditDualProfile() {
+    const currentChat = chats.find(c => c.id === currentChatId);
+    if (!currentChat) {
+        console.error('openEditDualProfile: 找不到当前聊天');
+        return;
+    }
+    
+    console.log('当前聊天数据:', currentChat); // 调试用
+    
+    // 填充当前数据
+    document.getElementById('editDualCharName').value = currentChat.name || '';
+    document.getElementById('editDualMyName').value = currentChat.myName || '我';
+    
+    // 显示角色头像
+    const charAvatarPreview = document.getElementById('editDualCharAvatar');
+    if (charAvatarPreview) {
+        // 清空之前的样式
+        charAvatarPreview.style.backgroundImage = '';
+        charAvatarPreview.textContent = '';
+        
+        if (currentChat.avatarImage) {
+            // 如果有 avatarImage（图片URL）
+            charAvatarPreview.style.backgroundImage = `url(${currentChat.avatarImage})`;
+            charAvatarPreview.style.backgroundSize = 'cover';
+            charAvatarPreview.style.backgroundPosition = 'center';
+        
+        } else if (currentChat.avatar && currentChat.avatar !== '👤') {
+            // 如果有 avatar（可能是图片URL或emoji）
+            if (currentChat.avatar.startsWith('http') || currentChat.avatar.startsWith('data:image')) {
+                charAvatarPreview.style.backgroundImage = `url(${currentChat.avatar})`;
+                charAvatarPreview.style.backgroundSize = 'cover';
+                charAvatarPreview.style.backgroundPosition = 'center';
+                console.log('角色头像（avatar图片）:', currentChat.avatar);
+            } else {
+                charAvatarPreview.textContent = currentChat.avatar;
+                console.log('角色头像（emoji）:', currentChat.avatar);
+            }
+        } else {
+            // 默认显示
+            charAvatarPreview.textContent = '👤';
+            console.log('角色头像：使用默认');
+        }
+    } else {
+        console.error('找不到 editDualCharAvatar 元素');
+    }
+    
+    // 显示我的头像
+    const myAvatarPreview = document.getElementById('editDualMyAvatar');
+    if (myAvatarPreview) {
+        // 清空之前的样式
+        myAvatarPreview.style.backgroundImage = '';
+        myAvatarPreview.textContent = '';
+        
+        if (currentChat.myAvatar && currentChat.myAvatar !== '👤') {
+            // 如果有自定义头像
+            if (currentChat.myAvatar.startsWith('http') || currentChat.myAvatar.startsWith('data:image')) {
+                myAvatarPreview.style.backgroundImage = `url(${currentChat.myAvatar})`;
+                myAvatarPreview.style.backgroundSize = 'cover';
+                myAvatarPreview.style.backgroundPosition = 'center';
+              
+            } else {
+                myAvatarPreview.textContent = currentChat.myAvatar;
+                
+            }
+        } else {
+            // 默认显示
+            myAvatarPreview.textContent = '👤';
+            console.log('我的头像：使用默认');
+        }
+    } else {
+        console.error('找不到 editDualMyAvatar 元素');
+    }
+    
+    // 绑定头像上传事件
+    const charInput = document.getElementById('editDualCharAvatarInput');
+    const myInput = document.getElementById('editDualMyAvatarInput');
+    
+    if (charInput) {
+        charInput.onchange = function(e) {
+            handleDualAvatarUpload(e, 'char');
+        };
+    }
+    
+    if (myInput) {
+        myInput.onchange = function(e) {
+            handleDualAvatarUpload(e, 'my');
+        };
+    }
+    
+    // 显示弹窗
+    document.getElementById('editDualProfileModal').style.display = 'flex';
+}
+
+// 关闭编辑弹窗
+function closeEditDualProfile(event) {
+    if (event && event.target.id !== 'editDualProfileModal') return;
+    document.getElementById('editDualProfileModal').style.display = 'none';
+}
+
+// 处理头像上传
+function handleDualAvatarUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('上传头像:', type, file.name);
+    
+    const reader = new FileReader();
+reader.onload = function(e) {
+    const previewId = type === 'char' ? 'editDualCharAvatar' : 'editDualMyAvatar';
+    const preview = document.getElementById(previewId);
+    const raw = e.target.result;
+
+    const applyPreview = (dataUrl) => {
+        if (!preview) {
+            console.error('找不到预览元素:', previewId);
+            return;
+        }
+        preview.style.backgroundImage = `url(${dataUrl})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.textContent = '';
+        console.log('头像预览更新成功:', type);
+    };
+
+    // ★ 双人档案头像上传前压缩
+    if (typeof compressImageToDataUrl === 'function') {
+        compressImageToDataUrl(raw, 256, 0.78)
+            .then((compressed) => applyPreview(compressed))
+            .catch(() => applyPreview(raw));
+    } else {
+        applyPreview(raw);
+    }
+};
+    reader.readAsDataURL(file);
+}
+
+// 保存双人信息
+function saveDualProfile() {
+    const currentChat = chats.find(c => c.id === currentChatId);  // ✅ 改成 chats
+    if (!currentChat) return;
+    
+    const charName = document.getElementById('editDualCharName').value.trim();
+    const myName = document.getElementById('editDualMyName').value.trim();
+    
+    if (!charName) {
+        alert('请输入角色名字');
+        return;
+    }
+    
+    if (!myName) {
+        alert('请输入我的名字');
+        return;
+    }
+    
+    // 保存名字
+    currentChat.name = charName;
+    currentChat.myName = myName;
+    
+    // 保存角色头像
+    const charAvatarPreview = document.getElementById('editDualCharAvatar');
+    if (charAvatarPreview.style.backgroundImage) {
+        const url = charAvatarPreview.style.backgroundImage.slice(5, -2);
+        
+        currentChat.avatar = url;
+currentChat.avatarImage = url; 
+    }
+    
+    // 保存我的头像
+    const myAvatarPreview = document.getElementById('editDualMyAvatar');
+    if (myAvatarPreview.style.backgroundImage) {
+        const url = myAvatarPreview.style.backgroundImage.slice(5, -2);
+        currentChat.myAvatar = url;
+    }
+    
+    // ✅ 改成你代码里的保存方式
+    saveToDB('chats', { list: chats });
+    
+    closeEditDualProfile();
+    
+    // 刷新显示
+    updateDualProfileDisplay();
+    
+    alert('保存成功！');
+}
+// 更新双人档案显示
+
+function updateDualProfileDisplay() {
+    const currentChat = chats.find(c => c.id === currentChatId);
+    if (!currentChat) return;
+    
+    // 更新角色信息（双人档案区域）
+    const dualCharAvatar = document.getElementById('dualCharAvatar');
+    const dualCharName = document.getElementById('dualCharName');
+    
+    if (dualCharAvatar) {
+        if (currentChat.avatar && currentChat.avatar !== '👤') {
+            dualCharAvatar.style.backgroundImage = `url(${currentChat.avatar})`;
+            dualCharAvatar.style.backgroundSize = 'cover';
+            dualCharAvatar.style.backgroundPosition = 'center';
+            dualCharAvatar.textContent = '';
+        } else {
+            dualCharAvatar.style.backgroundImage = '';
+            dualCharAvatar.textContent = '👤';
+        }
+    }
+    
+    if (dualCharName) {
+        dualCharName.textContent = currentChat.name;
+    }
+    
+    // 更新我的信息（双人档案区域）
+    const dualMyAvatar = document.getElementById('dualMyAvatar');
+    const dualMyName = document.getElementById('dualMyName');
+    
+    if (dualMyAvatar) {
+        if (currentChat.myAvatar && currentChat.myAvatar !== '👤') {
+            dualMyAvatar.style.backgroundImage = `url(${currentChat.myAvatar})`;
+            dualMyAvatar.style.backgroundSize = 'cover';
+            dualMyAvatar.style.backgroundPosition = 'center';
+            dualMyAvatar.textContent = '';
+        } else {
+            dualMyAvatar.style.backgroundImage = '';
+            dualMyAvatar.textContent = '👤';
+        }
+    }
+    
+    if (dualMyName) {
+        dualMyName.textContent = currentChat.myName || '我';
+    }
+}
+
+// ========== 爱心点击特效 ==========
+function triggerHeartEffect() {
+    const container = document.getElementById('heartParticles');
+    if (!container) return;
+    
+    // 生成 8 个小爱心粒子
+    const particles = ['💕', '💗', '💖', '💝']; // 多种爱心样式
+    
+    for (let i = 0; i < 8; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'heart-particle';
+        particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+        
+        // 计算随机方向（360度均匀分布）
+        const angle = (i / 8) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const distance = 45 + Math.random() * 25; // 随机距离
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.left = '50%';
+        particle.style.top = '50%';
+        particle.style.transform = 'translate(-50%, -50%)';
+        
+        container.appendChild(particle);
+        
+        // 1秒后移除粒子
+        setTimeout(() => {
+            if (particle.parentNode) {
+                particle.remove();
+            }
+        }, 1000);
+    }
+    
+    // 添加点击反馈音效（可选）
+    // playClickSound();
+}
+
+// ============ 旧数据迁移：压缩过大的 base64 头像（只跑一次）===========
+function runAvatarMigrationOnce() {
+    try {
+        const FLAG_KEY = '__avatar_migrated_v1';
+        if (localStorage.getItem(FLAG_KEY) === '1') return;
+
+        // compressImageToDataUrl 在 extra.js 里，如果没加载到就下次再试
+        if (typeof compressImageToDataUrl !== 'function') {
+            setTimeout(runAvatarMigrationOnce, 800);
+            return;
+        }
+
+        // 只处理“明显过大”的历史头像，避免伤到你现在 1.3w 这种小头像
+        const TOO_LARGE_LEN = 120000; // 超过 12 万字符才压缩
+        const TARGET_SIDE = 256;
+        const TARGET_QUALITY = 0.78;
+
+        const idle = (fn) => {
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 1500 });
+            else setTimeout(fn, 0);
+        };
+
+        // 迁移 chats 表
+        idle(() => {
+            loadFromDB('chats', async (data) => {
+                const list = Array.isArray(data) ? data : (data && Array.isArray(data.list) ? data.list : []);
+                if (!list.length) return;
+
+                let changed = false;
+
+                for (let i = 0; i < list.length; i++) {
+                    const chat = list[i];
+                    if (!chat) continue;
+
+                    const fields = ['avatarImage', 'avatar', 'myAvatar'];
+                    for (const f of fields) {
+                        const v = chat[f];
+                        if (typeof v === 'string' && v.startsWith('data:image') && v.length > TOO_LARGE_LEN) {
+                            await new Promise(r => setTimeout(r, 0)); // 让出主线程
+                            try {
+                                chat[f] = await compressImageToDataUrl(v, TARGET_SIDE, TARGET_QUALITY);
+                                changed = true;
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                if (changed) {
+                    saveToDB('chats', { list: list });
+                    console.log('✅ 头像迁移：chats 压缩完成');
+                }
+            });
+        });
+
+        // 迁移 characterInfo 表（你的 characterInfo 是对象映射，带 id:1）
+        idle(() => {
+            loadFromDB('characterInfo', async (allData) => {
+                const data = (allData && typeof allData === 'object') ? allData : {};
+                let changed = false;
+
+                for (const key in data) {
+                    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+                    if (key === 'id') continue; // 跳过元字段
+
+                    const char = data[key];
+                    if (!char || typeof char !== 'object') continue;
+
+                    const fields = ['avatarImage', 'avatar', 'userAvatar'];
+                    for (const f of fields) {
+                        const v = char[f];
+                        if (typeof v === 'string' && v.startsWith('data:image') && v.length > TOO_LARGE_LEN) {
+                            await new Promise(r => setTimeout(r, 0));
+                            try {
+                                char[f] = await compressImageToDataUrl(v, TARGET_SIDE, TARGET_QUALITY);
+                                changed = true;
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                if (changed) {
+                    saveToDB('characterInfo', data);
+                    console.log('✅ 头像迁移：characterInfo 压缩完成');
+                }
+            });
+        });
+
+        // 标记已迁移（不反复跑）
+        localStorage.setItem(FLAG_KEY, '1');
+        console.log('✅ 头像迁移：已标记完成（只跑一次）');
+    } catch (e) {
+        console.warn('runAvatarMigrationOnce failed:', e);
+    }
+}
 
 // 初始化，
         initDB();

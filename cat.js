@@ -4061,3 +4061,432 @@ async function getImageModels() {
 }
 
 // ============ 🎨 AI 绘图配置逻辑END ============
+
+// ========== 聊天显示设置功能 ==========
+
+// 修改 triggerHeartEffect 函数，添加弹窗触发
+function triggerHeartEffect() {
+    const container = document.getElementById('heartParticles');
+    if (!container) return;
+    
+    // 生成 8 个小爱心粒子
+    const particles = ['💕', '💗', '💖', '💝'];
+    
+    for (let i = 0; i < 8; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'heart-particle';
+        particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+        
+        const angle = (i / 8) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const distance = 45 + Math.random() * 25;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.left = '50%';
+        particle.style.top = '50%';
+        particle.style.transform = 'translate(-50%, -50%)';
+        
+        container.appendChild(particle);
+        
+        setTimeout(() => {
+            if (particle.parentNode) {
+                particle.remove();
+            }
+        }, 1000);
+    }
+    
+    // ★★★ 新增：延迟弹出设置弹窗 ★★★
+    setTimeout(() => {
+        openAvatarDisplaySettings();
+    }, 500);
+}
+
+// 打开聊天显示设置弹窗
+function openAvatarDisplaySettings() {
+    if (!currentChatId) {
+        console.error('未找到当前聊天ID');
+        return;
+    }
+    
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        const charData = allCharData[currentChatId] || {};
+        
+        // 读取设置（默认值：不显示头像）
+        const settings = charData.avatarDisplaySettings || {
+            enabled: false,
+            shape: 'circle',
+            size: 40
+        };
+        
+        // 填充表单
+        document.getElementById('avatarDisplayEnabled').checked = settings.enabled;
+        document.getElementById('avatarDisplayShape').value = settings.shape;
+        document.getElementById('avatarDisplaySize').value = settings.size;
+        document.getElementById('avatarSizeDisplay').textContent = settings.size + 'px';
+        
+        // 控制形状和大小选项的显示
+        const shapeGroup = document.getElementById('avatarShapeGroup');
+        const sizeGroup = document.getElementById('avatarSizeGroup');
+        if (shapeGroup) shapeGroup.style.display = settings.enabled ? 'block' : 'none';
+        if (sizeGroup) sizeGroup.style.display = settings.enabled ? 'block' : 'none';
+        
+        // 更新预览
+        updateAvatarPreview();
+        
+        // 显示弹窗
+        document.getElementById('avatarDisplayModal').style.display = 'flex';
+    });
+}
+
+// 关闭弹窗
+function closeAvatarDisplayModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('avatarDisplayModal').style.display = 'none';
+}
+
+// 更新预览
+function updateAvatarPreview() {
+    const enabled = document.getElementById('avatarDisplayEnabled').checked;
+    const shape = document.getElementById('avatarDisplayShape').value;
+    const size = parseInt(document.getElementById('avatarDisplaySize').value);
+    
+    // 更新大小显示
+    document.getElementById('avatarSizeDisplay').textContent = size + 'px';
+    
+    // 控制形状和大小选项的显示
+    const shapeGroup = document.getElementById('avatarShapeGroup');
+    const sizeGroup = document.getElementById('avatarSizeGroup');
+    const frameGroup = document.getElementById('avatarFrameGroup'); // ← 新增
+    
+    if (shapeGroup) shapeGroup.style.display = enabled ? 'block' : 'none';
+    if (sizeGroup) sizeGroup.style.display = enabled ? 'block' : 'none';
+    if (frameGroup) frameGroup.style.display = enabled ? 'block' : 'none'; // ← 新增
+    
+    // 获取预览头像元素
+    const aiAvatar = document.getElementById('previewAiAvatar');
+    const userAvatar = document.getElementById('previewUserAvatar');
+    
+    if (!aiAvatar || !userAvatar) return;
+    
+    // 应用设置到预览
+    if (enabled) {
+        // 显示头像
+        aiAvatar.style.display = 'flex';
+        userAvatar.style.display = 'flex';
+        
+        // 设置大小
+        aiAvatar.style.width = size + 'px';
+        aiAvatar.style.height = size + 'px';
+        aiAvatar.style.fontSize = (size * 0.5) + 'px';
+        
+        userAvatar.style.width = size + 'px';
+        userAvatar.style.height = size + 'px';
+        userAvatar.style.fontSize = (size * 0.5) + 'px';
+        
+        // 设置形状
+        if (shape === 'circle') {
+            aiAvatar.classList.remove('square');
+            userAvatar.classList.remove('square');
+            aiAvatar.style.borderRadius = '50%';
+            userAvatar.style.borderRadius = '50%';
+        } else {
+            aiAvatar.classList.add('square');
+            userAvatar.classList.add('square');
+            aiAvatar.style.borderRadius = (size * 0.2) + 'px';
+            userAvatar.style.borderRadius = (size * 0.2) + 'px';
+        }
+        
+        // ========== 新增：添加头像框 START ==========
+        if (typeof avatarFrameData !== 'undefined' && avatarFrameData.enabled) {
+            if (avatarFrameData.character) {
+                aiAvatar.style.backgroundImage = `url(${avatarFrameData.character})`;
+                aiAvatar.style.backgroundSize = 'cover';
+                aiAvatar.style.backgroundPosition = 'center';
+            } else {
+                aiAvatar.style.backgroundImage = 'none';
+            }
+            
+            if (avatarFrameData.user) {
+                userAvatar.style.backgroundImage = `url(${avatarFrameData.user})`;
+                userAvatar.style.backgroundSize = 'cover';
+                userAvatar.style.backgroundPosition = 'center';
+            } else {
+                userAvatar.style.backgroundImage = 'none';
+            }
+        } else {
+            aiAvatar.style.backgroundImage = 'none';
+            userAvatar.style.backgroundImage = 'none';
+        }
+        // ========== 新增：添加头像框 END ==========
+        
+        // 加载实际头像
+        loadAvatarForPreview();
+    } else {
+        // 隐藏头像
+        aiAvatar.style.display = 'none';
+        userAvatar.style.display = 'none';
+    }
+}
+
+// 加载实际头像到预览
+function loadAvatarForPreview() {
+    if (!currentChatId) return;
+    
+    const chat = chats.find(c => c.id === currentChatId);
+    if (!chat) return;
+    
+    const aiAvatar = document.getElementById('previewAiAvatar');
+    const userAvatar = document.getElementById('previewUserAvatar');
+    
+    // 角色头像
+    const charAvatarUrl = chat.avatarImage || chat.avatar;
+    if (charAvatarUrl && charAvatarUrl !== '👤' && (charAvatarUrl.startsWith('http') || charAvatarUrl.startsWith('data:image'))) {
+        aiAvatar.style.backgroundImage = `url(${charAvatarUrl})`;
+        aiAvatar.textContent = '';
+    } else {
+        aiAvatar.style.backgroundImage = '';
+        aiAvatar.textContent = chat.avatar || '👤';
+    }
+    
+    // 用户头像
+    const userAvatarUrl = chat.myAvatar;
+    if (userAvatarUrl && userAvatarUrl !== '👤' && (userAvatarUrl.startsWith('http') || userAvatarUrl.startsWith('data:image'))) {
+        userAvatar.style.backgroundImage = `url(${userAvatarUrl})`;
+        userAvatar.textContent = '';
+    } else {
+        userAvatar.style.backgroundImage = '';
+        userAvatar.textContent = '👤';
+    }
+}
+
+// 保存设置
+function saveAvatarDisplaySettings() {
+    if (!currentChatId) return;
+    
+    const enabled = document.getElementById('avatarDisplayEnabled').checked;
+    const shape = document.getElementById('avatarDisplayShape').value;
+    const size = parseInt(document.getElementById('avatarDisplaySize').value);
+    
+    loadFromDB('characterInfo', (data) => {
+        const allCharData = data || {};
+        if (!allCharData[currentChatId]) {
+            allCharData[currentChatId] = {};
+        }
+        
+        // 保存设置
+        allCharData[currentChatId].avatarDisplaySettings = {
+            enabled: enabled,
+            shape: shape,
+            size: size,
+            // ========== 新增：保存头像框数据 ==========
+            avatarFrame: typeof avatarFrameData !== 'undefined' ? avatarFrameData : null
+            // ========================================
+        };
+        
+        // ★★★ 新增：同步到内存，保证立即生效 ★★★
+        if (!characterInfoData) characterInfoData = {};
+        characterInfoData.avatarDisplaySettings = allCharData[currentChatId].avatarDisplaySettings;
+
+        saveToDB('characterInfo', allCharData);
+        window.__charInfoLoadedForChatId = currentChatId;
+        
+        // 关闭弹窗
+        closeAvatarDisplayModal();
+        
+        // 如果当前在聊天详情页，立即刷新显示
+        if (document.getElementById('chatDetailScreen').style.display === 'flex') {
+            renderMessages();
+        }
+        
+        console.log('✅ 聊天显示设置已保存（含头像框）');
+    });
+}
+
+//========== 聊天显示设置功能end ==========//
+
+
+// ========== 头像框功能 START ==========
+
+// 全局变量：存储头像框数据
+let avatarFrameData = {
+    enabled: false,
+    frames: [], // 存储所有上传的头像框
+    character: null, // 角色使用的头像框
+    user: null // 我使用的头像框
+};
+
+// 切换头像框面板显示
+function toggleAvatarFramePanel() {
+    const enabled = document.getElementById('avatarFrameEnabled').checked;
+    const panel = document.getElementById('avatarFramePanel');
+    panel.style.display = enabled ? 'block' : 'none';
+    avatarFrameData.enabled = enabled;
+    updateAvatarPreview();
+}
+
+// 添加头像框
+function addAvatarFrame() {
+    const frameCount = avatarFrameData.frames.length;
+    
+    if (frameCount < 2) {
+        // 前两个直接上传
+        document.getElementById('avatarFrameFileInput').click();
+    } else {
+        // 第三个及以上打开分配弹窗
+        openFrameAssignModal();
+    }
+}
+
+// 处理头像框上传
+function handleFrameUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const frameData = e.target.result;
+        avatarFrameData.frames.push(frameData);
+        
+        const frameCount = avatarFrameData.frames.length;
+        
+        if (frameCount === 1) {
+            // 第一个默认给角色
+            avatarFrameData.character = frameData;
+            showFramePreview(1, frameData);
+        } else if (frameCount === 2) {
+            // 第二个默认给用户
+            avatarFrameData.user = frameData;
+            showFramePreview(2, frameData);
+            // 隐藏添加按钮
+            document.getElementById('addFrameBtn').style.display = 'none';
+        }
+        
+        updateAvatarPreview();
+        input.value = ''; // 清空input
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 显示头像框预览
+function showFramePreview(index, dataUrl) {
+    const preview = document.getElementById(`framePreview${index}`);
+    const img = document.getElementById(`framePreviewImg${index}`);
+    
+    if (preview && img) {
+        img.src = dataUrl;
+        preview.style.display = 'block';
+    }
+}
+
+// 移除头像框
+function removeFrame(index) {
+    if (index === 1) {
+        avatarFrameData.character = null;
+        document.getElementById('framePreview1').style.display = 'none';
+        // 如果有第二个，移到第一个位置
+        if (avatarFrameData.user) {
+            avatarFrameData.character = avatarFrameData.user;
+            avatarFrameData.user = null;
+            showFramePreview(1, avatarFrameData.character);
+            document.getElementById('framePreview2').style.display = 'none';
+            document.getElementById('addFrameBtn').style.display = 'flex';
+        }
+    } else if (index === 2) {
+        avatarFrameData.user = null;
+        document.getElementById('framePreview2').style.display = 'none';
+        document.getElementById('addFrameBtn').style.display = 'flex';
+    }
+    
+    // 更新frames数组
+    avatarFrameData.frames = [avatarFrameData.character, avatarFrameData.user].filter(f => f);
+    updateAvatarPreview();
+}
+
+// 打开头像框分配弹窗
+function openFrameAssignModal() {
+    // 先上传新头像框
+    const input = document.getElementById('avatarFrameFileInput');
+    input.click();
+    
+    input.onchange = function() {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const newFrame = e.target.result;
+            avatarFrameData.frames.push(newFrame);
+            
+            // 显示分配弹窗
+            document.getElementById('avatarFrameAssignModal').style.display = 'flex';
+            renderFrameAssignLists();
+        };
+        
+        reader.readAsDataURL(file);
+    };
+}
+
+// 渲染分配列表
+function renderFrameAssignLists() {
+    const charList = document.getElementById('characterFrameList');
+    const userList = document.getElementById('userFrameList');
+    
+    charList.innerHTML = '';
+    userList.innerHTML = '';
+    
+    avatarFrameData.frames.forEach((frame, index) => {
+        // 角色列表
+        const charItem = document.createElement('label');
+        charItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 6px;';
+        charItem.innerHTML = `
+            <input type="radio" name="charFrame" value="${index}" ${avatarFrameData.character === frame ? 'checked' : ''}>
+            <img src="${frame}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+        `;
+        charList.appendChild(charItem);
+        
+        // 用户列表
+        const userItem = document.createElement('label');
+        userItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 6px;';
+        userItem.innerHTML = `
+            <input type="radio" name="userFrame" value="${index}" ${avatarFrameData.user === frame ? 'checked' : ''}>
+            <img src="${frame}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+        `;
+        userList.appendChild(userItem);
+    });
+}
+
+// 保存头像框分配
+function saveFrameAssignment() {
+    const charRadio = document.querySelector('input[name="charFrame"]:checked');
+    const userRadio = document.querySelector('input[name="userFrame"]:checked');
+    
+    if (charRadio) {
+        avatarFrameData.character = avatarFrameData.frames[parseInt(charRadio.value)];
+        showFramePreview(1, avatarFrameData.character);
+    }
+    
+    if (userRadio) {
+        avatarFrameData.user = avatarFrameData.frames[parseInt(userRadio.value)];
+        showFramePreview(2, avatarFrameData.user);
+        document.getElementById('addFrameBtn').style.display = 'none';
+    }
+    
+    closeFrameAssignModal();
+    updateAvatarPreview();
+}
+
+// 关闭分配弹窗
+function closeFrameAssignModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('avatarFrameAssignModal').style.display = 'none';
+}
+
+
+
+// ========== 头像框功能 END ==========

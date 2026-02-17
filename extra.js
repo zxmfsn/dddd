@@ -6878,44 +6878,77 @@ function bindHtmlCardInteractions() {
     }, true);
 }
 
+window.__htmlCardAllowedCache = window.__htmlCardAllowedCache || {};
 
 
-// 中文注释：判断当前角色是否允许渲染 HTML 卡片
-// 条件：角色开启 htmlPluginEnabled + 关联世界书中存在 html 分类内容（非空）
+// 中文注释：判断当前角色是否允许渲染 HTML 卡片（加缓存，避免反复读DB卡顿）
 async function isHtmlCardAllowedForCurrentChat() {
     try {
         if (!currentChatId) return false;
 
-        // 1) 读取角色信息（包含 htmlPluginEnabled、linkedWorldbooks）
+        // 命中缓存直接返回
+        if (window.__htmlCardAllowedCache && window.__htmlCardAllowedCache[currentChatId] !== undefined) {
+            return window.__htmlCardAllowedCache[currentChatId];
+        }
+
+        // 1) 读取角色信息
         const charInfoAll = await new Promise((resolve) => {
             loadFromDB('characterInfo', (data) => resolve(data || {}));
         });
 
         const charData = charInfoAll[currentChatId] || {};
-        if (charData.htmlPluginEnabled !== true) return false;
+        if (charData.htmlPluginEnabled !== true) {
+            window.__htmlCardAllowedCache[currentChatId] = false;
+            return false;
+        }
 
         const linkedIds = Array.isArray(charData.linkedWorldbooks) ? charData.linkedWorldbooks : [];
-        if (linkedIds.length === 0) return false;
+        if (linkedIds.length === 0) {
+            window.__htmlCardAllowedCache[currentChatId] = false;
+            return false;
+        }
 
-        // 2) 在已关联世界书里找 html 分类且 content 非空
+        // 2) 查关联世界书里是否存在 html 分类内容
         const allWorldbooks = await new Promise((resolve) => {
             loadFromDB('worldbooks', (data) => resolve(Array.isArray(data) ? data : []));
         });
 
         const linkedBooks = allWorldbooks.filter(wb => wb && linkedIds.includes(wb.id));
-        if (linkedBooks.length === 0) return false;
-
         const hasHtmlRef = linkedBooks.some(wb => wb.category === 'html' && String(wb.content || '').trim().length > 0);
+
+        window.__htmlCardAllowedCache[currentChatId] = hasHtmlRef;
         return hasHtmlRef;
     } catch (e) {
         console.warn('isHtmlCardAllowedForCurrentChat failed:', e);
+        if (window.__htmlCardAllowedCache) window.__htmlCardAllowedCache[currentChatId] = false;
         return false;
     }
 }
 
-
 // ============ 修复版：渲染消息列表 (HTML 卡片独立于气泡) ============
 async function renderMessages() {
+    // ★★★ 新增：确保刷新后也能读到当前聊天的角色设置（只在切换chat时加载一次）★★★
+    if (currentChatId && window.__charInfoLoadedForChatId !== currentChatId) {
+        const allCharData = await new Promise(resolve => {
+            loadFromDB('characterInfo', (data) => resolve(data || {}));
+        });
+        characterInfoData = (allCharData && allCharData[currentChatId]) ? allCharData[currentChatId] : {};
+        window.__charInfoLoadedForChatId = currentChatId;
+    }
+    // ★★★ 读取头像显示设置（来自已加载的 characterInfoData）★★★
+    const avatarSettings = (characterInfoData && characterInfoData.avatarDisplaySettings)
+        ? characterInfoData.avatarDisplaySettings
+        : { enabled: false, shape: 'circle', size: 40 };
+    
+    // ========== 新增：加载头像框数据 ==========
+    if (avatarSettings.avatarFrame) {
+        avatarFrameData = avatarSettings.avatarFrame;
+    }
+    // ========================================
+
+    // 获取当前聊天信息
+    const currentChat = chats.find(c => c.id === currentChatId);
+
     const container = document.getElementById('messagesList');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     
@@ -6935,11 +6968,103 @@ async function renderMessages() {
     // 中文注释：只计算一次"本聊天是否允许HTML卡片"，避免每条消息都查DB
     const htmlCardAllowed = await isHtmlCardAllowedForCurrentChat();
 
+    // ====== 头像HTML预计算（只算一次，避免map里重复计算导致卡顿）START ======
+    const avatarEnabled = (avatarSettings && avatarSettings.enabled === true);
+    const avatarShape = (avatarSettings && avatarSettings.shape === 'square') ? 'square' : 'circle';
+
+    let avatarSize = parseInt(avatarSettings && avatarSettings.size, 10);
+    if (!Number.isFinite(avatarSize) || avatarSize <= 0) avatarSize = 40;
+
+    const avatarRadius = (avatarShape === 'circle') ? '50%' : (Math.round(avatarSize * 0.2) + 'px');
+
+    const safeText = (s) => String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const isImgSrc = (v) => {
+        if (typeof v !== 'string') return false;
+        const t = v.trim().toLowerCase();
+        return t.startsWith('http://') || t.startsWith('https://') || t.startsWith('data:image/');
+    };
+
+    const buildAvatarHtml = (imgSrc, fallbackEmoji, side) => {
+        if (!avatarEnabled) return '';
+
+        const margin = (side === 'right') ? 'margin-left:8px;' : 'margin-right:8px;';
+        
+        // ========== 新增：获取头像框 ==========
+        let frameUrl = '';
+        if (avatarFrameData && avatarFrameData.enabled) {
+            if (side === 'left' && avatarFrameData.character) {
+                frameUrl = avatarFrameData.character;
+            } else if (side === 'right' && avatarFrameData.user) {
+                frameUrl = avatarFrameData.user;
+            }
+        }
+        // ========================================
+
+        if (isImgSrc(imgSrc)) {
+            return `
+                <div class="message-avatar ${avatarShape}" style="
+                    width:${avatarSize}px;
+                    height:${avatarSize}px;
+                    border-radius:${avatarRadius};
+                    background-image:url('${imgSrc}')${frameUrl ? `, url('${frameUrl}')` : ''};
+                    background-size:cover;
+                    background-position:center;
+                    background-color:#e0e0e0;
+                    flex-shrink:0;
+                    align-self:flex-start;
+                    ${margin}
+                "></div>
+            `;
+        }
+
+        return `
+            <div class="message-avatar ${avatarShape}" style="
+                width:${avatarSize}px;
+                height:${avatarSize}px;
+                border-radius:${avatarRadius};
+                background:#e0e0e0${frameUrl ? `;background-image:url('${frameUrl}');background-size:cover;background-position:center;` : ''};
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:${Math.round(avatarSize * 0.5)}px;
+                flex-shrink:0;
+                align-self:flex-start;
+                ${margin}
+            ">${safeText(fallbackEmoji || '👤')}</div>
+        `;
+    };
+
+    // 角色头像源
+    const charAvatarSrc = currentChat ? (currentChat.avatarImage || currentChat.avatar) : '';
+    const charFallbackEmoji = (currentChat && !isImgSrc(currentChat.avatar)) ? (currentChat.avatar || '👤') : '👤';
+
+    // 我的头像源：优先 chat.myAvatar，其次主屏幕头像（注意：这里不再放进map里查DOM）
+    const mainAvatarImgSrc = document.querySelector('#mainAvatar img')?.src || '';
+    const myAvatarSrc1 = currentChat ? currentChat.myAvatar : '';
+    const myAvatarSrc = isImgSrc(myAvatarSrc1) ? myAvatarSrc1 : (isImgSrc(mainAvatarImgSrc) ? mainAvatarImgSrc : '');
+    const myFallbackEmoji = '👤';
+
+    // 预计算两侧头像HTML（后面map里只做选择，不做计算）
+    const cachedCharAvatarHtml = buildAvatarHtml(charAvatarSrc, charFallbackEmoji, 'left');
+    const cachedMyAvatarHtml = buildAvatarHtml(myAvatarSrc, myFallbackEmoji, 'right');
+    // ====== 头像HTML预计算 END ======
+
+
+
     container.innerHTML = visibleMessages.map((msg) => {
         const isMe = msg.senderId === 'me';
         const multiSelectClass = isMultiSelectMode ? 'multi-select-mode' : '';
         const checkbox = isMultiSelectMode ? `<input type="checkbox" class="message-checkbox" id="checkbox-${msg.id}" ${selectedMessageIds.includes(msg.id) ? 'checked' : ''} onchange="toggleMessageSelection(${msg.id})">` : '';
         
+       const avatarHtmlLeft = (!isMe) ? cachedCharAvatarHtml : '';
+    const avatarHtmlRight = (isMe) ? cachedMyAvatarHtml : '';
+
         // 撤回消息
         if (msg.isRevoked) {
             return `<div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">${checkbox}<div class="message-bubble"><div class="revoked-message" onclick="toggleRevokedContent(${msg.id})">此消息已撤回</div><div class="revoked-content" id="revoked-${msg.id}">${msg.content}</div></div><div class="message-time">${formatMessageTime(msg.time)}</div></div>`;
@@ -6971,24 +7096,30 @@ async function renderMessages() {
           const giftIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1a3 3 0 0 0-3-3c-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68A2.99 2.99 0 0 0 9 2a3 3 0 0 0-3 3c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19a2 2 0 0 0 2 2h16c1.11 0 2-.89 2-2V8a2 2 0 0 0-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`;
             const heartIconSvg = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="margin-left:4px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
 
-            return `
+                   return `
             <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                 ${checkbox}
-                <div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}>
-                    <div class="transfer-icon">
-                        ${giftIconSvg}
-                    </div>
-                    <div class="transfer-content">
-                        <div class="transfer-title">
-                            ${title} <span style="color:${isReceived ? '#4dabf7' : '#ff6b6b'}">${heartIconSvg}</span>
+              <div style="display:flex; align-items:flex-start; justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+                    ${avatarHtmlLeft}
+                    <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'};">
+                        <div class="transfer-card ${statusClass}" data-transfer-id="${msg.id}" ${clickEvent}>
+                            <div class="transfer-icon">
+                                ${giftIconSvg}
+                            </div>
+                            <div class="transfer-content">
+                                <div class="transfer-title">
+                                    ${title} <span style="color:${isReceived ? '#4dabf7' : '#ff6b6b'}">${heartIconSvg}</span>
+                                </div>
+                                <div class="transfer-from">来自：${fromName}</div>
+                                <div class="transfer-remark">${remarkText}</div>
+                            </div>
+                            <div class="transfer-status-col">
+                                <div class="transfer-amount">¥${data.amount.toFixed(2)}</div>
+                                <div class="transfer-action">${actionText}</div>
+                            </div>
                         </div>
-                        <div class="transfer-from">来自：${fromName}</div>
-                        <div class="transfer-remark">${remarkText}</div>
                     </div>
-                    <div class="transfer-status-col">
-                        <div class="transfer-amount">¥${data.amount.toFixed(2)}</div>
-                        <div class="transfer-action">${actionText}</div>
-                    </div>
+                    ${avatarHtmlRight}
                 </div>
                 <div class="message-time">${formatMessageTime(msg.time)}</div>
             </div>`;
@@ -7001,22 +7132,28 @@ async function renderMessages() {
             if (data.orderType === 'ask_ta_pay' || data.orderType === 'ai_ask_user_pay') {
                 cardText = '请帮喵代付';
             }
-            return `
+                    return `
                 <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                     ${checkbox}
-                    <div class="gift-card" onclick="openReceiptModal(${msg.id})">
-                        <div class="gift-card-main">
-                            <div class="gift-card-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path d="M20 12v10H4V12"></path>
-                                    <path d="M2 7h20v5H2z"></path>
-                                    <path d="M12 22V7"></path>
-                                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-                                </svg>
+                  <div style="display:flex; align-items:flex-start; justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+                        ${avatarHtmlLeft}
+                        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'};">
+                            <div class="gift-card" onclick="openReceiptModal(${msg.id})">
+                                <div class="gift-card-main">
+                                    <div class="gift-card-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M20 12v10H4V12"></path>
+                                            <path d="M2 7h20v5H2z"></path>
+                                            <path d="M12 22V7"></path>
+                                            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                                            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="gift-card-btn">${cardText}</div>
+                                </div>
                             </div>
-                            <div class="gift-card-btn">${cardText}</div>
                         </div>
+                        ${avatarHtmlRight}
                     </div>
                     <div class="message-time">${formatMessageTime(msg.time)}</div>
                 </div>
@@ -7038,23 +7175,27 @@ async function renderMessages() {
                     </div>
                 `;
             }
-            return `
+                 return `
                 <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
                     ${checkbox}
-                    <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
-                        ${voiceQuoteHtml}
-                        <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id});${msg.senderId !== 'me' ? `checkAndPlayVoice('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')` : ''}">
-                            <div class="voice-play-btn"><i class="fa fa-play"></i></div>
-                            <div class="voice-wave">
-                                <span class="wave-bar"></span>
-                                <span class="wave-bar"></span>
-                                <span class="wave-bar"></span>
-                                <span class="wave-bar"></span>
-                                <span class="wave-bar"></span>
+                   <div style="display:flex; align-items:flex-start; justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+                        ${avatarHtmlLeft}
+                        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; max-width:70%;">
+                            ${voiceQuoteHtml}
+                            <div class="voice-bubble ${msg.isExpanded ? 'expanded' : ''}" onclick="toggleVoiceState(this, ${msg.id});${msg.senderId !== 'me' ? `checkAndPlayVoice('${msg.content.replace(/'/g, "\\'").replace(/"/g, '\\"')}')` : ''}">
+                                <div class="voice-play-btn"><i class="fa fa-play"></i></div>
+                                <div class="voice-wave">
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                    <span class="wave-bar"></span>
+                                </div>
+                                <div class="voice-duration">${msg.voiceDuration}"</div>
                             </div>
-                            <div class="voice-duration">${msg.voiceDuration}"</div>
+                            <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
                         </div>
-                        <div class="voice-text-content ${msg.isExpanded ? 'show' : ''}" id="voice-text-${msg.id}">${msg.content}</div>
+                        ${avatarHtmlRight}
                     </div>
                     <div class="message-time">${formatMessageTime(msg.time)}</div>
                 </div>
@@ -7170,14 +7311,17 @@ const isPureCard = cardHtml && (
 
 // 如果是纯卡片消息，不要气泡包裹
 if (isPureCard) {
-
     return `
         <div class="message-item pure-card ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
             ${checkbox}
-            <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
-                ${quoteHtml}
-                ${cardHtml}
-                ${memoryHintHtml}
+          <div style="display:flex; align-items:flex-start; justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+                ${avatarHtmlLeft}
+                <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
+                    ${quoteHtml}
+                    ${cardHtml}
+                    ${memoryHintHtml}
+                </div>
+                ${avatarHtmlRight}
             </div>
             <div class="message-time">${formatMessageTime(msg.time)}</div>
         </div>
@@ -7186,20 +7330,24 @@ if (isPureCard) {
 
 
         // 普通消息：用气泡包裹
-        return `
-            <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
-                ${checkbox}
-                <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
-                    ${quoteHtml}
-                    <div class="message-bubble" data-msg-id="${msg.id}" style="${bubbleStyle}">
-                        ${messageContent}
-                    </div>
-                    ${cardHtml}
-                    ${memoryHintHtml}
+       return `
+    <div class="message-item ${isMe ? 'me' : ''} ${multiSelectClass}" data-message-id="${msg.id}">
+        ${checkbox}
+     <div style="display:flex; align-items:flex-start; justify-content:${isMe ? 'flex-end' : 'flex-start'};">
+            ${avatarHtmlLeft}
+            <div style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
+                ${quoteHtml}
+                <div class="message-bubble" data-msg-id="${msg.id}" style="${bubbleStyle}">
+                    ${messageContent}
                 </div>
-                <div class="message-time">${formatMessageTime(msg.time)}</div>
+                ${cardHtml}
+                ${memoryHintHtml}
             </div>
-        `;
+            ${avatarHtmlRight}
+        </div>
+        <div class="message-time">${formatMessageTime(msg.time)}</div>
+    </div>
+`;
 
     }).join('');
 
@@ -7207,15 +7355,29 @@ if (isPureCard) {
     // 初始化卡片分页
     container.querySelectorAll('.html-card-wrap').forEach(wrap => initHtmlCardPaging(wrap));
 
-    updateRetryButtonState();
-    
-    if (!isMultiSelectMode) {
-        requestAnimationFrame(() => {
-            document.querySelectorAll('.message-bubble[data-msg-id]').forEach(b => addLongPressEvent(b, parseInt(b.dataset.msgId)));
+updateRetryButtonState();
+
+// ★★★ 性能优化：图片加载等待改为非阻塞，避免切换角色卡顿 ★★★
+const imgs = container.querySelectorAll('img');
+if (imgs && imgs.length > 0) {
+    const waitList = Array.from(imgs).slice(0, 6); // 最多等前6张，避免大聊天卡死
+    Promise.allSettled(waitList.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(res => {
+            img.onload = () => res();
+            img.onerror = () => res();
         });
-    }
+    })).then(() => {
+        // 图片加载完成后再补一次滚动，避免位置不准
+        try { scrollToBottom(); } catch (e) {}
+    });
 }
 
+if (!isMultiSelectMode) {
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.message-bubble[data-msg-id]').forEach(b => addLongPressEvent(b, parseInt(b.dataset.msgId)));
+    });
+}}
 
 
 
