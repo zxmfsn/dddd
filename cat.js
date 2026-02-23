@@ -2228,18 +2228,14 @@ function saveVoiceConfig() {
 }
 
 // ★ 修正：未勾选时直接转文字，勾选时才调用minimax
+// ★ 修正：读内存配置而非DOM状态
 function checkAndPlayVoice(text) {
-    const voiceEnabled = document.getElementById('voiceEnabled')?.checked || false;
-    
-    if (!voiceEnabled) {
-        // 未勾选：什么都不做，让 toggleVoiceState 自己展开文字
+    if (!voiceConfig.enabled) {
         return;
     }
     
-    // 已勾选：调用minimax播放语音
     playVoiceMessage(text);
 }
-
 
 
 async function playVoiceMessage(text) {
@@ -2251,6 +2247,7 @@ async function playVoiceMessage(text) {
     console.log('开始调用MiniMax TTS API...');
     
     const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
+    // 使用你部署成功的 Worker 地址
     const apiUrl = 'https://bold-dawn-c01f.1726776740.workers.dev';
     
     try {
@@ -2268,32 +2265,55 @@ async function playVoiceMessage(text) {
         });
         
         if (!response.ok) {
-            throw new Error(`API错误 ${response.status}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `API错误 ${response.status}`);
         }
         
-        const blob = await response.blob();
-        console.log('音频大小:', blob.size, 'bytes');
+        const data = await response.json();
         
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
-        audio.volume = 1.0;
-        
-        await audio.play();
-        console.log('✅ 语音播放成功');
-        
-        audio.onended = () => {
-            URL.revokeObjectURL(audioUrl);
-        };
+        if (data.success && data.audio) {
+            // ★★★ 核心修复：将 HEX 字符串还原为真正的音频二进制数据 ★★★
+            const hexString = data.audio;
+            const bytes = new Uint8Array(hexString.length / 2);
+            for (let i = 0; i < hexString.length; i += 2) {
+                bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+            }
+            
+            // 将二进制数据打包成浏览器认识的 mp3 文件 (Blob)
+            const blob = new Blob([bytes], { type: 'audio/mpeg' });
+            
+            // 生成播放链接
+            const audioSrc = URL.createObjectURL(blob);
+            const audio = new Audio(audioSrc);
+            audio.volume = 1.0;
+            
+            // 播放完毕后释放内存
+            audio.onended = () => {
+                URL.revokeObjectURL(audioSrc);
+            };
+            
+            await audio.play();
+            console.log('✅ 语音播放成功');
+        } else {
+            throw new Error(data.error || 'Worker返回数据异常');
+        }
         
     } catch (error) {
         console.error('完整错误信息:', error);
         alert('语音播放失败：\n' + error.message);
     }
 }
-
 // 开关切换事件
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
+        // 页面加载时从数据库恢复语音配置到内存
+        loadFromDB('voiceConfig', (data) => {
+            if (data) {
+                voiceConfig = data;
+                console.log('✅ 语音配置已恢复:', voiceConfig.enabled);
+            }
+        });
+        
         const toggle = document.getElementById('voiceEnabled');
         if (toggle) {
             toggle.addEventListener('change', function() {
@@ -2302,7 +2322,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 500);
 });
-
 let lastNotificationTime = 0;
 
 function playNotificationSound() {

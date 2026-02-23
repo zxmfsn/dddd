@@ -3057,9 +3057,9 @@ function quoteSelectedMessage() {
         displayContent = `【转账】¥${message.transferData.amount.toFixed(2)}`;
     } else if (message.type === 'shopping_order') {
         displayContent = '【购物订单】';
-    } else if (message.content && message.content.length > 30) {
+    } else if (message.content && message.content.length > 5) {
         // 普通文本消息，截断过长内容
-        displayContent = message.content.substring(0, 30) + '...';
+        displayContent = message.content.substring(0, 5) + '...';
     }
     
     document.getElementById('quoteContent').textContent = `${formatMessageTime(message.time)} ${displayContent}`;
@@ -4488,6 +4488,11 @@ function clearChatHistory() {
           // 3. 清空内存中的消息
         allMessages = [];
         visibleMessagesCount = 30;
+
+          // ★★★ 新增：清空缓存，防止刷新后读到旧数据 ★★★
+        if (window.__messagesCache) {
+            window.__messagesCache[currentChatId] = [];
+        }
         
         // 4. 事务完成后刷新界面
         transaction.oncomplete = () => {
@@ -6761,9 +6766,13 @@ function buildMomentPrompt(opts) {
 1. 配图描述是动态延伸，不要把动态原句重复一遍
 2. 20-50字，具体、有画面感
 ` : `
-【输出格式】
+【输出格式（必须严格遵守）】
 只输出严格 JSON（不要多余文字）：
-{"content":"动态文字"}
+{"content":"动态文字", "imageDesc":""}
+
+【说明】
+这是一条纯文字动态，imageDesc留空字符串即可。
+请专注于生成自然、生活化的动态文字内容。
 `;
 
     return `
@@ -6859,6 +6868,13 @@ async function callSubApiGenerateMoment(params) {
 
     if (!raw) return null;
 
+    // 预检：如果AI返回的是明显的拒绝文本，直接跳过，不尝试解析
+    const rawCheck = String(raw).trim();
+    if (/^(I can'?t|I'm sorry|Sorry|抱歉|对不起|我无法|作为AI|As an AI)/i.test(rawCheck)) {
+        console.warn('[moments] AI拒绝回复，跳过本条:', rawCheck.slice(0, 80));
+        return null;
+    }
+
     // 👇 完整的清洗逻辑
     let cleanedRaw = raw
         // 1. 去掉 Markdown 代码块标记
@@ -6900,9 +6916,14 @@ async function callSubApiGenerateMoment(params) {
         }
     }
 
-    // 7. 验证解析结果
+      // 7. 验证解析结果（兜底：解析失败时尝试把原文当纯文字动态）
     if (!parsed || !parsed.content) {
-        console.error('[moments] 解析失败或缺少content字段');
+        const fallbackText = String(cleanedRaw || '').replace(/[{}\[\]"]/g, '').trim();
+        if (fallbackText.length >= 4 && fallbackText.length <= 500) {
+            console.warn('[moments] JSON解析失败，降级为纯文字动态:', fallbackText.slice(0, 50));
+            return { content: fallbackText, imageDesc: '' };
+        }
+        console.error('[moments] 解析失败且无法降级');
         return null;
     }
 

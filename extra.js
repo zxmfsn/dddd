@@ -47,8 +47,76 @@ function fixResponseFormat(response, modelType) {
     return fixed;
 }
 
+// 通话专用格式修正（区分模型类型，默认 gemini）
+function fixCallResponseFormat(response, modelType) {
+    if (!response) return '';
+    let fixed = response;
 
+    // 1. 通用清理：移除 Markdown 加粗和列表符号
+    fixed = fixed.replace(/\*\*/g, '').replace(/^[\-\*]\s*/gm, '');
 
+    // 2. 统一换行符处理
+    fixed = fixed.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // 3. 如果已经有 ||| 分隔符且数量>=3，说明格式基本正确，只做轻度清理
+    const existingSeparators = (fixed.match(/\|\|\|/g) || []).length;
+    if (existingSeparators >= 3) {
+        console.log('[格式修正] 已有足够分隔符，仅做清理');
+        fixed = fixed.replace(/\n+/g, '|||');
+        fixed = fixed.replace(/\|\|\|+/g, '|||').replace(/^\|\|\|/, '').replace(/\|\|\|$/, '');
+        return fixed.split('|||').map(s => s.trim()).filter(s => s.length > 0).join('|||');
+    }
+
+    // 4. Claude 强力修正
+    if (modelType === 'claude') {
+        console.log('[格式修正] Claude 模式：强力分割');
+
+        // 4.1 先处理换行（如果有的话）
+        fixed = fixed.replace(/\n+/g, '|||');
+
+        // 4.2 保护特殊标记，防止内部被切割
+        const protectedBlocks = [];
+        fixed = fixed.replace(/[【\[]\s*(?:动作|消息|发送了表情|搜表情|图片|发送语音|转账)\s*[:：]?\s*[^】\]]*[】\]]/g, (match) => {
+            const key = `__CALL_PROTECT_${protectedBlocks.length}__`;
+            protectedBlocks.push({ key, raw: match });
+            return key;
+        });
+
+        // 4.3 核心：按中文标点强制分割（句号、感叹号、问号、省略号后面跟文字）
+        fixed = fixed.replace(/([。！？!?]+)/g, '$1|||');
+        // 省略号后面跟文字也分割
+        fixed = fixed.replace(/(\.{3}|…+)/g, '$1|||');
+
+        // 4.4 还原被保护的标记
+        protectedBlocks.forEach(b => {
+            fixed = fixed.replace(b.key, b.raw);
+        });
+
+        // 4.5 确保 [动作] 和 [消息] 标签前后有 |||
+        fixed = fixed.replace(/([^|])\s*(\[动作\]|【动作】)/g, '$1|||$2');
+        fixed = fixed.replace(/(\[动作\][^|]*?)(\[消息\]|【消息】)/g, '$1|||$2');
+        fixed = fixed.replace(/([^|])\s*(\[消息\]|【消息】)/g, '$1|||$2');
+    }
+
+    // 5. Gemini 轻度修正
+    if (modelType === 'gemini') {
+        console.log('[格式修正] Gemini 模式：轻度修正');
+        fixed = fixed.replace(/\n+/g, '|||');
+
+        // Gemini 偶尔不加分隔符时，也按标点分割
+        if ((fixed.match(/\|\|\|/g) || []).length < 2) {
+            fixed = fixed.replace(/([。！？!?]+)/g, '$1|||');
+        }
+    }
+
+    // 6. 通用收尾
+    fixed = fixed.replace(/\|\|\|+/g, '|||');
+    fixed = fixed.replace(/^\|\|\|/, '');
+    fixed = fixed.replace(/\|\|\|$/, '');
+    fixed = fixed.split('|||').map(s => s.trim()).filter(s => s.length > 0).join('|||');
+
+    return fixed;
+}
 // ============ 日记功能 ============
 
 // 打开日记列表
@@ -669,82 +737,167 @@ function buildDiaryImagePrompt(diary) {
     }
     // --- ★★★ 安全过滤结束 ★★★ ---
 
-    // 如果不恐怖，继续执行原来的逻辑
+       // 如果不恐怖，继续执行原来的逻辑
     
-    // 组合成 Prompt（英文效果最佳，中文也能跑）
-    // 加上风格词：胶片感、拍立得、真实照片、高画质
-    let basePrompt = `${title} ${weather} ${mood} ${tags}`;
+    // 中文关键词 -> 英文场景映射（Pollinations 只认英文）
+    const sceneMap = {
+        // 天气
+        '晴': 'sunny sky', '雨': 'rainy day', '雪': 'snowy scene', '阴': 'cloudy sky',
+        '风': 'windy day', '雾': 'foggy morning', '热': 'summer heat', '冷': 'cold winter',
+        // 心情
+        '开心': 'joyful moment', '难过': 'melancholy mood', '生气': 'dramatic scene',
+        '无聊': 'lazy afternoon', '期待': 'hopeful sunrise', '紧张': 'suspenseful atmosphere',
+        '幸福': 'warm happiness', '孤独': 'solitary figure', '兴奋': 'exciting celebration',
+        '平静': 'peaceful calm', '焦虑': 'restless night', '感动': 'touching moment',
+        '甜蜜': 'sweet romance', '思念': 'nostalgic memory', '委屈': 'sad rain on window',
+        // 活动
+        '吃': 'delicious food on table', '喝': 'cozy cafe drink', '睡': 'dreamy bedroom',
+        '逛街': 'shopping street', '旅行': 'travel adventure', '学习': 'study desk with books',
+        '工作': 'office workspace', '运动': 'outdoor exercise', '游戏': 'gaming setup',
+        '做饭': 'home cooking kitchen', '看电影': 'cinema night', '聊天': 'warm conversation',
+        '散步': 'evening walk path', '拍照': 'photography moment', '画画': 'art studio',
+        '音乐': 'music notes floating', '读书': 'reading by window', '咖啡': 'coffee shop',
+        // 场景
+        '家': 'cozy home interior', '学校': 'campus scenery', '公司': 'modern office',
+        '公园': 'beautiful park', '海边': 'ocean beach sunset', '山': 'mountain landscape',
+        '夜': 'starry night sky', '早': 'golden morning light', '春': 'spring flowers blooming',
+        '夏': 'summer sunshine', '秋': 'autumn leaves falling', '冬': 'winter snowfall'
+    };
     
-    // 清洗一下特殊字符，避免 URL 报错
-    basePrompt = basePrompt.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ').trim();
+    // 从标题+天气+心情+标签中提取匹配的英文关键词
+  const combinedText = (title + ' ' + weather + ' ' + mood + ' ' + tags);
+    const matchedScenes = [];
     
-    // 加上风格修饰词 (Magic Prompt)
-    // 风格：真实胶片感 + 拍立得 + 温暖色调 + 高细节
+    for (const [cnKey, enScene] of Object.entries(sceneMap)) {
+      if (combinedText.includes(cnKey)) {
+            matchedScenes.push(enScene);
+        }
+    }
+    
+    // 如果一个都没匹配到，给个默认场景
+    if (matchedScenes.length === 0) {
+        matchedScenes.push('peaceful daily life moment', 'soft warm lighting');
+    }
+    
+    // 取前3个匹配场景，避免 prompt 过长
+    const scenePrompt = matchedScenes.slice(0, 3).join(', ');
+    
+    // 拼接风格修饰词
     const stylePrompt = "realistic polaroid photo, film grain, warm lighting, highly detailed, 8k resolution, cinematic composition";
     
-    return `${basePrompt}, ${stylePrompt}`;
+    return `${scenePrompt}, ${stylePrompt}`;
 }
 
 // 2. 生成 Pollinations 图片 URL
+// 生成免费配图 URL（稳定版：多源随机）
 function getPollinationsImageUrl(prompt) {
     if (!prompt) return null;
     
-    // 编码 Prompt
-    const encodedPrompt = encodeURIComponent(prompt);
+    // 从 prompt 生成一个稳定的数字种子（同样的日记内容 = 同样的图）
+    let hash = 0;
+    for (let i = 0; i < prompt.length; i++) {
+        hash = ((hash << 5) - hash) + prompt.charCodeAt(i);
+        hash |= 0;
+    }
+    const seed = Math.abs(hash);
     
-    // 构造 URL
-    // 宽 512, 高 512 (正方形), nologo=true (去水印), seed (随机种子防止缓存)
-    const seed = Math.floor(Math.random() * 1000000);
-    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}&model=flux`;
+    // 图片源列表（全部免费、稳定、无需API Key）
+    const sources = [
+        // Picsum：随机高质量摄影图，seed 保证同内容同图
+        `https://picsum.photos/seed/${seed}/512/512`,
+        // LoremFlickr：根据英文关键词匹配 Flickr 图片
+        `https://loremflickr.com/512/512/${encodeURIComponent(prompt.split(',')[0].trim())}?random=${seed}`,
+    ];
+    
+    // 随机选一个源（分散压力）
+    return sources[seed % sources.length];
 }
 
 // 3. 异步加载图片并保存到 DB
 async function loadDiaryImageIntoDetail(diary) {
-    // 如果已经有图了，或者正在加载中（防止重复请求），直接返回
     if (diary.coverImage || diary._isLoadingImage) return;
     
-    diary._isLoadingImage = true; // 标记正在加载
+    diary._isLoadingImage = true;
     
     const prompt = buildDiaryImagePrompt(diary);
-    const url = getPollinationsImageUrl(prompt);
-    
-    if (!url) {
+    if (!prompt) {
         diary._isLoadingImage = false;
         return;
     }
     
-    // 创建图片对象预加载
-    const img = new Image();
-    img.onload = () => {
-        // 图片加载成功
-        diary.coverImage = url; // 更新内存对象
-        diary._isLoadingImage = false;
+    // 最多重试3次，每次换不同seed
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const seed = Math.floor(Math.random() * 1000000);
+        const encodedPrompt = encodeURIComponent(prompt);
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}`;
         
-        // 更新界面（如果当前还在详情页）
-        const box = document.getElementById(`diaryCoverBox-${diary.id}`);
-        if (box) {
-            box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
-            //以此证明是AI生成的
-            box.classList.add('loaded'); 
+        console.log(`[日记配图] 第${attempt}次尝试...`);
+        
+        const success = await new Promise((resolve) => {
+            const img = new Image();
+            // 超时计时器
+            const timer = setTimeout(() => {
+                img.onload = null;
+                img.onerror = null;
+                img.src = '';
+                console.warn(`[日记配图] 第${attempt}次超时`);
+                resolve(false);
+            }, 20000); // 20秒超时
+            
+            img.onload = () => {
+                clearTimeout(timer);
+                diary.coverImage = url;
+                diary._isLoadingImage = false;
+                
+                const box = document.getElementById(`diaryCoverBox-${diary.id}`);
+                if (box) {
+                    box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
+                    box.classList.add('loaded');
+                }
+                
+                saveDiaryCoverImageToDB(diary.id, url);
+                
+                const localDiary = diaries.find(d => d.id === diary.id);
+                if (localDiary) localDiary.coverImage = url;
+                
+                console.log(`[日记配图] 第${attempt}次成功!`);
+                resolve(true);
+            };
+            
+            img.onerror = () => {
+                clearTimeout(timer);
+                console.warn(`[日记配图] 第${attempt}次失败`);
+                resolve(false);
+            };
+            
+            img.src = url;
+        });
+        
+        if (success) return; // 成功就退出
+        
+        // 失败后等2秒再重试
+        if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 2000));
         }
-        
-        // 保存到数据库
-        saveDiaryCoverImageToDB(diary.id, url);
-        
-        // 同步更新 diaries 列表缓存
-        const localDiary = diaries.find(d => d.id === diary.id);
-        if (localDiary) localDiary.coverImage = url;
-    };
+    }
     
-    img.onerror = () => {
-        // 加载失败（可能网络问题或生成超时），保持占位图
-        console.warn('AI 图片生成失败:', url);
-        diary._isLoadingImage = false;
-        // 可选：显示一个“生成失败”的小提示，或者什么都不做（保留占位图）
-    };
-    
-    // 开始加载
-    img.src = url;
+    // 全部失败，显示重试按钮
+    diary._isLoadingImage = false;
+    const box = document.getElementById(`diaryCoverBox-${diary.id}`);
+    if (box && !box.classList.contains('loaded')) {
+        const placeholderText = box.querySelector('.placeholder-text');
+        if (placeholderText) {
+            placeholderText.textContent = '生成失败，点击重试';
+        }
+        box.onclick = () => {
+            box.onclick = null;
+            const pt = box.querySelector('.placeholder-text');
+            if (pt) pt.textContent = 'AI Generating...';
+            loadDiaryImageIntoDetail(diary);
+        };
+    }
 }
 
 // 4. 写回数据库
@@ -2180,6 +2333,18 @@ const modelToUse = currentApiConfig.model || currentApiConfig.defaultModel || 'g
             { role: 'user', content: "（用户拨通了你的视频电话，请接听并回应刚才的话题）" } // 触发语
         ];
 
+        // ★★★ 新增：为 Claude 注入角色扮演预设（与聊天保持一致）★★★
+        const isClaude = modelToUse.toLowerCase().includes('claude') || 
+                        (currentApiConfig.apiKey && currentApiConfig.apiKey.toLowerCase().includes('anthropic'));
+        if (isClaude) {
+            messages.splice(1, 0, {
+                role: 'assistant',
+                content: `明白了，我现在完全进入【${chat.name}】的角色。我不是 AI 助手，我就是${chat.name}本人。我会严格按照 [动作]描述|||[消息]内容|||内容 的格式回复，绝不换行，绝不使用 Markdown，绝不说"我是 AI"。现在开始，我就是${chat.name}。`
+            });
+            console.log('✅ [通话接听] 已为 Claude 注入角色扮演预设');
+        }
+
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -2200,6 +2365,13 @@ const modelToUse = currentApiConfig.model || currentApiConfig.defaultModel || 'g
         const data = await response.json();
         let aiReply = data.choices[0].message.content.trim();
 aiReply = sanitizeCallReplyForDisplay(aiReply);
+
+               // ★★★ 新增：检测模型类型，针对性修正通话格式 ★★★
+        const detectedCallModel = detectModelType(currentApiConfig.apiKey, modelToUse);
+        if (!aiReply.trim().startsWith('{')) {
+            console.log('[通话接听] 检测到模型类型:', detectedCallModel);
+            aiReply = fixCallResponseFormat(aiReply, detectedCallModel);
+        }
         
         // 接通成功，更新界面
         callConnected();
@@ -2520,6 +2692,19 @@ ${characterInfo.cityInfoEnabled ? `
             finalUserMessage
         ];
 
+        // ★★★ 新增：为 Claude 注入角色扮演预设（与聊天保持一致）★★★
+        const modelToUse = currentApiConfig.model || currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+        const isClaude = modelToUse.toLowerCase().includes('claude') || 
+                        (currentApiConfig.apiKey && currentApiConfig.apiKey.toLowerCase().includes('anthropic'));
+        if (isClaude) {
+            messages.splice(1, 0, {
+                role: 'assistant',
+                content: `明白了，我现在完全进入【${chat.name}】的角色。我不是 AI 助手，我就是${chat.name}本人。我会严格按照 [动作]描述|||[消息]内容|||内容 的格式回复，绝不换行，绝不使用 Markdown，绝不说"我是 AI"。现在开始，我就是${chat.name}。`
+            });
+            console.log('✅ [通话回复] 已为 Claude 注入角色扮演预设');
+        }
+
+
         const url = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions'
             : currentApiConfig.baseUrl + '/chat/completions';
@@ -2569,6 +2754,13 @@ console.log('🧹 已过滤视频通话禁用指令，清理后:', aiReply);
 aiReply = sanitizeCallReplyForDisplay(aiReply);
 
 // ========== 过滤结束 ==========
+
+            // ★★★ 新增：检测模型类型，针对性修正通话格式 ★★★
+        const detectedCallModel = detectModelType(currentApiConfig.apiKey, currentApiConfig.model || currentApiConfig.defaultModel || 'gpt-3.5-turbo');
+        if (!aiReply.trim().startsWith('{')) {
+            console.log('[通话回复] 检测到模型类型:', detectedCallModel);
+            aiReply = fixCallResponseFormat(aiReply, detectedCallModel);
+        }
         
         // 保存AI回复到临时数组
         callMessages.push({
@@ -7278,8 +7470,8 @@ if (msg.type === 'image') {
             if (displayQuoteContent.startsWith('data:image') || displayQuoteContent.length > 500) { 
                 displayQuoteContent = '【图片/长内容】';
             }
-            if (displayQuoteContent.length > 30) {
-                displayQuoteContent = displayQuoteContent.substring(0, 30) + '...';
+            if (displayQuoteContent.length > 10) {
+                displayQuoteContent = displayQuoteContent.substring(0, 10) + '...';
             }
             const quoteAuthor = msg.quotedAuthor || '未知';
             quoteHtml = `

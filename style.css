@@ -9443,7 +9443,7 @@ body.transparent-nav-mode .chat-input:focus {
     overflow: hidden;
     background-size: cover;
     background-position: center;
-    margin: 0 8px;
+    margin: 0 -8px;
 }
 
 .message-avatar.square {
