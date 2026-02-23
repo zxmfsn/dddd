@@ -2166,6 +2166,9 @@ if (effectSelect) {
     }
 }
 
+
+
+
 // ============ 角色语音功能 ============
 let voiceConfig = {
     enabled: false,
@@ -2247,61 +2250,46 @@ async function playVoiceMessage(text) {
     
     console.log('开始调用MiniMax TTS API...');
     
+    const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
+    const apiUrl = 'https://bold-dawn-c01f.1726776740.workers.dev';
+    
     try {
-        const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
-        
-        const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${voiceConfig.apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'speech-2.6-hd',
                 text: text,
-                stream: false,
-                output_format: 'url',
-                voice_setting: {
-                    voice_id: voiceId,
-                    speed: 1,
-                    vol: 1,
-                    pitch: 0,
-                    emotion: 'calm'
-                },
-                audio_setting: {
-                    sample_rate: 32000,
-                    bitrate: 128000,
-                    format: 'mp3',
-                    channel: 1
-                }
+                voice_id: voiceId,
+                apiKey: voiceConfig.apiKey,
+                groupId: voiceConfig.groupId
             })
         });
         
-        console.log('API响应状态:', response.status);
-        
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('API错误:', errorData);
             throw new Error(`API错误 ${response.status}`);
         }
         
-        const data = await response.json();
-        console.log('API返回成功');
+        const blob = await response.blob();
+        console.log('音频大小:', blob.size, 'bytes');
         
-        if (data.data && data.data.audio) {
-            const audio = new Audio(data.data.audio);
-            audio.play();
-            console.log('语音播放成功');
-        } else {
-            throw new Error('未获取到音频数据');
-        }
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.volume = 1.0;
+        
+        await audio.play();
+        console.log('✅ 语音播放成功');
+        
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+        };
         
     } catch (error) {
         console.error('完整错误信息:', error);
-        alert('语音播放失败：' + error.message);
+        alert('语音播放失败：\n' + error.message);
     }
 }
-
 
 // 开关切换事件
 document.addEventListener('DOMContentLoaded', () => {
@@ -2357,6 +2345,7 @@ function playNotificationSound() {
         }
     });
 }
+
 
 // ============ 日程页面逻辑 (cat.js) ============
 
