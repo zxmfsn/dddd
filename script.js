@@ -6831,8 +6831,8 @@ async function callSubApiGenerateMoment(params) {
 
     const body = {
         model: model,
-        temperature: 0.8,
-        max_tokens: 2000,
+        temperature: 0.7,
+        max_tokens: 4000,
         messages: [
             { role: 'system', content: '你是一个会写朋友圈动态的角色扮演助手。' },
             { role: 'user', content: prompt }
@@ -6907,7 +6907,21 @@ async function callSubApiGenerateMoment(params) {
     // 二次清洗：提取后再过一遍控制字符（iOS Safari兼容）
     cleanedRaw = cleanedRaw.replace(/[\x00-\x1f\x7f\u200b\u200c\u200d\ufeff]/g, '');
 
-    // 6. 尝试解析JSON
+    // 修复截断的JSON（移动端token不足时容易出现）
+    if (cleanedRaw.startsWith('{') && !cleanedRaw.endsWith('}')) {
+        // 找到最后一个完整的字段
+        const lastComma = cleanedRaw.lastIndexOf('","');
+        const lastColon = cleanedRaw.lastIndexOf('":"');
+        if (lastColon > lastComma) {
+            // imageDesc被截断，直接截掉不完整的部分
+            cleanedRaw = cleanedRaw.substring(0, lastComma) + '"}';
+        } else {
+            cleanedRaw = cleanedRaw + '"}';
+        }
+    }
+
+
+       // 6. 尝试解析JSON（增强版：兼容安卓/iOS）
     let parsed = null;
     try {
         parsed = JSON.parse(cleanedRaw);
@@ -6916,10 +6930,46 @@ async function callSubApiGenerateMoment(params) {
         console.error('[moments] JSON解析失败:', e);
         console.error('[moments] 尝试解析的内容:', cleanedRaw);
         
-        // 兜底：尝试用 safeParseJsonFromText
-        parsed = safeParseJsonFromText(cleanedRaw);
-        if (parsed) {
-            console.log('[moments] safeParseJsonFromText 成功:', parsed);
+        // 兜底1：用正则直接提取content和imageDesc字段值
+        try {
+            const contentMatch = cleanedRaw.match(/"content"\s*:\s*"([\s\S]*?)"\s*[,}]/);
+            const imageDescMatch = cleanedRaw.match(/"imageDesc"\s*:\s*"([\s\S]*?)"\s*[,}]/);
+            
+            if (contentMatch && contentMatch[1]) {
+                parsed = {
+                    content: contentMatch[1].trim(),
+                    imageDesc: imageDescMatch ? (imageDescMatch[1] || '').trim() : ''
+                };
+                console.log('[moments] 正则提取成功:', parsed);
+            }
+        } catch (regexErr) {
+            console.error('[moments] 正则提取也失败:', regexErr);
+        }
+        
+        // 兜底2：如果正则也失败，尝试safeParseJsonFromText
+        if (!parsed) {
+            parsed = safeParseJsonFromText(cleanedRaw);
+            if (parsed) {
+                console.log('[moments] safeParseJsonFromText 成功:', parsed);
+            }
+        }
+        
+        // 兜底3：从原始raw里直接提取（绕过清洗导致的引号问题）
+        if (!parsed) {
+            try {
+                const rawContent = raw.match(/"content"\s*[:：]\s*"([\s\S]*?)"\s*[,，]/);
+                const rawImageDesc = raw.match(/"imageDesc"\s*[:：]\s*"([\s\S]*?)"\s*["\}]/);
+                
+                if (rawContent && rawContent[1]) {
+                    parsed = {
+                        content: rawContent[1].trim(),
+                        imageDesc: rawImageDesc ? (rawImageDesc[1] || '').trim() : ''
+                    };
+                    console.log('[moments] 从原始raw提取成功:', parsed);
+                }
+            } catch (rawErr) {
+                console.error('[moments] 原始raw提取也失败:', rawErr);
+            }
         }
     }
 
@@ -8415,8 +8465,8 @@ ${momentText || '（无）'}`
             },
             body: JSON.stringify({
                 model,
-                temperature: 0.2,
-                max_tokens: 2000,
+                temperature: 0.6,
+                max_tokens: 4000,
                 messages: [
                     { role: 'system', content: '你是一个严格输出JSON的视觉总结器。' },
                     { role: 'user', content }
