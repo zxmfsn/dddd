@@ -737,167 +737,82 @@ function buildDiaryImagePrompt(diary) {
     }
     // --- ★★★ 安全过滤结束 ★★★ ---
 
-       // 如果不恐怖，继续执行原来的逻辑
+    // 如果不恐怖，继续执行原来的逻辑
     
-    // 中文关键词 -> 英文场景映射（Pollinations 只认英文）
-    const sceneMap = {
-        // 天气
-        '晴': 'sunny sky', '雨': 'rainy day', '雪': 'snowy scene', '阴': 'cloudy sky',
-        '风': 'windy day', '雾': 'foggy morning', '热': 'summer heat', '冷': 'cold winter',
-        // 心情
-        '开心': 'joyful moment', '难过': 'melancholy mood', '生气': 'dramatic scene',
-        '无聊': 'lazy afternoon', '期待': 'hopeful sunrise', '紧张': 'suspenseful atmosphere',
-        '幸福': 'warm happiness', '孤独': 'solitary figure', '兴奋': 'exciting celebration',
-        '平静': 'peaceful calm', '焦虑': 'restless night', '感动': 'touching moment',
-        '甜蜜': 'sweet romance', '思念': 'nostalgic memory', '委屈': 'sad rain on window',
-        // 活动
-        '吃': 'delicious food on table', '喝': 'cozy cafe drink', '睡': 'dreamy bedroom',
-        '逛街': 'shopping street', '旅行': 'travel adventure', '学习': 'study desk with books',
-        '工作': 'office workspace', '运动': 'outdoor exercise', '游戏': 'gaming setup',
-        '做饭': 'home cooking kitchen', '看电影': 'cinema night', '聊天': 'warm conversation',
-        '散步': 'evening walk path', '拍照': 'photography moment', '画画': 'art studio',
-        '音乐': 'music notes floating', '读书': 'reading by window', '咖啡': 'coffee shop',
-        // 场景
-        '家': 'cozy home interior', '学校': 'campus scenery', '公司': 'modern office',
-        '公园': 'beautiful park', '海边': 'ocean beach sunset', '山': 'mountain landscape',
-        '夜': 'starry night sky', '早': 'golden morning light', '春': 'spring flowers blooming',
-        '夏': 'summer sunshine', '秋': 'autumn leaves falling', '冬': 'winter snowfall'
-    };
+    // 组合成 Prompt（英文效果最佳，中文也能跑）
+    // 加上风格词：胶片感、拍立得、真实照片、高画质
+    let basePrompt = `${title} ${weather} ${mood} ${tags}`;
     
-    // 从标题+天气+心情+标签中提取匹配的英文关键词
-  const combinedText = (title + ' ' + weather + ' ' + mood + ' ' + tags);
-    const matchedScenes = [];
+    // 清洗一下特殊字符，避免 URL 报错
+    basePrompt = basePrompt.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ').trim();
     
-    for (const [cnKey, enScene] of Object.entries(sceneMap)) {
-      if (combinedText.includes(cnKey)) {
-            matchedScenes.push(enScene);
-        }
-    }
-    
-    // 如果一个都没匹配到，给个默认场景
-    if (matchedScenes.length === 0) {
-        matchedScenes.push('peaceful daily life moment', 'soft warm lighting');
-    }
-    
-    // 取前3个匹配场景，避免 prompt 过长
-    const scenePrompt = matchedScenes.slice(0, 3).join(', ');
-    
-    // 拼接风格修饰词
+    // 加上风格修饰词 (Magic Prompt)
+    // 风格：真实胶片感 + 拍立得 + 温暖色调 + 高细节
     const stylePrompt = "realistic polaroid photo, film grain, warm lighting, highly detailed, 8k resolution, cinematic composition";
     
-    return `${scenePrompt}, ${stylePrompt}`;
+    return `${basePrompt}, ${stylePrompt}`;
 }
 
 // 2. 生成 Pollinations 图片 URL
-// 生成免费配图 URL（稳定版：多源随机）
 function getPollinationsImageUrl(prompt) {
     if (!prompt) return null;
     
-    // 从 prompt 生成一个稳定的数字种子（同样的日记内容 = 同样的图）
-    let hash = 0;
-    for (let i = 0; i < prompt.length; i++) {
-        hash = ((hash << 5) - hash) + prompt.charCodeAt(i);
-        hash |= 0;
-    }
-    const seed = Math.abs(hash);
+    // 编码 Prompt
+    const encodedPrompt = encodeURIComponent(prompt);
     
-    // 图片源列表（全部免费、稳定、无需API Key）
-    const sources = [
-        // Picsum：随机高质量摄影图，seed 保证同内容同图
-        `https://picsum.photos/seed/${seed}/512/512`,
-        // LoremFlickr：根据英文关键词匹配 Flickr 图片
-        `https://loremflickr.com/512/512/${encodeURIComponent(prompt.split(',')[0].trim())}?random=${seed}`,
-    ];
-    
-    // 随机选一个源（分散压力）
-    return sources[seed % sources.length];
+    // 构造 URL
+    // 宽 512, 高 512 (正方形), nologo=true (去水印), seed (随机种子防止缓存)
+    const seed = Math.floor(Math.random() * 1000000);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}&model=flux`;
 }
 
 // 3. 异步加载图片并保存到 DB
 async function loadDiaryImageIntoDetail(diary) {
+    // 如果已经有图了，或者正在加载中（防止重复请求），直接返回
     if (diary.coverImage || diary._isLoadingImage) return;
     
-    diary._isLoadingImage = true;
+    diary._isLoadingImage = true; // 标记正在加载
     
     const prompt = buildDiaryImagePrompt(diary);
-    if (!prompt) {
+    const url = getPollinationsImageUrl(prompt);
+    
+    if (!url) {
         diary._isLoadingImage = false;
         return;
     }
     
-    // 最多重试3次，每次换不同seed
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const seed = Math.floor(Math.random() * 1000000);
-        const encodedPrompt = encodeURIComponent(prompt);
-        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}`;
+    // 创建图片对象预加载
+    const img = new Image();
+    img.onload = () => {
+        // 图片加载成功
+        diary.coverImage = url; // 更新内存对象
+        diary._isLoadingImage = false;
         
-        console.log(`[日记配图] 第${attempt}次尝试...`);
-        
-        const success = await new Promise((resolve) => {
-            const img = new Image();
-            // 超时计时器
-            const timer = setTimeout(() => {
-                img.onload = null;
-                img.onerror = null;
-                img.src = '';
-                console.warn(`[日记配图] 第${attempt}次超时`);
-                resolve(false);
-            }, 20000); // 20秒超时
-            
-            img.onload = () => {
-                clearTimeout(timer);
-                diary.coverImage = url;
-                diary._isLoadingImage = false;
-                
-                const box = document.getElementById(`diaryCoverBox-${diary.id}`);
-                if (box) {
-                    box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
-                    box.classList.add('loaded');
-                }
-                
-                saveDiaryCoverImageToDB(diary.id, url);
-                
-                const localDiary = diaries.find(d => d.id === diary.id);
-                if (localDiary) localDiary.coverImage = url;
-                
-                console.log(`[日记配图] 第${attempt}次成功!`);
-                resolve(true);
-            };
-            
-            img.onerror = () => {
-                clearTimeout(timer);
-                console.warn(`[日记配图] 第${attempt}次失败`);
-                resolve(false);
-            };
-            
-            img.src = url;
-        });
-        
-        if (success) return; // 成功就退出
-        
-        // 失败后等2秒再重试
-        if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000));
+        // 更新界面（如果当前还在详情页）
+        const box = document.getElementById(`diaryCoverBox-${diary.id}`);
+        if (box) {
+            box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
+            //以此证明是AI生成的
+            box.classList.add('loaded'); 
         }
-    }
+        
+        // 保存到数据库
+        saveDiaryCoverImageToDB(diary.id, url);
+        
+        // 同步更新 diaries 列表缓存
+        const localDiary = diaries.find(d => d.id === diary.id);
+        if (localDiary) localDiary.coverImage = url;
+    };
     
-    // 全部失败，显示重试按钮
-    diary._isLoadingImage = false;
-    const box = document.getElementById(`diaryCoverBox-${diary.id}`);
-    if (box && !box.classList.contains('loaded')) {
-        const placeholderText = box.querySelector('.placeholder-text');
-        if (placeholderText) {
-            placeholderText.textContent = '生成失败，点击重试';
-        }
-        box.onclick = () => {
-            box.onclick = null;
-            const pt = box.querySelector('.placeholder-text');
-            if (pt) pt.textContent = 'AI Generating...';
-            loadDiaryImageIntoDetail(diary);
-        };
-    }
+    img.onerror = () => {
+        // 加载失败（可能网络问题或生成超时），保持占位图
+        console.warn('AI 图片生成失败:', url);
+        diary._isLoadingImage = false;
+        // 可选：显示一个“生成失败”的小提示，或者什么都不做（保留占位图）
+    };
+    
+    // 开始加载
+    img.src = url;
 }
 
 // 4. 写回数据库
