@@ -6876,19 +6876,23 @@ async function callSubApiGenerateMoment(params) {
     }
 
     // 👇 完整的清洗逻辑
+    
     let cleanedRaw = raw
-        // 1. 去掉 Markdown 代码块标记
+        // 去掉代码块标记
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
-        // 2. 去掉换行符
-        .replace(/\n/g, '')
-        .replace(/\r/g, '')
-        // 3. 清洗中文符号
-        .replace(/"/g, '"')
-        .replace(/"/g, '"')
-        .replace(/，/g, ',')
-        .replace(/：/g, ':')
-        // 4. 去掉首尾空格
+        // 去掉所有换行和回车
+        .replace(/[\n\r]/g, '')
+        // 去掉控制字符（安卓/iOS特殊字符兼容）
+        .replace(/[\x00-\x1f\x7f]/g, '')
+        // 清洗中文引号（Unicode编码方式，兼容所有平台）
+        .replace(/[\u201c\u201d\u2018\u2019]/g, '"')
+        // 清洗中文标点
+        .replace(/\uff0c/g, ',')
+        .replace(/\uff1a/g, ':')
+        .replace(/\u3001/g, ',')
+        // 全角字符转半角（兼容iOS输入法）
+        .replace(/[\uff01-\uff5e]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
         .trim();
 
     console.log('[moments] cleaned:', cleanedRaw);
@@ -6899,6 +6903,9 @@ async function callSubApiGenerateMoment(params) {
         cleanedRaw = jsonMatch[0];
         console.log('[moments] extracted:', cleanedRaw);
     }
+
+    // 二次清洗：提取后再过一遍控制字符（iOS Safari兼容）
+    cleanedRaw = cleanedRaw.replace(/[\x00-\x1f\x7f\u200b\u200c\u200d\ufeff]/g, '');
 
     // 6. 尝试解析JSON
     let parsed = null;
