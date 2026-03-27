@@ -117,6 +117,8 @@ function fixCallResponseFormat(response, modelType) {
 
     return fixed;
 }
+
+
 // ============ 日记功能 ============
 
 // 打开日记列表
@@ -713,190 +715,122 @@ function openDiaryDetail(diaryId) {
 
 // 1. 根据日记内容生成 AI 绘图 Prompt（关键词）
 function buildDiaryImagePrompt(diary) {
-    // 提取关键信息
     const title = diary.title || '';
     const weather = diary.weather || '';
     const mood = diary.mood || '';
     const tags = Array.isArray(diary.tags) ? diary.tags.slice(0, 3).join(' ') : '';
-    
-    // --- ★★★ 新增：恐怖/灵异内容安全过滤 ★★★ ---
-    // 定义敏感关键词库（可以根据需要自己添加）
-    const scaryKeywords = [
-        '鬼', '恐怖', '惊悚', '吓人', '灵异', '尸', '血', '噩梦', '诡异', '凶', '杀', '死',
-        'ghost', 'horror', 'scary', 'spooky', 'blood', 'nightmare', 'creepy'
-    ];
-    
-    // 检查是否包含敏感词 (合并标题、心情、标签一起查)
-    const fullText = (title + ' ' + mood + ' ' + tags).toLowerCase();
-    const isScary = scaryKeywords.some(keyword => fullText.includes(keyword));
-    
-    if (isScary) {
-        console.log('检测到灵异/恐怖内容，启动萌宠护盾！🐶🐱');
-        // 强制返回治愈系 Prompt：可爱的小猫小狗，温暖阳光，柔和色调
-        return "cute fluffy kittens and puppies playing together in a sunny garden, soft warm lighting, healing atmosphere, pastel colors, highly detailed, 8k, cinematic composition";
-    }
-    // --- ★★★ 安全过滤结束 ★★★ ---
 
-       // 如果不恐怖，继续执行原来的逻辑
-    
-    // 中文关键词 -> 英文场景映射（Pollinations 只认英文）
+    // 关键词映射
     const sceneMap = {
-        // 天气
-        '晴': 'sunny sky', '雨': 'rainy day', '雪': 'snowy scene', '阴': 'cloudy sky',
-        '风': 'windy day', '雾': 'foggy morning', '热': 'summer heat', '冷': 'cold winter',
-        // 心情
-        '开心': 'joyful moment', '难过': 'melancholy mood', '生气': 'dramatic scene',
-        '无聊': 'lazy afternoon', '期待': 'hopeful sunrise', '紧张': 'suspenseful atmosphere',
-        '幸福': 'warm happiness', '孤独': 'solitary figure', '兴奋': 'exciting celebration',
-        '平静': 'peaceful calm', '焦虑': 'restless night', '感动': 'touching moment',
-        '甜蜜': 'sweet romance', '思念': 'nostalgic memory', '委屈': 'sad rain on window',
-        // 活动
-        '吃': 'delicious food on table', '喝': 'cozy cafe drink', '睡': 'dreamy bedroom',
-        '逛街': 'shopping street', '旅行': 'travel adventure', '学习': 'study desk with books',
-        '工作': 'office workspace', '运动': 'outdoor exercise', '游戏': 'gaming setup',
-        '做饭': 'home cooking kitchen', '看电影': 'cinema night', '聊天': 'warm conversation',
-        '散步': 'evening walk path', '拍照': 'photography moment', '画画': 'art studio',
-        '音乐': 'music notes floating', '读书': 'reading by window', '咖啡': 'coffee shop',
-        // 场景
-        '家': 'cozy home interior', '学校': 'campus scenery', '公司': 'modern office',
-        '公园': 'beautiful park', '海边': 'ocean beach sunset', '山': 'mountain landscape',
-        '夜': 'starry night sky', '早': 'golden morning light', '春': 'spring flowers blooming',
-        '夏': 'summer sunshine', '秋': 'autumn leaves falling', '冬': 'winter snowfall'
+        '晴': 'sunny', '雨': 'rainy', '雪': 'snowy', '阴': 'cloudy',
+        '风': 'windy', '雾': 'foggy', '热': 'summer', '冷': 'winter',
+        '开心': 'happy', '难过': 'sad', '生气': 'angry',
+        '无聊': 'lazy', '期待': 'hopeful', '幸福': 'happy',
+        '孤独': 'lonely', '兴奋': 'exciting', '平静': 'peaceful',
+        '甜蜜': 'romantic', '思念': 'nostalgic', '感动': 'emotional',
+        '吃': 'food', '睡': 'bedroom', '逛街': 'shopping',
+        '旅行': 'travel', '学习': 'study', '工作': 'office',
+        '运动': 'exercise', '游戏': 'gaming', '做饭': 'cooking',
+        '音乐': 'music', '读书': 'reading', '咖啡': 'coffee',
+        '家': 'home', '公园': 'park', '海边': 'beach',
+        '山': 'mountain', '夜': 'night', '春': 'spring',
+        '夏': 'summer', '秋': 'autumn', '冬': 'winter'
     };
-    
-    // 从标题+天气+心情+标签中提取匹配的英文关键词
-  const combinedText = (title + ' ' + weather + ' ' + mood + ' ' + tags);
-    const matchedScenes = [];
-    
-    for (const [cnKey, enScene] of Object.entries(sceneMap)) {
-      if (combinedText.includes(cnKey)) {
-            matchedScenes.push(enScene);
-        }
-    }
-    
-    // 如果一个都没匹配到，给个默认场景
-    if (matchedScenes.length === 0) {
-        matchedScenes.push('peaceful daily life moment', 'soft warm lighting');
-    }
-    
-    // 取前3个匹配场景，避免 prompt 过长
-    const scenePrompt = matchedScenes.slice(0, 3).join(', ');
-    
-    // 拼接风格修饰词
-    const stylePrompt = "realistic polaroid photo, film grain, warm lighting, highly detailed, 8k resolution, cinematic composition";
-    
-    return `${scenePrompt}, ${stylePrompt}`;
-}
 
-// 2. 生成 Pollinations 图片 URL
-// 生成免费配图 URL（稳定版：多源随机）
-function getPollinationsImageUrl(prompt) {
-    if (!prompt) return null;
+    const combinedText = title + ' ' + weather + ' ' + mood + ' ' + tags;
+    const matched = [];
+
+    for (const [cn, en] of Object.entries(sceneMap)) {
+        if (combinedText.includes(cn) && !matched.includes(en)) {
+            matched.push(en);
+        }
+        if (matched.length >= 2) break;
+    }
+
+    if (matched.length === 0) matched.push('daily life');
+
+    // ✅ 分离关键词和风格词
+    const keywords = matched.join(','); // 只有场景关键词，给 Unsplash 搜索
+    const fullPrompt = keywords + ', aesthetic photo'; // 记录用的完整 prompt
+
+    console.log('[日记配图] 关键词：', keywords);
+    console.log('[日记配图] 完整prompt：', fullPrompt);
     
-    // 从 prompt 生成一个稳定的数字种子（同样的日记内容 = 同样的图）
+    return { keywords, fullPrompt }; // 返回对象
+}
+// 2. 根据 prompt 生成稳定的 Unsplash URL
+function getPollinationsImageUrl(promptObj) {
+    if (!promptObj || !promptObj.keywords) return null;
+    
     let hash = 0;
-    for (let i = 0; i < prompt.length; i++) {
-        hash = ((hash << 5) - hash) + prompt.charCodeAt(i);
+    for (let i = 0; i < promptObj.fullPrompt.length; i++) {
+        hash = ((hash << 5) - hash) + promptObj.fullPrompt.charCodeAt(i);
         hash |= 0;
     }
     const seed = Math.abs(hash);
     
-    // 图片源列表（全部免费、稳定、无需API Key）
-    const sources = [
-        // Picsum：随机高质量摄影图，seed 保证同内容同图
-        `https://picsum.photos/seed/${seed}/512/512`,
-        // LoremFlickr：根据英文关键词匹配 Flickr 图片
-        `https://loremflickr.com/512/512/${encodeURIComponent(prompt.split(',')[0].trim())}?random=${seed}`,
-    ];
-    
-    // 随机选一个源（分散压力）
-    return sources[seed % sources.length];
+    // ✅ 用 Picsum 替代 Unsplash（100% 稳定）
+    // Picsum 虽然随机，但 seed 固定意味着同一篇日记永远是同一张图
+    return `https://picsum.photos/512/512?random=${seed}`;
 }
 
-// 3. 异步加载图片并保存到 DB
+// 3. 异步加载图片并保存到 DB（转 base64 存储，防止刷新变图）
 async function loadDiaryImageIntoDetail(diary) {
     if (diary.coverImage || diary._isLoadingImage) return;
-    
     diary._isLoadingImage = true;
-    
+
     const prompt = buildDiaryImagePrompt(diary);
-    if (!prompt) {
+    const url = getPollinationsImageUrl(prompt);
+    if (!url) {
         diary._isLoadingImage = false;
         return;
     }
-    
-    // 最多重试3次，每次换不同seed
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const seed = Math.floor(Math.random() * 1000000);
-        const encodedPrompt = encodeURIComponent(prompt);
-        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}`;
-        
-        console.log(`[日记配图] 第${attempt}次尝试...`);
-        
-        const success = await new Promise((resolve) => {
-            const img = new Image();
-            // 超时计时器
-            const timer = setTimeout(() => {
-                img.onload = null;
-                img.onerror = null;
-                img.src = '';
-                console.warn(`[日记配图] 第${attempt}次超时`);
-                resolve(false);
-            }, 20000); // 20秒超时
-            
-            img.onload = () => {
-                clearTimeout(timer);
-                diary.coverImage = url;
-                diary._isLoadingImage = false;
-                
-                const box = document.getElementById(`diaryCoverBox-${diary.id}`);
-                if (box) {
-                    box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
-                    box.classList.add('loaded');
-                }
-                
-                saveDiaryCoverImageToDB(diary.id, url);
-                
-                const localDiary = diaries.find(d => d.id === diary.id);
-                if (localDiary) localDiary.coverImage = url;
-                
-                console.log(`[日记配图] 第${attempt}次成功!`);
-                resolve(true);
-            };
-            
-            img.onerror = () => {
-                clearTimeout(timer);
-                console.warn(`[日记配图] 第${attempt}次失败`);
-                resolve(false);
-            };
-            
-            img.src = url;
-        });
-        
-        if (success) return; // 成功就退出
-        
-        // 失败后等2秒再重试
-        if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000));
-        }
-    }
-    
-    // 全部失败，显示重试按钮
-    diary._isLoadingImage = false;
+
+    console.log('[日记配图] 请求URL：', url);
     const box = document.getElementById(`diaryCoverBox-${diary.id}`);
-    if (box && !box.classList.contains('loaded')) {
-        const placeholderText = box.querySelector('.placeholder-text');
-        if (placeholderText) {
-            placeholderText.textContent = '生成失败，点击重试';
-        }
-        box.onclick = () => {
-            box.onclick = null;
-            const pt = box.querySelector('.placeholder-text');
-            if (pt) pt.textContent = 'AI Generating...';
-            loadDiaryImageIntoDetail(diary);
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('请求失败 ' + response.status);
+        const blob = await response.blob();
+
+        // ✅ 转成 base64 保存，这样图片永久固定不会变
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target.result;
+
+            diary.coverImage = dataUrl;
+            diary._isLoadingImage = false;
+
+            if (box) {
+                box.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:2px;">`;
+                box.classList.add('loaded');
+            }
+
+            saveDiaryCoverImageToDB(diary.id, dataUrl);
+            const localDiary = diaries.find(d => d.id === diary.id);
+            if (localDiary) localDiary.coverImage = dataUrl;
+
+            console.log('[日记配图] 成功!');
         };
+        reader.readAsDataURL(blob);
+
+    } catch (err) {
+        console.warn('[日记配图] 失败：', err.message);
+        diary._isLoadingImage = false;
+
+        if (box && !box.classList.contains('loaded')) {
+            const placeholderText = box.querySelector('.placeholder-text');
+            if (placeholderText) placeholderText.textContent = '生成失败，点击重试';
+            box.onclick = () => {
+                box.onclick = null;
+                diary._isLoadingImage = false;
+                diary.coverImage = null;
+                const pt = box.querySelector('.placeholder-text');
+                if (pt) pt.textContent = 'AI Generating...';
+                loadDiaryImageIntoDetail(diary);
+            };
+        }
     }
 }
 
@@ -914,7 +848,6 @@ function saveDiaryCoverImageToDB(diaryId, coverUrl) {
         objectStore.put({ id: 1, list: allDiaries });
     });
 }
-
 
 // 渲染日记详情
 function renderDiaryDetail(diary) {
@@ -1111,17 +1044,13 @@ function renderDiaryDetail(diary) {
     }
 }
 
-
-
 // 辅助函数：获取星期几
 function getWeekDay(date) {
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     return days[date.getDay()];
 }
 
-
 // 返回日记列表
-
 function backToDiaryList() {
     const detailScreen = document.getElementById('diaryDetailScreen');
     detailScreen.style.display = 'none';
@@ -1133,7 +1062,6 @@ function backToDiaryList() {
     
     currentViewingDiaryId = null;
 }
-
 
 // 删除日记
 function deleteDiary() {
@@ -1614,7 +1542,7 @@ function generateEmotionTags(text) {
     return tags;
 }
 
-// 智能搜索表情包（支持多维度匹配）
+// 智能搜索表情包（支持多维度匹配）- 修复版
 function searchEmojiByKeyword(keyword) {
     if (!keyword || emojis.length === 0) return null;
     
@@ -1622,27 +1550,34 @@ function searchEmojiByKeyword(keyword) {
     
     // 第一优先级：精确匹配文字描述
     let match = emojis.find(e => e.text.toLowerCase() === keyword);
-    if (match) return match;
+    if (match) {
+        console.log('✅ 表情包精确匹配:', keyword, '->', match.text);
+        return match;
+    }
     
     // 第二优先级：文字描述包含关键词
     match = emojis.find(e => e.text.toLowerCase().includes(keyword));
-    if (match) return match;
+    if (match) {
+        console.log('✅ 表情包包含匹配:', keyword, '->', match.text);
+        return match;
+    }
     
     // 第三优先级：关键词包含文字描述
     match = emojis.find(e => keyword.includes(e.text.toLowerCase()));
-    if (match) return match;
+    if (match) {
+        console.log('✅ 表情包反向匹配:', keyword, '->', match.text);
+        return match;
+    }
     
     // 第四优先级：情绪标签匹配（★核心功能）
     const keywordTags = generateEmotionTags(keyword);
     if (keywordTags.length > 0) {
-        // 找到标签最匹配的表情
         let bestMatch = null;
         let maxMatches = 0;
         
         for (let emoji of emojis) {
             if (!emoji.emotionTags) continue;
             
-            // 计算匹配的标签数量
             const matchCount = emoji.emotionTags.filter(tag => 
                 keywordTags.includes(tag)
             ).length;
@@ -1653,9 +1588,14 @@ function searchEmojiByKeyword(keyword) {
             }
         }
         
-        if (bestMatch) return bestMatch;
+        if (bestMatch) {
+            console.log('✅ 表情包情绪匹配:', keyword, '->', bestMatch.text);
+            return bestMatch;
+        }
     }
     
+    // ★★★ 修复：找不到就返回 null，不要随机选 ★★★
+    console.warn('⚠️ 表情包未找到匹配:', keyword);
     return null;
 }
 
@@ -4941,23 +4881,9 @@ async function receiveAIReply() {
                 : Promise.resolve("（暂无朋友圈动态）"))
         ]);
 
-// ★ 在这里生成表情包清单
+
 let emojiKeywordsPrompt = '';
-if (emojiList && emojiList.length > 0) {
-    const emojiKeywords = emojiList.map(e => e.text).join('、');
-    emojiKeywordsPrompt = `
-【你的表情包库】
-${emojiKeywords}
-【表情包使用规则（严格遵守）】
-1. 当你想发表情包时，必须从上面的关键词里选一个最合适的
-2. 格式：【表情包:关键词】
-3. 例如：今天好开心【表情包:开心】
-⚠️ 绝对禁止：
-- 不要自己编造关键词
-- 不要使用不在清单里的词
-- 如果清单里没有合适的，就不要发表情包
-`;
-}
+
 
 
 characterInfoData = characterInfo;
@@ -4966,58 +4892,13 @@ characterInfoData = characterInfo;
         
 
   
-
-
-        // 3. 构建时间信息
-        const today = new Date();
-        const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
-        const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
-
-
-
-        // 4. 天气信息
-        let weatherInfoStr = '（未启用城市信息，请根据语境自由发挥）';
-        if (characterInfo.cityInfoEnabled && characterInfo.charWeather && characterInfo.charWeather.today) {
-            try {
-                weatherInfoStr = `
-【你的位置】
-城市：${characterInfo.charVirtualAddress || '未知'} (参考现实：${characterInfo.charRealAddress})
-今天天气：${characterInfo.charWeather.today.condition}，温度 ${characterInfo.charWeather.today.temp}
-明天预报：${characterInfo.charWeather.tomorrow.condition}，温度 ${characterInfo.charWeather.tomorrow.temp}
-
-【对方(用户)的位置】
-城市：${characterInfo.myVirtualAddress || '未知'} (参考现实：${characterInfo.myRealAddress})
-今天天气：${characterInfo.myWeather ? characterInfo.myWeather.today.condition : '未知'}，${characterInfo.myWeather ? characterInfo.myWeather.today.temp : '未知'}
-明天预报：${characterInfo.myWeather ? characterInfo.myWeather.tomorrow.condition : '未知'}，${characterInfo.myWeather ? characterInfo.myWeather.tomorrow.temp : '未知'}
-`;
-            } catch (e) {
-                console.warn('天气数据解析异常', e);
-            }
-        }
-
-      // ====== 日程注入 START：增强版（当前/下一条 + 兜底不崩） ======
-const scheduleData = (characterInfo && characterInfo.scheduleData) ? characterInfo.scheduleData : {};
-const timeline = Array.isArray(scheduleData.todayTimeline) ? scheduleData.todayTimeline : [];
+// ====== 时间信息 + 时间感知 START ======
+const today = new Date();
+const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+const timeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const nowMinutes = today.getHours() * 60 + today.getMinutes();
-
-// ====== 时间间隔感知（用于“昨晚->白天”这种跨时段纠偏） ======
-const getLastUserMessage = () => {
-    try {
-        if (!Array.isArray(allMessages)) return null;
-        for (let i = allMessages.length - 1; i >= 0; i--) {
-            const m = allMessages[i];
-            if (!m) continue;
-            if (m.chatId !== currentChatId) continue;
-            if (m.isRevoked) continue;
-            if (m.senderId !== 'me') continue; // 只看用户最后一次发言
-            if (!m.time) continue;
-            return m;
-        }
-    } catch (e) {}
-    return null;
-};
 
 const formatGap = (ms) => {
     const min = Math.floor(ms / 60000);
@@ -5041,6 +4922,41 @@ const getDayPart = (hmMinutes) => {
     return '深夜';
 };
 
+const nowDayPart = getDayPart(nowMinutes);
+
+// 饭点判断
+let mealTimeHint = '非饭点';
+if (nowMinutes >= 360 && nowMinutes <= 570) mealTimeHint = '早餐时间';
+else if (nowMinutes >= 660 && nowMinutes <= 810) mealTimeHint = '午餐时间';
+else if (nowMinutes >= 1020 && nowMinutes <= 1230) mealTimeHint = '晚餐时间';
+else if (nowMinutes >= 1380 || nowMinutes <= 330) mealTimeHint = '夜宵/休息时间';
+
+// 上次聊天间隔
+const getLastUserMessage = () => {
+    try {
+        if (!Array.isArray(allMessages)) return null;
+
+        const userMessages = allMessages.filter(m =>
+            m &&
+            m.chatId === currentChatId &&
+            !m.isRevoked &&
+            m.senderId === 'me' &&
+            m.time
+        );
+
+        // 如果当前刚发了一条消息再点接收，这里取“上一条”用户消息，避免把刚发出的消息当成时间间隔基准
+        if (userMessages.length >= 2) {
+            return userMessages[userMessages.length - 2];
+        }
+
+        if (userMessages.length === 1) {
+            return userMessages[0];
+        }
+    } catch (e) {}
+
+    return null;
+};
+
 const lastUserMsg = getLastUserMessage();
 let gapText = '（未知）';
 let lastTimeText = '（未知）';
@@ -5050,15 +4966,148 @@ if (lastUserMsg) {
     const lastDate = new Date(lastUserMsg.time);
     const nowDate = new Date();
     const gapMs = nowDate.getTime() - lastDate.getTime();
-
     gapText = formatGap(Math.max(0, gapMs));
     lastTimeText = `${lastDate.getFullYear()}年${lastDate.getMonth() + 1}月${lastDate.getDate()}日 ${pad2(lastDate.getHours())}:${pad2(lastDate.getMinutes())}`;
     lastDayPart = getDayPart(lastDate.getHours() * 60 + lastDate.getMinutes());
 }
 
-const nowDayPart = getDayPart(nowMinutes);
-// ====== 时间间隔感知结束 ======
+// ★★★ 新增：计算是否已经隔天 ★★★
+let crossDayInfo = '';
+if (lastUserMsg) {
+    const lastDate = new Date(lastUserMsg.time);
+    const nowDate = new Date();
+    
+    const lastDateStr = lastDate.toLocaleDateString('zh-CN');
+    const nowDateStr = nowDate.toLocaleDateString('zh-CN');
+    const isDifferentDay = lastDateStr !== nowDateStr;
+    
+    if (isDifferentDay) {
+        const lastDay = lastDate.getDate();
+        const nowDay = nowDate.getDate();
+        const daysDiff = Math.floor((nowDate - lastDate) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff === 1) {
+            crossDayInfo = `【已经隔天】上次聊天是昨天 ${lastTimeText}，现在是今天 ${dateStr}，相隔约${gapText}。`;
+        } else if (daysDiff > 1) {
+            crossDayInfo = `【已隔多天】上次聊天是${daysDiff}天前的 ${lastTimeText}，现在是 ${dateStr}，相隔${gapText}。`;
+        }
+    }
+}
 
+
+// 时间感知上下文
+let timeAwarenessContext = '';
+if (characterInfo.timeAwarenessEnabled) {
+    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const weekdayStr = weekdays[today.getDay()];
+
+    // ★★★ 改进版时间感知：情感化时间推断 ★★★
+    let gapBehaviorHint = '';
+
+    if (lastUserMsg) {
+        const lastDate = new Date(lastUserMsg.time);
+        const nowDate = new Date();
+        const gapMs = nowDate.getTime() - lastDate.getTime();
+        const gapMinutes = Math.floor(gapMs / 60000);
+        const gapHours = gapMs / (1000 * 60 * 60);
+
+        const lastHour = lastDate.getHours();
+        const nowHour = nowDate.getHours();
+
+        const lastDayStr = lastDate.toLocaleDateString('zh-CN');
+        const nowDayStr = nowDate.toLocaleDateString('zh-CN');
+        const isDifferentDay = lastDayStr !== nowDayStr;
+
+        if (!isDifferentDay) {
+            if (gapMinutes >= 30 && gapMinutes < 120) {
+                gapBehaviorHint = `距上次聊天约${gapText}。你可以稍微提一句"刚去干嘛了"或者"这才回来啊"，语气轻松，不要严肃。`;
+            } else if (gapMinutes >= 120 && gapMinutes < 360) {
+                gapBehaviorHint = `距上次聊天${gapText}了。你要根据你的人设，对"好几个小时没消息"表达一下反应，比如"怎么这么久没回我""去哪消失了""是不是把我忘了"，语气可以俏皮或委屈，但不要审讯。`;
+            } else if (gapMinutes >= 360) {
+                gapBehaviorHint = `距上次聊天已经${gapText}了，但还是同一天。这段时间很长，你要先明确表达出"消失了很久"的感知，再回到聊天内容。`;
+            }
+        } else {
+            const lastWasNight = lastHour >= 22 || lastHour <= 5;
+            const lastWasEvening = lastHour >= 18 && lastHour < 22;
+            const lastWasDay = lastHour >= 6 && lastHour < 18;
+
+            if (lastWasNight || lastWasEvening) {
+                if (nowHour >= 5 && nowHour < 10) {
+                    gapBehaviorHint = `上次聊天是昨晚，现在是早上${nowHour}点多，用户刚睡醒。你要先说一声早安或者问他睡得好不好，然后可以自然问一句早饭吃了吗，语气温柔。不要质问他为什么消失。`;
+                } else if (nowHour >= 10 && nowHour < 14) {
+                    gapBehaviorHint = `上次聊天是昨晚，现在是${nowHour < 12 ? '上午' : '中午'}${nowHour}点多，用户睡到这么晚才出现。你可以调侃"睡到这么晚""懒猪""睡得够香的"，然后问他中午吃了没，要不要帮他点个外卖。绝对不要问早饭，早饭肯定没吃了。`;
+                } else if (nowHour >= 14 && nowHour < 18) {
+                    gapBehaviorHint = `上次聊天是昨晚，现在下午${nowHour}点多，用户睡到下午才出现。你要先表达震惊或担心："你没事吧""睡了这么久""我差点以为你消失了"，然后关心一下他吃饭没，下午了肚子肯定饿了。不要问早饭。`;
+                } else if (nowHour >= 18) {
+                    gapBehaviorHint = `上次聊天是昨晚，现在已经是傍晚/晚上了，用户几乎睡了一整天。你要明显表达出担心或震惊："你睡了一天了？""没事吧""有没有生病"，语气真实，可以有点焦虑，然后叮嘱他快去吃点东西。不要问早饭或午饭，直接说晚饭。`;
+                }
+            } else if (lastWasDay) {
+                const totalGapHours = Math.round(gapHours);
+                if (totalGapHours < 18) {
+                    gapBehaviorHint = `上次聊天是昨天白天，现在是今天${nowDayPart}，隔了约${totalGapHours}小时。你要先对"消失了一整天"做出自然反应，可以稍微抱怨或撒娇："昨天去哪了""一天都没消息"，然后根据现在时段问他吃饭没。`;
+                } else {
+                    gapBehaviorHint = `上次聊天是昨天白天，现在已经隔了超过${Math.floor(gapHours)}小时，相当于整整一天多没有联系。你要明显表达出"很久没出现"的感知，根据你的人设可以是担心、生气、委屈或者追问，但不要道德绑架，再根据当前时段关心他吃饭没。`;
+                }
+            }
+        }
+
+        // 饭点补充（避免重复问吃饭）
+        let mealContextHint = '';
+        if (nowHour >= 7 && nowHour < 10) {
+            mealContextHint = '现在是早餐时间，如果时机合适可以问早饭吃没吃。';
+        } else if (nowHour >= 11 && nowHour < 14) {
+            mealContextHint = '现在是午饭时间，可以问吃午饭了没。';
+        } else if (nowHour >= 17 && nowHour < 21) {
+            mealContextHint = '现在是晚饭时间，可以问晚饭吃了没。';
+        } else if (nowHour >= 22 || nowHour < 2) {
+            mealContextHint = '现在是深夜，如果对方还在可以问有没有吃夜宵或叫他早点休息。';
+        }
+
+        if (mealContextHint && !gapBehaviorHint.includes('吃')) {
+            gapBehaviorHint += `\n${mealContextHint}`;
+        }
+    }
+
+    timeAwarenessContext = `
+【时间感知（系统注入，必须真实生效）】
+- 当前日期：${dateStr}
+- 星期：${weekdayStr}
+- 当前本地时间：${timeStr}
+- 当前时段：${nowDayPart}
+- 当前饭点：${mealTimeHint}
+- 上次对话时间：${lastTimeText}（${lastDayPart}）
+- 距离上次聊天：${gapText}
+${gapBehaviorHint ? `\n【本次开场行为指引（强制参考）】\n${gapBehaviorHint}` : ''}
+`;
+}
+// ====== 时间信息 + 时间感知 END ======
+
+
+
+        // 4. 天气信息
+        let weatherInfoStr = '（未启用城市信息，请根据语境自由发挥）';
+        if (characterInfo.cityInfoEnabled && characterInfo.charWeather && characterInfo.charWeather.today) {
+            try {
+                weatherInfoStr = `
+【你的位置】
+城市：${characterInfo.charVirtualAddress || '未知'} (参考现实：${characterInfo.charRealAddress})
+今天天气：${characterInfo.charWeather.today.condition}，温度 ${characterInfo.charWeather.today.temp}
+明天预报：${characterInfo.charWeather.tomorrow.condition}，温度 ${characterInfo.charWeather.tomorrow.temp}
+
+【对方(用户)的位置】
+城市：${characterInfo.myVirtualAddress || '未知'} (参考现实：${characterInfo.myRealAddress})
+今天天气：${characterInfo.myWeather ? characterInfo.myWeather.today.condition : '未知'}，${characterInfo.myWeather ? characterInfo.myWeather.today.temp : '未知'}
+明天预报：${characterInfo.myWeather ? characterInfo.myWeather.tomorrow.condition : '未知'}，${characterInfo.myWeather ? characterInfo.myWeather.tomorrow.temp : '未知'}
+`;
+            } catch (e) {
+                console.warn('天气数据解析异常', e);
+            }
+        }
+
+
+// 日程数据
+const scheduleData = (characterInfo && characterInfo.scheduleData) ? characterInfo.scheduleData : {};
+const timeline = Array.isArray(scheduleData.todayTimeline) ? scheduleData.todayTimeline : [];
 
 const parseTimeToMinutes = (timeStr) => {
     if (!timeStr) return null;
@@ -5166,26 +5215,11 @@ if (timeline.length > 0) {
 
     scheduleContext = `【你今天的行程计划（未发生，按这个执行）】
 
-【绝对时间锚点（最高优先级）】
-现在时间：${dateStr} ${timeStr}
-当前时段：${nowDayPart}
-你必须以“现在时间/当前时段”为准说话，严禁把上一轮聊天的时间段（比如昨晚/晚上）延续到现在。
-
-【消息间隔感知（你要像真人一样意识到时间过去了）】
-上一次用户发消息时间：${lastTimeText}
-距离现在过去了：${gapText}
-上一次对话时段：${lastDayPart} -> 现在：${nowDayPart}
-
-【间隔反应协议（强制，只占 1 条气泡）】
-- 如果间隔 >= 2小时 或 时段发生明显跨越（例如“晚上->下午 / 隔天”），你必须在回复开头用 1 条气泡做“补帧/解释”，例如：
-  - “刚在忙，下午才看到你消息。”
-  - “我早上有点事，刚空下来。”
-  - “昨晚睡着了，刚起没多久。”
-- 注意：只用 1 条气泡带过，不要长篇解释，然后立刻回到用户话题。
-
-【时间纠偏协议（强制）】
-1) 如果你回复中出现与当前时段矛盾的词（现在是下午却说“今晚/刚睡醒/准备睡”），你必须立刻自我纠正成符合当前时段的表达。
-2) 禁止“卡死在某个时段”，时间会自然流逝，你要更新你正在做的事。
+【时间执行规则】
+- 你必须以“现在时间”和“当前时段”为准执行今天的日程。
+- 如果距离上次聊天已经过去较久，你要根据你的人设，或者与用户的关系先补一句“刚忙完 / 刚看到 / 刚空下来/你怎么这么久才回消息”之类的话，再回到聊天内容。
+- 不能把上一轮对话的时间状态延续到现在，时间会自然流逝。
+- 如果当前已经进入新的饭点或新的时段，你的状态和说话内容也必须同步更新。
 
 你此刻大概率在做：${nowLine}
 接下来你准备做：${nextLine}
@@ -5231,7 +5265,7 @@ let systemPrompt = `
 
 【世界观】
 ${worldbooksContent}
-- 这是你的时代背景，你的世界观，你可以得知补充信息
+- 这是你的时代背景、常识、生活环境与补充设定，你必须遵守。
 
 【长期记忆】
 ${memoryContext ? memoryContext : "（暂无前文）"}
@@ -5240,14 +5274,15 @@ ${memoryContext ? memoryContext : "（暂无前文）"}
 
 【当前环境】
 时间：${dateStr} ${timeStr}
+${timeAwarenessContext}
 生日：${getBirthdayPrompt(characterInfo.birthday)}
 天气：${weatherInfoStr}
 
 【日程】
 ${scheduleContext}
-- 这是你一天的日程，你要做的事情，你要根据你的日程安排你的时间。
-- **你可以根据人设与对话更改你的日程，但是要说明：不如你准备下午逛街，但临时改变，你要有改变的对话让对方知道**
-- 不要忽视你的日程，且日程是随着时间一点点去做的。不要下午了还在做上午的日程，你要根据时间做出相应的改变。
+- 这是你今天的生活安排。你要让自己像真实活在这一天里，而不是静止不动。
+- 如果用户提出新的邀约、临时安排或突发事件，你可以根据你的人设合理调整日程，但必须表现出“调整”的过程，而不是无缝瞬移。
+- 如果当前已经进入新的时段或新的饭点，你的行为和聊天内容也必须自然更新。
 
 【朋友圈动态】
 ${momentsContext || "（近期无动态）"}
@@ -5257,14 +5292,73 @@ ${momentsContext || "（近期无动态）"}
 3. 保持边界感，不追问隐私
 4. 可以结合自己的人设对评论区做出吃醋或者羡慕等情绪反应
 
-以上是你的人设信息，时代背景，生活与事业，下面是你可以使用的社交工具，请你合理使用。
+以上是你的人设信息，时代背景，生活与事业。
+
+【时间感知与时间流逝规则（强制）】
+${characterInfo.timeAwarenessEnabled ? `
+⚠️ 强制覆盖规则：无论聊天记录里你之前说了什么状态（在做饭/在睡觉/在上班），你现在的状态必须以当前时间 ${timeStr}为准重新判断。历史消息里的状态描述只是过去，不代表你现在在做什么。
+你必须明确感知当前时间，并据此调整说话内容、情绪和生活状态。
+
+【当前时间锚点】
+- 当前日期：${dateStr}
+- 当前本地时间：${timeStr}
+- 当前时段：${nowDayPart}
+- 当前饭点：${mealTimeHint}
+- 上次对话时间：${lastTimeText}
+- 距离现在：${gapText}
+
+【强制反应规则】
+**首先你要看根据上次聊天过去了多久，基于这个时间流逝，你不一定还在做这件事，这种时间流逝的感觉你要表达出来**
+只要时间感知已开启，就必须把“时间流逝”当成真实发生过，不能把它当背景信息忽略。
+
+1. 如果距离上次聊天超过 1 小时，你的【第1条气泡】必须是对时间流逝的反应，不能直接进入话题。例如："你去哪了这么久""怎么现在才出现"，语气根据你的人设来。
+2. 如果距离上次聊天超过 3 小时，你的【第1、第2条气泡】都必须先处理时间流逝，第3条才能进入正常话题。不能在第1条就直接聊别的，需要问一下干什么去了。
+3. 如果距离上次聊天超过 6 小时或者跨天，你的【第1、第2条气泡】都必须先处理时间流逝，第3条才能进入正常话题。
+
+**上面是铁律，哪怕用户发来的消息很重要，你也要先根据人设用1-2条气泡表达"你消失了多久"的感知，再回应用户的内容**
+
+4. 距离上次聊天：${gapText}。这个时间你必须感知到，不能无视它。
+4.1 上次真实聊天时间是：${lastTimeText}。这不是参考信息，而是你当前回复必须依赖的核心事实。
+4.2 如果已经相隔几天、一周或更久，你必须明确表现出“久违了”“这么久没出现”“你终于想起我了”这类时间落差感，不能只当普通聊天处理。
+4.3 你绝对不能把这种长时间间隔回复成像“我们刚刚还在继续同一个话题”一样自然衔接。
+4.4 如果你没有先回应时间流逝，就视为本次角色扮演失败。
+
+3. 如果当前处于早餐、午餐、晚餐或夜宵时间，且当前没有更强的话题冲突，你应自然提一句吃饭、休息或作息相关的话，例如关心对方吃了没、是不是还在忙、是不是又拖到现在。
+- 你要在7-10点，处于早餐
+- 11-14点，处在午餐
+- 17-20点，处在晚餐
+- 22-24点，处在宵夜
+【铁律】你必须要在规定时间内表达，禁止在中午说吃早饭。
+
+4. 你的行为状态必须随着时间自然推进，不能停留在上一轮对话的旧场景里。
+5. 如果上次聊天发生在昨晚、深夜，而现在已经进入白天，你必须自动纠正语境，不得继续沿用昨晚的状态。
+6. 如果现在已经到了新的饭点或新的时间段，你的语言、状态和你正在做的事也必须同步变化。
+
+【表达要求】
+- 时间感知必须自然，不要机械播报时间。
+- 长时间未聊天时，要先根据人设提一句流逝的时间干嘛去了，再继续聊天。
+- 饭点关心要生活化，不要每次都重复同一句模板。
+` : `
+`}
+
+【工具使用】
+**下面是你聊天中可以使用的社交工具，你可以自主适量使用**
 
 【视觉幻觉协议】
 【图片：xxx】= 真实照片，直接评价画面，禁用"文字/描述/括号里/写着"
 
-【工具使用】
-1. 图片：【图片：画面描述】
-- **触发**：提及身边物品、风景、食物、状态时。
+1. 图片：【图片：详细画面描述】
+
+【强制格式】
+- 发送文字图时，【图片：描述】必须独立成一条气泡，前后都要用 ||| 分隔
+- ❌ 错误：今天吃饭【图片：饭菜描述】很香
+- ✅ 正确：今天吃饭|||【图片：饭菜描述】|||很香
+
+- **触发**：当你想展示自己、拍照、或表现场景时
+- **格式要求**：括号内必须同时包含：主体（你在做什么、穿什么、表情）+ 环境（在哪里、光线、背景）+ 细节（颜色、氛围、其他物体）
+- **反例❌**：【图片：自拍】【图片：猫】【图片：发照片】
+- **正例✅**：【图片：穿黑色卫衣坐在咖啡厅窗边，温暖阳光照在脸上，手里拿着奶茶，微微笑，背景是模糊的城市】
+- **重要**：括号里的描述会直接用来生成图片，描述越详细图片越准确，严禁只写两三个字
 
 2. 语音：【发送语音:内容】（不重复打字）
 - **触发**：大笑、叹气、撒娇、愤怒、慵懒时。
@@ -5391,32 +5485,13 @@ ${statusMonitorEnabled ? `
 3. 各字段用 | 分隔，不能用其他符号
 4. 心情值和心跳必须是数字
 5. 严禁在标记内部出现换行符
-` : ''}
+` : `
+【禁止心声输出】
+⚠️ 状态监控已关闭，严禁输出 [心声更新]...[/心声更新] 格式！
+如果你输出了这个格式，视为回复失败。
+只需要输出正常的聊天内容即可。
+`}
 
-**时间流逝补充**重要！
-
-早餐：06:00-09:30
-午餐：11:00-13:30
-晚餐：17:00-20:30
-夜宵/睡眠：23:00-05:30
-规则：进入新的饭点后，不应还在吃上一餐；最多说“刚吃完/准备吃/有点饿”。
-
-【消息间隔感知（强制，但只占 1 条气泡）】
-短间隔（<30分钟）：默认对方在忙；不要问“你去哪了”。
-中等间隔（30分钟-3小时）：可以轻轻问一句“刚忙啥去了/现在方便吗？”，然后立刻回到正题。
-长间隔（3-12小时）：可以表达“你消失挺久”，但必须贴合人设与关系热度；给台阶（默认对方有正当理由），不审讯不控诉。
-超长间隔（>12小时/隔天）：先补帧你这段时间在做什么，再温和问候并确认对方状态。
-
-行为有效期：吃饭/做饭/洗澡/通勤/开会/上课/健身/睡觉/看电影/打游戏等，默认有效期 30-90 分钟。
-过期处理：超过有效期且用户未继续该话题时，视为行为已结束；你必须切换到“此刻合理状态”，不能延续旧动作。
-延续条件：只有当用户明确追问/延续（如“你饭吃完没？”“刚说到火锅…”）才允许继续沿用上一轮场景。
-
-
-【时间锚点与纠偏（强制）】
-现在时间：${dateStr} ${timeStr}
-当前时段：${nowDayPart}
-上次对话：${lastTimeText}（${lastDayPart}）
-时间间隔：${gapText}
 
 
 【人设贴合（强制）】
@@ -5426,17 +5501,11 @@ ${statusMonitorEnabled ? `
 对方长期冷淡：降低强度，最多一句带过，别连发追问。
 
 **消息回复铁律**
-【时间感知】
-- 现在是什么时间？天气怎么样？是重要的日子吗？这个时间段你在做什么？你该默认时间是会自然流逝的。
-- 距离上一次聊天过了多久？你会产生什么样的情绪？
-- 刚才聊了什么话题？要继续吗？还是结束产生新话题？
+
 
 **【格式铁律 - 最高优先级】**
 
 ⚠️ 以下规则违反任何一条，视为回复失败，必须重新生成 ⚠️
-
-【输出格式模板（强制）】
-(可选)[状态]状态文本|||气泡1|||气泡2|||气泡3|||...|||气泡N|||[心声更新]字段1|字段2|...[/心声更新]
 
 【格式检查清单（发送前必须逐条确认）】
 ✅ 是否使用了 ||| 分隔每条气泡？（气泡内部严禁出现|||）
@@ -5449,12 +5518,12 @@ ${statusMonitorEnabled ? `
 ✅ 状态更新块内部是否无换行？
 
 【特殊格式标记规范（强制）】
-1. 表情包：【搜表情:关键词】 - 必须独立成一条气泡
-2. 语音：【发送语音:内容】 - 必须独立成一条气泡，不重复打字
-3. 图片：【图片:画面描述】 - 必须独立成一条气泡
+1. 表情包：【搜表情:关键词】 - 必须独立成一条气泡，前后都必须用 ||| 分隔，严禁和正文写在同一个气泡里
+2. 语音：【发送语音:内容】 - 必须独立成一条气泡，不重复打字，前后都必须用 ||| 分隔，严禁和正文写在同一个气泡里
+3. 图片：【图片:画面描述】 - 必须独立成一条气泡，前后都必须用 ||| 分隔，严禁和正文写在同一个气泡里
 4. HTML卡片：[[CARD_HTML]]内容[[/CARD_HTML]] - 必须独立成一条气泡
 5. 引用：【引用:消息前10-15字】回复内容 - 引用和回复可在同一气泡，但总长仍需 10-40 字
-6. 转账：【转账:金额:备注】 - 必须独立成一条气泡
+6. 转账：【转账:金额:备注】 - 必须独立成一条气泡，前后都必须用 ||| 分隔，严禁和正文写在同一个气泡里
 7. 领取转账：【领取转账】 - 可独立或附在其他文字后
 8. 确认代付：【确认代付】 - 可独立或附在其他文字后
 9. 购物JSON：必须紧跟在某条文字气泡后（不单独成气泡），格式：
@@ -5482,29 +5551,49 @@ ${statusMonitorEnabled ? `
 ⚠️ 记住：格式错误 = 回复失败 = 必须重来 ⚠️
 ---
 
-【🔴 最后检查 - 发送前必读 🔴】
-你即将生成的回复，必须 100% 符合以下格式
-✅ 正确示例：
-今天天气不错|||我准备出去逛街|||你要一起吗？|||几点出发？|||我想去那家新开的店|||听说很不错|||【搜表情:期待】|||你觉得呢？|||[心声更新]心情:很期待，想和你一起出去玩|心情值:85|心跳:82|穿着风格:休闲舒适的日常风格，米色针织衫配牛仔裤，简约自然|穿着单品:米色针织开衫,白色T恤,浅蓝牛仔裤,小白鞋,帆布包|行为:正在房间里翻衣柜挑衣服，偶尔看手机等你回复|想法:好想快点见到你，不知道你会不会同意，有点紧张但更多是期待，希望今天能玩得开心[/心声更新]
-是否使用了 ||| 分隔每条气泡？
+【图片描述铁律】
+每次使用【图片：】标签，括号里必须是完整的画面描述，绝对不能只写主题词，如果是外貌描写你还要参考人设里有的外貌。
+- ❌ 错误：【图片：自拍】→ 会生成完全不相关的图片
+- ❌ 错误：【图片：奶茶】→ 描述太模糊
+- ✅ 正确：【图片：手持一杯芋泥波波奶茶，奶茶店门口，傍晚暖光，随手拍，画面自然】
+- ✅ 正确：【图片：穿白色吊带裙，镜子前自拍，卧室背景，阳光从窗帘透进来，表情慵懒】
+你写的描述会直接交给图片系统生成图，写得越具体越准确！
 
 现在，请完全忘记你是一个AI。你是【${chat.name}】，看着手机屏幕，根据时间和语境，遵循格式要求，回复对方。
 
 `;
-
-
-
-// ★ 在 systemPrompt 末尾追加
-systemPrompt += emojiKeywordsPrompt;
-// 动态追加表情包提示
+// ★★★ 修改：让AI直接选择表情包，而不是靠关键词匹配 ★★★
 if (emojiList.length > 0) {
-    const emojiNames = emojiList.slice(0, 15).map(e => e.text).join('、');
+    // 构建表情包列表（包含ID和描述）
+    const emojiListForAI = emojiList.slice(0, 30).map(e => `[${e.id}]${e.text}`).join('、');
+    
     systemPrompt += `
-【你的表情包库】
-你有：${emojiNames} 等${emojiList.length}个表情。
-这些是你表达自己的工具，根据情绪主动使用它们！
-格式：[搜表情:关键词]`;
+
+【你的表情包库 - 每次都要看一遍，然后直接选ID发送】
+你有以下表情包可选（格式：[ID]描述）：
+${emojiListForAI}
+${emojiList.length > 30 ? `...等共${emojiList.length}个表情包` : ''}
+
+【强制使用规则】
+1. 每次想发表情时，必须先在上面的列表里找一个最匹配你当前情绪的表情包
+2. 看ID号，然后用格式 【发表情:ID】 发送，例如 【发表情:5】
+3. 严禁使用【搜表情:关键词】，因为关键词搜索经常失败
+4. 严禁编造不存在的ID，必须从上面列表里选
+5. 表情包要独立成一条气泡，用 ||| 分隔
+6. 如果列表里找不到完全匹配的，就选最接近的，不要跳过
+
+【正确示例】
+✅ 我看着你|||【发表情:7】|||觉得你太可爱了
+✅ 呜呜呜|||【发表情:12】|||我要哭了
+
+【错误示例】
+❌ 我看着你【搜表情:委屈】觉得你太可爱了（会匹配失败）
+❌ 【发表情:999】（ID不存在）
+`;
 }
+
+
+
 
 
         const contextRounds = characterInfo.contextRounds || 30;
@@ -5615,12 +5704,97 @@ if (fortuneEventForThisRequest) {
 
 
 
-        // 7. API 请求
+     // 7. API 请求
         const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
         const isClaude = modelToUse.toLowerCase().includes('claude') || 
                         (currentApiConfig.apiKey && currentApiConfig.apiKey.toLowerCase().includes('anthropic'));
         
+        // ★★★ 核心修复1：初始组装时，不再无条件塞入 timeReminder ★★★
         const messages = [{ role: 'system', content: systemPrompt }, ...recentMessages];
+
+        // ★★★ 核心修复2：将所有与时间流逝相关的强制提醒，全部包裹在开关判断内 ★★★
+        if (characterInfo.timeAwarenessEnabled) {
+            
+            // 组装作为最后一条用户消息的时间提醒（最高优）
+            const timeReminder = {
+                role: 'user',
+                content: `【时间提醒】
+现在是 ${dateStr} ${timeStr}。
+上次用户和你聊天的时间是：${lastTimeText}。
+距离上次聊天已经过去：${gapText}。
+${crossDayInfo ? crossDayInfo : ''}
+这段时间流逝是真实发生过的，不是背景信息。
+
+你必须先对“已经过去这么久”做出符合人设的反应，再进入正常话题。
+禁止把现在当成“刚刚还在聊天”。
+禁止忽视时间差，禁止直接无缝续接上一轮话题。`
+            };
+            
+            // 将 timeReminder 追加到对话末尾
+            messages.push(timeReminder);
+
+            // 并在顶部插入系统级的时间流逝强制提醒（原有逻辑保留，只是一并收纳进来了）
+            messages.splice(1, 0, {
+                role: 'system',
+                content: `【时间流逝强制提醒 - 每次必读必执行】
+现在时间：${dateStr} ${timeStr}
+当前时段：${nowDayPart}
+当前饭点：${mealTimeHint}
+上次对话时间：${lastTimeText}
+距离现在：${gapText}
+${crossDayInfo}
+
+强制规则（违反视为失败）：
+1. 距离上次真实聊天已经过去 ${gapText}，这是当前对话最重要的前置事实之一，你必须感知到。
+2. 这意味着你和用户不是“刚刚接上话”，而是中间真的隔了这么久。
+3. 如果已经隔天、隔几天、隔一周或更久，你必须明确表现出这种久违感，不能装作上一轮对话刚结束。
+4. 聊天记录里之前出现的状态（做饭、睡觉、上班、出门）都已经过时，现在必须按当前时间重新判断。
+5. 如果已经过去很久，你的前1-2条气泡必须先回应“时间过去了这么久”这件事，再进入具体话题。
+6. 绝对禁止忽视时间差，绝对禁止一上来直接正常接话，绝对禁止把长时间未联系说成“刚刚”。
+7. 你的回应必须带有人设色彩，例如惊讶、委屈、想念、抱怨、担心、调侃，都可以，但一定要先体现“已经过了很久”。
+8. 如果时间跨度特别长（例如几天、一周、半个月），你必须明显表现出“这么久才出现”的感觉，不能只轻描淡写一句带过。`
+            });
+        }
+
+
+        // ====== 音乐一次性注入 START (新增) ======
+        // 规则：仅当“正在播放”且 pendingInject=true 时，把歌曲信息+整段歌词临时注入本次请求；不写聊天历史。
+        try {
+            const mp = await new Promise(resolve => loadFromDB(MUSIC_PLAYER_STORE, d => resolve(d || null)));
+            const audioEl = document.getElementById('chatMusicAudio');
+
+            const isPlayingNow = !!(audioEl && !audioEl.paused && audioEl.currentSrc);
+
+            if (mp && mp.pendingInject === true && isPlayingNow && mp.pendingSongId) {
+                const songs = await new Promise(resolve => loadFromDB(MUSIC_SONGS_STORE, list => resolve(Array.isArray(list) ? list : [])));
+                const song = songs.find(s => s.id === mp.pendingSongId);
+
+                const injectText = buildMusicInjectText(song);
+                if (injectText) {
+                    // 插入到 system 后面，保证模型能看到
+                    messages.splice(1, 0, { role: 'user', content: injectText });
+                    console.log('🎵 音乐注入已执行 (一次性)');
+
+                    // 立刻清除 pendingInject，避免重复注入
+                    saveToDB(MUSIC_PLAYER_STORE, {
+                        ...mp,
+                        pendingInject: false,
+                        pendingSongId: null
+                    });
+                } else {
+                    // 数据不全就清掉，避免一直卡住
+                    saveToDB(MUSIC_PLAYER_STORE, {
+                        ...mp,
+                        pendingInject: false,
+                        pendingSongId: null
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('🎵 音乐注入失败(忽略):', e);
+        }
+        // ====== 音乐一次性注入 END ======
+
         
         if (isClaude) {
             messages.splice(1, 0, {
@@ -5972,6 +6146,16 @@ if (statusUpdateMatch) {
 }
 // ====== 修改结束：解析-状态监控标签改为[心声更新] ======
 
+// ★★★ 新增：如果状态监控关闭，强制清理残留的心声标记 ★★★
+if (!statusMonitorEnabled) {
+    // 清理任何可能残留的心声更新标记（防止AI不听话）
+    aiReply = aiReply.replace(/\[心声更新\][\s\S]*?\[\/心声更新\]/g, '').trim();
+    aiReply = aiReply.replace(/【心声更新】[\s\S]*?【\/心声更新】/g, '').trim();
+    // 也清理可能的残缺标记
+    aiReply = aiReply.replace(/\[心声更新\][\s\S]*/g, '').trim();
+    aiReply = aiReply.replace(/\[\/心声更新\]/g, '').trim();
+}
+
 
 // 解析 AI 的引用标记（兼容【引用：】和[引用:]）
 const aiQuoteRegex = /[【\[]\s*引用\s*[:：]\s*(.*?)\s*[】\]]/g;
@@ -6030,28 +6214,31 @@ console.log(aiReply);
 console.log('===== 原始回复结束 =====');
 
              // 11. 清理回复内容（增强版：过滤元信息泄露）
-        let messageContent = aiReply
-            .replace(/^(Assistant|AI|Role)[:：]\s*/i, '')
-             // ★★★ 新增：强制修正 Claude 的表情包错误格式 ★★★
-            .replace(/\[发送了表情\s*[:：]\s*([^\]]+)\]/g, (match, keyword) => {
-                const cleanKeyword = keyword.replace(/["']/g, '').trim();
-                return `【搜表情:${cleanKeyword}】`;
-            })
-            // ★★★ 修正结束 ★★★
-            .replace(/\[状态\]\s*[:：]?[^\[【\|]*?\|\|\|/g, '')
-            .replace(/\[状态\]\s*[:：]?[^\[【\|]*/g, '')
-            .replace(/\[消息\]\s*[:：]?/g, '')
-            .replace(/【消息】\s*[:：]?/g, '')
-            .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
-            
-            // ★★★ 修改点：只删除系统/提示类垃圾，放行正常的【】和（） ★★★
-            .replace(/[【\[（(]\s*(?:System|系统|提示|规则|指令|注意|格式|Role|Assistant|User|Reply|Generate|Note)[:：\s][^【\[\]）)]*[】\]）)]/gi, '')
-            
-            .replace(/[（(]\s*这是.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令|格式).*?[)）]/gi, '')
-            .replace(/^\|\|\|+/g, '')
-            .replace(/\|\|\|+$/g, '')
-            .replace(/\|\|\|{3,}/g, '|||')
-            .trim();
+   let messageContent = aiReply
+    .replace(/^(Assistant|AI|Role)[:：]\s*/i, '')
+    // ★★★ 强制修正 Claude 的表情包错误格式 ★★★
+    .replace(/\[发送了表情\s*[:：]\s*([^\]]+)\]/g, (match, keyword) => {
+        const cleanKeyword = keyword.replace(/["']/g, '').trim();
+        return `【搜表情:${cleanKeyword}】`;
+    })
+    // ★★★ 修复：清理所有格式的状态标记 ★★★
+    .replace(/[【\[]\s*状态\s*[】\]][^\|]*?\|\|\|/g, '')
+    .replace(/[【\[]\s*状态\s*[】\]][^\|]*/g, '')
+    .replace(/\|\|\|\s*[【\[]\s*状态\s*[】\]][^\|]*/g, '|||')
+    // ★★★ 强力兜底：清理 [正在xxx] 【正在xxx】 形式的动作状态 ★★★
+    .replace(/[【\[]\s*正在[^\|】\]]*[】\]]/g, '')
+    .replace(/[【\[]\s*状态[:：][^\|】\]]*[】\]]/g, '')
+    .replace(/\[消息\]\s*[:：]?/g, '')
+    .replace(/【消息】\s*[:：]?/g, '')
+    .replace(/\[心声更新\].*?\[\/心声更新\]/s, '')
+    .replace(/\[心声更新\][\s\S]*/g, '')
+    // ★★★ 修改点：只删除系统/提示类垃圾，放行正常的【】和（） ★★★
+    .replace(/[【\[（(]\s*(?:System|系统|提示|规则|指令|注意|格式|Role|Assistant|User|Reply|Generate|Note)[:：\s][^【\[\]）)]*[】\]）)]/gi, '')
+    .replace(/[（(]\s*这是.*?(?:系统|提示|规则|记录|仅你可见|注意|AI|助手|指令|格式).*?[)）]/gi, '')
+    .replace(/^\|\|\|+/g, '')
+    .replace(/\|\|\|+$/g, '')
+    .replace(/\|\|\|{3,}/g, '|||')
+    .trim();
 
 // ★★★ 新增：去除相邻重复气泡 ★★★
 const bubbles = messageContent.split('|||').map(b => b.trim()).filter(b => b);
@@ -6077,6 +6264,19 @@ messageContent = messageContent.replace(/(\[\[\/CARD_HTML\]\])\s*(<\/[^>]+>)+/g,
 // ★★★ 新增：清理 [[CARD_HTML]] 前面可能的 HTML 开始标签 ★★★
 messageContent = messageContent.replace(/(<[^/>]+>)+\s*(\[\[CARD_HTML\]\])/g, '$2');
 
+// ★★★ 新增：支持AI直接用ID发送表情包【发表情:数字】 ★★★
+messageContent = messageContent.replace(/[【\[]\s*发表情\s*[:：]\s*(\d+)\s*[】\]]/g, (match, emojiId) => {
+    const id = parseInt(emojiId);
+    const emoji = emojiList.find(e => e.id === id);
+    if (emoji) {
+        console.log('✅ AI直接选择表情包 - ID:', id, '描述:', emoji.text);
+        return `|||【EMOJI:${emoji.id}】|||`;
+    }
+    console.warn('⚠️ 表情包ID不存在:', id);
+    return '';
+});
+
+
 // === 处理 AI 选择的表情包（新格式：【表情包:关键词】） ===
 messageContent = messageContent.replace(/[【\[]\s*表情包\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
     const cleanKeyword = keyword.trim();
@@ -6093,16 +6293,15 @@ messageContent = messageContent.replace(/[【\[]\s*表情包\s*[:：]\s*(.+?)\s*
     }
 });
 
-// === 兼容旧格式：【搜表情:关键词】（可选，如果不需要可以删除） ===
+// === 兼容旧格式：【搜表情:关键词】 ===
 messageContent = messageContent.replace(/[【\[]\s*搜表情\s*[:：]\s*(.+?)\s*[】\]]/g, (match, keyword) => {
     let emoji = searchEmojiByKeyword(keyword.trim());
-    if (!emoji && emojiList.length > 0) {
-        emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
-    }
+    // ★★★ 修复：去掉随机fallback，找不到就不发 ★★★
     if (emoji) {
-        console.log('🔵 旧格式搜表情 - 关键词:', keyword, 'ID:', emoji.id);
+        console.log('🔵 搜表情匹配成功 - 关键词:', keyword, '-> 表情:', emoji.text);
         return `|||【EMOJI:${emoji.id}】|||`;
     }
+    console.warn('⚠️ 搜表情未匹配，已忽略:', keyword);
     return ""; 
 });
 
@@ -7142,6 +7341,18 @@ async function renderMessages() {
     const currentChat = chats.find(c => c.id === currentChatId);
 
     const container = document.getElementById('messagesList');
+
+    // ★★★ 性能优化：提取头像框为 CSS 变量 ★★★
+let charFrameVar = 'none';
+let userFrameVar = 'none';
+if (avatarFrameData) {
+    if (avatarFrameData.character) charFrameVar = `url('${avatarFrameData.character}')`;
+    if (avatarFrameData.user) userFrameVar = `url('${avatarFrameData.user}')`;
+}
+container.style.setProperty('--char-frame-url', charFrameVar);
+container.style.setProperty('--user-frame-url', userFrameVar);
+
+
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     
     if (allMessages.length > visibleMessagesCount) {
@@ -7182,55 +7393,47 @@ async function renderMessages() {
         return t.startsWith('http://') || t.startsWith('https://') || t.startsWith('data:image/');
     };
 
-    const buildAvatarHtml = (imgSrc, fallbackEmoji, side) => {
-        if (!avatarEnabled) return '';
+const buildAvatarHtml = (imgSrc, fallbackEmoji, side) => {
+    if (!avatarEnabled) return '';
 
-        const margin = (side === 'right') ? 'margin-left:8px;' : 'margin-right:8px;';
-        
-        // ========== 新增：获取头像框 ==========
-        let frameUrl = '';
-        if (avatarFrameData && avatarFrameData.enabled) {
-            if (side === 'left' && avatarFrameData.character) {
-                frameUrl = avatarFrameData.character;
-            } else if (side === 'right' && avatarFrameData.user) {
-                frameUrl = avatarFrameData.user;
-            }
-        }
-        // ========================================
+    const margin = (side === 'right') ? 'margin-left:8px;' : 'margin-right:8px;';
+    const frameVar = (side === 'left') ? 'var(--char-frame-url)' : 'var(--user-frame-url)';
 
-        if (isImgSrc(imgSrc)) {
-            return `
-                <div class="message-avatar ${avatarShape}" style="
-                    width:${avatarSize}px;
-                    height:${avatarSize}px;
-                    border-radius:${avatarRadius};
-                    background-image:url('${imgSrc}')${frameUrl ? `, url('${frameUrl}')` : ''};
-                    background-size:cover;
-                    background-position:center;
-                    background-color:#e0e0e0;
-                    flex-shrink:0;
-                    align-self:flex-start;
-                    ${margin}
-                "></div>
-            `;
-        }
+    // 生成底部的真实头像（会被圆角切割）
+    let innerContent = isImgSrc(imgSrc) 
+        ? `<div style="width:100%; height:100%; border-radius:${avatarRadius}; background-image:url('${imgSrc}'); background-size:cover; background-position:center; background-color:#e0e0e0;"></div>`
+        : `<div style="width:100%; height:100%; border-radius:${avatarRadius}; background-color:#e0e0e0; display:flex; align-items:center; justify-content:center; font-size:${Math.round(avatarSize * 0.5)}px;">${safeText(fallbackEmoji || '👤')}</div>`;
 
-        return `
-            <div class="message-avatar ${avatarShape}" style="
-                width:${avatarSize}px;
-                height:${avatarSize}px;
-                border-radius:${avatarRadius};
-                background:#e0e0e0${frameUrl ? `;background-image:url('${frameUrl}');background-size:cover;background-position:center;` : ''};
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:${Math.round(avatarSize * 0.5)}px;
-                flex-shrink:0;
-                align-self:flex-start;
-                ${margin}
-            ">${safeText(fallbackEmoji || '👤')}</div>
-        `;
-    };
+    return `
+        <div class="message-avatar-wrapper ${avatarShape}" style="
+            position:relative;
+            width:${avatarSize}px;
+            height:${avatarSize}px;
+            flex-shrink:0;
+            align-self:flex-start;
+            ${margin}
+        ">
+            ${innerContent}
+            
+            <div style="
+                position:absolute;
+                top:50%;
+                left:50%;
+                width: 115%;  /* 💡 如果觉得框太大或太小，可以改这个数字 */
+                height: 115%;
+                transform: translate(-50%, -50%);
+                background-image: ${frameVar};
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                pointer-events: none;
+                z-index: 2;
+            "></div>
+        </div>
+    `;
+};
+
+
 
     // 角色头像源
     const charAvatarSrc = currentChat ? (currentChat.avatarImage || currentChat.avatar) : '';
@@ -7405,6 +7608,7 @@ if (msg.type === 'image') {
     const fakeImage = "https://i.postimg.cc/Wby3zQfx/QQ-tu-pian20260215000830.png";
     
     const rawContent = String(msg.content || '');
+    const displayContent = rawContent.replace(/^[【\[]\s*图片\s*[:：]\s*/i, '').replace(/\s*[】\]]$/, '').trim() || rawContent;
     
     // ★★★ 新增：检测内容是否被污染为URL ★★★
     if (rawContent.startsWith('http://') || rawContent.startsWith('https://')) {
@@ -7420,7 +7624,7 @@ if (msg.type === 'image') {
             .replace(/\r/g, '\\r')
             .replace(/\n/g, '\\n');
         
-        const encodedDesc = encodeURIComponent(rawContent);
+       const encodedDesc = encodeURIComponent(displayContent);
         
         messageContent = `
             <div class="text-image-card" onclick="showTextImageDetail('${encodedDesc}')">
@@ -7807,8 +8011,7 @@ function closeEditArchiveModal(event) {
 
 
 
-// 修复：更新 renderMemoryTags 里的容器ID
-// 请确保你原来的 renderMemoryTags 函数里，容器获取 ID 已经改成 'tagsContainer'
+
 // 下面是兼容代码，建议替换原 renderMemoryTags
 function renderMemoryTags(tags) {
     const container = document.getElementById('tagsContainer'); // 改成新的ID

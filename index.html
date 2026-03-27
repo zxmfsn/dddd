@@ -8,6 +8,10 @@
 
     <title>帽子小猫cat</title>
     <link rel="stylesheet" href="style.css">
+
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="https://free-img.400040.xyz/4/2026/01/31/697d3083596df.png">
   
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,8 +55,7 @@
 
 <meta name="robots" content="noindex, nofollow">
 
-<script src="https://unpkg.com/vconsole/dist/vconsole.min.js"></script>
-<script>new VConsole();</script>
+
 
 
 </head>
@@ -125,33 +128,42 @@
         <div class="app-name">其他设置</div>
     </div>
 
-    <div class="app-icon-wrapper">
-        <div class="app-icon" onclick="openApp('placeholder2')">
+      <div class="app-icon-wrapper">
+        <div class="app-icon" onclick="openApp('spacepost')">
             <div class="app-emoji ins-icon-box" id="icon-placeholder2">
                 <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
             </div>
         </div>
-        <div class="app-name">贴叭</div>
+        <div class="app-name">时空邮局</div>
     </div>
 
     <div class="app-icon-wrapper">
-        <div class="app-icon" onclick="openApp('placeholder3')">
+      <div class="app-icon" onclick="openApp('phoneCheck')">
             <div class="app-emoji ins-icon-box" id="icon-placeholder3">
                 <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             </div>
         </div>
-        <div class="app-name">x</div>
+        <div class="app-name">char手机</div>
     </div>
 
-    <div class="app-icon-wrapper">
-        <div class="app-icon" onclick="openApp('placeholder4')">
-            <div class="app-emoji ins-icon-box" id="icon-placeholder4">
-                <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 12h4m-2-2v4"></path><line x1="15" y1="11" x2="15.01" y2="11"></line><line x1="18" y1="13" x2="18.01" y2="13"></line></svg>
-            </div>
+
+<!-- ========== 【盲盒机】应用入口 START ========== -->
+<div class="app-icon-wrapper">
+    <div class="app-icon" onclick="openApp('blindBox')">
+        <!-- 【用途】：盲盒机SVG线条风格图标 -->
+        <div class="app-emoji ins-icon-box" id="icon-blindBox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6-6 6 6v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="12" y1="9" x2="12" y2="15"></line></svg>
         </div>
-        <div class="app-name">监控</div>
     </div>
+    <!-- 【用途】：应用名称 -->
+    <div class="app-name">盲盒机</div>
 </div>
+<!-- ========== 【盲盒机】应用入口 END ========== -->
+
+</div>
+
+
+
 <div class="widgets-row">
            <div class="widget-box music-widget" onclick="openWidgetSettings('music')">
     <div class="music-ring">
@@ -252,16 +264,20 @@
                 </div>
                 <div class="ins-icon-item" onclick="openIconEditor('placeholder2')">
                     <div class="ins-icon-preview-box" id="preview-placeholder2">🎵</div>
-                    <div style="font-size: 11px; color: #999;">贴叭</div>
+                 <div style="font-size: 11px; color: #999;">时空邮局</div>
                 </div>
                 <div class="ins-icon-item" onclick="openIconEditor('placeholder3')">
                     <div class="ins-icon-preview-box" id="preview-placeholder3">📷</div>
-                    <div style="font-size: 11px; color: #999;">x</div>
+                    <div style="font-size: 11px; color: #999;">char手机</div>
                 </div>
-                <div class="ins-icon-item" onclick="openIconEditor('placeholder4')">
-                    <div class="ins-icon-preview-box" id="preview-placeholder4">🎮</div>
-                    <div style="font-size: 11px; color: #999;">监控</div>
-                </div>
+              <!-- ========== 【盲盒机】图标编辑预览 START ========== -->
+<div class="ins-icon-item" onclick="openIconEditor('blindBox')">
+    <!-- 【用途】：图标预览显示 -->
+    <div class="ins-icon-preview-box" id="preview-blindBox">📦</div>
+    <!-- 【用途】：图标名称显示 -->
+    <div style="font-size: 11px; color: #999;">盲盒机</div>
+</div>
+<!-- ========== 【盲盒机】图标编辑预览 END ========== -->
             </div>
         </div>
         
@@ -319,10 +335,7 @@
                 <span>核心配置</span>
             </div>
             
-            <div class="ins-input-group">
-                <label class="ins-label">方案名称</label>
-                <input type="text" id="apiName" class="ins-input" placeholder="给方案起个名字...">
-            </div>
+      
             
             <div class="ins-input-group">
                 <label class="ins-label">API 接口地址 (Base URL)</label>
@@ -748,10 +761,27 @@
 
 
         <!-- 2. 我的预设库 -->
-        <div class="api-section-title" style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🔖 我的预设库</span>
-            <span style="font-size: 10px; color: #999;">预设可滑动</span>
-        </div>
+<div class="api-section-title" style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+    <span>🔖 我的预设库</span>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <span style="font-size: 10px; color: #999;">预设可滑动</span>
+        <!-- 导出按钮 (向上箭头) -->
+        <button onclick="exportBubblePresets()" style="width: 24px; height: 24px; border: 2px solid #20c997; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 8px;" title="导出预设">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+        </button>
+        <!-- 导入按钮 (向下箭头) -->
+        <label style="width: 24px; height: 24px; border: 2px solid #f76707; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 8px;" title="导入预设">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f76707" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+            <input type="file" accept=".json" style="display: none;" onchange="importBubblePresets(this)">
+        </label>
+    </div>
+</div>
         
         <div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 2px 15px 2px; scrollbar-width: none; flex-shrink: 0;" id="bubblePresetList">
             <!-- 动态生成 -->
@@ -1592,10 +1622,23 @@
 
     <div id="chatHeaderAvatar" class="header-avatar"></div>
     
-    <div style="flex: 1; display: flex; flex-direction: column;">
-       <div class="chat-detail-title" id="chatDetailTitle" onclick="openDeleteLastMsgModal()" style="cursor:pointer;">张三</div>
-        <div class="character-status" id="characterStatus" style="display: none;"></div>
+  <div style="flex: 1; display: flex; flex-direction: column;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <div class="chat-detail-title" id="chatDetailTitle" onclick="openDeleteLastMsgModal()" style="cursor:pointer;">张三</div>
+      <div id="chatDetailBadgeWear" style="display:none; flex-shrink:0;"></div>
     </div>
+    <div class="character-status" id="characterStatus" style="display: none;"></div>
+</div>
+
+<!-- 音乐按钮 -->
+<button class="back-btn" id="musicBtn" onclick="openMusicModal()" style="margin-right: 2px;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18V5l12-2v13"></path>
+        <circle cx="6" cy="18" r="3"></circle>
+        <circle cx="18" cy="16" r="3"></circle>
+    </svg>
+</button>
+
     <!-- ★★★ 在这里插入搜索按钮 (更多按钮的上面) ★★★ -->
 <button class="back-btn" onclick="openScheduleScreen()" style="margin-right: 2px;">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1615,7 +1658,7 @@
 
 
 <!-- 状态监控悬浮条 (可拖动版) -->
-<!-- 注意：这里删掉了 onclick 属性，将在 JS 中处理点击 -->
+
 <div class="status-heartbeat-bar" id="statusHeartbeatBar" style="display: none;">
     <div class="heartbeat-center">
         <span class="heartbeat-icon">♥</span>
@@ -1638,6 +1681,8 @@
     </div>
     <div class="quote-content" id="quoteContent">消息内容...</div>
 </div>
+
+
 
 <!-- 多选模式操作栏 -->
 <div class="multi-select-bar" id="multiSelectBar" style="display: none;">
@@ -1733,9 +1778,141 @@
     </svg>
 </button>
 
+<button class="emoji-btn" onclick="openOfflineMode()" title="线下约会">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+        <line x1="6" y1="1" x2="6" y2="4"></line>
+        <line x1="10" y1="1" x2="10" y2="4"></line>
+        <line x1="14" y1="1" x2="14" y2="4"></line>
+    </svg>
+</button>
+
 
 </div>
 
+<div class="modal-overlay" id="offlineModeModal" style="display: none; z-index: 99999; background: #FAFAFA;">
+    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(255, 255, 255, 0.9); border-bottom: 1px solid rgba(0,0,0,0.05);">
+            <button onclick="closeOfflineMode()" style="border: none; background: none; cursor: pointer; display: flex; align-items: center;">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #333; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            
+            <div id="offlineCharacterName" style="font-size: 16px; font-weight: 500; color: #333; letter-spacing: 1px;">角色名</div>
+            
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <button style="border: none; background: none; color: #555; font-size: 14px; cursor: pointer;" onclick="closeOfflineMode('save')">结束约会</button>
+                <button style="border: none; background: none; font-size: 18px; cursor: pointer;"onclick="toggleOfflineSettings()">⚙️</button>
+            </div>
+        </div>
+
+        <div id="offlineChatArea" style="flex: 1; overflow-y: auto; padding: 20px;"></div>
+
+        <div style="padding: 10px 15px 30px 15px; background: transparent;">
+            <div style="display: flex; align-items: center; background: #fff; border-radius: 30px; padding: 6px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03);">
+                <textarea id="offlineInput" placeholder="写下动作或想说的话..." style="flex: 1; border: none; outline: none; resize: none; background: transparent; padding: 10px 0; font-size: 15px; max-height: 80px; color: #333;" rows="1"></textarea>
+                
+                <div style="display: flex; gap: 12px; margin-left: 10px; align-items: center;">
+                    <button onclick="alert('准备接收线下消息')" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="alert('准备发送线下消息')" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<div id="offlineSettingsOverlay" class="offline-settings-overlay" onclick="toggleOfflineSettings()"></div>
+        
+        <div id="offlineSettingsDrawer" class="offline-settings-drawer">
+            <div class="drawer-header">
+                <span style="font-size: 16px; font-weight: 500; color: #333;">约会设置</span>
+                <button onclick="toggleOfflineSettings()" style="background: none; border: none; font-size: 22px; color: #999; cursor: pointer;">×</button>
+            </div>
+
+            <div class="drawer-content">
+                
+                <div class="setting-group">
+                    <div class="setting-title">线上记忆回溯</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <input type="range" min="0" max="500" value="50" style="flex: 1; accent-color: #333;" oninput="document.getElementById('memoryLengthVal').value = this.value">
+                        <input type="number" id="memoryLengthVal" value="50" style="width: 50px; border: 1px solid #eee; border-radius: 6px; padding: 4px; text-align: center; outline: none;">
+                    </div>
+                    <div class="setting-tips">💡 提示：每一个气泡算作一条消息</div>
+                    
+           <div class="setting-group">
+    <div class="setting-title" style="margin-top: 15px;">世界书关联</div>
+    
+    <div id="wbCategoryTab" style="display: flex; gap: 12px; overflow-x: auto; padding: 5px 0; border-bottom: 1px solid #f5f5f5; margin-bottom: 10px; scrollbar-width: none;">
+        <span style="color: #999; font-size: 12px;">正在读取分类...</span>
+    </div>
+
+    <div id="wbListDisplay" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 50px;">
+        </div>
+</div>
+
+            <div class="setting-group">
+    <div class="setting-title">文风参考设定</div>
+    <textarea id="offlineStyleInput" class="setting-textarea" rows="3"></textarea>
+    
+    <div class="setting-title" style="margin-top: 15px;">约会总结要求</div>
+    <textarea id="offlineSummaryInput" class="setting-textarea" rows="4"></textarea>
+</div>
+
+<div class="setting-group">
+    <div class="setting-title">环境氛围 (BGM)</div>
+    
+    <div id="bgmButtonsContainer" style="display: flex; gap: 12px; margin-top: 5px; flex-wrap: wrap;">
+        <span style="color: #999; font-size: 12px;">正在加载氛围音...</span>
+    </div>
+
+    <audio id="offlineBgmAudio" loop></audio>
+</div>
+
+<div id="addCustomBgmModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100005; align-items: center; justify-content: center;">
+    <div style="background: #fff; width: 80%; max-width: 320px; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 16px;">
+        <div style="font-size: 16px; font-weight: 600; color: #333; text-align: center;">添加专属氛围</div>
+        
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="customBgmIcon" placeholder="图标(如🎵)" maxlength="2" style="width: 60px; text-align: center; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
+            <input type="text" id="customBgmName" placeholder="名称(如 卧室)" maxlength="10" style="flex: 1; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
+        </div>
+        
+        <label style="display: flex; align-items: center; justify-content: center; padding: 12px; border: 1px dashed #ccc; border-radius: 8px; cursor: pointer; color: #666; font-size: 13px;">
+            <input type="file" id="customBgmFile" accept="audio/*" style="display: none;" onchange="document.getElementById('fileNameDisplay').innerText = this.files[0]?.name || '点击选择音频文件'">
+            <span id="fileNameDisplay">点击选择音频文件</span>
+        </label>
+        
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <button onclick="closeAddBgmModal()" style="flex: 1; padding: 10px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">取消</button>
+            <button onclick="saveCustomBgm()" style="flex: 1; padding: 10px; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">保存</button>
+        </div>
+    </div>
+</div>
+
+                <div class="setting-group">
+                    <div class="setting-title">全局 CSS 自定义</div>
+                 <textarea class="setting-textarea" style="font-family: monospace; font-size: 12px; background: #ffffff; color: #333; border: 1px solid #eee;" rows="5">
+/* 修改约会页面背景色 */
+.offline-mode-container {
+    background-color: #FAFAFA; 
+}
+/* 对方对话气泡 */
+.bubble-npc {
+    background: rgba(255,255,255,0.9);
+}</textarea>
+
+    
+</div></div> </div> </div></div>
 
 
 <!-- 表情包面板 -->
@@ -1784,6 +1961,8 @@
         </button>
     </div>
 </div>
+
+
 <!-- ============ 日程计划页面 (更新后) ============ -->
 <div id="scheduleScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 2000; flex-direction: column;">
     
@@ -1846,6 +2025,134 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
 </div>
+
+<!-- ====== 音乐功能 HTML START ====== -->
+
+<!-- 隐藏音频元素 -->
+<audio id="chatMusicAudio" playsinline style="display:none;"></audio>
+
+<!-- 音乐主弹窗 -->
+<div id="musicModal" onclick="closeMusicModal(event)" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div class="modal music-modal-card" onclick="event.stopPropagation()">
+
+        <!-- 当前歌曲信息 -->
+        <div class="music-modal-header">
+            <div class="music-modal-title" id="musicCurrentTitle">暂无歌曲</div>
+            <div class="music-modal-artist" id="musicCurrentArtist">--</div>
+        </div>
+
+        <!-- 歌词展开/收起 -->
+        <div class="music-lyrics-wrap" id="musicLyricsWrap">
+            <div class="music-lyrics-text" id="musicLyricsText">暂无歌词</div>
+        </div>
+        <button class="music-lyrics-toggle" id="musicLyricsToggle" onclick="toggleMusicLyrics()">展开歌词</button>
+
+        <!-- 控制区 -->
+        <div class="music-controls">
+            <button class="music-ctrl-btn" onclick="musicPrev()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+            </button>
+            <button class="music-ctrl-btn music-play-btn" id="musicPlayBtn" onclick="toggleMusicPlay()">
+                <svg id="musicPlayIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <svg id="musicPauseIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            </button>
+            <button class="music-ctrl-btn" onclick="musicNext()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </button>
+        </div>
+
+        <!-- 模式切换 + 歌曲列表按钮 -->
+        <div class="music-options-row">
+            <button class="music-option-btn" id="musicModeBtn" onclick="switchMusicMode()">顺序</button>
+            <button class="music-option-btn" onclick="openMusicSongListModal()">歌曲列表</button>
+        </div>
+    </div>
+</div>
+
+<!-- 歌曲列表弹窗 -->
+<div id="musicSongListModal" onclick="closeMusicSongListModal(event)" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:360px; max-height:75vh; display:flex; flex-direction:column; padding:20px;">
+        <div class="modal-title">歌曲列表</div>
+        <div class="music-song-list" id="musicSongList" style="flex:1; overflow-y:auto; max-height:50vh;"></div>
+        <button class="music-add-btn" style="margin-top:12px;" onclick="openAddSongModal()">+ 添加歌曲</button>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeMusicSongListModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 添加歌曲弹窗 -->
+<div id="addSongModal" onclick="closeAddSongModal(event)" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10002; align-items:center; justify-content:center;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:360px; max-height:85vh; overflow-y:auto;">
+        <div class="modal-title">添加歌曲</div>
+        <div class="form-group">
+            <label class="form-label">歌名 *</label>
+            <input type="text" id="addSongTitle" class="form-input" placeholder="输入歌名">
+        </div>
+        <div class="form-group">
+            <label class="form-label">歌手 *</label>
+            <input type="text" id="addSongArtist" class="form-input" placeholder="输入歌手名">
+        </div>
+<div class="form-group">
+    <label class="form-label">音频文件 *</label>
+    <input type="hidden" id="addSongUrl">
+    <div class="ins-upload-area" onclick="document.getElementById('addSongFileInput').click()" style="padding:14px;">
+        <div style="font-size:13px; color:#999;">点击选择本地音频文件</div>
+        <div id="addSongFileInfo" style="font-size:11px; color:#aaa; margin-top:4px;">支持 mp3、flac、wav 等格式</div>
+    </div>
+    <input type="file" id="addSongFileInput" accept="audio/*" style="display:none;" onchange="handleSongFileImport(this)">
+</div>
+        <div class="form-group">
+            <label class="form-label">歌词 *</label>
+            <textarea id="addSongLyrics" class="form-input" rows="5" placeholder="粘贴完整歌词..."></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeAddSongModal()">取消</button>
+            <button class="btn btn-save" onclick="saveNewSong()">保存</button>
+        </div>
+    
+    
+    
+    </div>
+
+</div>
+
+<!-- 编辑歌曲弹窗 -->
+<div id="editSongModal" onclick="closeEditSongModal(event)" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10003; align-items:center; justify-content:center;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:360px; max-height:85vh; overflow-y:auto;">
+        <div class="modal-title">编辑歌曲</div>
+        <input type="hidden" id="editSongId">
+        <div class="form-group">
+            <label class="form-label">歌名 *</label>
+            <input type="text" id="editSongTitle" class="form-input" placeholder="输入歌名">
+        </div>
+        <div class="form-group">
+            <label class="form-label">歌手 *</label>
+            <input type="text" id="editSongArtist" class="form-input" placeholder="输入歌手名">
+        </div>
+        <div class="form-group">
+            <label class="form-label">音频文件 *</label>
+            <input type="hidden" id="editSongUrl">
+            <div class="ins-upload-area" onclick="document.getElementById('editSongFileInput').click()" style="padding:14px;">
+                <div style="font-size:13px; color:#999;">点击重新选择音频文件</div>
+                <div id="editSongFileInfo" style="font-size:11px; color:#aaa; margin-top:4px;">不选择则保留原文件</div>
+            </div>
+            <input type="file" id="editSongFileInput" accept="audio/*" style="display:none;" onchange="handleSongFileImport(this, 'edit')">
+        </div>
+        <div class="form-group">
+            <label class="form-label">歌词 *</label>
+            <textarea id="editSongLyrics" class="form-input" rows="5" placeholder="粘贴完整歌词..."></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="deleteEditSong()" style="background:#ff4757; color:white; border:none;">删除</button>
+            <button class="btn btn-cancel" onclick="closeEditSongModal()">取消</button>
+            <button class="btn btn-save" onclick="saveEditSong()">保存</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====== 音乐功能 HTML END ====== -->
 
 <!-- 角色信息页面 -->
 <div class="character-info-screen ins-profile-screen" id="characterInfoScreen">
@@ -1948,6 +2255,19 @@
     </div>
 </div>
 <!-- ====== HTML插件开关 END ====== -->
+
+<!-- ====== 时间感知开关 START ====== -->
+<div class="ins-list-item">
+    <svg class="ins-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+    <div class="ins-item-label">时间感知</div>
+    <div style="display: flex; align-items: center;">
+        <input type="checkbox" id="timeAwarenessCheckbox" style="accent-color: #333;">
+    </div>
+</div>
+<!-- ====== 时间感知开关 END ====== -->
 
 
 <!-- ====== 关系网入口 START ====== -->
@@ -2171,6 +2491,10 @@
 </div>
 
     </div>
+
+
+
+    
 <div class="modal-overlay" id="condenseModal" onclick="closeCondenseModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-title">✨ 整理记忆</div>
@@ -3450,6 +3774,9 @@
     </div>
 </div>
 
+
+
+
 <!-- 抽签弹窗 -->
 <div class="modal-overlay" id="drawLotModal" onclick="closeDrawLotModal(event)">
     <div class="modal" onclick="event.stopPropagation()" style="max-width: 320px; text-align: center;">
@@ -3713,24 +4040,18 @@
         <label class="form-label" style="margin-bottom: 10px;">头像框预览</label>
         
         <!-- 预览容器 -->
-        <div id="avatarFramePreviewContainer" style="display: flex; gap: 10px; align-items: center; padding: 15px; background: #f9f9f9; border-radius: 12px; min-height: 80px;">
-            <!-- 添加按钮（初始显示） -->
-            <div id="addFrameBtn" onclick="addAvatarFrame()" style="width: 60px; height: 60px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; color: #999;">
-                +
-            </div>
-            
-            <!-- 预览图1（动态显示） -->
-            <div id="framePreview1" style="display: none; position: relative;">
-                <img id="framePreviewImg1" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
-                <button onclick="removeFrame(1)" style="position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: #ff4757; color: white; border: none; font-size: 12px; cursor: pointer;">×</button>
-            </div>
-            
-            <!-- 预览图2（动态显示） -->
-            <div id="framePreview2" style="display: none; position: relative;">
-                <img id="framePreviewImg2" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
-                <button onclick="removeFrame(2)" style="position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: #ff4757; color: white; border: none; font-size: 12px; cursor: pointer;">×</button>
-            </div>
+    <div id="avatarFramePreviewContainer" style="display: flex; gap: 10px; align-items: center; padding: 15px; background: #f9f9f9; border-radius: 12px; min-height: 80px; overflow-x: auto; white-space: nowrap; scrollbar-width: none;">
+    
+    <div id="addFrameBtn" onclick="addAvatarFrame()" style="flex-shrink: 0; width: 60px; height: 60px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; color: #999; background: white;">
+        +
+    </div>
+    
+    <div id="uploadedFramesList" style="display: flex; gap: 10px;">
         </div>
+
+</div>
+
+<input type="file" id="avatarFrameFileInput" accept="image/*" style="display: none;" onchange="handleFrameUpload(this)">
         
         <!-- 隐藏的文件输入 -->
         <input type="file" id="avatarFrameFileInput" accept="image/*" style="display: none;" onchange="handleFrameUpload(this)">
@@ -3797,6 +4118,1944 @@
     </div>
 </div>
 <!-- ========== 新增：头像框分配弹窗 END ========== -->
+
+<!-- 时空邮局页面 -->
+<div class="spacepost-screen" id="spacePostScreen">
+    <!-- 背景星空装饰 -->
+    <div class="sp-star-field">
+        <div class="sp-star">✦</div>
+        <div class="sp-star">✧</div>
+        <div class="sp-star">✦</div>
+        <div class="sp-star">✧</div>
+        <div class="sp-star">✦</div>
+        <div class="sp-star">✧</div>
+    </div>
+
+    <!-- 关闭按钮 -->
+    <button class="sp-close-btn" onclick="closeSpacePost()">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <!-- 顶部标题 -->
+    <div class="sp-header">
+      <div class="sp-icon">
+    <svg viewBox="0 0 80 80" width="70" height="70">
+        <defs>
+            <linearGradient id="bottleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#a8edea;stop-opacity:0.9" />
+                <stop offset="100%" style="stop-color:#fed6e3;stop-opacity:0.9" />
+            </linearGradient>
+            <linearGradient id="corkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#ffe0b2" />
+                <stop offset="100%" style="stop-color:#d7a86e" />
+            </linearGradient>
+        </defs>
+        <!-- 瓶身 -->
+        <path d="M30 28 C30 28 28 35 28 45 Q28 58 32 62 Q36 66 40 66 Q44 66 48 62 Q52 58 52 45 C52 35 50 28 50 28 Z" fill="url(#bottleGrad)" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+        <!-- 瓶颈 -->
+        <rect x="35" y="18" width="10" height="12" rx="2" fill="url(#bottleGrad)" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+        <!-- 软木塞 -->
+        <rect x="34" y="13" width="12" height="7" rx="3" fill="url(#corkGrad)" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
+        <!-- 瓶内信纸 -->
+        <rect x="35" y="38" width="10" height="14" rx="1.5" fill="rgba(255,255,240,0.85)" transform="rotate(-8 40 45)"/>
+        <line x1="36.5" y1="41" x2="43" y2="40" stroke="#d4a0a0" stroke-width="0.8" transform="rotate(-8 40 45)"/>
+        <line x1="36.5" y1="44" x2="43" y2="43" stroke="#d4a0a0" stroke-width="0.8" transform="rotate(-8 40 45)"/>
+        <line x1="36.5" y1="47" x2="40" y2="46.5" stroke="#d4a0a0" stroke-width="0.8" transform="rotate(-8 40 45)"/>
+        <!-- 高光 -->
+        <ellipse cx="35" cy="40" rx="3" ry="10" fill="rgba(255,255,255,0.25)" transform="rotate(-5 35 40)"/>
+        <!-- 小星星装饰 -->
+        <circle cx="22" cy="22" r="1.5" fill="#fff" opacity="0.8"/>
+        <circle cx="58" cy="18" r="1" fill="#ffe6f0" opacity="0.7"/>
+        <circle cx="60" cy="55" r="1.2" fill="#fff" opacity="0.6"/>
+    </svg>
+</div>
+        <div class="sp-title">时空邮局</div>
+        <div class="sp-subtitle">来自星海的信</div>
+    </div>
+
+    <!-- 中间玻璃卡片 -->
+    <div class="sp-glass-card">
+        <div class="sp-meta">
+            <div class="sp-sender">来自 <span id="spSenderName">未知旅人</span></div>
+            <div class="sp-time">寄出时间：<span id="spSendTime">--</span></div>
+        </div>
+        <div class="sp-divider"></div>
+        <div class="sp-content" id="spContent">
+            等待一封来自星海的信...
+        </div>
+    </div>
+
+    <!-- 底部按钮组 -->
+    <div class="sp-action-group">
+        <button class="sp-btn sp-btn-receive" onclick="handleSpacePostAction('receive')">
+            <span class="sp-btn-glow"></span>
+            <span class="sp-btn-text">接收</span>
+        </button>
+        <button class="sp-btn sp-btn-pass" onclick="handleSpacePostAction('send')">
+            <span class="sp-btn-glow"></span>
+            <span class="sp-btn-text">寄出</span>
+        </button>
+        <button class="sp-btn sp-btn-next" onclick="handleSpacePostAction('next')">
+            <span class="sp-btn-glow"></span>
+            <span class="sp-btn-text">下一封</span>
+        </button>
+        <button class="sp-btn sp-btn-mymail" onclick="handleSpacePostAction('mymail')">
+            <span class="sp-btn-glow"></span>
+            <span class="sp-btn-text">回信</span>
+        </button>
+    </div>
+
+        <!-- 信纸全文弹窗 -->
+    <div class="sp-letter-overlay" id="spLetterOverlay">
+        <div class="sp-letter-paper">
+            <div class="sp-letter-header">
+                <div class="sp-letter-from" id="spLetterFrom">来自 未知旅人</div>
+                <div class="sp-letter-time" id="spLetterTime">某年某月某日</div>
+            </div>
+            <div class="sp-letter-divider"></div>
+            <div class="sp-letter-body" id="spLetterBody">信件内容...</div>
+            <div class="sp-letter-actions">
+                <button class="sp-btn sp-btn-pass" onclick="closeSpLetter()">
+                    <span class="sp-btn-glow"></span>
+                    <span class="sp-btn-text">放回</span>
+                </button>
+                <button class="sp-btn sp-btn-receive" onclick="openSpReply()">
+                    <span class="sp-btn-glow"></span>
+                    <span class="sp-btn-text">回信</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 写信/回信弹窗 -->
+    <div class="sp-write-overlay" id="spWriteOverlay">
+        <div class="sp-write-paper">
+            <div class="sp-write-title" id="spWriteTitle">寄一封信</div>
+            <textarea class="sp-write-input" id="spWriteInput" placeholder="写下你想说的话..."></textarea>
+            <div class="sp-write-actions">
+                <button class="sp-btn sp-btn-pass" onclick="closeSpWrite()">
+                    <span class="sp-btn-glow"></span>
+                    <span class="sp-btn-text">取消</span>
+                </button>
+                <button class="sp-btn sp-btn-next" onclick="confirmSpWrite()">
+                    <span class="sp-btn-glow"></span>
+                    <span class="sp-btn-text">寄出</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的回信列表页 -->
+    <div class="sp-mymail-overlay" id="spMymailOverlay">
+        <div class="sp-mymail-container">
+            <div class="sp-mymail-header">
+                <button class="sp-close-btn" onclick="closeSpMymail()">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="sp-mymail-title">我的回信</div>
+            </div>
+            <div class="sp-mymail-list" id="spMymailList">
+                <div class="sp-mymail-empty">还没有信件记录...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 回信详情弹窗 -->
+    <div class="sp-letter-overlay" id="spMymailDetailOverlay">
+        <div class="sp-letter-paper">
+            <div class="sp-letter-header">
+                <div class="sp-letter-from" id="spMymailDetailFrom"></div>
+                <div class="sp-letter-time" id="spMymailDetailTime"></div>
+            </div>
+            <div class="sp-letter-divider"></div>
+            <div class="sp-letter-body" id="spMymailDetailBody"></div>
+            <div class="sp-letter-actions">
+                <button class="sp-btn sp-btn-pass" onclick="closeSpMymailDetail()">
+                    <span class="sp-btn-glow"></span>
+                    <span class="sp-btn-text">关闭</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>   
+
+<!-- 盲盒机页面 START -->
+<div class="phonecheck-screen" id="blindBoxMachineScreen" style="display:none;">
+
+    <div class="blindbox-background" style="position:absolute; top:0; left:0; width:100%; height:100%; background-image:url('https://i.postimg.cc/W1nKHqwn/QQ-tu-pian20260314200628.png'); background-size:cover; background-position:center; z-index:0;"></div>
+
+    <button class="back-btn" onclick="backToMainFromBlindBox()" style="position:absolute; top:20px; left:15px; z-index:10;">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <div class="blindbox-collection-banner" id="blindBoxCollectionBanner" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); z-index:10; background:linear-gradient(135deg,#FFB6D9,#FF9EC5); color:white; padding:8px 20px; border-radius:20px; font-size:14px; font-weight:700; white-space:nowrap;">
+        🎉 恭喜集齐！
+    </div>
+
+    <div style="position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow-y:auto; padding-top:60px; padding-bottom:40px; box-sizing:border-box;">
+
+        <img src="https://i.postimg.cc/yxKxKhjs/retouch_2026031421322855.png" class="blindbox-title-image" alt="盲盒抽抽乐">
+
+        <div class="blindbox-display">
+            <svg viewBox="0 0 120 120" width="100" height="100" style="filter:drop-shadow(0 4px 12px rgba(255,107,157,0.3));">
+                <defs>
+                    <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#FF6B9D;stop-opacity:1"/>
+                        <stop offset="100%" style="stop-color:#C44569;stop-opacity:1"/>
+                    </linearGradient>
+                </defs>
+                <rect x="20" y="35" width="80" height="65" rx="6" fill="url(#boxGrad)" stroke="#fff" stroke-width="2"/>
+                <path d="M 20 35 L 30 15 L 90 15 L 100 35 Z" fill="#FF8FAB" stroke="#fff" stroke-width="2"/>
+                <circle cx="45" cy="20" r="6" fill="#FFD700"/>
+                <circle cx="75" cy="20" r="6" fill="#FFD700"/>
+                <circle cx="60" cy="20" r="8" fill="#FFE135"/>
+                <line x1="30" y1="50" x2="90" y2="50" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+                <ellipse cx="40" cy="45" rx="15" ry="20" fill="#fff" opacity="0.2"/>
+            </svg>
+        </div>
+
+        <div class="blindbox-actions">
+            <button class="blindbox-btn-image-primary" onclick="openBlindBoxDrawModal()">
+                <img src="https://i.postimg.cc/bwVZnty1/retouch_2026031421324489.png" alt="抽取一次">
+            </button>
+            <button class="blindbox-btn-image-secondary" onclick="openBlindBoxCharacterModal()">
+                <img src="https://i.postimg.cc/ZqgvGyX3/retouch_2026031421355058.png" alt="让他代抽">
+            </button>
+        </div>
+
+        <div class="blindbox-count-info">
+            今日剩余次数：<span id="blindBoxRemainCount">3</span>/<span id="blindBoxTotalCount">3</span>
+        </div>
+
+<div class="blindbox-series">
+    <div class="blindbox-series-title">【系列】</div>
+
+    <div id="blindBoxSeriesList"></div>
+    <button class="blindbox-series-add-btn" onclick="openAddSeriesModal()">添加新系列</button>
+</div>
+
+        <div id="blindBoxAnimContainer" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:99998; align-items:center; justify-content:center; background:rgba(255,255,255,0.7);">
+            <div style="animation:rotateSpin 0.8s linear infinite;">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                    <defs>
+                        <linearGradient id="animBoxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FF6B9D;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#C44569;stop-opacity:1"/>
+                        </linearGradient>
+                    </defs>
+                    <rect x="20" y="35" width="80" height="65" rx="6" fill="url(#animBoxGrad)" stroke="#fff" stroke-width="2"/>
+                    <path d="M 20 35 L 30 15 L 90 15 L 100 35 Z" fill="#FF8FAB" stroke="#fff" stroke-width="2"/>
+                    <circle cx="45" cy="20" r="6" fill="#FFD700"/>
+                    <circle cx="75" cy="20" r="6" fill="#FFD700"/>
+                    <circle cx="60" cy="20" r="8" fill="#FFE135"/>
+                    <line x1="30" y1="50" x2="90" y2="50" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+                    <ellipse cx="40" cy="45" rx="15" ry="20" fill="#fff" opacity="0.2"/>
+                </svg>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+<!-- 盲盒机页面 END -->
+
+<!-- 盲盒弹窗6：编辑单个吧唧 -->
+<div class="modal-overlay" id="blindBoxItemEditModal" onclick="event.target.id==='blindBoxItemEditModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:85%; max-width:300px; text-align:center;">
+        <div class="modal-title">编辑吧唧</div>
+        <input type="hidden" id="editingItemId">
+        <input type="hidden" id="editingSeriesId">
+        <div style="display:flex; justify-content:center; margin-bottom:15px;">
+            <div id="editItemPreview" onclick="document.getElementById('editItemImageInput').click()" 
+                style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#FFE8F0,#FFF0F5); border:2px solid rgba(255,107,157,0.3); display:flex; align-items:center; justify-content:center; font-size:36px; cursor:pointer; overflow:hidden; position:relative;">
+                <span id="editItemPreviewContent">😀</span>
+                <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.3); color:white; font-size:10px; padding:3px; text-align:center;">点击换图</div>
+            </div>
+            <input type="file" id="editItemImageInput" accept="image/*" style="display:none;" onchange="handleItemImageUpload(this)">
+        </div>
+        <div class="form-group">
+            <label class="form-label">吧唧名字</label>
+            <input type="text" id="editItemName" class="form-input" placeholder="输入吧唧名字">
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:10px;">
+            <label class="form-label" style="margin:0;">是否隐藏款</label>
+            <input type="checkbox" id="editItemHidden" style="accent-color:#333; transform:scale(1.2);">
+        </div>
+      <div class="modal-buttons">
+    <button class="btn btn-cancel" onclick="document.getElementById('blindBoxItemEditModal').style.display='none'">取消</button>
+<button class="btn btn-delete" onclick="deleteCurrentItem()" style="background: #ff4444; border-color: rgba(255, 68, 68, 0.6); box-shadow: 0 8px 20px rgba(255, 68, 68, 0.2); color: white; font-size: 15px; font-weight: 700;">删除</button>
+    <button class="btn btn-save" onclick="saveItemEdit()">保存</button>
+</div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗7：系列管理 -->
+<div class="modal-overlay" id="blindBoxSeriesEditorModal" onclick="event.target.id==='blindBoxSeriesEditorModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:340px; max-height:80vh; overflow-y:auto;">
+        <div class="modal-title">系列管理</div>
+        <div class="form-group">
+            <label class="form-label">系列名字</label>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="editSeriesName" class="form-input" placeholder="输入系列名字" style="flex:1;">
+                <button class="btn btn-save" onclick="saveSeriesName()" style="flex:none; padding:0 15px; white-space:nowrap;">保存</button>
+            </div>
+        </div>
+        <div style="height:1px; background:#f0f0f0; margin:15px 0;"></div>
+        <div style="font-size:13px; font-weight:600; color:#333; margin-bottom:10px;">点击吧唧编辑</div>
+        <div class="blindbox-show-grid" id="blindBoxEditorGrid"></div>
+        <div style="height:1px; background:#f0f0f0; margin:15px 0;"></div>
+   
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-save" onclick="document.getElementById('blindBoxSeriesEditorModal').style.display='none'">完成</button>
+        </div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗8：添加新系列 -->
+<div class="modal-overlay" id="blindBoxAddSeriesModal" onclick="event.target.id==='blindBoxAddSeriesModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:280px; text-align:center;">
+        <div class="modal-title">添加新系列</div>
+        <div class="form-group">
+            <label class="form-label">系列名字</label>
+            <input type="text" id="newSeriesName" class="form-input" placeholder="输入系列名字">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxAddSeriesModal').style.display='none'">取消</button>
+            <button class="btn btn-save" onclick="confirmAddSeries()">确认添加</button>
+        </div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗9：选择系列 -->
+<div class="modal-overlay" id="blindBoxSelectSeriesModal" onclick="event.target.id==='blindBoxSelectSeriesModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:280px; text-align:center;">
+        <div class="modal-title">选择系列</div>
+        <div id="blindBoxSelectSeriesList" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px 0;">
+        </div>
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxSelectSeriesModal').style.display='none'">取消</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 盲盒弹窗1：确认抽取 -->
+<div class="modal-overlay" id="blindBoxDrawModal" onclick="event.target.id==='blindBoxDrawModal'&&(this.style.display='none')">
+    <div class="modal" onclick="event.stopPropagation()" style="width:280px; text-align:center;">
+        <div class="modal-title">抽取盲盒</div>
+        <div style="margin:20px 0; font-size:16px; color:#333;">
+            <span id="blindBoxDrawRemainText">剩余次数：3/3</span>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxDrawModal').style.display='none'">取消</button>
+            <button class="btn btn-save" onclick="confirmBlindBoxDraw()">确认抽取</button>
+        </div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗2：角色选择 -->
+
+<div class="modal-overlay" id="blindBoxCharacterModal" onclick="event.target.id==='blindBoxCharacterModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:85%; max-width:320px;">
+        <div class="modal-title">选择角色代抽</div>
+        <div id="blindBoxCharacterList" style="max-height:400px; overflow-y:auto;">
+        </div>
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxCharacterModal').style.display='none'">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗3：代抽中 -->
+<div class="modal-overlay" id="blindBoxCharacterDrawingModal">
+    <div class="modal" onclick="event.stopPropagation()" style="width:280px; text-align:center;">
+        <div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; font-size:36px; margin:20px auto; overflow:hidden;">
+            <span id="blindBoxCharacterDrawingAvatar">👤</span>
+        </div>
+        <div style="font-size:14px; color:#333; min-height:40px; margin:15px 0;">
+            <span id="blindBoxCharacterDrawingDialog">正在为你抽取中…</span>
+        </div>
+       
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-save" onclick="closeBlindBoxCharacterDrawingModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 盲盒弹窗4：查看系列 -->
+<div class="modal-overlay" id="blindBoxShowModal" onclick="event.target.id==='blindBoxShowModal'&&(this.style.display='none')">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:340px; overflow:hidden; padding:15px 10px;">
+        
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+            <div style="width:24px;"></div>
+            <div class="modal-title" style="margin:0;" id="blindBoxShowModalTitle">春之猫猫系列</div>
+            <button onclick="openBlindBoxSeriesEditor()" style="border:none; background:none; cursor:pointer; padding:4px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="blindbox-show-grid" id="blindBoxShowGrid"></div>
+        
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-save" onclick="document.getElementById('blindBoxShowModal').style.display='none'">关闭</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 盲盒弹窗5：抽取结果 -->
+<div class="modal-overlay" id="blindBoxDrawResultModal" onclick="event.target.id==='blindBoxDrawResultModal'&&(this.style.display='none')">
+ <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:320px; overflow:hidden; padding:15px 10px;">
+        <div class="modal-title">本次抽取结果</div>
+     <div class="blindbox-show-grid" id="blindBoxDrawResultGrid">
+            <div class="blindbox-empty-hint">加载中...</div>
+        </div>
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-save" onclick="document.getElementById('blindBoxDrawResultModal').style.display='none'">关闭</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 盲盒弹窗：选择佩戴角色 -->
+<div class="modal-overlay" id="blindBoxWearCharacterModal" onclick="event.target.id==='blindBoxWearCharacterModal'&&(this.style.display='none')" style="z-index: 1000000001;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:85%; max-width:320px;">
+        <div class="modal-title">选择佩戴角色</div>
+        <div id="blindBoxWearCharacterList" style="max-height:400px; overflow-y:auto;"></div>
+        <div class="modal-buttons" style="margin-top:15px;">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxWearCharacterModal').style.display='none'">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 盲盒弹窗8：添加新系列 -->
+<div class="modal-overlay" id="blindBoxAddSeriesModal" onclick="event.target.id==='blindBoxAddSeriesModal'&&(this.style.display='none')" style="z-index: 9999;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:280px; text-align:center;">
+        <div class="modal-title">添加新系列</div>
+        <div class="form-group">
+            <label class="form-label">系列名字</label>
+            <input type="text" id="newSeriesName" class="form-input" placeholder="输入系列名字">
+        </div>
+        <div class="form-group">
+            <label class="form-label">系列 Emoji</label>
+            <input type="text" id="newSeriesEmoji" class="form-input" placeholder="输入 emoji，如 🐱" maxlength="2">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="document.getElementById('blindBoxAddSeriesModal').style.display='none'">取消</button>
+            <button class="btn btn-save" onclick="confirmAddSeries()">确认添加</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机 - 角色选择弹窗 -->
+<div class="modal-overlay" id="phoneCheckSelectModal" onclick="closePhoneCheckSelectModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 320px;">
+        <div class="modal-title">选择要查看的手机</div>
+        <div id="phoneCheckCharList" style="max-height: 400px; overflow-y: auto;">
+            <!-- 角色列表动态生成 -->
+        </div>
+        <div class="modal-buttons" style="margin-top: 15px;">
+            <button class="btn btn-cancel" onclick="closePhoneCheckSelectModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机 - 修改资料弹窗 -->
+<div class="modal-overlay" id="phoneCheckProfileModal" onclick="closePhoneCheckProfileModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 300px;">
+        <div class="modal-title">修改资料</div>
+        
+        <div class="form-group">
+            <label class="form-label">昵称</label>
+            <input type="text" id="pcEditNickname" class="form-input" placeholder="输入昵称">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" id="pcEditUsername" class="form-input" placeholder="@username">
+        </div>
+        
+
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closePhoneCheckProfileModal()">取消</button>
+            <button class="btn btn-save" onclick="savePhoneCheckProfile()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机 - 通用文字编辑弹窗 -->
+<div class="modal-overlay" id="phoneCheckTextModal" onclick="closePhoneCheckTextModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 300px;">
+        <div class="modal-title" id="pcTextModalTitle">编辑文字</div>
+        
+        <div class="form-group">
+            <textarea id="pcTextEditInput" class="form-input" rows="3" placeholder="输入内容..."></textarea>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closePhoneCheckTextModal()">取消</button>
+            <button class="btn btn-save" onclick="savePhoneCheckText()">保存</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 查手机 - 主页面 -->
+<div class="phonecheck-screen" id="phoneCheckScreen">
+
+ <!-- 顶部状态栏 -->
+<div class="pc-status-bar">
+    <div class="pc-status-left">
+        <span class="pc-time" id="pcTime">12:00</span>
+        <span class="pc-weekday" id="pcWeekday">周五</span>
+    </div>
+    <div class="pc-status-right">
+        <span class="pc-temp" id="pcTemp">25°C</span>
+        <span class="pc-signal">
+            <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="8" width="3" height="4" fill="currentColor"/><rect x="4" y="5" width="3" height="7" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/><rect x="12" y="0" width="3" height="12" fill="currentColor"/></svg>
+        </span>
+        <span class="pc-wifi">
+            <svg width="16" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+        </span>
+        <span class="pc-battery-wrapper">
+            <svg width="24" height="12" viewBox="0 0 24 12"><rect x="0" y="0" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect id="pcBatteryFill" x="2" y="2" width="14" height="8" rx="1" fill="#4ade80"/><rect x="20" y="3" width="3" height="6" rx="1" fill="currentColor"/></svg>
+            <span class="pc-battery-text" id="pcBatteryText">96%</span>
+        </span>
+    </div>
+</div>
+
+    <!-- 可滚动内容区 -->
+    <div class="pc-scroll-content">
+        <!-- 个人资料卡片 -->
+        <div class="pc-profile-card">
+            <div class="pc-avatar-wrapper">
+                <img class="pc-avatar" id="pcAvatar" src="" alt="">
+                <div class="pc-avatar-placeholder" id="pcAvatarPlaceholder">👤</div>
+            </div>
+            <div class="pc-nickname" id="pcNickname">Leuycute</div>
+            <div class="pc-username" id="pcUsername">@xyuebao</div>
+            
+<div class="pc-btn-group">
+    <button class="pc-btn" onclick="openPhoneCheckAvatarUpload()">切换头像</button>
+    <button class="pc-btn" onclick="openPhoneCheckProfileModal()">修改资料</button>
+  <button class="pc-btn pc-btn-svg" onclick="togglePhoneCheckCardTransparent()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+    </svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 3c-1.5 2-4 3-6 3 0 3 1 5 3 6-2 1-3 3-3 6 2 0 4-1 6-3 2 2 4 3 6 3 0-3-1-5-3-6 2-1 3-3 3-6-2 0-4.5-1-6-3z"/>
+    </svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+    </svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="12" cy="12" r="2"/><circle cx="7" cy="8" r="1.5"/><circle cx="17" cy="8" r="1.5"/><circle cx="7" cy="16" r="1.5"/><circle cx="17" cy="16" r="1.5"/>
+    </svg>
+</button>
+</div>
+            
+     
+        </div>
+
+
+
+<!-- App图标网格 -->
+<div class="pc-app-grid">
+    <div class="pc-app-item">
+       <div class="pc-app-icon" id="pcAppIcon-memo" onclick="openPhoneCheckMemo()">📝</div>
+        <div class="pc-app-name">备忘录</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-album" onclick="openPhoneCheckAlbum()">🖼️</div>
+        <div class="pc-app-name">相册</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-grudge" onclick="openPhoneCheckGrudge()">😤</div>
+        <div class="pc-app-name">记仇本</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-love" onclick="openPhoneCheckLoveDiary()">💕</div>
+        <div class="pc-app-name">恋爱记</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-sms" onclick="openPhoneCheckSms()">💬</div>
+        <div class="pc-app-name">短信</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-finance" onclick="openPhoneCheckFinance()">💰</div>
+        <div class="pc-app-name">理财</div>
+    </div>
+    <div class="pc-app-item">
+    <div class="pc-app-icon" id="pcAppIcon-favorite" onclick="openPhoneCheckFavorite()">⭐</div>
+        <div class="pc-app-name">收藏</div>
+    </div>
+    <div class="pc-app-item">
+     <div class="pc-app-icon" id="pcAppIcon-location" onclick="openPhoneCheckTrace()">📍</div>
+        <div class="pc-app-name">行踪</div>
+    </div>
+        <div class="pc-app-item">
+      <div class="pc-app-icon" id="pcAppIcon-taobao" onclick="openPhoneCheckTaobao()">🛍️</div>
+        <div class="pc-app-name">桃宝</div>
+    </div>
+    <div class="pc-app-item">
+       <div class="pc-app-icon" id="pcAppIcon-meituan" onclick="openPhoneCheckMeituan()">🍱</div>
+        <div class="pc-app-name">丑团</div>
+    </div>
+    <div class="pc-app-item">
+      <div class="pc-app-icon" id="pcAppIcon-trip" onclick="openPhoneCheckTrip()">🧳</div>
+        <div class="pc-app-name">旅程</div>
+    </div>
+    <div class="pc-app-item">
+       <div class="pc-app-icon" id="pcAppIcon-douban" onclick="openPhoneCheckDouban()">📚</div>
+        <div class="pc-app-name">豆沙包</div>
+    </div>
+</div>
+
+   <!-- 消息组件 -->
+<div class="pc-message-widget">
+    <div class="pc-msg-avatar" id="pcMsgAvatar">🐱</div>
+    <div class="pc-msg-bubble" id="pcMsgBubble" onclick="openPhoneCheckTextEdit('msgBubble', '消息内容')">오늘도 일찍 쉬세요.</div>
+</div>
+
+  <!-- 输入组件 -->
+<div class="pc-input-widget">
+    <div class="pc-input-bar" onclick="openPhoneCheckTextEdit('inputPlaceholder', '对话框内容')">
+        <span class="pc-input-placeholder" id="pcInputPlaceholder">참, 내일 시간 있어요?</span>
+    </div>
+</div>
+
+<!-- 小组件标题2 -->
+<div class="pc-widget-title" id="pcWidgyBottom" onclick="openPhoneCheckTextEdit('widgyBottom', '下方标题')">Widgy</div>
+
+ 
+
+
+<!-- 底部Dock栏 -->
+<div class="pc-dock">
+    <div class="pc-dock-item" onclick="openPhoneCheckBeautify()">
+        <div class="pc-dock-icon" id="pcDockIcon-beautify">🎨</div>
+        <div class="pc-dock-name">美化</div>
+    </div>
+<div class="pc-dock-item" onclick="openPhoneCheckApiModal()">
+    <div class="pc-dock-icon" id="pcDockIcon-api">⚙️</div>
+    <div class="pc-dock-name">API</div>
+</div>
+ <div class="pc-dock-item" onclick="openPhoneCheckFridge()">
+    <div class="pc-dock-icon" id="pcDockIcon-fridge">🧊</div>
+    <div class="pc-dock-name">冰箱</div>
+</div>
+  <div class="pc-dock-item" onclick="openPhoneCheckBrowser()">
+    <div class="pc-dock-icon" id="pcDockIcon-browser">🌐</div>
+    <div class="pc-dock-name">浏览器</div>
+</div>
+</div>
+
+<!-- 隐藏的头像上传input -->
+<input type="file" id="pcAvatarInput" accept="image/*" style="display: none;" onchange="handlePhoneCheckAvatarUpload(this)">
+
+    <!-- 返回按钮 -->
+    <button class="pc-back-btn" onclick="closePhoneCheckScreen()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+</div>
+
+<!-- 查手机 - 美化页面 -->
+<div class="phonecheck-beautify-screen" id="phoneCheckBeautifyScreen">
+    <div class="api-header" style="background: transparent; border: none; padding: 20px;">
+        <button class="back-btn" onclick="closePhoneCheckBeautify()">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div class="header-title" style="font-weight: 700; letter-spacing: 1px;">BEAUTIFY</div>
+    </div>
+    
+    <div class="api-content" style="padding: 0 20px 40px;">
+        
+        <!-- 壁纸设置 -->
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>🎨 WALLPAPER</span>
+                <span>壁纸设置</span>
+            </div>
+            
+            <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <!-- 预览框 -->
+                <div class="pc-beautify-preview" id="pcWallpaperPreview">
+                    <div class="pc-preview-statusbar">12:00</div>
+                    <div class="pc-preview-content"></div>
+                    <div class="pc-preview-dock"></div>
+                </div>
+                
+                <div style="flex: 1;">
+                    <div class="ins-tab-group">
+                        <button class="ins-tab-btn active" onclick="switchPcWallpaperTab('local')">相册</button>
+                        <button class="ins-tab-btn" onclick="switchPcWallpaperTab('url')">链接</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="pcWallpaperLocalTab">
+                        <div class="ins-upload-area" onclick="document.getElementById('pcWallpaperFile').click()">
+                            <div class="ins-upload-icon">📁</div>
+                            <div style="font-size: 12px; color: #999;">点击选择图片</div>
+                            <input type="file" id="pcWallpaperFile" accept="image/*" style="display:none;" onchange="handlePcWallpaperUpload(this)">
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="pcWallpaperUrlTab" style="display: none;">
+                        <input type="url" class="ins-input" id="pcWallpaperUrl" placeholder="输入图片链接...">
+                        <button class="ins-line-btn" onclick="applyPcWallpaperUrl()" style="margin-top: 10px; width: 100%;">
+                            <span>应用链接</span>
+                        </button>
+                    </div>
+                    
+                    <button class="ins-line-btn" onclick="clearPcWallpaper()" style="margin-top: 10px; width: 100%; color: #999;">
+                        <span>清除壁纸</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- App图标设置 -->
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>📱 APP ICONS</span>
+                <span>应用图标</span>
+            </div>
+            
+            <div class="pc-beautify-icon-grid">
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('memo')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-memo">📝</div>
+                    <div class="pc-beautify-icon-name">备忘录</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('album')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-album">🖼️</div>
+                    <div class="pc-beautify-icon-name">相册</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('grudge')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-grudge">😤</div>
+                    <div class="pc-beautify-icon-name">记仇本</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('love')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-love">💕</div>
+                    <div class="pc-beautify-icon-name">恋爱记</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('sms')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-sms">💬</div>
+                    <div class="pc-beautify-icon-name">短信</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('finance')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-finance">💰</div>
+                    <div class="pc-beautify-icon-name">理财</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('favorite')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-favorite">⭐</div>
+                    <div class="pc-beautify-icon-name">收藏</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('location')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-location">📍</div>
+                    <div class="pc-beautify-icon-name">行踪</div>
+                </div>
+           
+           
+                           <div class="pc-beautify-icon-item" onclick="openPcIconEditor('taobao')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-taobao">🛍️</div>
+                    <div class="pc-beautify-icon-name">桃宝</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('meituan')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-meituan">🍱</div>
+                    <div class="pc-beautify-icon-name">丑团</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('trip')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-trip">🧳</div>
+                    <div class="pc-beautify-icon-name">旅程</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('douban')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-douban">📚</div>
+                    <div class="pc-beautify-icon-name">豆沙包</div>
+                </div>
+           
+            </div>
+
+
+
+        </div>
+        
+        <!-- Dock图标设置 -->
+        <div class="api-card">
+            <div class="api-section-title">
+                <span>⬇️ DOCK ICONS</span>
+                <span>底部图标</span>
+            </div>
+            
+            <div class="pc-beautify-icon-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('beautify')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-beautify">🎨</div>
+                    <div class="pc-beautify-icon-name">美化</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('api')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-api">⚙️</div>
+                    <div class="pc-beautify-icon-name">API</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('fridge')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-fridge">🧊</div>
+                    <div class="pc-beautify-icon-name">冰箱</div>
+                </div>
+                <div class="pc-beautify-icon-item" onclick="openPcIconEditor('browser')">
+                    <div class="pc-beautify-icon-preview" id="pcIconPreview-browser">🌐</div>
+                    <div class="pc-beautify-icon-name">浏览器</div>
+                </div>
+            </div>
+        </div>
+        <div class="pc-beautify-preset-actions">
+    <button class="pc-beautify-preset-btn" onclick="savePhoneCheckBeautifyPresetAction()">保存方案</button>
+    <button class="pc-beautify-preset-btn" onclick="openPhoneCheckBeautifyPresetModal()">应用方案</button>
+    <button class="pc-beautify-preset-btn" onclick="openPhoneCheckBeautifyExportModal()">提取方案</button>
+    <button class="pc-beautify-preset-btn" onclick="openPhoneCheckBeautifyImportModal()">导入方案</button>
+</div>
+    </div>
+</div>
+
+<!-- 查手机 - 图标编辑弹窗 -->
+<div class="modal-overlay" id="pcIconEditorModal" onclick="closePcIconEditor(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 300px;">
+        <div class="modal-title" id="pcIconEditorTitle">编辑图标</div>
+        
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <div class="pc-beautify-icon-preview" id="pcIconEditorPreview" style="width: 60px; height: 60px; font-size: 28px;">📝</div>
+        </div>
+        
+        <div class="ins-tab-group">
+            <button class="ins-tab-btn active" onclick="switchPcIconTab('local')">本地</button>
+            <button class="ins-tab-btn" onclick="switchPcIconTab('url')">链接</button>
+        </div>
+        
+        <div class="tab-content active" id="pcIconLocalTab">
+            <div class="ins-upload-area" onclick="document.getElementById('pcIconFile').click()" style="padding: 15px;">
+                <div style="font-size: 12px; color: #999;">点击选择图片</div>
+                <input type="file" id="pcIconFile" accept="image/*" style="display:none;" onchange="handlePcIconUpload(this)">
+            </div>
+        </div>
+        
+        <div class="tab-content" id="pcIconUrlTab" style="display: none;">
+            <input type="url" class="ins-input" id="pcIconUrl" placeholder="输入图片链接...">
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button class="btn btn-cancel" onclick="resetPcIcon()">恢复默认</button>
+            <button class="btn btn-save" onclick="savePcIcon()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机 - API选择弹窗 -->
+<div class="modal-overlay" id="pcApiModal" onclick="closePhoneCheckApiModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width: 85%; max-width: 320px;">
+        <div class="modal-title">API设置</div>
+        
+        <!-- 方案列表 -->
+        <div id="pcApiSchemeList" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 当前选中信息 -->
+        <div id="pcApiCurrentInfo" style="display: none; background: #f9f9f9; border-radius: 12px; padding: 12px; margin-bottom: 15px;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 8px;">当前选中</div>
+            <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 4px;" id="pcApiCurrentName">-</div>
+            <div style="font-size: 11px; color: #666; margin-bottom: 2px;" id="pcApiCurrentUrl">-</div>
+            <div style="font-size: 11px; color: #667eea;" id="pcApiCurrentModel">-</div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closePhoneCheckApiModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机 - 冰箱页面 -->
+<div class="pc-fridge-screen" id="phoneCheckFridgeScreen">
+    <!-- 左上角返回按钮 -->
+    <button class="pc-fridge-back-btn" onclick="closePhoneCheckFridge()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+    
+    <!-- 右上角刷新按钮 -->
+    <button class="pc-fridge-refresh-btn" onclick="generateFridgeContent()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+    
+    <!-- 加载状态 -->
+    <div class="pc-fridge-loading" id="pcFridgeLoading" style="display: none;">
+        <div class="pc-fridge-loading-spinner"></div>
+        <div class="pc-fridge-loading-text">正在打开冰箱...</div>
+    </div>
+    
+    <!-- 冰箱内容区 -->
+    <div class="pc-fridge-content" id="pcFridgeContent">
+        <!-- 冰箱标题 -->
+        <div class="pc-fridge-title">
+            <span>🧊</span> 冰箱里有什么
+        </div>
+        
+        <!-- 冰箱物品列表 -->
+        <div class="pc-fridge-items" id="pcFridgeItems">
+            <div class="pc-fridge-empty">
+                点击右上角刷新按钮<br>看看冰箱里有什么~
+            </div>
+        </div>
+        
+        <!-- 便签区域 -->
+        <div class="pc-fridge-note-wrapper">
+            <div class="pc-fridge-note" id="pcFridgeNote">
+                <div class="pc-fridge-note-pin">📌</div>
+                <div class="pc-fridge-note-title">便签</div>
+                <div class="pc-fridge-note-content" id="pcFridgeNoteContent">
+                    还没有便签内容~
+                </div>
+            </div>
+        </div>
+    </div>
+   
+
+</div>
+ 
+<!-- 查手机 - 浏览器页面 -->
+<div class="pc-browser-screen" id="phoneCheckBrowserScreen">
+    
+    <!-- 搜索历史视图 -->
+    <div class="pc-browser-history-view" id="pcBrowserHistoryView">
+        <!-- 左上角返回按钮 -->
+        <button class="pc-browser-back-btn" onclick="closePhoneCheckBrowser()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+        
+        <!-- 右上角刷新按钮 -->
+        <button class="pc-browser-refresh-btn" onclick="generateBrowserHistory()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+        </button>
+        
+        <!-- 顶部搜索框装饰 -->
+        <div class="pc-browser-search-bar">
+            <div class="pc-browser-search-icon">🔍</div>
+            <div class="pc-browser-search-text">搜索记录</div>
+        </div>
+        
+        <!-- 搜索历史列表 -->
+        <div class="pc-browser-history-list" id="pcBrowserHistoryList">
+            <div class="pc-browser-empty">
+                点击右上角刷新按钮<br>生成浏览记录~
+            </div>
+        </div>
+    </div>
+    
+    <!-- 内容详情视图 -->
+    <div class="pc-browser-detail-view" id="pcBrowserDetailView" style="display: none;">
+        <!-- 顶部导航栏 -->
+        <div class="pc-browser-detail-header">
+            <button class="pc-browser-detail-back" onclick="backToBrowserHistory()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-browser-detail-url" id="pcBrowserDetailUrl">
+                <span class="pc-browser-lock">🔒</span>
+                <span class="pc-browser-url-text" id="pcBrowserUrlText">example.com</span>
+            </div>
+            <div class="pc-browser-detail-more">⋯</div>
+        </div>
+        
+        <!-- 网页内容区域 -->
+        <div class="pc-browser-detail-content">
+            <!-- 文章头部 -->
+            <div class="pc-browser-article-header">
+                <div class="pc-browser-article-type" id="pcBrowserArticleType">文章</div>
+                <h1 class="pc-browser-article-title" id="pcBrowserArticleTitle">标题</h1>
+            </div>
+            
+            <!-- 文章元信息 -->
+            <div class="pc-browser-article-meta">
+                <div class="pc-browser-article-author">
+                    <div class="pc-browser-author-avatar" id="pcBrowserAuthorAvatar">📝</div>
+                    <div class="pc-browser-author-info">
+                        <div class="pc-browser-author-name" id="pcBrowserAuthorName">作者</div>
+                        <div class="pc-browser-article-time" id="pcBrowserArticleTime">2小时前</div>
+                    </div>
+                </div>
+                <div class="pc-browser-article-stats">
+                    <div class="pc-browser-stat-item">
+                        <span>👁️</span>
+                        <span id="pcBrowserViews">1.2k</span>
+                    </div>
+                    <div class="pc-browser-stat-item">
+                        <span>💬</span>
+                        <span id="pcBrowserComments">86</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 文章正文 -->
+            <div class="pc-browser-article-body" id="pcBrowserArticleBody">
+                内容加载中...
+            </div>
+            
+        
+            
+            <!-- 相关推荐 -->
+            <div class="pc-browser-related">
+                <div class="pc-browser-related-title">📖 猜你想看</div>
+                <div class="pc-browser-related-list" id="pcBrowserRelatedList">
+                    <div class="pc-browser-related-item">
+                        <div class="pc-browser-related-icon">📰</div>
+                        <div class="pc-browser-related-info">
+                            <div class="pc-browser-related-name">推荐内容加载中...</div>
+                            <div class="pc-browser-related-desc">精选推荐</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载状态 -->
+    <div class="pc-browser-loading" id="pcBrowserLoading" style="display: none;">
+        <div class="pc-browser-loading-spinner"></div>
+        <div class="pc-browser-loading-text">正在加载...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 备忘录页面 -->
+<div class="pc-memo-screen" id="phoneCheckMemoScreen">
+    <!-- 左上角返回按钮 -->
+    <button class="pc-memo-back-btn" onclick="closePhoneCheckMemo()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新按钮 -->
+    <button class="pc-memo-refresh-btn" id="pcMemoRefreshBtn" onclick="generateMemoNotes()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-memo-list-view" id="pcMemoListView">
+        <div class="pc-memo-title">备忘录</div>
+        <div class="pc-memo-subtitle" id="pcMemoSubtitle">Notes</div>
+
+        <div class="pc-memo-list" id="pcMemoList">
+            <div class="pc-memo-empty">
+                点击右上角刷新按钮<br>生成 TA 的备忘录~
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-memo-detail-view" id="pcMemoDetailView" style="display: none;">
+        <div class="pc-memo-detail-header">
+            <button class="pc-memo-detail-back" onclick="backToMemoList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-memo-detail-title" id="pcMemoDetailTitle">备忘录</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-memo-detail-content">
+            <div class="pc-memo-detail-time" id="pcMemoDetailTime">--</div>
+            <div class="pc-memo-detail-body" id="pcMemoDetailBody">--</div>
+
+            <div class="pc-memo-detail-ps" id="pcMemoDetailPS" style="display: none;">
+                <div class="pc-memo-ps-label">PS</div>
+                <div class="pc-memo-ps-text" id="pcMemoDetailPSText"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div class="pc-memo-loading" id="pcMemoLoading" style="display: none;">
+        <div class="pc-memo-loading-spinner"></div>
+        <div class="pc-memo-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 相册页面 -->
+<div class="pc-album-screen" id="phoneCheckAlbumScreen">
+    <!-- 左上角返回（关闭相册回查手机） -->
+    <button class="pc-album-back-btn" onclick="closePhoneCheckAlbum()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新生成 -->
+    <button class="pc-album-refresh-btn" id="pcAlbumRefreshBtn" onclick="generateAlbumData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 视图1：相簿首页 -->
+    <div class="pc-album-albums-view" id="pcAlbumAlbumsView">
+        <div class="pc-album-title">相册</div>
+        <div class="pc-album-subtitle">Albums</div>
+
+        <div class="pc-album-album-list" id="pcAlbumAlbumList">
+            <div class="pc-album-empty">
+                点击右上角刷新按钮<br>生成 TA 的相册~
+            </div>
+        </div>
+    </div>
+
+    <!-- 视图2：相簿网格 -->
+    <div class="pc-album-grid-view" id="pcAlbumGridView" style="display:none;">
+        <div class="pc-album-topbar">
+            <button class="pc-album-topbar-back" onclick="backToAlbumsView()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-album-topbar-title" id="pcAlbumGridTitle">相簿</div>
+            <div style="width:32px;"></div>
+        </div>
+
+        <div class="pc-album-grid" id="pcAlbumGrid"></div>
+    </div>
+
+    <!-- 视图3：照片查看 -->
+    <div class="pc-album-viewer" id="pcAlbumViewer" style="display:none;">
+        <div class="pc-album-topbar">
+            <button class="pc-album-topbar-back" onclick="backToGridView()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-album-topbar-title" id="pcAlbumViewerTitle">照片</div>
+            <div style="width:32px;"></div>
+        </div>
+
+        <div class="pc-album-viewer-content">
+            <div class="pc-album-photo-card" id="pcAlbumPhotoCard">
+                <div class="pc-album-photo-emoji" id="pcAlbumPhotoEmoji">📷</div>
+                <div class="pc-album-photo-caption" id="pcAlbumPhotoCaption">--</div>
+            </div>
+
+            <div class="pc-album-photo-meta" id="pcAlbumPhotoMeta">--</div>
+
+            <div class="pc-album-photo-comment" id="pcAlbumPhotoCommentWrap" style="display:none;">
+                <div class="pc-album-photo-comment-label">TA 的备注</div>
+                <div class="pc-album-photo-comment-text" id="pcAlbumPhotoComment">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-album-loading" id="pcAlbumLoading" style="display:none;">
+        <div class="pc-album-loading-spinner"></div>
+        <div class="pc-album-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 记仇本页面 -->
+<div class="pc-grudge-screen" id="phoneCheckGrudgeScreen">
+    <!-- 左上角返回（关闭记仇本回查手机） -->
+    <button class="pc-grudge-back-btn" onclick="closePhoneCheckGrudge()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新生成 -->
+    <button class="pc-grudge-refresh-btn" id="pcGrudgeRefreshBtn" onclick="generateGrudgeData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-grudge-list-view" id="pcGrudgeListView">
+        <div class="pc-grudge-title">记仇本</div>
+        <div class="pc-grudge-subtitle">Private Notes</div>
+
+        <div class="pc-grudge-list" id="pcGrudgeList">
+            <div class="pc-grudge-empty">
+                点击右上角刷新按钮<br>看看 TA 又记了谁一笔…
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-grudge-detail-view" id="pcGrudgeDetailView" style="display:none;">
+        <div class="pc-grudge-detail-header">
+            <button class="pc-grudge-detail-back" onclick="backToGrudgeList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-grudge-detail-title" id="pcGrudgeDetailTitle">记仇详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-grudge-detail-content">
+            <div class="pc-grudge-detail-time" id="pcGrudgeDetailTime">--</div>
+
+            <div class="pc-grudge-section">
+                <div class="pc-grudge-section-label">事情经过</div>
+                <div class="pc-grudge-section-text" id="pcGrudgeDetailEvent">--</div>
+            </div>
+
+            <div class="pc-grudge-section pc-grudge-section-os">
+                <div class="pc-grudge-section-label">我的想法</div>
+                <div class="pc-grudge-section-text" id="pcGrudgeDetailOS">--</div>
+            </div>
+
+            <div class="pc-grudge-section" id="pcGrudgePlanWrap" style="display:none;">
+                <div class="pc-grudge-section-label">下次对策</div>
+                <div class="pc-grudge-section-text" id="pcGrudgeDetailPlan"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-grudge-loading" id="pcGrudgeLoading" style="display:none;">
+        <div class="pc-grudge-loading-spinner"></div>
+        <div class="pc-grudge-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 恋爱记页面 -->
+<div class="pc-love-screen" id="phoneCheckLoveDiaryScreen">
+    <!-- 左上角返回（关闭恋爱记回查手机） -->
+    <button class="pc-love-back-btn" onclick="closePhoneCheckLoveDiary()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新生成 -->
+    <button class="pc-love-refresh-btn" id="pcLoveRefreshBtn" onclick="generateLoveDiary()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-love-list-view" id="pcLoveListView">
+        <div class="pc-love-title">恋爱记</div>
+        <div class="pc-love-subtitle">Diary</div>
+
+        <div class="pc-love-list" id="pcLoveList">
+            <div class="pc-love-empty">
+                点击右上角刷新按钮<br>生成 TA 的恋爱记~
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-love-detail-view" id="pcLoveDetailView" style="display:none;">
+        <div class="pc-love-detail-header">
+            <button class="pc-love-detail-back" onclick="backToLoveList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-love-detail-title" id="pcLoveDetailTitle">恋爱记</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-love-detail-content">
+            <div class="pc-love-detail-time" id="pcLoveDetailTime">--</div>
+
+            <div class="pc-love-paper">
+                <div class="pc-love-paper-title" id="pcLovePaperTitle">--</div>
+                <div class="pc-love-paper-body" id="pcLovePaperBody">--</div>
+            </div>
+
+            <div class="pc-love-ps" id="pcLovePSWrap" style="display:none;">
+                <div class="pc-love-ps-label">随笔</div>
+                <div class="pc-love-ps-text" id="pcLovePSText"></div>
+            </div>
+
+      
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-love-loading" id="pcLoveLoading" style="display:none;">
+        <div class="pc-love-loading-spinner"></div>
+        <div class="pc-love-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 短信页面 -->
+<div class="pc-sms-screen" id="phoneCheckSmsScreen">
+    <!-- 列表页：左上角返回（关闭短信回查手机） -->
+    <button class="pc-sms-back-btn" onclick="closePhoneCheckSms()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 列表页：右上角刷新 -->
+    <button class="pc-sms-refresh-btn" id="pcSmsRefreshBtn" onclick="generateSmsThreads()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 会话列表视图 -->
+    <div class="pc-sms-list-view" id="pcSmsListView">
+        <div class="pc-sms-title">短信</div>
+        <div class="pc-sms-list" id="pcSmsThreadList">
+            <div class="pc-sms-empty">点击右上角刷新按钮<br>生成 TA 的短信~</div>
+        </div>
+    </div>
+
+    <!-- 会话详情视图 -->
+    <div class="pc-sms-detail-view" id="pcSmsDetailView" style="display:none;">
+        <div class="pc-sms-detail-header">
+            <button class="pc-sms-detail-back" onclick="backToSmsList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-sms-detail-name" id="pcSmsDetailName">联系人</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-sms-messages" id="pcSmsMessages"></div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-sms-loading" id="pcSmsLoading" style="display:none;">
+        <div class="pc-sms-loading-spinner"></div>
+        <div class="pc-sms-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 理财页面 -->
+<div class="pc-finance-screen" id="phoneCheckFinanceScreen">
+    <!-- 列表页：返回（关闭理财回查手机） -->
+    <button class="pc-finance-back-btn" onclick="closePhoneCheckFinance()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 列表页：刷新 -->
+    <button class="pc-finance-refresh-btn" id="pcFinanceRefreshBtn" onclick="generateFinanceData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-finance-list-view" id="pcFinanceListView">
+        <div class="pc-finance-title">理财</div>
+
+        <!-- 资产卡 -->
+        <div class="pc-finance-balance-card">
+            <div class="pc-finance-balance-label">Total Balance</div>
+            <div class="pc-finance-balance-amount" id="pcFinanceTotalBalance">--</div>
+            <div class="pc-finance-balance-sub" id="pcFinanceBalanceSub">可用余额：--</div>
+
+        
+        </div>
+
+        <!-- 账单列表 -->
+        <div class="pc-finance-section-title">Recent Activity</div>
+        <div class="pc-finance-list" id="pcFinanceTxList">
+            <div class="pc-finance-empty">点击右上角刷新按钮<br>生成账单记录~</div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-finance-detail-view" id="pcFinanceDetailView" style="display:none;">
+        <div class="pc-finance-detail-header">
+            <button class="pc-finance-detail-back" onclick="backToFinanceList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-finance-detail-title">账单详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-finance-detail-content">
+            <div class="pc-finance-detail-amount" id="pcFinanceDetailAmount">--</div>
+            <div class="pc-finance-detail-meta" id="pcFinanceDetailMeta">--</div>
+
+            <div class="pc-finance-detail-card">
+                <div class="pc-finance-detail-row">
+                    <div class="pc-finance-detail-k">类型</div>
+                    <div class="pc-finance-detail-v" id="pcFinanceDetailType">--</div>
+                </div>
+                <div class="pc-finance-detail-row">
+                    <div class="pc-finance-detail-k">对象</div>
+                    <div class="pc-finance-detail-v" id="pcFinanceDetailTitle">--</div>
+                </div>
+                <div class="pc-finance-detail-row">
+                    <div class="pc-finance-detail-k">备注</div>
+                    <div class="pc-finance-detail-v" id="pcFinanceDetailDesc">--</div>
+                </div>
+                <div class="pc-finance-detail-row">
+                    <div class="pc-finance-detail-k">时间</div>
+                    <div class="pc-finance-detail-v" id="pcFinanceDetailTime">--</div>
+                </div>
+                <div class="pc-finance-detail-row">
+                    <div class="pc-finance-detail-k">单号</div>
+                    <div class="pc-finance-detail-v" id="pcFinanceDetailNo">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-finance-loading" id="pcFinanceLoading" style="display:none;">
+        <div class="pc-finance-loading-spinner"></div>
+        <div class="pc-finance-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 收藏页面 -->
+<div class="pc-fav-screen" id="phoneCheckFavoriteScreen">
+    <!-- 列表页：返回（关闭收藏回查手机） -->
+    <button class="pc-fav-back-btn" onclick="closePhoneCheckFavorite()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 列表页：刷新 -->
+    <button class="pc-fav-refresh-btn" id="pcFavRefreshBtn" onclick="generateFavoriteData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-fav-list-view" id="pcFavListView">
+        <div class="pc-fav-title">收藏</div>
+        <div class="pc-fav-subtitle">Private</div>
+
+        <div class="pc-fav-list" id="pcFavList">
+            <div class="pc-fav-empty">点击右上角刷新按钮<br>生成 TA 的收藏~</div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-fav-detail-view" id="pcFavDetailView" style="display:none;">
+        <div class="pc-fav-detail-header">
+            <button class="pc-fav-detail-back" onclick="backToFavList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-fav-detail-title">收藏详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-fav-detail-content">
+            <div class="pc-fav-detail-time" id="pcFavDetailTime">--</div>
+
+            <div class="pc-fav-card">
+                <div class="pc-fav-card-title" id="pcFavDetailTitle">--</div>
+                <div class="pc-fav-card-body" id="pcFavDetailContent">--</div>
+            </div>
+
+            <div class="pc-fav-source-card">
+                <div class="pc-fav-source-label">来源</div>
+                <div class="pc-fav-source-text" id="pcFavDetailSource">--</div>
+            </div>
+
+            <div class="pc-fav-os-card">
+                <div class="pc-fav-os-label">OS</div>
+                <div class="pc-fav-os-text" id="pcFavDetailOS">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-fav-loading" id="pcFavLoading" style="display:none;">
+        <div class="pc-fav-loading-spinner"></div>
+        <div class="pc-fav-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 豆沙包页面 -->
+<div class="pc-douban-screen" id="phoneCheckDoubanScreen">
+    <!-- 左上角返回 -->
+    <button class="pc-douban-back-btn" onclick="closePhoneCheckDouban()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新 -->
+    <button class="pc-douban-refresh-btn" id="pcDoubanRefreshBtn" onclick="generateDoubanData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <div class="pc-douban-list-view">
+        <div class="pc-douban-title">豆沙包</div>
+        <div class="pc-douban-subtitle">Ask AI</div>
+
+        <div class="pc-douban-list" id="pcDoubanList">
+            <div class="pc-douban-empty">
+                点击右上角刷新按钮<br>生成 TA 的豆沙包提问记录~
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-douban-loading" id="pcDoubanLoading" style="display:none;">
+        <div class="pc-douban-loading-spinner"></div>
+        <div class="pc-douban-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 旅程页面 -->
+<div class="pc-trip-screen" id="phoneCheckTripScreen">
+    <!-- 左上角返回 -->
+    <button class="pc-trip-back-btn" onclick="closePhoneCheckTrip()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新 -->
+    <button class="pc-trip-refresh-btn" id="pcTripRefreshBtn" onclick="generateTripData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-trip-list-view" id="pcTripListView">
+        <div class="pc-trip-title">旅程</div>
+        <div class="pc-trip-subtitle">Trips</div>
+
+        <div class="pc-trip-list" id="pcTripList">
+            <div class="pc-trip-empty">
+                点击右上角刷新按钮<br>生成 TA 的旅程记录~
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-trip-detail-view" id="pcTripDetailView" style="display:none;">
+        <div class="pc-trip-detail-header">
+            <button class="pc-trip-detail-back" onclick="backToTripList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-trip-detail-title">行程详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-trip-detail-content">
+            <div class="pc-trip-detail-time" id="pcTripDetailTime">--</div>
+
+            <div class="pc-trip-product-card">
+                <div class="pc-trip-product-emoji" id="pcTripDetailEmoji">🧳</div>
+                <div class="pc-trip-product-main">
+                    <div class="pc-trip-product-title" id="pcTripDetailTitle">--</div>
+                    <div class="pc-trip-product-price" id="pcTripDetailPrice">¥0.00</div>
+                </div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">类型</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailType">--</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">状态</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailStatus">--</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">出发地</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailFrom">-</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">目的地</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailTo">-</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">票号/车次/航班</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailTicket">-</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">酒店</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailHotel">-</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">行程内容</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailDesc">--</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">预订原因</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailReason">--</div>
+            </div>
+
+            <div class="pc-trip-detail-section">
+                <div class="pc-trip-detail-label">我的评价</div>
+                <div class="pc-trip-detail-text" id="pcTripDetailComment">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-trip-loading" id="pcTripLoading" style="display:none;">
+        <div class="pc-trip-loading-spinner"></div>
+        <div class="pc-trip-loading-text">正在生成...</div>
+    </div>
+</div>
+
+
+<!-- 查手机 - 丑团页面 -->
+<div class="pc-meituan-screen" id="phoneCheckMeituanScreen">
+    <!-- 左上角返回 -->
+    <button class="pc-meituan-back-btn" onclick="closePhoneCheckMeituan()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新 -->
+    <button class="pc-meituan-refresh-btn" id="pcMeituanRefreshBtn" onclick="generateMeituanData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-meituan-list-view" id="pcMeituanListView">
+        <div class="pc-meituan-title">丑团</div>
+        <div class="pc-meituan-subtitle">Orders</div>
+
+        <div class="pc-meituan-list" id="pcMeituanList">
+            <div class="pc-meituan-empty">
+                点击右上角刷新按钮<br>生成 TA 的丑团订单~
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-meituan-detail-view" id="pcMeituanDetailView" style="display:none;">
+        <div class="pc-meituan-detail-header">
+            <button class="pc-meituan-detail-back" onclick="backToMeituanList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-meituan-detail-title">订单详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-meituan-detail-content">
+            <div class="pc-meituan-detail-time" id="pcMeituanDetailTime">--</div>
+
+            <div class="pc-meituan-product-card">
+                <div class="pc-meituan-product-emoji" id="pcMeituanDetailEmoji">🍱</div>
+                <div class="pc-meituan-product-main">
+                    <div class="pc-meituan-product-title" id="pcMeituanDetailTitle">--</div>
+                    <div class="pc-meituan-product-price" id="pcMeituanDetailPrice">¥0.00</div>
+                </div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">店铺</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailStore">--</div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">类型</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailType">--</div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">状态</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailStatus">--</div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">订单内容</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailDesc">--</div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">下单原因</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailReason">--</div>
+            </div>
+
+            <div class="pc-meituan-detail-section">
+                <div class="pc-meituan-detail-label">我的评价</div>
+                <div class="pc-meituan-detail-text" id="pcMeituanDetailComment">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-meituan-loading" id="pcMeituanLoading" style="display:none;">
+        <div class="pc-meituan-loading-spinner"></div>
+        <div class="pc-meituan-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 淘宝页面 -->
+<div class="pc-taobao-screen" id="phoneCheckTaobaoScreen">
+    <!-- 左上角返回（关闭淘宝回查手机） -->
+    <button class="pc-taobao-back-btn" onclick="closePhoneCheckTaobao()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 右上角刷新生成 -->
+    <button class="pc-taobao-refresh-btn" id="pcTaobaoRefreshBtn" onclick="generateTaobaoData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-taobao-list-view" id="pcTaobaoListView">
+        <div class="pc-taobao-title">桃宝</div>
+        <div class="pc-taobao-subtitle">Orders</div>
+
+        <div class="pc-taobao-list" id="pcTaobaoList">
+            <div class="pc-taobao-empty">
+                点击右上角刷新按钮<br>生成 TA 的桃宝订单~
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-taobao-detail-view" id="pcTaobaoDetailView" style="display:none;">
+        <div class="pc-taobao-detail-header">
+            <button class="pc-taobao-detail-back" onclick="backToTaobaoList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-taobao-detail-title">订单详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-taobao-detail-content">
+            <div class="pc-taobao-detail-time" id="pcTaobaoDetailTime">--</div>
+
+            <div class="pc-taobao-product-card">
+                <div class="pc-taobao-product-emoji" id="pcTaobaoDetailEmoji">📦</div>
+                <div class="pc-taobao-product-main">
+                    <div class="pc-taobao-product-title" id="pcTaobaoDetailTitle">--</div>
+                    <div class="pc-taobao-product-price" id="pcTaobaoDetailPrice">¥0.00</div>
+                </div>
+            </div>
+
+            <div class="pc-taobao-detail-section">
+                <div class="pc-taobao-detail-label">店铺</div>
+                <div class="pc-taobao-detail-text" id="pcTaobaoDetailShop">--</div>
+            </div>
+
+            <div class="pc-taobao-detail-section">
+                <div class="pc-taobao-detail-label">状态</div>
+                <div class="pc-taobao-detail-text" id="pcTaobaoDetailStatus">--</div>
+            </div>
+
+            <div class="pc-taobao-detail-section">
+                <div class="pc-taobao-detail-label">商品内容</div>
+                <div class="pc-taobao-detail-text" id="pcTaobaoDetailDesc">--</div>
+            </div>
+
+            <div class="pc-taobao-detail-section">
+                <div class="pc-taobao-detail-label">购买原因</div>
+                <div class="pc-taobao-detail-text" id="pcTaobaoDetailReason">--</div>
+            </div>
+
+            <div class="pc-taobao-detail-section">
+                <div class="pc-taobao-detail-label">我的评价</div>
+                <div class="pc-taobao-detail-text" id="pcTaobaoDetailComment">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-taobao-loading" id="pcTaobaoLoading" style="display:none;">
+        <div class="pc-taobao-loading-spinner"></div>
+        <div class="pc-taobao-loading-text">正在生成...</div>
+    </div>
+</div>
+
+<!-- 查手机 - 行踪页面 -->
+<div class="pc-trace-screen" id="phoneCheckTraceScreen">
+    <!-- 列表页：返回（关闭行踪回查手机） -->
+    <button class="pc-trace-back-btn" onclick="closePhoneCheckTrace()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+    </button>
+
+    <!-- 列表页：刷新 -->
+    <button class="pc-trace-refresh-btn" id="pcTraceRefreshBtn" onclick="generateTraceData()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+    </button>
+
+    <!-- 列表视图 -->
+    <div class="pc-trace-list-view" id="pcTraceListView">
+        <div class="pc-trace-title">行踪</div>
+        <div class="pc-trace-subtitle">Last 7 Days</div>
+
+        <div class="pc-trace-timeline" id="pcTraceTimeline">
+            <div class="pc-trace-empty">点击右上角刷新按钮<br>生成 TA 的七日行踪~</div>
+        </div>
+    </div>
+
+    <!-- 详情视图 -->
+    <div class="pc-trace-detail-view" id="pcTraceDetailView" style="display:none;">
+        <div class="pc-trace-detail-header">
+            <button class="pc-trace-detail-back" onclick="backToTraceList()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <div class="pc-trace-detail-title">行踪详情</div>
+            <div style="width: 32px;"></div>
+        </div>
+
+        <div class="pc-trace-detail-content">
+            <div class="pc-trace-detail-date" id="pcTraceDetailDate">--</div>
+            <div class="pc-trace-detail-place" id="pcTraceDetailPlace">--</div>
+            <div class="pc-trace-detail-time" id="pcTraceDetailTime">--</div>
+
+            <div class="pc-trace-card">
+                <div class="pc-trace-card-label">TODO</div>
+                <div class="pc-trace-card-text" id="pcTraceDetailEvent">--</div>
+            </div>
+
+            <div class="pc-trace-card pc-trace-card-thought">
+                <div class="pc-trace-card-label">我的想法</div>
+                <div class="pc-trace-card-text" id="pcTraceDetailThought">--</div>
+            </div>
+
+            <div class="pc-trace-card pc-trace-card-user" id="pcTraceUserWrap" style="display:none;">
+                <div class="pc-trace-card-label">❤️</div>
+                <div class="pc-trace-card-text" id="pcTraceDetailRelation"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loading -->
+    <div class="pc-trace-loading" id="pcTraceLoading" style="display:none;">
+        <div class="pc-trace-loading-spinner"></div>
+        <div class="pc-trace-loading-text">正在生成...</div>
+    </div>
+    
+</div>
+
+<!-- 歌曲列表弹窗 -->
+<div id="musicSongListModal" onclick="closeMusicSongListModal(event)" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center;">
+    <div class="modal" onclick="event.stopPropagation()" style="width:92%; max-width:360px; max-height:75vh; display:flex; flex-direction:column;">
+        <div class="modal-title">歌曲列表</div>
+        <div class="music-song-list" id="musicSongList" style="flex:1; overflow-y:auto; max-height:50vh;"></div>
+        <button class="music-add-btn" style="margin-top:12px;" onclick="openAddSongModal()">+ 添加歌曲</button>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeMusicSongListModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查手机美化方案弹窗 -->
+<div class="pc-beautify-preset-modal" id="pcBeautifyPresetModal" style="display:none;" onclick="closePhoneCheckBeautifyPresetModal(event)">
+    <div class="pc-beautify-preset-modal-content">
+        <div class="pc-beautify-preset-modal-header">
+            <div class="pc-beautify-preset-modal-title">美化方案</div>
+            <button class="pc-beautify-preset-close" onclick="closePhoneCheckBeautifyPresetModal()">关闭</button>
+        </div>
+
+        <div class="pc-beautify-preset-list" id="pcBeautifyPresetList">
+            <div class="pc-beautify-preset-empty">还没有保存的方案~</div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- 查手机导入方案弹窗 -->
+<div class="pc-beautify-json-modal" id="pcBeautifyImportModal" style="display:none;" onclick="closePhoneCheckBeautifyImportModal(event)">
+    <div class="pc-beautify-json-modal-content">
+        <div class="pc-beautify-json-modal-header">
+            <div class="pc-beautify-json-modal-title">导入方案</div>
+            <button class="pc-beautify-preset-close" onclick="closePhoneCheckBeautifyImportModal()">关闭</button>
+        </div>
+
+        <div class="pc-beautify-file-box">
+            <div class="pc-beautify-file-tip">请选择别人发给你的 .json 美化方案文件</div>
+            <input type="file" id="pcBeautifyImportFile" accept=".json,application/json">
+        </div>
+
+        <div class="pc-beautify-json-actions">
+            <button class="pc-beautify-preset-btn" onclick="confirmImportPhoneCheckBeautifyFile()">导入并应用</button>
+        </div>
+    </div>
+</div>
+
+
+
+
 
 <script src="script.js"></script>
 <script src="extra.js"></script>

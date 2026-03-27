@@ -1422,26 +1422,24 @@ function renderBubblePresets(presets) {
     addBtn.style.border = '1px dashed #667eea';
     addBtn.style.color = '#667eea';
     addBtn.style.flexShrink = '0';
-   addBtn.onclick = saveBubblePreset;
+    addBtn.onclick = saveBubblePreset;
     container.appendChild(addBtn);
     
     // 渲染预设项
     presets.forEach((preset, index) => {
-        const btn = document.createElement('div'); // 用 div 包裹方便布局
+        const btn = document.createElement('div');
         btn.className = 'ins-cat-pill';
         btn.style.cssText = 'flex-shrink: 0; position: relative; padding-right: 25px; border: 1px solid #e0e0e0; background: #fff; cursor: pointer;';
         
-        // 预设名
         const span = document.createElement('span');
         span.textContent = preset.name;
         span.onclick = () => applyBubblePreset(index);
         
-        // 删除按钮 (小叉号)
         const delBtn = document.createElement('span');
         delBtn.innerHTML = '×';
         delBtn.style.cssText = 'position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: #ccc; font-weight: bold; font-size: 14px;';
         delBtn.onclick = (e) => {
-            e.stopPropagation(); // 防止触发应用
+            e.stopPropagation();
             deleteBubblePreset(index);
         };
         
@@ -1456,11 +1454,16 @@ function applyBubblePreset(index) {
     loadFromDB('userInfo', (data) => {
         const presets = (data && data.bubblePresets) ? data.bubblePresets : OFFICIAL_PRESETS;
         const preset = presets[index];
-        if (preset) {
-            document.getElementById('aiBubbleCssInput').value = preset.ai;
-            document.getElementById('userBubbleCssInput').value = preset.user;
-            updateBubblePreview();
-        }
+    if (preset) {
+    document.getElementById('aiBubbleCssInput').value = preset.ai;
+    document.getElementById('userBubbleCssInput').value = preset.user;
+    // ★ 恢复贴纸图层
+  activeStickerLayers = preset.stickerLayers ? JSON.parse(JSON.stringify(preset.stickerLayers)) : [];
+currentLayerId = activeStickerLayers.length > 0 ? activeStickerLayers[activeStickerLayers.length - 1].id : null;
+renderLayerList();
+if (currentLayerId) loadLayerToEditor(currentLayerId);
+generateBubbleCSS(); // ★ 改为generateBubbleCSS，会重新注入贴纸伪元素
+}
     });
 }
 
@@ -1476,12 +1479,12 @@ function saveBubblePreset() {
         const newData = data || {};
         if (!newData.bubblePresets) newData.bubblePresets = [...OFFICIAL_PRESETS];
         
-        newData.bubblePresets.push({
-            name: name,
-            ai: aiCss,
-            user: userCss
-        });
-        
+      newData.bubblePresets.push({
+    name: name,
+    ai: aiCss,
+    user: userCss,
+    stickerLayers: JSON.parse(JSON.stringify(activeStickerLayers)) // ★ 新增
+});
         saveToDB('userInfo', newData);
         renderBubblePresets(newData.bubblePresets);
     });
@@ -1502,6 +1505,59 @@ function deleteBubblePreset(index) {
         saveToDB('userInfo', newData);
         renderBubblePresets(newData.bubblePresets);
     });
+}
+
+// 导出气泡预设为 JSON 文件
+function exportBubblePresets() {
+    loadFromDB('userInfo', (data) => {
+        const presets = (data && data.bubblePresets) ? data.bubblePresets : OFFICIAL_PRESETS;
+        const exportData = {
+            version: 1,
+            type: 'bubble-presets',
+            presets: presets
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '气泡美化方案.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+// 导入气泡预设 JSON 文件
+function importBubblePresets(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importData = JSON.parse(e.target.result);
+            // 校验格式
+            if (importData.type !== 'bubble-presets' || !Array.isArray(importData.presets)) {
+                alert('❌ 文件格式不正确，请选择正确的气泡方案文件');
+                return;
+            }
+            loadFromDB('userInfo', (data) => {
+                const newData = data || {};
+                if (!newData.bubblePresets) newData.bubblePresets = [...OFFICIAL_PRESETS];
+                // 追加导入，避免重名
+                importData.presets.forEach(p => {
+                    const exists = newData.bubblePresets.some(ep => ep.name === p.name);
+                    p.name = exists ? p.name + '_导入' : p.name;
+                    newData.bubblePresets.push(p);
+                });
+                saveToDB('userInfo', newData);
+                renderBubblePresets(newData.bubblePresets);
+                alert(`✅ 成功导入 ${importData.presets.length} 个预设！`);
+            });
+        } catch(err) {
+            alert('❌ 文件解析失败，请检查文件是否损坏');
+        }
+    };
+    reader.readAsText(file);
+    input.value = '';
 }
 
 // 6. 实时预览
@@ -1553,6 +1609,14 @@ function resetBubbleEditor() {
     if(!confirm('确定恢复默认气泡样式吗？')) return;
     document.getElementById('aiBubbleCssInput').value = OFFICIAL_PRESETS[0].ai;
     document.getElementById('userBubbleCssInput').value = OFFICIAL_PRESETS[0].user;
+    // ★ 新增：清空贴纸图层
+    activeStickerLayers = [];
+    aiStickerLayers = [];
+    userStickerLayers = [];
+    currentLayerId = null;
+    bubbleEffectsCache = { ai: '', user: '' };
+    injectBubbleEffectsStyle(); // 清空注入的贴纸CSS
+    renderLayerList();
     updateBubblePreview();
 }
 
@@ -1594,8 +1658,19 @@ function switchBubbleTab(type) {
     // 4. ★★★ 强制滑块归位 (把 CSS 里的 11px 填回滑块) ★★★
     syncCreatorControlsFromCss(targetCss);
 
+// ★ 新增：切换前保存当前气泡的贴纸数据
+if (type === 'ai') {
+    userStickerLayers = JSON.parse(JSON.stringify(activeStickerLayers));
+    activeStickerLayers = JSON.parse(JSON.stringify(aiStickerLayers));
+} else {
+    aiStickerLayers = JSON.parse(JSON.stringify(activeStickerLayers));
+    activeStickerLayers = JSON.parse(JSON.stringify(userStickerLayers));
+}
+currentLayerId = activeStickerLayers.length > 0 ? activeStickerLayers[0].id : null;
+
+
     // 5. 重置贴纸图层 (防止左边的贴纸显示在右边的编辑器里)
-    activeStickerLayers = [];
+  
     renderLayerList();
     document.getElementById('stickerEditorControls').style.display = 'none';
 }
@@ -1606,8 +1681,10 @@ function switchBubbleTab(type) {
 // ★★★ 可视化气泡制作器逻辑 (支持外部贴纸版) ★★★
 // ===========================================
 
-let activeStickerLayers = []; 
-let currentLayerId = null;    
+let activeStickerLayers = []; // 当前编辑的贴纸数组
+let aiStickerLayers = [];      // ★ 新增：AI气泡的贴纸
+let userStickerLayers = [];    // ★ 新增：用户气泡的贴纸
+let currentLayerId = null;
 
 // 1. 切换制作器面板
 function toggleBubbleCreator(checkbox) {
@@ -2003,8 +2080,11 @@ function saveCurrentThemeScheme() {
                 charListStyle: currentData.charListStyle || null,
                 // 4. 对话页面样式
                 chatScreenStyle: currentData.chatScreenStyle || null,
-                // 5. 气泡样式
-                bubbleStyle: currentData.bubbleStyle || null
+            // 5. 气泡样式
+bubbleStyle: currentData.bubbleStyle || null,
+// 6. 贴纸图层 ★★★ 新增
+stickerLayers: JSON.parse(JSON.stringify(activeStickerLayers)) || []
+                
             }
         };
 
@@ -2051,6 +2131,17 @@ function applyThemeScheme(index) {
             newData.bubbleStyle = config.bubbleStyle;
             injectBubbleStyleTag(config.bubbleStyle.ai, config.bubbleStyle.user);
         }
+
+        // --- 6. 应用贴纸图层 ---
+if (config.stickerLayers && config.stickerLayers.length > 0) {
+    activeStickerLayers = JSON.parse(JSON.stringify(config.stickerLayers));
+    renderLayerList();
+    if (activeStickerLayers.length > 0) {
+        currentLayerId = activeStickerLayers[0].id;
+        loadLayerToEditor(currentLayerId);
+        generateBubbleCSS();
+    }
+}
 
         // --- 更新数据库中的当前状态 ---
         saveToDB('userInfo', newData);
@@ -2244,9 +2335,19 @@ async function playVoiceMessage(text) {
         return;
     }
     
+ const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
+
     console.log('开始调用MiniMax TTS API...');
+
+    console.log('voiceConfig:', voiceConfig);
+console.log('请求体:', {
+    text: text,
+    voice_id: voiceId,
+    apiKey: voiceConfig.apiKey ? '***' : '未设置',
+    groupId: voiceConfig.groupId ? '***' : '未设置'
+});
     
-    const voiceId = voiceConfig.voiceCharacterId || 'female-tianmei';
+  
     // 使用你部署成功的 Worker 地址
     const apiUrl = 'https://bold-dawn-c01f.1726776740.workers.dev';
     
@@ -2270,6 +2371,8 @@ async function playVoiceMessage(text) {
         }
         
         const data = await response.json();
+        console.log('Worker返回数据:', data);
+console.log('audio字段类型:', typeof data.audio, '长度:', data.audio?.length);
         
         if (data.success && data.audio) {
             // ★★★ 核心修复：将 HEX 字符串还原为真正的音频二进制数据 ★★★
@@ -4111,8 +4214,9 @@ function triggerHeartEffect() {
     }, 500);
 }
 
-// 打开聊天显示设置弹窗
+// ================= 终极替换：打开聊天显示设置弹窗 =================
 function openAvatarDisplaySettings() {
+    // 【原有代码完全保留】：检查当前聊天ID
     if (!currentChatId) {
         console.error('未找到当前聊天ID');
         return;
@@ -4122,29 +4226,53 @@ function openAvatarDisplaySettings() {
         const allCharData = data || {};
         const charData = allCharData[currentChatId] || {};
         
-        // 读取设置（默认值：不显示头像）
+        // 【原有代码完全保留】：读取基础设置
         const settings = charData.avatarDisplaySettings || {
             enabled: false,
             shape: 'circle',
             size: 40
         };
         
-        // 填充表单
+        // ========== 核心修复：从数据库恢复头像框记忆 ==========
+        if (settings.avatarFrame) {
+            avatarFrameData = settings.avatarFrame;
+        } else {
+            avatarFrameData = { enabled: false, frames: [], character: null, user: null };
+        }
+        
+        // 数据恢复后，立刻重新渲染横向滑动列表
+        if (typeof renderUploadedFrames === 'function') {
+            renderUploadedFrames(); 
+        }
+        // ====================================================
+
+        // 【原有代码完全保留】：填充基础表单
         document.getElementById('avatarDisplayEnabled').checked = settings.enabled;
         document.getElementById('avatarDisplayShape').value = settings.shape;
         document.getElementById('avatarDisplaySize').value = settings.size;
         document.getElementById('avatarSizeDisplay').textContent = settings.size + 'px';
         
-        // 控制形状和大小选项的显示
+        // 【原有代码完全保留】：控制形状和大小选项的显示
         const shapeGroup = document.getElementById('avatarShapeGroup');
         const sizeGroup = document.getElementById('avatarSizeGroup');
         if (shapeGroup) shapeGroup.style.display = settings.enabled ? 'block' : 'none';
         if (sizeGroup) sizeGroup.style.display = settings.enabled ? 'block' : 'none';
         
-        // 更新预览
+        // ========== 自检补全：恢复头像框的开关状态和面板显示 ==========
+        const frameToggle = document.getElementById('avatarFrameEnabled');
+        const framePanel = document.getElementById('avatarFramePanel');
+        if (frameToggle) {
+            frameToggle.checked = avatarFrameData.enabled;
+        }
+        if (framePanel) {
+            framePanel.style.display = avatarFrameData.enabled ? 'block' : 'none';
+        }
+        // ==========================================================
+
+        // 【原有代码完全保留】：更新预览
         updateAvatarPreview();
         
-        // 显示弹窗
+        // 【原有代码完全保留】：显示弹窗
         document.getElementById('avatarDisplayModal').style.display = 'flex';
     });
 }
@@ -4167,17 +4295,36 @@ function updateAvatarPreview() {
     // 控制形状和大小选项的显示
     const shapeGroup = document.getElementById('avatarShapeGroup');
     const sizeGroup = document.getElementById('avatarSizeGroup');
-    const frameGroup = document.getElementById('avatarFrameGroup'); // ← 新增
+    const frameGroup = document.getElementById('avatarFrameGroup'); 
     
     if (shapeGroup) shapeGroup.style.display = enabled ? 'block' : 'none';
     if (sizeGroup) sizeGroup.style.display = enabled ? 'block' : 'none';
-    if (frameGroup) frameGroup.style.display = enabled ? 'block' : 'none'; // ← 新增
+    if (frameGroup) frameGroup.style.display = enabled ? 'block' : 'none';
     
     // 获取预览头像元素
     const aiAvatar = document.getElementById('previewAiAvatar');
     const userAvatar = document.getElementById('previewUserAvatar');
     
     if (!aiAvatar || !userAvatar) return;
+
+    // ★★★ 核心修复：防止裁剪，头像框放大 115% ★★★
+    if (!document.getElementById('avatar-preview-css-hack')) {
+        const style = document.createElement('style');
+        style.id = 'avatar-preview-css-hack';
+        style.innerHTML = `
+            #previewAiAvatar, #previewUserAvatar { position: relative; overflow: visible !important; }
+            #previewAiAvatar::after, #previewUserAvatar::after {
+                content: ''; position: absolute; top: 50%; left: 50%; 
+                width: 115%; height: 115%; /* 同步放大 115% */
+                transform: translate(-50%, -50%);
+                background-size: contain; background-repeat: no-repeat; background-position: center;
+                pointer-events: none; z-index: 10;
+            }
+            #previewAiAvatar::after { background-image: var(--preview-char-frame, none); }
+            #previewUserAvatar::after { background-image: var(--preview-user-frame, none); }
+        `;
+        document.head.appendChild(style);
+    }
     
     // 应用设置到预览
     if (enabled) {
@@ -4207,31 +4354,26 @@ function updateAvatarPreview() {
             userAvatar.style.borderRadius = (size * 0.2) + 'px';
         }
         
-        // ========== 新增：添加头像框 START ==========
-        if (typeof avatarFrameData !== 'undefined' && avatarFrameData.enabled) {
-            if (avatarFrameData.character) {
-                aiAvatar.style.backgroundImage = `url(${avatarFrameData.character})`;
-                aiAvatar.style.backgroundSize = 'cover';
-                aiAvatar.style.backgroundPosition = 'center';
-            } else {
-                aiAvatar.style.backgroundImage = 'none';
-            }
-            
-            if (avatarFrameData.user) {
-                userAvatar.style.backgroundImage = `url(${avatarFrameData.user})`;
-                userAvatar.style.backgroundSize = 'cover';
-                userAvatar.style.backgroundPosition = 'center';
-            } else {
-                userAvatar.style.backgroundImage = 'none';
-            }
-        } else {
-            aiAvatar.style.backgroundImage = 'none';
-            userAvatar.style.backgroundImage = 'none';
-        }
-        // ========== 新增：添加头像框 END ==========
+        // ★★★ 核心逻辑：利用 CSS 变量动态切换头像框 ★★★
+        let charFrameVar = 'none';
+        let userFrameVar = 'none';
         
-        // 加载实际头像
+        if (typeof avatarFrameData !== 'undefined') {
+            const frameToggle = document.getElementById('avatarFrameEnabled');
+            const isFrameOn = frameToggle ? frameToggle.checked : (avatarFrameData.enabled !== false);
+            
+            if (isFrameOn) {
+                if (avatarFrameData.character) charFrameVar = `url('${avatarFrameData.character}')`;
+                if (avatarFrameData.user) userFrameVar = `url('${avatarFrameData.user}')`;
+            }
+        }
+        
+        aiAvatar.style.setProperty('--preview-char-frame', charFrameVar);
+        userAvatar.style.setProperty('--preview-user-frame', userFrameVar);
+        
+        // 加载实际头像底图
         loadAvatarForPreview();
+        
     } else {
         // 隐藏头像
         aiAvatar.style.display = 'none';
@@ -4335,20 +4477,17 @@ function toggleAvatarFramePanel() {
     updateAvatarPreview();
 }
 
-// 添加头像框
+
+// 【修改后】添加头像框：无限制触发上传
 function addAvatarFrame() {
-    const frameCount = avatarFrameData.frames.length;
-    
-    if (frameCount < 2) {
-        // 前两个直接上传
-        document.getElementById('avatarFrameFileInput').click();
-    } else {
-        // 第三个及以上打开分配弹窗
-        openFrameAssignModal();
-    }
+    document.getElementById('avatarFrameFileInput').click();
 }
 
-// 处理头像框上传
+// ================= 全新添加的变量 =================
+let tempSelectedCharacterFrame = null;
+let tempSelectedUserFrame = null;
+
+// ================= 替换：处理头像框上传 =================
 function handleFrameUpload(input) {
     if (!input.files || !input.files[0]) return;
     
@@ -4357,90 +4496,83 @@ function handleFrameUpload(input) {
     
     reader.onload = function(e) {
         const frameData = e.target.result;
+        // 把新图片推入数组
         avatarFrameData.frames.push(frameData);
-        
-        const frameCount = avatarFrameData.frames.length;
-        
-        if (frameCount === 1) {
-            // 第一个默认给角色
-            avatarFrameData.character = frameData;
-            showFramePreview(1, frameData);
-        } else if (frameCount === 2) {
-            // 第二个默认给用户
-            avatarFrameData.user = frameData;
-            showFramePreview(2, frameData);
-            // 隐藏添加按钮
-            document.getElementById('addFrameBtn').style.display = 'none';
-        }
-        
-        updateAvatarPreview();
-        input.value = ''; // 清空input
+        // 重新渲染左侧上传区的横向列表
+        renderUploadedFrames();
+        // 清空input，保证下次选同一张图也能触发onchange
+        input.value = '';
     };
     
     reader.readAsDataURL(file);
 }
 
-// 显示头像框预览
-function showFramePreview(index, dataUrl) {
-    const preview = document.getElementById(`framePreview${index}`);
-    const img = document.getElementById(`framePreviewImg${index}`);
+
+// ================= 终极安全版：动态渲染已上传头像框的横向列表 =================
+function renderUploadedFrames() {
+    const listContainer = document.getElementById('uploadedFramesList');
+    if (!listContainer) return;
     
-    if (preview && img) {
-        img.src = dataUrl;
-        preview.style.display = 'block';
-    }
+    listContainer.innerHTML = '';
+    
+    avatarFrameData.frames.forEach((frame, index) => {
+        // 1. 创建外层容器
+        const item = document.createElement('div');
+        item.style.cssText = 'position: relative; width: 60px; height: 60px; flex-shrink: 0; border-radius: 8px; overflow: hidden; border: 1px solid #eee;';
+        
+        // 2. 创建图片元素（用这种方式插入超长图片代码最安全，不会报错）
+        const img = document.createElement('img');
+        img.src = frame;
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: opacity 0.2s;';
+        
+        // 绑定悬停和点击事件
+        img.onmouseover = function() { this.style.opacity = '0.8'; };
+        img.onmouseout = function() { this.style.opacity = '1'; };
+        img.onclick = function() {
+            openFrameAssignModal(); // 点击图片打开分配弹窗
+        };
+        
+        // 3. 创建删除按钮（小叉叉）
+        const deleteBtn = document.createElement('div');
+        deleteBtn.style.cssText = 'position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; line-height: 1; z-index: 10;';
+        deleteBtn.innerText = '×';
+        
+        // 绑定删除事件
+        deleteBtn.onclick = function(event) {
+            event.stopPropagation(); // 【关键修复】阻止事件冒泡！点删除时，绝对不会误触发底下的图片点击
+            removeFrame(index);
+        };
+        
+        // 4. 把图片和按钮组装进容器，再塞到列表里
+        item.appendChild(img);
+        item.appendChild(deleteBtn);
+        listContainer.appendChild(item);
+    });
 }
 
-// 移除头像框
+// ================= 替换：移除头像框 =================
 function removeFrame(index) {
-    if (index === 1) {
-        avatarFrameData.character = null;
-        document.getElementById('framePreview1').style.display = 'none';
-        // 如果有第二个，移到第一个位置
-        if (avatarFrameData.user) {
-            avatarFrameData.character = avatarFrameData.user;
-            avatarFrameData.user = null;
-            showFramePreview(1, avatarFrameData.character);
-            document.getElementById('framePreview2').style.display = 'none';
-            document.getElementById('addFrameBtn').style.display = 'flex';
-        }
-    } else if (index === 2) {
-        avatarFrameData.user = null;
-        document.getElementById('framePreview2').style.display = 'none';
-        document.getElementById('addFrameBtn').style.display = 'flex';
-    }
+    const removedFrame = avatarFrameData.frames[index];
     
-    // 更新frames数组
-    avatarFrameData.frames = [avatarFrameData.character, avatarFrameData.user].filter(f => f);
+    // 从数组中删掉这个框
+    avatarFrameData.frames.splice(index, 1);
+    
+    // 如果删掉的框正好是当前角色或自己正在用的，顺便清空生效状态
+    if (avatarFrameData.character === removedFrame) avatarFrameData.character = null;
+    if (avatarFrameData.user === removedFrame) avatarFrameData.user = null;
+    
+    // 重新渲染横向列表并更新聊天区预览
+    renderUploadedFrames();
     updateAvatarPreview();
 }
 
-// 打开头像框分配弹窗
+// ================= 替换：打开头像框分配弹窗 =================
 function openFrameAssignModal() {
-    // 先上传新头像框
-    const input = document.getElementById('avatarFrameFileInput');
-    input.click();
-    
-    input.onchange = function() {
-        if (!input.files || !input.files[0]) return;
-        
-        const file = input.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const newFrame = e.target.result;
-            avatarFrameData.frames.push(newFrame);
-            
-            // 显示分配弹窗
-            document.getElementById('avatarFrameAssignModal').style.display = 'flex';
-            renderFrameAssignLists();
-        };
-        
-        reader.readAsDataURL(file);
-    };
+    document.getElementById('avatarFrameAssignModal').style.display = 'flex';
+    renderFrameAssignLists();
 }
 
-// 渲染分配列表
+// ================= 替换：渲染分配列表 =================
 function renderFrameAssignLists() {
     const charList = document.getElementById('characterFrameList');
     const userList = document.getElementById('userFrameList');
@@ -4448,42 +4580,51 @@ function renderFrameAssignLists() {
     charList.innerHTML = '';
     userList.innerHTML = '';
     
-    avatarFrameData.frames.forEach((frame, index) => {
-        // 角色列表
-        const charItem = document.createElement('label');
-        charItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 6px;';
-        charItem.innerHTML = `
-            <input type="radio" name="charFrame" value="${index}" ${avatarFrameData.character === frame ? 'checked' : ''}>
-            <img src="${frame}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
-        `;
+    // 每次打开弹窗，先把临时变量对齐当前已保存的状态
+    tempSelectedCharacterFrame = avatarFrameData.character;
+    tempSelectedUserFrame = avatarFrameData.user;
+    
+    avatarFrameData.frames.forEach((frame) => {
+        const isCharSelected = avatarFrameData.character === frame ? 'selected' : '';
+        const isUserSelected = avatarFrameData.user === frame ? 'selected' : '';
+        
+        // 角色列表 (默认使用方圆形 shape-square)
+        const charItem = document.createElement('div');
+        charItem.className = `frame-option shape-square ${isCharSelected}`; 
+        charItem.setAttribute('onclick', `selectFrame(this, 'character', '${frame}')`);
+        charItem.innerHTML = `<img src="${frame}">`;
         charList.appendChild(charItem);
         
         // 用户列表
-        const userItem = document.createElement('label');
-        userItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 6px;';
-        userItem.innerHTML = `
-            <input type="radio" name="userFrame" value="${index}" ${avatarFrameData.user === frame ? 'checked' : ''}>
-            <img src="${frame}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
-        `;
+        const userItem = document.createElement('div');
+        userItem.className = `frame-option shape-square ${isUserSelected}`;
+        userItem.setAttribute('onclick', `selectFrame(this, 'user', '${frame}')`);
+        userItem.innerHTML = `<img src="${frame}">`;
         userList.appendChild(userItem);
     });
 }
 
-// 保存头像框分配
+// ================= 全新添加：点击出现“√”的逻辑 =================
+function selectFrame(element, target, frameUrl) {
+    const listId = target === 'character' ? 'characterFrameList' : 'userFrameList';
+    const listContainer = document.getElementById(listId);
+    
+    const allOptions = listContainer.querySelectorAll('.frame-option');
+    allOptions.forEach(opt => opt.classList.remove('selected'));
+    
+    element.classList.add('selected');
+    
+    if (target === 'character') {
+        tempSelectedCharacterFrame = frameUrl;
+    } else {
+        tempSelectedUserFrame = frameUrl;
+    }
+}
+
+// ================= 替换：保存头像框分配 =================
 function saveFrameAssignment() {
-    const charRadio = document.querySelector('input[name="charFrame"]:checked');
-    const userRadio = document.querySelector('input[name="userFrame"]:checked');
-    
-    if (charRadio) {
-        avatarFrameData.character = avatarFrameData.frames[parseInt(charRadio.value)];
-        showFramePreview(1, avatarFrameData.character);
-    }
-    
-    if (userRadio) {
-        avatarFrameData.user = avatarFrameData.frames[parseInt(userRadio.value)];
-        showFramePreview(2, avatarFrameData.user);
-        document.getElementById('addFrameBtn').style.display = 'none';
-    }
+    avatarFrameData.character = tempSelectedCharacterFrame;
+    avatarFrameData.user = tempSelectedUserFrame;
     
     closeFrameAssignModal();
     updateAvatarPreview();
@@ -4497,4 +4638,8394 @@ function closeFrameAssignModal(event) {
 
 
 
+           
 // ========== 头像框功能 END ==========
+
+// ============ 时空邮局 - 完整逻辑 ============
+
+// 时空邮局状态
+let spLetters = [];        // 当前5封信
+let spCurrentIndex = 0;    // 当前显示第几封
+let spReplyTarget = null;  // 当前回信目标
+let spWriteMode = '';      // 'send'=主动寄信, 'reply'=回复别人
+
+
+// 从DB加载已有信件
+function loadSpLettersFromDB() {
+    loadFromDB('spacepost', (data) => {
+        if (data && data.letters && data.letters.length > 0) {
+            spLetters = data.letters;
+            spCurrentIndex = data.currentIndex || 0;
+            displayCurrentLetter();
+        }
+    });
+}
+
+// 关闭时空邮局
+function closeSpacePost() {
+    document.getElementById('spacePostScreen').style.display = 'none';
+    document.getElementById('mainScreen').style.display = 'flex';
+}
+
+// 按钮总入口
+function handleSpacePostAction(type) {
+    if (type === 'receive') openSpLetter();
+    else if (type === 'send') openSpSend();
+    else if (type === 'next') showNextLetter();
+    else if (type === 'mymail') openSpMymail();
+}
+
+// ====== 生成信件 ======
+async function generateSpLetters() {
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在API设置中配置接口');
+        return;
+    }
+
+    const icon = document.querySelector('.sp-icon');
+    const card = document.querySelector('.sp-glass-card');
+    if (icon) icon.classList.add('loading');
+    if (card) card.classList.add('loading');
+    document.getElementById('spContent').textContent = '星海中搜寻信件...';
+
+    try {
+        // 获取单聊角色
+        const singleChats = chats.filter(c => c.type === 'single');
+        let charInfoList = [];
+
+        if (singleChats.length > 0) {
+                  // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+            charInfoList = singleChats.map(c => ({
+                name: c.name,
+                personality: (charData[c.id] && charData[c.id].personality) || '未知性格'
+            }));
+        }
+
+        // 随机选1-2个角色
+        let selectedChars = [];
+        if (charInfoList.length > 0) {
+            const count = Math.min(charInfoList.length, Math.random() > 0.5 ? 2 : 1);
+            const shuffled = [...charInfoList].sort(() => Math.random() - 0.5);
+            selectedChars = shuffled.slice(0, count);
+        }
+
+        // 构建角色信息
+        let charPrompt = '';
+        if (selectedChars.length > 0) {
+            charPrompt = selectedChars.map(c =>
+                `角色名：${c.name}，人设：${c.personality}`
+            ).join('\n');
+        }
+
+        const strangerCount = 5 - selectedChars.length;
+
+const prompt = `你是一个"时空邮局"的信件生成器。这是一个可以跨越时空、维度、甚至存在形式收发信件的神奇邮局。信件可能来自过去、未来、平行世界、虚构的档案馆、濒临消失的文明、甚至非人类的存在。请生成5封漂流信件，以JSON数组格式返回。
+
+要求：
+1. 其中${selectedChars.length}封来自以下角色（必须完全贴合他们的人设、性格、经历和说话方式来写，信件内容要体现角色的独特视角）：
+${charPrompt || '（无角色，全部生成陌生人/特殊寄件者信件）'}
+
+2. 其余${strangerCount}封来自陌生人或特殊寄件者，可以是：
+- 普通人（中国人或外国人，外国人名字用原文但信件内容用中文）
+- 特殊存在（某个即将消失的事物、某段历史、某个概念的拟人化）
+
+3. 每封信的寄出时间随机，格式用诗意表达，如"2087年的春天""公元前221年的咸阳""1998年深秋的某个雨夜""宇宙热寂前的最后一个纪元"
+
+4. 【核心】信件主题必须丰富多样，5封信必须来自不同的主题大类，从以下方向中随机选取：
+
+【经典情感类】
+- 给重要时刻的自己：高考前夜、入职第一天、结婚那天、离开家乡的早晨
+- 没来得及说出口的话：对暗恋的人、对已故的亲人、对失联的朋友
+- 未说出口的道歉：对父母、对朋友、对伤害过的人
+- 对失去的思念：逝去的亲人、走散的玩伴、离世的宠物
+- 平行世界的假设：如果当时做了另一个选择、如果没有放弃那个梦想
+- 未来的自己：对十年后自己的期许、从未来回望现在的感慨
+- 被时间冲淡的小事：某个平凡但幸福的下午、一顿普通的晚饭
+- 放弃的梦想：曾经想成为的人、没有走完的路
+- 情绪的倾诉：迷茫、焦虑、孤独、释然、突然的幸福感
+- 对陌生人的善意：希望捡到这封信的人今天开心
+
+【文明遗留记录】
+- 某个即将消失的语言/方言的最后一位使用者写的信
+- 某个被拆除的老建筑"写"给曾住在里面的人
+- 某个失传手艺的最后传承人留给后世的话
+- 某个消失的小镇/村庄留下的最后记录
+- 某个濒危物种的拟人化独白
+
+【档案馆来信】
+- 时间档案馆管理员写的信：关于某个被遗忘的历史瞬间
+- 记忆档案馆：某个被所有人遗忘的人的档案记录
+- 未来档案馆：2200年的历史学家给2024年普通人的提问
+- 平行世界档案馆：记录着"你没有做出的那个选择"之后的人生
+- 遗失物档案馆：某个丢失物品的视角
+
+【一份味道的信】
+- 某道菜写给做它的人（外婆的红烧肉、妈妈的西红柿炒蛋）
+- 某个童年零食写给长大后的你
+- 某家关门小店的招牌菜写给老顾客
+- 故乡的味道写给漂泊在外的游子
+- 某个再也吃不到的味道的告别信
+
+【存在倒计时】
+- 某颗即将被拆除的老树写给在它树下乘凉过的人
+- 某个即将退役的老物件（收音机、磁带、旧手机）的告别
+- 某个即将被遗忘的传统节日/习俗的独白
+- 某家经营了几十年即将关门的小店的最后一封信
+- 某个人生命最后时刻写给世界的信（温暖释然的基调）
+
+【人生串行小说】
+- 人生第一章的自己写给最后一章的自己
+- 某个人生转折点写给另一个转折点
+- "如果人生是小说，这一章我想重写"
+- 某个人生配角写给主角的信（比如：你初中同桌写给你）
+- 未来的自己剧透了一点点后面的剧情
+
+【命运交叉机器】
+- 两个素不相识的人，因为某个巧合产生交集，其中一人写的信
+- 某个蝴蝶效应的起点写给终点（"因为我那天迟到了五分钟..."）
+- 命运交叉点上的独白：那个改变一切的瞬间
+- 给那个我只见过一面却改变了我的陌生人
+
+【薛定谔的答案】
+- 一封来自"你没有打开的那个盒子里"的信
+- 一封关于"那个你永远不会知道答案的问题"的思考
+- 一封来自"你做出选择之前的那个瞬间"的信
+- 关于那些永远停留在"如果"里的可能性
+
+【给地球/宇宙的明信片】
+- 某个外星文明发现地球遗迹后写给人类的信
+- 地球写给曾经生活在上面的人类
+- 宇宙某个角落的孤独存在写给地球
+- 某个宇航员在太空中写给地球上某个人的信
+- 来自2xxx年的地球给2024年地球的回信
+
+【历史的私语】
+- 某个历史事件中的普通人视角（不是名人，是那个时代的普通人）
+- 历史课本里一笔带过的某个瞬间，当事人的真实感受
+- 某个被历史遗忘的小人物写给后世的信
+- 如果历史上某个关键时刻有人写了一封信
+
+【天幕盘点视角】
+- 未来的人类在"盘点历史名场面"时，给当事人的弹幕/私信
+- 某个被后世反复讨论的历史人物写给"那些评论我的后人"
+- 天幕管理员写给被迫观看自己人生的古人的道歉信
+- 某个在天幕上被当作反面教材的人的辩解
+
+【物品的一生】
+- 一本被转卖多次的旧书写给曾经的主人
+- 一张老照片写给照片里的人
+- 一封从未寄出的信写给本该收到它的人
+- 某个传家宝写给家族的每一代人
+
+5. 每封信内容150-500字，要有真情实感，像真人/真实存在写的信，有细节、有温度、有画面感
+6. 信件内容格式要求：每段开头空两格（用两个全角空格），段落之间用换行符\\n分隔
+7. 语气自然真实，根据寄件者身份调整语气：普通人口语化，特殊存在可以略带诗意但不要过度文艺
+8. 每封信的情绪基调不同：有快乐的、悲伤的、温暖的、遗憾的、释然的、期待的、神秘的、幽默的
+9. 严禁使用任何HTML标签，只用纯文本
+
+10. 严格返回JSON数组格式，不要任何多余文字：
+[
+  {
+    "sender": "寄件人名字或特殊身份",
+    "time": "诗意的时间描述",
+    "preview": "内容前20字",
+    "content": "完整信件内容",
+    "isCharacter": true或false,
+    "theme": "主题类型（如：文明遗留/档案馆/味道的信等）"
+  }
+]`;
+
+        const requestUrl = currentApiConfig.baseUrl.endsWith('/')
+            ? currentApiConfig.baseUrl + 'chat/completions'
+            : currentApiConfig.baseUrl + '/chat/completions';
+
+  console.log('📮 时空邮局请求地址:', requestUrl, '模型:', currentApiConfig.defaultModel);
+
+
+        const response = await fetch(requestUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7,
+                  max_tokens: 6000
+            })
+        });
+
+              const rawText = await response.text();
+        console.log('时空邮局API原始返回:', rawText.substring(0, 500));
+        
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (e) {
+            throw new Error('API返回非JSON: ' + rawText.substring(0, 200));
+        }
+        
+        if (!response.ok) {
+            const errMsg = (data && data.error && data.error.message) ? data.error.message : rawText.substring(0, 200);
+            throw new Error('API错误: ' + errMsg);
+        }
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('API返回结构异常: ' + JSON.stringify(data).substring(0, 200));
+        }
+
+               let raw = data.choices[0].message.content.trim();
+        console.log('时空邮局AI回复:', raw.substring(0, 500));
+        
+        // 提取JSON（多种方式尝试）
+        let parsed = null;
+        
+        // 方式1：直接匹配 [ ... ]
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+            try {
+                parsed = JSON.parse(jsonMatch[0]);
+            } catch (e) {
+                console.warn('方式1解析失败，尝试修复...');
+                // 尝试修复常见问题：换行符在JSON字符串内
+                let fixed = jsonMatch[0]
+                    .replace(/\n/g, '\\n')
+                    .replace(/\r/g, '')
+                    .replace(/\t/g, '\\t')
+                    .replace(/,\s*]/g, ']')  // 去掉末尾多余逗号
+                    .replace(/,\s*}/g, '}');
+                try {
+                    parsed = JSON.parse(fixed);
+                } catch (e2) {
+                    console.warn('修复后仍失败:', e2);
+                }
+            }
+        }
+        
+        // 方式2：匹配 ```json ... ```
+        if (!parsed) {
+            const codeMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (codeMatch) {
+                try {
+                    parsed = JSON.parse(codeMatch[1].trim());
+                } catch (e) {
+                    let fixed = codeMatch[1].trim()
+                        .replace(/\n/g, '\\n')
+                        .replace(/\r/g, '')
+                        .replace(/,\s*]/g, ']')
+                        .replace(/,\s*}/g, '}');
+                    try { parsed = JSON.parse(fixed); } catch (e2) {}
+                }
+            }
+        }
+        
+        // 方式3：暴力提取每个 { } 对象
+        if (!parsed) {
+            console.warn('尝试暴力提取JSON对象...');
+            const objMatches = raw.match(/\{[\s\S]*?\}/g);
+            if (objMatches && objMatches.length > 0) {
+                const items = [];
+                for (const m of objMatches) {
+                    try {
+                        let fixed = m.replace(/\n/g, '\\n').replace(/\r/g, '');
+                        const obj = JSON.parse(fixed);
+                        if (obj.sender && obj.content) items.push(obj);
+                    } catch (e) {}
+                }
+                if (items.length > 0) parsed = items;
+            }
+        }
+        
+          if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+            throw new Error('无法解析信件数据，请重试');
+        }
+
+        // 清理HTML标签
+        parsed.forEach(letter => {
+            if (letter.content) {
+                letter.content = letter.content.replace(/<[^>]+>/g, '');
+            }
+            if (letter.preview) {
+                letter.preview = letter.preview.replace(/<[^>]+>/g, '');
+            }
+        });
+
+        spLetters = parsed;
+
+        spCurrentIndex = 0;
+        // 保存到DB（保留已有回信记录）
+        loadFromDB('spacepost', (existing) => {
+            const saveData = existing || {};
+            saveData.id = 1;
+            saveData.letters = spLetters;
+            saveData.currentIndex = 0;
+            // 保留已有的回信记录
+            if (!saveData.mailRecords) saveData.mailRecords = [];
+            saveToDB('spacepost', saveData, () => {
+                console.log('✅ 时空邮局信件已保存, 回信记录保留:', saveData.mailRecords.length);
+            });
+        });
+        displayCurrentLetter();
+
+    } catch (e) {
+        console.error('时空邮局生成失败:', e);
+        document.getElementById('spContent').textContent = '信件迷失在星海中了...请再试一次';
+    } finally {
+        if (icon) icon.classList.remove('loading');
+        if (card) card.classList.remove('loading');
+    }
+}
+
+// 显示当前信件预览
+function displayCurrentLetter() {
+    if (!spLetters.length) return;
+    const letter = spLetters[spCurrentIndex];
+    document.getElementById('spSenderName').textContent = letter.sender || '未知旅人';
+    document.getElementById('spSendTime').textContent = letter.time || '--';
+    document.getElementById('spContent').textContent = (letter.preview || letter.content.substring(0, 20)) + '...';
+}
+
+// 下一封
+function showNextLetter() {
+    if (!spLetters.length) {
+        alert('请先点击瓶子获取信件');
+        return;
+    }
+       spCurrentIndex++;
+    if (spCurrentIndex >= spLetters.length) {
+        spCurrentIndex = 0;
+    }
+      // 保存当前索引（保留已有回信记录）
+    loadFromDB('spacepost', (existing) => {
+        const saveData = existing || {};
+        saveData.id = 1;
+        saveData.letters = spLetters;
+        saveData.currentIndex = spCurrentIndex;
+        if (!saveData.mailRecords) saveData.mailRecords = [];
+        saveToDB('spacepost', saveData);
+    });
+    displayCurrentLetter();
+}
+
+// ====== 接收（查看全文）======
+function openSpLetter() {
+    if (!spLetters.length) {
+        alert('请先点击瓶子获取信件');
+        return;
+    }
+    const letter = spLetters[spCurrentIndex];
+    document.getElementById('spLetterFrom').textContent = '来自 ' + (letter.sender || '未知旅人');
+    document.getElementById('spLetterTime').textContent = letter.time || '';
+    document.getElementById('spLetterBody').textContent = letter.content || '';
+    document.getElementById('spLetterOverlay').classList.add('active');
+}
+
+function closeSpLetter() {
+    document.getElementById('spLetterOverlay').classList.remove('active');
+}
+
+// ====== 回信（回复当前信件）======
+function openSpReply() {
+    closeSpLetter();
+    const letter = spLetters[spCurrentIndex];
+    spReplyTarget = letter;
+    spWriteMode = 'reply';
+    document.getElementById('spWriteTitle').textContent = '回信给 ' + (letter.sender || '未知旅人');
+    document.getElementById('spWriteInput').value = '';
+    document.getElementById('spWriteOverlay').classList.add('active');
+}
+
+// ====== 寄出（主动写信）======
+function openSpSend() {
+    spReplyTarget = null;
+    spWriteMode = 'send';
+    document.getElementById('spWriteTitle').textContent = '寄一封信到星海';
+    document.getElementById('spWriteInput').value = '';
+    document.getElementById('spWriteOverlay').classList.add('active');
+}
+
+function closeSpWrite() {
+    document.getElementById('spWriteOverlay').classList.remove('active');
+}
+
+// 确认寄出/回信
+function confirmSpWrite() {
+    const content = document.getElementById('spWriteInput').value.trim();
+    if (!content) {
+        alert('请写点什么再寄出吧');
+        return;
+    }
+
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+
+    const mailRecord = {
+        id: Date.now(),
+        type: spWriteMode, // 'send' 或 'reply'
+        myContent: content,
+        targetSender: spReplyTarget ? spReplyTarget.sender : null,
+        targetContent: spReplyTarget ? spReplyTarget.content : null,
+        sendTime: timeStr,
+        sendTimestamp: now.getTime(),
+        replyContent: null,     // 对方回信内容
+        replyTime: null,        // 对方回信时间
+        replyGenerated: false   // 是否已生成回信
+    };
+
+     // 保存到DB
+    loadFromDB('spacepost', (data) => {
+        const existing = data || {};
+        existing.id = 1;
+        // 保留已有的信件数据
+        if (!existing.letters) existing.letters = spLetters;
+        if (existing.currentIndex === undefined) existing.currentIndex = spCurrentIndex;
+        // 追加回信记录
+        const records = existing.mailRecords || [];
+        records.push(mailRecord);
+        existing.mailRecords = records;
+        saveToDB('spacepost', existing, () => {
+            console.log('✅ 信件已保存, 当前记录数:', records.length);
+        });
+    });
+
+    closeSpWrite();
+    alert('信件已投入星海，等待回音...');
+}
+
+// ====== 我的回信 ======
+function openSpMymail() {
+    renderSpMymailList();
+    document.getElementById('spMymailOverlay').classList.add('active');
+}
+
+function closeSpMymail() {
+    document.getElementById('spMymailOverlay').classList.remove('active');
+}
+
+// 渲染回信列表
+function renderSpMymailList() {
+      loadFromDB('spacepost', (data) => {
+        const records = (data && data.mailRecords) ? data.mailRecords : [];
+        const listEl = document.getElementById('spMymailList');
+
+        if (!records.length) {
+            listEl.innerHTML = '<div class="sp-mymail-empty">还没有信件记录...</div>';
+            return;
+        }
+
+        // 按时间倒序
+        const sorted = [...records].sort((a, b) => b.id - a.id);
+
+        listEl.innerHTML = sorted.map(r => {
+            let tagHtml = '';
+            let senderText = '';
+            let previewText = '';
+
+            if (r.type === 'send') {
+                senderText = '我寄出的信';
+                previewText = r.myContent.substring(0, 30) + '...';
+                tagHtml = `<span class="sp-mail-item-tag sp-mail-tag-sent">寄出</span>`;
+            } else if (r.type === 'reply') {
+                senderText = '回信给 ' + (r.targetSender || '未知');
+                previewText = r.myContent.substring(0, 30) + '...';
+                tagHtml = `<span class="sp-mail-item-tag sp-mail-tag-reply">回信</span>`;
+            }
+
+            // 如果有对方回信
+            if (r.replyGenerated && r.replyContent) {
+                tagHtml += `<span class="sp-mail-item-tag sp-mail-tag-received">收到回信</span>`;
+            } else if (!r.replyGenerated) {
+                tagHtml += `<span class="sp-mail-item-tag sp-mail-tag-waiting">漂流中...</span>`;
+            }
+
+            return `
+                <div class="sp-mail-item" onclick="openSpMymailDetail(${r.id})">
+                    <div class="sp-mail-item-header">
+                        <div class="sp-mail-item-sender">${senderText}</div>
+                        <div class="sp-mail-item-time">${r.sendTime || ''}</div>
+                    </div>
+                    <div class="sp-mail-item-preview">${previewText}</div>
+                    <div>${tagHtml}</div>
+                </div>
+            `;
+        }).join('');
+    });
+}
+
+// 查看回信详情
+function openSpMymailDetail(recordId) {
+   loadFromDB('spacepost', (data) => {
+        const records = (data && data.mailRecords) ? data.mailRecords : [];
+        const record = records.find(r => r.id === recordId);
+        if (!record) return;
+
+        let fromText = '';
+        let timeText = '';
+        let bodyText = '';
+
+        if (record.replyGenerated && record.replyContent) {
+            // 显示对方回信
+            if (record.type === 'send') {
+                fromText = '来自星海的回信';
+            } else {
+                fromText = '来自 ' + (record.targetSender || '未知旅人') + ' 的回信';
+            }
+            timeText = record.replyTime || '';
+            bodyText = '【我写的】\n' + record.myContent + '\n\n───────────\n\n【对方回信】\n' + record.replyContent;
+        } else {
+            // 还没收到回信，显示自己写的
+            fromText = record.type === 'send' ? '我寄出的信' : '我回给 ' + (record.targetSender || '未知');
+            timeText = record.sendTime || '';
+            bodyText = record.myContent + '\n\n（信件正在星海中漂流...）';
+                    }
+
+        document.getElementById('spMymailDetailFrom').textContent = fromText;
+        document.getElementById('spMymailDetailTime').textContent = timeText;
+        document.getElementById('spMymailDetailBody').textContent = bodyText;
+        document.getElementById('spMymailDetailOverlay').classList.add('active');
+    });
+}
+
+function closeSpMymailDetail() {
+    document.getElementById('spMymailDetailOverlay').classList.remove('active');
+}
+
+// ====== 回信延迟生成机制 ======
+function checkAndGenerateReplies(callback) {
+    loadFromDB('spacepost', async (data) => {
+        const existing = data || {};
+        const records = existing.mailRecords || [];
+        const now = Date.now();
+        let hasUpdate = false;
+
+        console.log('📬 检查回信, 记录数:', records.length);
+
+        for (let i = 0; i < records.length; i++) {
+            const r = records[i];
+            if (r.replyGenerated) continue;
+            if (!r.sendTimestamp) continue;
+
+            // 测试用：10秒后生成回信
+            if (now - r.sendTimestamp < 10000) {
+                console.log('⏳ 还没到时间:', r.id);
+                continue;
+            }
+
+            console.log('✉️ 开始生成回信:', r.id);
+
+            // 生成回信
+            try {
+                const replyContent = await generateSpReplyFromAI(r);
+                if (replyContent) {
+                    const nowDate = new Date(now);
+                    records[i].replyContent = replyContent;
+                    records[i].replyTime = `${nowDate.getFullYear()}年${nowDate.getMonth() + 1}月${nowDate.getDate()}日`;
+                    records[i].replyGenerated = true;
+                    hasUpdate = true;
+                    console.log('✅ 回信生成成功:', r.id);
+                }
+            } catch (e) {
+                console.error('❌ 生成回信失败:', e);
+            }
+        }
+
+        if (hasUpdate) {
+            existing.mailRecords = records;
+            existing.id = 1;
+            saveToDB('spacepost', existing, () => {
+                console.log('💾 回信已保存');
+                if (callback) callback();
+            });
+        } else {
+            console.log('📭 无需生成新回信');
+            if (callback) callback();
+        }
+    });
+}
+
+// AI生成回信
+async function generateSpReplyFromAI(record) {
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) return null;
+
+    let prompt = '';
+
+//时空邮局回信提示词
+
+      if (record.type === 'send') {
+        prompt = `你是一个在时空邮局里捡到漂流瓶的人。你可以是任何身份：学生、上班族、退休老人、旅行者、异国友人、深夜失眠的人、刚失恋的人、即将当父母的人……请你以一个真实的人的身份，给这封信写一封回信。
+
+收到的信件内容：
+${record.myContent}
+
+要求：
+1. 先给自己设定一个具体身份和处境（不用明说，但要从字里行间体现出来）
+2. 回信要像真人聊天一样自然，可以：
+   - 分享自己类似的经历来回应对方
+   - 对信中触动你的某句话做出真实反应
+   - 说一些安慰的话，但不要鸡汤，要像朋友说的那种大白话
+   - 可以开个小玩笑缓解气氛
+   - 可以吐槽、可以感慨、可以认真、可以俏皮
+3. 150-250字，语气口语化，有细节有温度
+4. 每段开头空两格，段落之间换行，排版美观易读
+5. 不要用"亲爱的陌生人"这种套路开头，自然一点，像真的在回一封信
+6. 只返回回信内容，不要任何格式标记`;
+    } else if (record.type === 'reply') {
+        prompt = `你是"${record.targetSender || '未知旅人'}"。之前你往时空邮局寄了一封信，没想到真的收到了回信。现在你要再写一封回信。
+
+你之前寄出的信：
+${record.targetContent || '（内容未知）'}
+
+对方给你的回信：
+${record.myContent}
+
+要求：
+1. 你就是${record.targetSender || '那个寄信人'}，保持和原信一致的性格和语气
+2. 对收到回信这件事要有真实反应（惊喜、感动、意外、开心等）
+3. 回信要自然真实，像朋友之间的对话：
+   - 可以回应对方说的某个细节
+   - 可以继续聊之前信里没说完的事
+   - 可以问对方一些好奇的问题
+   - 可以分享一些新的近况或感悟
+   - 语气可以更放松，毕竟已经不是第一次通信了
+4. 150-250字，口语化，有人情味
+5. 每段开头空两格，段落之间换行，排版美观易读
+6. 不要太正式，就像给笔友回信那种感觉
+7. 只返回回信内容，不要任何格式标记`;
+    }
+
+    const requestUrl = currentApiConfig.baseUrl.endsWith('/')
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+
+    const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.85
+        })
+    });
+
+    const data = await response.json();
+    if (!data.choices || !data.choices[0]) return null;
+
+    return data.choices[0].message.content.trim();
+}
+
+// ====== 瓶子点击事件 ======
+document.addEventListener('DOMContentLoaded', () => {
+    const spIcon = document.querySelector('.sp-icon');
+    if (spIcon) {
+        spIcon.style.cursor = 'pointer';
+        spIcon.addEventListener('click', () => {
+            generateSpLetters();
+        });
+    }
+});
+
+// ====== 后台定时检查回信（每5分钟一次）======
+let spReplyTimer = null;
+
+function startSpReplyChecker() {
+    // 页面加载后延迟10秒先检查一次
+    setTimeout(() => {
+        checkAndGenerateReplies(() => {
+            console.log('📬 首次后台回信检查完成');
+        });
+    }, 10000);
+
+    // 之后每5分钟检查一次
+    spReplyTimer = setInterval(() => {
+        checkAndGenerateReplies(() => {
+            console.log('📬 定时回信检查完成');
+        });
+    }, 10 * 60 * 1000);
+}
+
+// 页面加载时启动定时器
+document.addEventListener('DOMContentLoaded', () => {
+    startSpReplyChecker();
+});
+// ============ 时空邮局结束 ============
+
+
+
+
+//查手机功能开始//
+
+// ============ 查手机功能 ============
+
+let phoneCheckCurrentCharId = null;
+let phoneCheckDataCache = {}; // 缓存所有角色的手机数据
+
+// 打开角色选择弹窗
+function openPhoneCheckSelectModal() {
+    const modal = document.getElementById('phoneCheckSelectModal');
+    const listContainer = document.getElementById('phoneCheckCharList');
+    
+    const singleChats = chats.filter(c => c.type === 'single');
+    
+    if (singleChats.length === 0) {
+        listContainer.innerHTML = '<div class="pc-char-empty">还没有角色，先去添加一个吧~</div>';
+    } else {
+        listContainer.innerHTML = singleChats.map(chat => {
+            let avatarContent = '';
+            const avatarSrc = chat.avatarImage || chat.avatar;
+            
+            if (avatarSrc && (avatarSrc.startsWith('data:') || avatarSrc.startsWith('http'))) {
+                avatarContent = `<img src="${avatarSrc}" alt="">`;
+            } else {
+                avatarContent = avatarSrc || '👤';
+            }
+            
+            return `
+                <div class="pc-char-item" onclick="selectPhoneCheckChar(${chat.id})">
+                    <div class="pc-char-avatar">${avatarContent}</div>
+                    <div class="pc-char-name">${chat.name}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// 关闭角色选择弹窗
+function closePhoneCheckSelectModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('phoneCheckSelectModal').style.display = 'none';
+}
+
+// 选择角色并打开手机页面
+function selectPhoneCheckChar(charId) {
+    phoneCheckCurrentCharId = charId;
+    
+    document.getElementById('phoneCheckSelectModal').style.display = 'none';
+    
+    const chat = chats.find(c => c.id === charId);
+    if (!chat) return;
+    
+    // 从缓存获取数据
+    const phoneData = phoneCheckDataCache[charId] || {};
+    
+    fillPhoneCheckPage(chat, phoneData);
+    updatePhoneCheckTime();
+    
+    document.getElementById('phoneCheckScreen').style.display = 'flex';
+    
+    if (window.phoneCheckTimer) clearInterval(window.phoneCheckTimer);
+    window.phoneCheckTimer = setInterval(updatePhoneCheckTime, 60000);
+}
+
+// 加载所有手机数据（启动时调用）
+function loadPhoneCheckData() {
+    loadFromDB('phoneCheckData', (data) => {
+        if (data && data.dataMap) {
+            phoneCheckDataCache = data.dataMap;
+        } else {
+            phoneCheckDataCache = {};
+        }
+    });
+}
+
+// 保存手机数据
+function savePhoneCheckData(charId, newData) {
+    phoneCheckDataCache[charId] = { ...phoneCheckDataCache[charId], ...newData };
+    saveToDB('phoneCheckData', { dataMap: phoneCheckDataCache });
+}
+
+// 查手机统一取材：把 loadFromDB 包成 Promise，便于 await
+function phoneCheckLoadFromDB(storeName) {
+    return new Promise(resolve => {
+        loadFromDB(storeName, (data) => {
+            resolve(data);
+        });
+    });
+}
+
+// 查手机统一取材：人设 + 最近100条聊天 + 全部长期记忆
+async function getPhoneCheckPromptSources(charId) {
+    const result = {
+        personalityText: '',
+        recentChatText: '',
+        memoryText: ''
+    };
+
+    if (!charId) return result;
+
+    // 1. 人设
+    const characterInfoData = await phoneCheckLoadFromDB('characterInfo');
+    if (characterInfoData && characterInfoData[charId]) {
+        result.personalityText = (characterInfoData[charId].personality || '').trim();
+    }
+
+    // 2. 最近100条聊天记录
+    const messagesData = await phoneCheckLoadFromDB('messages');
+    const allMessages = messagesData && messagesData.list
+        ? messagesData.list
+        : (Array.isArray(messagesData) ? messagesData : []);
+
+    const chatMessages = allMessages
+        .filter(m =>
+            m &&
+            m.chatId === charId &&
+            !m.isRevoked &&
+            m.type === 'text' &&
+            String(m.content || '').trim()
+        )
+        .slice(-100);
+
+    result.recentChatText = chatMessages.length > 0
+        ? chatMessages.map(m => {
+            const speaker = m.senderId === 'me' ? '我' : 'TA';
+            const time = m.time ? `（${m.time}）` : '';
+            return `${speaker}${time}：${String(m.content).trim()}`;
+        }).join('\n')
+        : '（无最近聊天记录）';
+
+    // 3. 全部长期记忆
+    const memoriesData = await phoneCheckLoadFromDB('memories');
+    const allMemories = Array.isArray(memoriesData)
+        ? memoriesData
+        : (memoriesData && memoriesData.list ? memoriesData.list : []);
+
+    const chatMemories = allMemories.filter(m => m && m.chatId === charId);
+
+    const tagMemories = chatMemories
+        .filter(m => m.type === 'tag' && String(m.content || '').trim())
+        .map(m => `印象标签：${String(m.content).trim()}`);
+
+    const momentMemories = chatMemories
+        .filter(m => m.type === 'moment' && String(m.content || '').trim())
+        .map(m => {
+            const happenTime = m.happenTime ? `（${m.happenTime}）` : '';
+            return `时光记录${happenTime}：${String(m.content).trim()}`;
+        });
+
+    const mergedMemories = [...tagMemories, ...momentMemories];
+
+    result.memoryText = mergedMemories.length > 0
+        ? mergedMemories.join('\n')
+        : '（无长期记忆）';
+
+    return result;
+}
+
+// 查手机美化方案缓存
+let phoneCheckBeautifyPresets = [];
+
+// 加载本地美化方案
+function loadPhoneCheckBeautifyPresets() {
+    loadFromDB('phoneCheckBeautifyPresets', (data) => {
+        if (data && Array.isArray(data.list)) {
+            phoneCheckBeautifyPresets = data.list;
+        } else {
+            phoneCheckBeautifyPresets = [];
+        }
+    });
+}
+
+// 保存本地美化方案列表
+function savePhoneCheckBeautifyPresets() {
+    saveToDB('phoneCheckBeautifyPresets', {
+        list: phoneCheckBeautifyPresets
+    });
+}
+
+// 提取当前角色的“页面 + 图标”美化数据
+function getPhoneCheckBeautifyData(charId) {
+    if (!charId) return null;
+
+    const phoneData = phoneCheckDataCache[charId] || {};
+
+    return {
+        wallpaper: phoneData.wallpaper || '',
+        appIcons: phoneData.appIcons || {},
+        dockIcons: phoneData.dockIcons || {},
+        cardTransparent: !!phoneData.cardTransparent
+    };
+}
+
+// 保存当前角色美化为本地方案
+function saveCurrentPhoneCheckBeautifyPreset(presetName) {
+    if (!phoneCheckCurrentCharId) return { success: false, message: '当前没有选中角色' };
+
+    const name = String(presetName || '').trim();
+    if (!name) return { success: false, message: '方案名不能为空' };
+
+    const beautifyData = getPhoneCheckBeautifyData(phoneCheckCurrentCharId);
+    if (!beautifyData) return { success: false, message: '读取当前美化失败' };
+
+    const preset = {
+        id: Date.now(),
+        name: name,
+        createdAt: new Date().toLocaleString(),
+        data: beautifyData
+    };
+
+    phoneCheckBeautifyPresets.unshift(preset);
+    savePhoneCheckBeautifyPresets();
+
+    return { success: true, preset: preset };
+}
+
+// 应用本地美化方案到当前角色
+function applyPhoneCheckBeautifyPreset(presetId) {
+    if (!phoneCheckCurrentCharId) return { success: false, message: '当前没有选中角色' };
+
+    const preset = phoneCheckBeautifyPresets.find(item => String(item.id) === String(presetId));
+    if (!preset || !preset.data) return { success: false, message: '方案不存在' };
+
+    const beautifyData = {
+        wallpaper: preset.data.wallpaper || '',
+        appIcons: preset.data.appIcons || {},
+        dockIcons: preset.data.dockIcons || {},
+        cardTransparent: !!preset.data.cardTransparent
+    };
+
+    savePhoneCheckData(phoneCheckCurrentCharId, beautifyData);
+
+    phoneCheckCardTransparent = beautifyData.cardTransparent;
+    applyPhoneCheckBeautify();
+
+    const card = document.querySelector('.pc-profile-card');
+    if (card) {
+        if (phoneCheckCardTransparent) {
+            card.style.background = 'transparent';
+            card.style.border = '1px solid transparent';
+            card.style.boxShadow = 'none';
+            card.style.backdropFilter = 'none';
+            card.style.webkitBackdropFilter = 'none';
+        } else {
+            card.style.background = 'rgba(255, 255, 255, 0.7)';
+            card.style.border = '1px solid rgba(255, 255, 255, 0.8)';
+            card.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05)';
+            card.style.backdropFilter = 'blur(20px)';
+            card.style.webkitBackdropFilter = 'blur(20px)';
+        }
+    }
+
+    return { success: true, preset: preset };
+}
+
+// 删除本地美化方案
+function deletePhoneCheckBeautifyPreset(presetId) {
+    const beforeLength = phoneCheckBeautifyPresets.length;
+
+    phoneCheckBeautifyPresets = phoneCheckBeautifyPresets.filter(item => String(item.id) !== String(presetId));
+    savePhoneCheckBeautifyPresets();
+
+    return {
+        success: phoneCheckBeautifyPresets.length !== beforeLength
+    };
+}
+
+// 提取当前角色美化为 JSON 文本
+function exportCurrentPhoneCheckBeautifyPreset(exportName) {
+    if (!phoneCheckCurrentCharId) {
+        return { success: false, message: '当前没有选中角色' };
+    }
+
+    const beautifyData = getPhoneCheckBeautifyData(phoneCheckCurrentCharId);
+    if (!beautifyData) {
+        return { success: false, message: '读取当前美化失败' };
+    }
+
+    const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+    const presetName = String(exportName || '').trim() || (chat ? `${chat.name}-查手机美化` : '查手机美化方案');
+
+    const exportData = {
+        type: 'phoneCheckBeautifyPreset',
+        version: 1,
+        name: presetName,
+        exportedAt: new Date().toLocaleString(),
+        data: beautifyData
+    };
+
+    return {
+        success: true,
+        json: JSON.stringify(exportData, null, 2),
+        data: exportData
+    };
+}
+
+// 从 JSON 文本导入美化方案
+function importPhoneCheckBeautifyPresetFromJson(jsonText, options = {}) {
+    const {
+        applyToCurrent = false,
+        saveAsLocal = true,
+        importedName = ''
+    } = options;
+
+    let parsed;
+
+    try {
+        parsed = JSON.parse(jsonText);
+    } catch (e) {
+        return { success: false, message: 'JSON 格式不正确' };
+    }
+
+    if (!parsed || parsed.type !== 'phoneCheckBeautifyPreset' || !parsed.data) {
+        return { success: false, message: '不是有效的查手机美化方案' };
+    }
+
+    const beautifyData = {
+        wallpaper: parsed.data.wallpaper || '',
+        appIcons: parsed.data.appIcons || {},
+        dockIcons: parsed.data.dockIcons || {},
+        cardTransparent: !!parsed.data.cardTransparent
+    };
+
+    const finalName = String(importedName || parsed.name || '导入的美化方案').trim();
+
+    let savedPreset = null;
+
+    if (saveAsLocal) {
+        savedPreset = {
+            id: Date.now(),
+            name: finalName,
+            createdAt: new Date().toLocaleString(),
+            data: beautifyData
+        };
+
+        phoneCheckBeautifyPresets.unshift(savedPreset);
+        savePhoneCheckBeautifyPresets();
+    }
+
+    if (applyToCurrent) {
+        if (!phoneCheckCurrentCharId) {
+            return { success: false, message: '当前没有选中角色，无法直接应用' };
+        }
+
+        savePhoneCheckData(phoneCheckCurrentCharId, beautifyData);
+
+        phoneCheckCardTransparent = beautifyData.cardTransparent;
+        applyPhoneCheckBeautify();
+
+        const card = document.querySelector('.pc-profile-card');
+        if (card) {
+            if (phoneCheckCardTransparent) {
+                card.style.background = 'transparent';
+                card.style.border = '1px solid transparent';
+                card.style.boxShadow = 'none';
+                card.style.backdropFilter = 'none';
+                card.style.webkitBackdropFilter = 'none';
+            } else {
+                card.style.background = 'rgba(255, 255, 255, 0.7)';
+                card.style.border = '1px solid rgba(255, 255, 255, 0.8)';
+                card.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05)';
+                card.style.backdropFilter = 'blur(20px)';
+                card.style.webkitBackdropFilter = 'blur(20px)';
+            }
+        }
+    }
+
+    return {
+        success: true,
+        preset: savedPreset,
+        data: beautifyData
+    };
+}
+
+// 保存当前美化为本地方案
+function savePhoneCheckBeautifyPresetAction() {
+    if (!phoneCheckCurrentCharId) {
+        alert('请先进入一个角色的查手机页面');
+        return;
+    }
+
+    const name = prompt('给这个美化方案取个名字');
+    if (name === null) return;
+
+    const result = saveCurrentPhoneCheckBeautifyPreset(name);
+    if (!result.success) {
+        alert(result.message || '保存失败');
+        return;
+    }
+
+    alert('美化方案已保存');
+}
+
+// 打开本地方案弹窗
+function openPhoneCheckBeautifyPresetModal() {
+    renderPhoneCheckBeautifyPresetList();
+    document.getElementById('pcBeautifyPresetModal').style.display = 'flex';
+}
+
+// 关闭本地方案弹窗
+function closePhoneCheckBeautifyPresetModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('pcBeautifyPresetModal').style.display = 'none';
+}
+
+// 渲染本地方案列表
+function renderPhoneCheckBeautifyPresetList() {
+    const listEl = document.getElementById('pcBeautifyPresetList');
+    if (!listEl) return;
+
+    if (!phoneCheckBeautifyPresets || phoneCheckBeautifyPresets.length === 0) {
+        listEl.innerHTML = '<div class="pc-beautify-preset-empty">还没有保存的方案~</div>';
+        return;
+    }
+
+    listEl.innerHTML = phoneCheckBeautifyPresets.map(item => `
+        <div class="pc-beautify-preset-item">
+            <div class="pc-beautify-preset-info">
+                <div class="pc-beautify-preset-name">${escapeHtml(item.name || '未命名方案')}</div>
+                <div class="pc-beautify-preset-time">${escapeHtml(item.createdAt || '')}</div>
+            </div>
+            <div class="pc-beautify-preset-item-actions">
+                <button class="pc-beautify-preset-mini-btn" onclick="applyPhoneCheckBeautifyPresetAction('${item.id}')">应用</button>
+                <button class="pc-beautify-preset-mini-btn danger" onclick="deletePhoneCheckBeautifyPresetAction('${item.id}')">删除</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 应用本地方案
+function applyPhoneCheckBeautifyPresetAction(presetId) {
+    const result = applyPhoneCheckBeautifyPreset(presetId);
+    if (!result.success) {
+        alert(result.message || '应用失败');
+        return;
+    }
+
+    closePhoneCheckBeautifyPresetModal();
+    alert('已应用美化方案');
+}
+
+// 删除本地方案
+function deletePhoneCheckBeautifyPresetAction(presetId) {
+    if (!confirm('确定删除这个美化方案吗？')) return;
+
+    const result = deletePhoneCheckBeautifyPreset(presetId);
+    if (!result.success) {
+        alert('删除失败');
+        return;
+    }
+
+    renderPhoneCheckBeautifyPresetList();
+}
+
+// 提取方案：直接下载 JSON 文件
+function openPhoneCheckBeautifyExportModal() {
+    const result = exportCurrentPhoneCheckBeautifyPreset();
+    if (!result.success) {
+        alert(result.message || '提取失败');
+        return;
+    }
+
+    const jsonText = result.json || '';
+    const fileName = `${(result.data?.name || '查手机美化方案').replace(/[\\/:*?"<>|]/g, '_')}.json`;
+    const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+    }, 1000);
+}
+
+
+function openPhoneCheckBeautifyImportModal() {
+    const input = document.getElementById('pcBeautifyImportFile');
+    if (input) input.value = '';
+    document.getElementById('pcBeautifyImportModal').style.display = 'flex';
+}
+
+// 关闭导入方案弹窗
+function closePhoneCheckBeautifyImportModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('pcBeautifyImportModal').style.display = 'none';
+}
+
+// 确认导入 JSON 文件
+function confirmImportPhoneCheckBeautifyFile() {
+    const input = document.getElementById('pcBeautifyImportFile');
+    if (!input || !input.files || !input.files[0]) {
+        alert('请先选择 JSON 文件');
+        return;
+    }
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const jsonText = String(e.target.result || '').trim();
+        if (!jsonText) {
+            alert('文件内容为空');
+            return;
+        }
+
+        const result = importPhoneCheckBeautifyPresetFromJson(jsonText, {
+            applyToCurrent: true,
+            saveAsLocal: true
+        });
+
+        if (!result.success) {
+            alert(result.message || '导入失败');
+            return;
+        }
+
+        closePhoneCheckBeautifyImportModal();
+        input.value = '';
+        alert('导入成功，已保存并应用');
+    };
+
+    reader.onerror = function() {
+        alert('读取文件失败');
+    };
+
+    reader.readAsText(file, 'utf-8');
+}
+
+// 填充手机页面数据
+function fillPhoneCheckPage(chat, phoneData) {
+    const avatarImg = document.getElementById('pcAvatar');
+    const avatarPlaceholder = document.getElementById('pcAvatarPlaceholder');
+    const msgAvatar = document.getElementById('pcMsgAvatar');
+    
+    const avatarSrc = phoneData.avatar || '';
+    
+    if (avatarSrc && (avatarSrc.startsWith('data:') || avatarSrc.startsWith('http'))) {
+        avatarImg.src = avatarSrc;
+        avatarImg.style.display = 'block';
+        avatarPlaceholder.style.display = 'none';
+        msgAvatar.innerHTML = `<img src="${avatarSrc}">`;
+    } else {
+        avatarImg.style.display = 'none';
+        avatarPlaceholder.style.display = 'flex';
+        avatarPlaceholder.textContent = '👤';
+        msgAvatar.innerHTML = '👤';
+    }
+    
+    document.getElementById('pcNickname').textContent = phoneData.nickname || chat.name || 'User';
+    document.getElementById('pcUsername').textContent = phoneData.username || '@' + (chat.name || 'user');
+
+    document.getElementById('pcWidgyBottom').textContent = phoneData.widgyBottom || 'Widgy';
+    document.getElementById('pcMsgBubble').textContent = phoneData.msgBubble || '오늘도 일찍 쉬세요.';
+    document.getElementById('pcInputPlaceholder').textContent = phoneData.inputPlaceholder || '참, 내일 시간 있어요?';
+
+// 同步天气温度到顶部栏
+const tempEl = document.getElementById('pcTemp');
+if (tempEl) {
+    loadFromDB('characterInfo', (data) => {
+        const charData = data && data[chat.id] ? data[chat.id] : null;
+
+     if (
+    charData &&
+    charData.cityInfoEnabled &&
+    charData.charWeather &&
+    charData.charWeather.today &&
+    charData.charWeather.today.temp
+) {
+    const tempText = charData.charWeather.today.temp;
+    const match = tempText.match(/(-?\d+)\s*-\s*(-?\d+)\s*°C/i);
+
+    if (match) {
+        const minTemp = parseInt(match[1], 10);
+        const maxTemp = parseInt(match[2], 10);
+        const avgTemp = Math.round((minTemp + maxTemp) / 2);
+        tempEl.textContent = avgTemp + '°C';
+    } else {
+        const singleMatch = tempText.match(/-?\d+/);
+        tempEl.textContent = singleMatch ? singleMatch[0] + '°C' : '--°C';
+    }
+} else {
+    tempEl.textContent = '--°C';
+}
+    });
+}
+
+// 恢复卡片透明状态
+phoneCheckCardTransparent = phoneData.cardTransparent || false;
+const card = document.querySelector('.pc-profile-card');
+if (card) {
+    if (phoneCheckCardTransparent) {
+        card.style.background = 'transparent';
+       card.style.border = '1px solid transparent';
+        card.style.boxShadow = 'none';
+        card.style.backdropFilter = 'none';
+        card.style.webkitBackdropFilter = 'none';
+    } else {
+        card.style.background = 'rgba(255, 255, 255, 0.7)';
+        card.style.border = '1px solid rgba(255, 255, 255, 0.8)';
+        card.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05)';
+        card.style.backdropFilter = 'blur(20px)';
+        card.style.webkitBackdropFilter = 'blur(20px)';
+    }
+}
+
+// 应用美化设置
+applyPhoneCheckBeautify();
+}
+
+function updatePhoneCheckTime() {
+    const now = new Date();
+    
+    // 时间
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timeEl = document.getElementById('pcTime');
+    if (timeEl) {
+        timeEl.textContent = `${hours}:${minutes}`;
+    }
+    
+    // 星期（简短格式）
+    const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const weekEl = document.getElementById('pcWeekday');
+    if (weekEl) {
+        weekEl.textContent = weekDays[now.getDay()];
+    }
+    
+    // 电量
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            const level = Math.round(battery.level * 100);
+            const batteryTextEl = document.getElementById('pcBatteryText');
+            const batteryFillEl = document.getElementById('pcBatteryFill');
+            
+            if (batteryTextEl) {
+                batteryTextEl.textContent = level + '%';
+                if (level <= 20) {
+                    batteryTextEl.style.color = '#ff4757';
+                } else if (level <= 50) {
+                    batteryTextEl.style.color = '#ffa502';
+                } else {
+                    batteryTextEl.style.color = '#22c55e';
+                }
+            }
+            
+            if (batteryFillEl) {
+                // 根据电量调整填充宽度（最大14）
+                const fillWidth = Math.round(level / 100 * 14);
+                batteryFillEl.setAttribute('width', fillWidth);
+                if (level <= 20) {
+                    batteryFillEl.setAttribute('fill', '#ff4757');
+                } else if (level <= 50) {
+                    batteryFillEl.setAttribute('fill', '#ffa502');
+                } else {
+                    batteryFillEl.setAttribute('fill', '#4ade80');
+                }
+            }
+        });
+    }
+}
+// 关闭手机页面
+function closePhoneCheckScreen() {
+    document.getElementById('phoneCheckScreen').style.display = 'none';
+    phoneCheckCurrentCharId = null;
+    if (window.phoneCheckTimer) {
+        clearInterval(window.phoneCheckTimer);
+        window.phoneCheckTimer = null;
+    }
+}
+
+// ============ 切换头像功能 ============
+
+function openPhoneCheckAvatarUpload() {
+    document.getElementById('pcAvatarInput').click();
+}
+
+function handlePhoneCheckAvatarUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    if (!phoneCheckCurrentCharId) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        compressPhoneCheckImage(e.target.result, 400, 0.7, (compressedData) => {
+            savePhoneCheckData(phoneCheckCurrentCharId, { avatar: compressedData });
+            
+            const avatarImg = document.getElementById('pcAvatar');
+            const avatarPlaceholder = document.getElementById('pcAvatarPlaceholder');
+            const msgAvatar = document.getElementById('pcMsgAvatar');
+            
+            avatarImg.src = compressedData;
+            avatarImg.style.display = 'block';
+            avatarPlaceholder.style.display = 'none';
+            msgAvatar.innerHTML = `<img src="${compressedData}">`;
+        });
+    };
+    
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+function compressPhoneCheckImage(base64, maxSize, quality, callback) {
+    const img = new Image();
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxSize || height > maxSize) {
+            if (width > height) {
+                height = Math.round(height * maxSize / width);
+                width = maxSize;
+            } else {
+                width = Math.round(width * maxSize / height);
+                height = maxSize;
+            }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        callback(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = base64;
+}
+
+// ============ 修改资料弹窗 ============
+
+function openPhoneCheckProfileModal() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    document.getElementById('pcEditNickname').value = phoneData.nickname || '';
+    document.getElementById('pcEditUsername').value = phoneData.username || '';
+
+    
+    document.getElementById('phoneCheckProfileModal').style.display = 'flex';
+}
+
+function closePhoneCheckProfileModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('phoneCheckProfileModal').style.display = 'none';
+}
+
+function savePhoneCheckProfile() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const nickname = document.getElementById('pcEditNickname').value.trim();
+    const username = document.getElementById('pcEditUsername').value.trim();
+
+    
+ savePhoneCheckData(phoneCheckCurrentCharId, {
+    nickname: nickname,
+    username: username
+});
+    
+    document.getElementById('pcNickname').textContent = nickname || 'User';
+    document.getElementById('pcUsername').textContent = username || '@user';
+    
+    closePhoneCheckProfileModal();
+}
+
+// ============ 通用文字编辑 ============
+
+let phoneCheckCurrentEditField = null;
+
+function openPhoneCheckTextEdit(field, title) {
+    if (!phoneCheckCurrentCharId) return;
+    
+    phoneCheckCurrentEditField = field;
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    document.getElementById('pcTextModalTitle').textContent = '编辑' + title;
+    document.getElementById('pcTextEditInput').value = phoneData[field] || '';
+    document.getElementById('phoneCheckTextModal').style.display = 'flex';
+}
+
+function closePhoneCheckTextModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('phoneCheckTextModal').style.display = 'none';
+    phoneCheckCurrentEditField = null;
+}
+
+function savePhoneCheckText() {
+    if (!phoneCheckCurrentCharId || !phoneCheckCurrentEditField) return;
+    
+    const value = document.getElementById('pcTextEditInput').value.trim();
+    
+    const saveData = {};
+    saveData[phoneCheckCurrentEditField] = value;
+    savePhoneCheckData(phoneCheckCurrentCharId, saveData);
+    
+    const fieldMap = {
+      
+        'widgyBottom': 'pcWidgyBottom',
+        'msgBubble': 'pcMsgBubble',
+        'inputPlaceholder': 'pcInputPlaceholder'
+    };
+    
+    const defaults = {
+    
+        'widgyBottom': 'Widgy',
+        'msgBubble': '오늘도 일찍 쉬세요.',
+        'inputPlaceholder': '참, 내일 시간 있어요?'
+    };
+    
+    const elementId = fieldMap[phoneCheckCurrentEditField];
+    if (elementId) {
+        document.getElementById(elementId).textContent = value || defaults[phoneCheckCurrentEditField];
+    }
+    
+    closePhoneCheckTextModal();
+}
+
+// ============ 卡片透明切换 ============
+
+let phoneCheckCardTransparent = false;
+
+function togglePhoneCheckCardTransparent() {
+    phoneCheckCardTransparent = !phoneCheckCardTransparent;
+    
+    const card = document.querySelector('.pc-profile-card');
+    if (!card) return;
+    
+    if (phoneCheckCardTransparent) {
+        card.style.background = 'transparent';
+        card.style.border = '1px solid transparent';
+        card.style.boxShadow = 'none';
+        card.style.backdropFilter = 'none';
+        card.style.webkitBackdropFilter = 'none';
+    } else {
+        card.style.background = 'rgba(255, 255, 255, 0.7)';
+        card.style.border = '1px solid rgba(255, 255, 255, 0.8)';
+        card.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05)';
+        card.style.backdropFilter = 'blur(20px)';
+        card.style.webkitBackdropFilter = 'blur(20px)';
+    }
+    
+    if (phoneCheckCurrentCharId) {
+        savePhoneCheckData(phoneCheckCurrentCharId, { cardTransparent: phoneCheckCardTransparent });
+    }
+}
+
+// ============ 查手机美化功能 ============
+
+// 查手机默认美化资源（仅在角色没有自定义美化时使用，不覆盖已有数据）
+const pcDefaultWallpaperUrl = 'https://i.postimg.cc/KjGd0fj4/QQ-tu-pian20260309220243.jpg';
+
+const pcDefaultIconUrls = {
+    memo: 'https://i.postimg.cc/Xqstm5BV/QQ-tu-pian20260309220247.jpg',
+    album: 'https://i.postimg.cc/Wz5xCZqp/QQ-tu-pian20260309220250.jpg',
+    grudge: 'https://i.postimg.cc/GtX6VDT2/QQ-tu-pian20260309220253.jpg',
+    love: 'https://i.postimg.cc/T1tBFb5Y/QQ-tu-pian20260309220255.jpg',
+    sms: 'https://i.postimg.cc/D0xRHG4m/QQ-tu-pian20260309220258.jpg',
+    finance: 'https://i.postimg.cc/4yWjqcHK/QQ-tu-pian20260309220300.jpg',
+    favorite: 'https://i.postimg.cc/cCFP23tg/QQ-tu-pian20260309220302.jpg',
+    location: 'https://i.postimg.cc/FzTw8SkJ/QQ-tu-pian20260309220305.jpg',
+    taobao: 'https://i.postimg.cc/brm4WnSt/QQ-tu-pian20260309220307.jpg',
+    meituan: 'https://i.postimg.cc/3NtzVG0m/QQ-tu-pian20260309220310.jpg',
+    trip: 'https://i.postimg.cc/cCFP23tY/QQ-tu-pian20260309220312.jpg',
+    douban: 'https://i.postimg.cc/BnB7VDrd/QQ-tu-pian20260309220652.jpg',
+    beautify: 'https://i.postimg.cc/0y0XBDgv/QQ-tu-pian20260309220655.jpg',
+    api: 'https://i.postimg.cc/6pfbmns9/QQ-tu-pian20260309220657.jpg',
+    fridge: 'https://i.postimg.cc/sg4HN7Fs/QQ-tu-pian20260309220700.jpg',
+    browser: 'https://i.postimg.cc/Jz5Y2ZwR/QQ-tu-pian20260309220703.jpg'
+};
+
+
+// 默认图标
+const pcDefaultIcons = {
+    memo: '📝',
+    album: '🖼️',
+    grudge: '😤',
+    love: '💕',
+    sms: '💬',
+    finance: '💰',
+    favorite: '⭐',
+    location: '📍',
+    taobao: '🛍️',
+    meituan: '🍱',
+    trip: '🧳',
+    douban: '📚',
+    beautify: '🎨',
+    api: '⚙️',
+    fridge: '🧊',
+    browser: '🌐'
+};
+
+let pcCurrentEditingIcon = null;
+
+// 打开美化页面
+function openPhoneCheckBeautify() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+       // 加载壁纸预览：有自定义就用自定义，没有就用默认壁纸
+    const preview = document.getElementById('pcWallpaperPreview');
+    const previewWallpaper = phoneData.wallpaper || pcDefaultWallpaperUrl;
+
+    if (previewWallpaper) {
+        preview.style.backgroundImage = `url(${previewWallpaper})`;
+    } else {
+        preview.style.backgroundImage = 'none';
+    }
+    // 加载图标预览
+    loadPcIconPreviews(phoneData);
+    
+    document.getElementById('phoneCheckBeautifyScreen').style.display = 'flex';
+    // 隐藏Dock栏
+document.querySelector('.pc-dock').style.display = 'none';
+}
+
+// 关闭美化页面
+function closePhoneCheckBeautify() {
+    document.getElementById('phoneCheckBeautifyScreen').style.display = 'none';
+    
+    // 应用美化到主页面
+    applyPhoneCheckBeautify();
+    // 显示Dock栏
+document.querySelector('.pc-dock').style.display = 'flex';
+}
+
+// 加载图标预览
+function loadPcIconPreviews(phoneData) {
+    const appIcons = phoneData.appIcons || {};
+    const dockIcons = phoneData.dockIcons || {};
+    
+    // App图标
+    Object.keys(pcDefaultIcons).forEach(key => {
+        const previewEl = document.getElementById(`pcIconPreview-${key}`);
+        if (!previewEl) return;
+        
+        let iconData = null;
+        if (['beautify', 'api', 'fridge', 'browser'].includes(key)) {
+            iconData = dockIcons[key];
+        } else {
+            iconData = appIcons[key];
+        }
+        
+              const defaultIconUrl = pcDefaultIconUrls[key] || '';
+
+        if (iconData && (iconData.startsWith('data:') || iconData.startsWith('http'))) {
+            previewEl.innerHTML = `<img src="${iconData}">`;
+        } else if (defaultIconUrl) {
+            previewEl.innerHTML = `<img src="${defaultIconUrl}">`;
+        } else {
+            previewEl.innerHTML = pcDefaultIcons[key];
+        }
+    });
+}
+
+// 壁纸Tab切换
+function switchPcWallpaperTab(tab) {
+    document.querySelectorAll('#phoneCheckBeautifyScreen .ins-tab-btn').forEach((btn, index) => {
+        if (index < 2) {
+            btn.classList.remove('active');
+        }
+    });
+    
+    if (tab === 'local') {
+        document.querySelector('#phoneCheckBeautifyScreen .ins-tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('pcWallpaperLocalTab').style.display = 'block';
+        document.getElementById('pcWallpaperUrlTab').style.display = 'none';
+    } else {
+        document.querySelector('#phoneCheckBeautifyScreen .ins-tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('pcWallpaperLocalTab').style.display = 'none';
+        document.getElementById('pcWallpaperUrlTab').style.display = 'block';
+    }
+}
+
+// 处理壁纸上传
+function handlePcWallpaperUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        compressPhoneCheckImage(e.target.result, 800, 0.7, (compressedData) => {
+            // 更新预览
+            document.getElementById('pcWallpaperPreview').style.backgroundImage = `url(${compressedData})`;
+            
+            // 保存数据
+            savePhoneCheckData(phoneCheckCurrentCharId, { wallpaper: compressedData });
+        });
+    };
+    
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+// 应用壁纸链接
+function applyPcWallpaperUrl() {
+    const url = document.getElementById('pcWallpaperUrl').value.trim();
+    if (!url) return;
+    
+    document.getElementById('pcWallpaperPreview').style.backgroundImage = `url(${url})`;
+    savePhoneCheckData(phoneCheckCurrentCharId, { wallpaper: url });
+}
+
+// 清除壁纸
+function clearPcWallpaper() {
+    document.getElementById('pcWallpaperPreview').style.backgroundImage = 'none';
+    document.getElementById('pcWallpaperUrl').value = '';
+    savePhoneCheckData(phoneCheckCurrentCharId, { wallpaper: '' });
+}
+
+// 打开图标编辑弹窗
+function openPcIconEditor(iconKey) {
+    pcCurrentEditingIcon = iconKey;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    const appIcons = phoneData.appIcons || {};
+    const dockIcons = phoneData.dockIcons || {};
+    
+    let iconData = null;
+    if (['beautify', 'api', 'fridge', 'browser'].includes(iconKey)) {
+        iconData = dockIcons[iconKey];
+    } else {
+        iconData = appIcons[iconKey];
+    }
+    
+    // 设置标题
+      const names = {
+        memo: '备忘录',
+        album: '相册',
+        grudge: '记仇本',
+        love: '恋爱记',
+        sms: '短信',
+        finance: '理财',
+        favorite: '收藏',
+        location: '行踪',
+        taobao: '桃宝',
+        meituan: '丑团',
+        trip: '旅程',
+        douban: '豆沙包',
+        beautify: '美化',
+        api: 'API',
+        fridge: '冰箱',
+        browser: '浏览器'
+    };
+    document.getElementById('pcIconEditorTitle').textContent = '编辑 ' + names[iconKey];
+    
+    // 设置预览
+    const previewEl = document.getElementById('pcIconEditorPreview');
+    if (iconData && (iconData.startsWith('data:') || iconData.startsWith('http'))) {
+        previewEl.innerHTML = `<img src="${iconData}">`;
+    } else {
+        previewEl.innerHTML = pcDefaultIcons[iconKey];
+    }
+    
+    // 清空输入
+    document.getElementById('pcIconUrl').value = '';
+    
+    document.getElementById('pcIconEditorModal').style.display = 'flex';
+}
+
+// 关闭图标编辑弹窗
+function closePcIconEditor(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('pcIconEditorModal').style.display = 'none';
+    pcCurrentEditingIcon = null;
+}
+
+// 图标Tab切换
+function switchPcIconTab(tab) {
+    const modal = document.getElementById('pcIconEditorModal');
+    modal.querySelectorAll('.ins-tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (tab === 'local') {
+        modal.querySelector('.ins-tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('pcIconLocalTab').style.display = 'block';
+        document.getElementById('pcIconUrlTab').style.display = 'none';
+    } else {
+        modal.querySelector('.ins-tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('pcIconLocalTab').style.display = 'none';
+        document.getElementById('pcIconUrlTab').style.display = 'block';
+    }
+}
+
+// 处理图标上传
+function handlePcIconUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        compressPhoneCheckImage(e.target.result, 200, 0.8, (compressedData) => {
+            document.getElementById('pcIconEditorPreview').innerHTML = `<img src="${compressedData}">`;
+        });
+    };
+    
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+// 保存图标
+function savePcIcon() {
+    if (!pcCurrentEditingIcon || !phoneCheckCurrentCharId) return;
+    
+    const previewEl = document.getElementById('pcIconEditorPreview');
+    const img = previewEl.querySelector('img');
+    const urlInput = document.getElementById('pcIconUrl').value.trim();
+    
+    let iconData = '';
+    
+    if (urlInput) {
+        iconData = urlInput;
+        previewEl.innerHTML = `<img src="${urlInput}">`;
+    } else if (img) {
+        iconData = img.src;
+    }
+    
+    // 保存到对应分类
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    if (['beautify', 'api', 'fridge', 'browser'].includes(pcCurrentEditingIcon)) {
+        const dockIcons = phoneData.dockIcons || {};
+        dockIcons[pcCurrentEditingIcon] = iconData;
+        savePhoneCheckData(phoneCheckCurrentCharId, { dockIcons: dockIcons });
+    } else {
+        const appIcons = phoneData.appIcons || {};
+        appIcons[pcCurrentEditingIcon] = iconData;
+        savePhoneCheckData(phoneCheckCurrentCharId, { appIcons: appIcons });
+    }
+    
+    // 更新美化页面预览
+    const gridPreview = document.getElementById(`pcIconPreview-${pcCurrentEditingIcon}`);
+    if (gridPreview) {
+        if (iconData) {
+            gridPreview.innerHTML = `<img src="${iconData}">`;
+        } else {
+            gridPreview.innerHTML = pcDefaultIcons[pcCurrentEditingIcon];
+        }
+    }
+    
+    closePcIconEditor();
+}
+
+// 恢复默认图标
+function resetPcIcon() {
+    if (!pcCurrentEditingIcon) return;
+    
+    document.getElementById('pcIconEditorPreview').innerHTML = pcDefaultIcons[pcCurrentEditingIcon];
+    document.getElementById('pcIconUrl').value = '';
+    
+    // 清除保存的数据
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    if (['beautify', 'api', 'fridge', 'browser'].includes(pcCurrentEditingIcon)) {
+        const dockIcons = phoneData.dockIcons || {};
+        delete dockIcons[pcCurrentEditingIcon];
+        savePhoneCheckData(phoneCheckCurrentCharId, { dockIcons: dockIcons });
+    } else {
+        const appIcons = phoneData.appIcons || {};
+        delete appIcons[pcCurrentEditingIcon];
+        savePhoneCheckData(phoneCheckCurrentCharId, { appIcons: appIcons });
+    }
+    
+    // 更新美化页面预览
+    const gridPreview = document.getElementById(`pcIconPreview-${pcCurrentEditingIcon}`);
+    if (gridPreview) {
+        gridPreview.innerHTML = pcDefaultIcons[pcCurrentEditingIcon];
+    }
+}
+
+// 应用美化到主页面
+function applyPhoneCheckBeautify() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    const appIcons = phoneData.appIcons || {};
+    const dockIcons = phoneData.dockIcons || {};
+    
+       // 应用壁纸：有自定义就用自定义，没有就用默认壁纸
+    const screen = document.getElementById('phoneCheckScreen');
+    const finalWallpaper = phoneData.wallpaper || pcDefaultWallpaperUrl;
+
+    if (finalWallpaper) {
+        screen.style.backgroundImage = `url(${finalWallpaper})`;
+        screen.style.backgroundSize = 'cover';
+        screen.style.backgroundPosition = 'center';
+        screen.style.backgroundRepeat = 'no-repeat';
+        screen.style.backgroundColor = '';
+    } else {
+        screen.style.backgroundImage = 'none';
+        screen.style.background = 'linear-gradient(180deg, #f5f5f7 0%, #e8e8ed 100%)';
+    }
+    
+    // 应用App图标
+    const appKeys = ['memo', 'album', 'grudge', 'love', 'sms', 'finance', 'favorite', 'location', 'taobao', 'meituan', 'trip', 'douban'];
+    appKeys.forEach(key => {
+        const iconEl = document.getElementById(`pcAppIcon-${key}`);
+        if (!iconEl) return;
+        
+              const defaultIconUrl = pcDefaultIconUrls[key] || '';
+
+        if (appIcons[key] && (appIcons[key].startsWith('data:') || appIcons[key].startsWith('http'))) {
+            iconEl.innerHTML = `<img src="${appIcons[key]}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+        } else if (defaultIconUrl) {
+            iconEl.innerHTML = `<img src="${defaultIconUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+        } else {
+            iconEl.innerHTML = pcDefaultIcons[key];
+        }
+    });
+    
+    // 应用Dock图标
+    const dockKeys = ['beautify', 'api', 'fridge', 'browser'];
+    dockKeys.forEach(key => {
+        const iconEl = document.getElementById(`pcDockIcon-${key}`);
+        if (!iconEl) return;
+        
+                const defaultIconUrl = pcDefaultIconUrls[key] || '';
+
+        if (dockIcons[key] && (dockIcons[key].startsWith('data:') || dockIcons[key].startsWith('http'))) {
+            iconEl.innerHTML = `<img src="${dockIcons[key]}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+        } else if (defaultIconUrl) {
+            iconEl.innerHTML = `<img src="${defaultIconUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+        } else {
+            iconEl.innerHTML = pcDefaultIcons[key];
+        }
+    });
+}
+
+// ============ 查手机API设置功能 ============
+
+// 打开API选择弹窗
+function openPhoneCheckApiModal() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    const selectedSchemeId = phoneData.apiSchemeId || null;
+    
+    // 从数据库加载API方案列表
+    loadFromDB('apiSchemes', (data) => {
+        const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+        
+        const listContainer = document.getElementById('pcApiSchemeList');
+        
+        if (schemes.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; padding: 30px; color: #999; font-size: 13px;">还没有API方案<br>请先在主页API设置中添加</div>';
+        } else {
+           listContainer.innerHTML = schemes.map(scheme => `
+    <div class="pc-api-scheme-item ${scheme.id === selectedSchemeId ? 'selected' : ''}" data-id="${scheme.id}" onclick="selectPhoneCheckApiScheme(${scheme.id})">
+                    <div class="scheme-name">${scheme.name || '未命名方案'}</div>
+                    <div class="scheme-check">✓</div>
+                </div>
+            `).join('');
+        }
+        
+        // 显示当前选中信息
+        updatePhoneCheckApiInfo(phoneData);
+        
+        document.getElementById('pcApiModal').style.display = 'flex';
+    });
+}
+
+// 关闭API选择弹窗
+function closePhoneCheckApiModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('pcApiModal').style.display = 'none';
+}
+
+// 选择API方案
+function selectPhoneCheckApiScheme(schemeId) {
+    if (!phoneCheckCurrentCharId) return;
+    
+    // 从数据库获取方案详情
+    loadFromDB('apiSchemes', (data) => {
+        const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+        const scheme = schemes.find(s => s.id === schemeId);
+        
+        if (!scheme) return;
+        
+     // 保存选择
+savePhoneCheckData(phoneCheckCurrentCharId, {
+    apiSchemeId: scheme.id,
+    apiSchemeName: scheme.name || '未命名方案',
+    apiBaseUrl: scheme.baseUrl || '',
+    apiModel: scheme.defaultModel || ''
+});
+        
+        // 更新列表选中状态
+        document.querySelectorAll('.pc-api-scheme-item').forEach(item => {
+            item.classList.remove('selected');
+            if (parseInt(item.getAttribute('data-id')) === schemeId) {
+                item.classList.add('selected');
+            }
+        });
+        
+        // 更新当前信息显示
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        updatePhoneCheckApiInfo(phoneData);
+    });
+}
+
+// 更新当前API信息显示
+function updatePhoneCheckApiInfo(phoneData) {
+    const infoContainer = document.getElementById('pcApiCurrentInfo');
+    
+    if (phoneData.apiSchemeId) {
+        document.getElementById('pcApiCurrentName').textContent = phoneData.apiSchemeName || '-';
+        document.getElementById('pcApiCurrentUrl').textContent = phoneData.apiBaseUrl || '-';
+        document.getElementById('pcApiCurrentModel').textContent = '模型: ' + (phoneData.apiModel || '-');
+        infoContainer.style.display = 'block';
+    } else {
+        infoContainer.style.display = 'none';
+    }
+}
+
+// ============ 查手机冰箱功能 ============
+
+// 打开冰箱页面
+function openPhoneCheckFridge() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    // 加载已保存的内容
+    loadFridgeContent(phoneData);
+    
+    // 隐藏Dock栏
+    document.querySelector('.pc-dock').style.display = 'none';
+    
+    document.getElementById('phoneCheckFridgeScreen').style.display = 'flex';
+}
+
+// 关闭冰箱页面
+function closePhoneCheckFridge() {
+    document.getElementById('phoneCheckFridgeScreen').style.display = 'none';
+    
+    // 显示Dock栏
+    document.querySelector('.pc-dock').style.display = 'flex';
+}
+
+// 加载冰箱内容
+function loadFridgeContent(phoneData) {
+    const itemsContainer = document.getElementById('pcFridgeItems');
+    const noteContent = document.getElementById('pcFridgeNoteContent');
+    
+    // 加载物品列表
+    if (phoneData.fridgeItems && phoneData.fridgeItems.length > 0) {
+        itemsContainer.innerHTML = phoneData.fridgeItems.map(item => `
+            <div class="pc-fridge-item">
+                <div class="pc-fridge-item-icon">${getFridgeItemIcon(item.name)}</div>
+                <div class="pc-fridge-item-info">
+                    <div class="pc-fridge-item-name">${item.name}</div>
+                    <div class="pc-fridge-item-comment">${item.comment}</div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        itemsContainer.innerHTML = '<div class="pc-fridge-empty">点击右上角刷新按钮<br>看看冰箱里有什么~</div>';
+    }
+    
+    // 加载便签
+    if (phoneData.fridgeNote) {
+        noteContent.textContent = phoneData.fridgeNote;
+    } else {
+        noteContent.textContent = '还没有便签内容~';
+    }
+}
+
+// 根据物品名称返回对应的emoji图标
+function getFridgeItemIcon(name) {
+    const iconMap = {
+        '牛奶': '🥛', '奶': '🥛',
+        '鸡蛋': '🥚', '蛋': '🥚',
+        '啤酒': '🍺', '酒': '🍺',
+        '可乐': '🥤', '饮料': '🥤', '果汁': '🧃',
+        '水果': '🍎', '苹果': '🍎', '橙子': '🍊', '香蕉': '🍌', '葡萄': '🍇',
+        '蔬菜': '🥬', '青菜': '🥬', '白菜': '🥬', '胡萝卜': '🥕', '番茄': '🍅', '西红柿': '🍅',
+        '肉': '🥩', '牛肉': '🥩', '猪肉': '🥓', '鸡肉': '🍗', '鱼': '🐟',
+        '面包': '🍞', '蛋糕': '🍰', '甜点': '🍰',
+        '剩饭': '🍚', '米饭': '🍚', '饭': '🍚',
+        '剩菜': '🥡', '外卖': '🥡',
+        '冰淇淋': '🍦', '雪糕': '🍦',
+        '奶酪': '🧀', '芝士': '🧀',
+        '酱': '🫙', '酱油': '🫙', '调料': '🧂',
+        '零食': '🍪', '薯片': '🍟', '饼干': '🍪',
+        '水': '💧', '矿泉水': '💧',
+        '豆腐': '🧈', '黄油': '🧈',
+        '泡菜': '🥒', '咸菜': '🥒'
+    };
+    
+    for (let key in iconMap) {
+        if (name.includes(key)) {
+            return iconMap[key];
+        }
+    }
+    return '📦';
+}
+
+// 生成冰箱内容
+async function generateFridgeContent() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    // 显示加载状态
+    document.getElementById('pcFridgeLoading').style.display = 'flex';
+    document.querySelector('.pc-fridge-refresh-btn').classList.add('loading');
+    
+    try {
+        // 获取角色信息
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+        
+           // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+        
+        if (!personality.trim()) {
+            throw new Error('请先在角色资料里填写“他的人设”');
+        }
+
+        // 获取API配置
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+        
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+        
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+        
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+            throw new Error('请先设置API');
+        }
+        
+        // 构建prompt
+           const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你家冰箱里的内容，以及冰箱门上贴着的一张便签。要求像真实活人在过日子的冰箱，不要像样板房道具。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 冰箱内容要体现真实生活习惯：常吃什么、懒不懒、会不会囤东西、会不会剩菜、偏好什么口味、会不会买饮料零食、会不会做饭
+3. 如果聊天记录和长期记忆里提到过某些食物、饮料、口味、购物习惯、作息、养生习惯、熬夜习惯、爱吃或讨厌的东西，要自然反映在冰箱里
+4. 不能编造和资料完全不符的大型生活设定，只写日常、具体、可相信的内容
+5. 整体要有活人感：冰箱里可以乱一点、杂一点，不必每样都健康整齐，也不必每样都精致
+
+内容要求：
+1. 生成 5-8 个 fridgeItems
+2. 物品类型自然混合，尽量包含：
+   - 日常食材
+   - 饮料
+   - 零食/甜品
+   - 剩菜/半成品/速食
+   - 调味或囤货类中的少量项目
+3. 不要所有东西都“很会生活”，也不要所有东西都“完全摆烂”，要像这个人真实会有的冰箱
+4. 至少 2-3 个物品能看出和聊天记录或长期记忆有细节关联
+5. 允许有一些很普通但很真实的东西，比如矿泉水、鸡蛋、牛奶、可乐、半盒蛋糕、昨晚剩下的东西、速冻食品之类
+
+每个 fridgeItems 条目必须包含：
+- name：物品名，像真实冰箱里会有的
+- comment：本人看到这个东西时会说的话/吐槽/备注，要像这个人的语气，长度有短有长
+
+便签 note 要求：
+1. 便签要像真的贴在冰箱门上的，不要写成长文
+2. 可以是购物清单、提醒事项、别忘了吃、快过期提醒、顺手写的小话、嘴硬式自我提醒
+3. 如果聊天记录和长期记忆里有能转成提醒的小事，也可以自然写进去
+4. 整体感觉要像“随手贴的生活便签”，平凡、具体、有一点个人味道
+
+风格要求：
+1. comment 不要每条都一个长度，有的简短，有的多一句吐槽
+2. 可以有一点懒、一点挑食、一点嘴硬、一点可爱、一点生活无奈
+3. 冰箱内容应该让人看出这个人怎么生活，而不只是“他的人设标签”
+4. 不要写得像美食博主，也不要写得像极端穷或极端奢华
+
+请严格用以下JSON格式返回，不要有其他内容：
+{
+  "fridgeItems": [
+    { "name": "物品名", "comment": "你的点评/吐槽" }
+  ],
+  "note": "便签内容"
+}`;
+
+        // 调用API
+        const response = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.8
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('API请求失败');
+        }
+        
+        const result = await response.json();
+        const content = result.choices[0].message.content;
+        
+        // 解析JSON
+        let fridgeData;
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                fridgeData = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('无法解析返回内容');
+            }
+        } catch (e) {
+            throw new Error('解析失败：' + e.message);
+        }
+        
+        // 保存数据
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            fridgeItems: fridgeData.fridgeItems || [],
+            fridgeNote: fridgeData.note || '',
+            fridgeGeneratedAt: new Date().toLocaleString()
+        });
+        
+        // 更新显示
+        const updatedPhoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        loadFridgeContent(updatedPhoneData);
+        
+    } catch (error) {
+        console.error('生成冰箱内容失败:', error);
+        alert('生成失败：' + error.message);
+    } finally {
+        // 隐藏加载状态
+        document.getElementById('pcFridgeLoading').style.display = 'none';
+        document.querySelector('.pc-fridge-refresh-btn').classList.remove('loading');
+    }
+}
+
+// ============ 查手机浏览器功能 ============
+
+let pcBrowserHistoryData = [];
+
+// 打开浏览器页面
+function openPhoneCheckBrowser() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    
+    // 加载已保存的浏览记录
+    pcBrowserHistoryData = phoneData.browserHistory || [];
+    loadBrowserHistory();
+    
+    // 确保显示历史视图
+    document.getElementById('pcBrowserHistoryView').style.display = 'flex';
+    document.getElementById('pcBrowserDetailView').style.display = 'none';
+    
+    // 隐藏Dock栏
+    document.querySelector('.pc-dock').style.display = 'none';
+    
+    document.getElementById('phoneCheckBrowserScreen').style.display = 'flex';
+}
+
+// 关闭浏览器页面
+function closePhoneCheckBrowser() {
+    document.getElementById('phoneCheckBrowserScreen').style.display = 'none';
+    
+    // 显示Dock栏
+    document.querySelector('.pc-dock').style.display = 'flex';
+}
+
+// 加载浏览记录列表
+function loadBrowserHistory() {
+    const listContainer = document.getElementById('pcBrowserHistoryList');
+    
+    if (pcBrowserHistoryData.length > 0) {
+        listContainer.innerHTML = pcBrowserHistoryData.map((item, index) => `
+            <div class="pc-browser-history-item" onclick="openBrowserDetail(${index})">
+                <div class="pc-browser-history-icon">${getBrowserTypeIcon(item.type)}</div>
+                <div class="pc-browser-history-info">
+                    <div class="pc-browser-history-title">${item.title}</div>
+                    <div class="pc-browser-history-summary">${item.summary}</div>
+                    <div class="pc-browser-history-time">${item.time}</div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        listContainer.innerHTML = '<div class="pc-browser-empty">点击右上角刷新按钮<br>生成浏览记录~</div>';
+    }
+}
+
+// 根据类型返回图标
+function getBrowserTypeIcon(type) {
+    const iconMap = {
+        'news': '📰',
+        'shopping': '🛒',
+        'video': '🎬',
+        'social': '💬',
+        'search': '🔍',
+        'article': '📄',
+        'music': '🎵',
+        'game': '🎮',
+        'food': '🍔',
+        'travel': '✈️',
+        'health': '💊',
+        'study': '📚'
+    };
+    return iconMap[type] || '🌐';
+}
+
+// 打开浏览器详情页
+// 打开浏览器详情页
+function openBrowserDetail(index) {
+    const item = pcBrowserHistoryData[index];
+    if (!item) return;
+    
+    // 填充头部内容
+    document.getElementById('pcBrowserUrlText').textContent = generateFakeUrl(item.type, item.title);
+    document.getElementById('pcBrowserArticleType').textContent = getTypeLabel(item.type);
+    document.getElementById('pcBrowserArticleTitle').textContent = item.title;
+    
+    // 填充作者信息
+    document.getElementById('pcBrowserAuthorAvatar').textContent = getBrowserTypeIcon(item.type);
+    document.getElementById('pcBrowserAuthorName').textContent = generateFakeAuthor(item.type);
+    document.getElementById('pcBrowserArticleTime').textContent = item.time;
+    
+    // 随机生成阅读量和评论数
+    document.getElementById('pcBrowserViews').textContent = generateRandomViews();
+    document.getElementById('pcBrowserComments').textContent = generateRandomComments();
+    
+    // 填充正文
+    document.getElementById('pcBrowserArticleBody').textContent = item.content;
+    
+    // 生成相关推荐
+    generateRelatedItems(item.type, index);
+    
+    // 更新头部渐变色
+    updateHeaderGradient(item.type);
+    
+    // 切换视图
+    document.getElementById('pcBrowserHistoryView').style.display = 'none';
+    document.getElementById('pcBrowserDetailView').style.display = 'flex';
+}
+
+// 生成假作者名
+function generateFakeAuthor(type) {
+    const authors = {
+        'news': ['今日热点', '新闻早班车', '环球资讯', '头条播报'],
+        'shopping': ['好物推荐官', '省钱小能手', '购物达人', '品质生活家'],
+        'video': ['影视圈', '追剧小分队', '电影迷', '视频号'],
+        'social': ['吃瓜群众', '八卦前线', '社交圈', '朋友圈精选'],
+        'search': ['搜索结果', '网页快照', '百科知识', '问答社区'],
+        'article': ['深度阅读', '文章精选', '知识博主', '原创作者'],
+        'music': ['音乐电台', '歌单推荐', '乐评人', '音乐达人'],
+        'game': ['游戏攻略站', '玩家社区', '游戏资讯', '电竞前线'],
+        'food': ['美食探店', '吃货日记', '菜谱大全', '觅食指南'],
+        'travel': ['旅行攻略', '出行指南', '景点推荐', '旅游达人'],
+        'health': ['健康生活', '养生堂', '医学科普', '健身指南'],
+        'study': ['学习帮', '知识课堂', '教育资讯', '成长学院']
+    };
+    const list = authors[type] || ['网络用户'];
+    return list[Math.floor(Math.random() * list.length)];
+}
+
+// 生成随机阅读量
+function generateRandomViews() {
+    const num = Math.floor(Math.random() * 9000) + 1000;
+    if (num >= 10000) {
+        return (num / 10000).toFixed(1) + 'w';
+    }
+    return num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toString();
+}
+
+// 生成随机评论数
+function generateRandomComments() {
+    return Math.floor(Math.random() * 200) + 10;
+}
+
+// 根据类型更新头部渐变色
+function updateHeaderGradient(type) {
+    const gradients = {
+        'news': 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
+        'shopping': 'linear-gradient(135deg, #ff9a56 0%, #ff6b35 100%)',
+        'video': 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+        'social': 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+        'search': 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+        'article': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'music': 'linear-gradient(135deg, #ec4899 0%, #d946ef 100%)',
+        'game': 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        'food': 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        'travel': 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+        'health': 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+        'study': 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+    };
+    const header = document.querySelector('.pc-browser-article-header');
+    if (header) {
+        header.style.background = gradients[type] || gradients['article'];
+    }
+}
+
+// 生成相关推荐
+function generateRelatedItems(currentType, currentIndex) {
+    const relatedList = document.getElementById('pcBrowserRelatedList');
+    
+    // 从其他浏览记录中选取2-3条作为推荐
+    const otherItems = pcBrowserHistoryData.filter((_, i) => i !== currentIndex).slice(0, 3);
+    
+    if (otherItems.length > 0) {
+        relatedList.innerHTML = otherItems.map((item, i) => `
+            <div class="pc-browser-related-item" onclick="openBrowserDetail(${pcBrowserHistoryData.indexOf(item)})">
+                <div class="pc-browser-related-icon">${getBrowserTypeIcon(item.type)}</div>
+                <div class="pc-browser-related-info">
+                    <div class="pc-browser-related-name">${item.title}</div>
+                    <div class="pc-browser-related-desc">${item.summary}</div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        relatedList.innerHTML = `
+            <div class="pc-browser-related-item">
+                <div class="pc-browser-related-icon">🔍</div>
+                <div class="pc-browser-related-info">
+                    <div class="pc-browser-related-name">暂无更多推荐</div>
+                    <div class="pc-browser-related-desc">刷新生成更多内容</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// 返回浏览记录列表
+function backToBrowserHistory() {
+    document.getElementById('pcBrowserDetailView').style.display = 'none';
+    document.getElementById('pcBrowserHistoryView').style.display = 'flex';
+}
+
+// 生成假URL
+function generateFakeUrl(type, title) {
+    const domains = {
+        'news': 'news.today.com',
+        'shopping': 'shop.mall.com',
+        'video': 'video.tube.com',
+        'social': 'social.space.com',
+        'search': 'search.web.com',
+        'article': 'blog.reader.com',
+        'music': 'music.play.com',
+        'game': 'game.zone.com',
+        'food': 'food.yummy.com',
+        'travel': 'travel.go.com',
+        'health': 'health.care.com',
+        'study': 'learn.edu.com'
+    };
+    return domains[type] || 'www.example.com';
+}
+
+// 获取类型标签
+function getTypeLabel(type) {
+    const labels = {
+        'news': '新闻资讯',
+        'shopping': '购物',
+        'video': '视频',
+        'social': '社交动态',
+        'search': '搜索结果',
+        'article': '文章',
+        'music': '音乐',
+        'game': '游戏',
+        'food': '美食',
+        'travel': '旅行',
+        'health': '健康',
+        'study': '学习'
+    };
+    return labels[type] || '网页';
+}
+
+// 生成浏览记录
+async function generateBrowserHistory() {
+    if (!phoneCheckCurrentCharId) return;
+    
+    // 显示加载状态
+    document.getElementById('pcBrowserLoading').style.display = 'flex';
+    document.querySelector('.pc-browser-refresh-btn').classList.add('loading');
+    
+    try {
+        // 获取角色信息
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+        
+              // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+        
+        if (!personality.trim()) {
+            throw new Error('请先在角色资料里填写“他的人设”');
+        }
+
+        // 获取API配置
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+        
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+        
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+        
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+            throw new Error('请先设置API');
+        }
+        
+        // 构建prompt
+           const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你最近的手机浏览器搜索/浏览记录。要求像真实活人的浏览器历史，不要像为了展示设定而专门编的样板记录。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 浏览记录要体现真实人的搜索冲动和浏览习惯：临时起意、顺手搜一下、想确认某件事、对某个东西好奇、无聊刷到、想买、想吃、想看、想比较、想偷偷查
+3. 如果聊天记录和长期记忆里出现过兴趣、烦恼、想买的东西、某句话、某种情绪、某个在意的人、日常问题、生活需求，都要自然转成浏览行为
+4. 不能编造和资料完全无关的重大事件；没有依据时，就写成普通搜索、资讯阅读、生活查找、随手浏览
+5. 整体要有活人感：有些记录很普通，有些有点尴尬，有些就是临时搜一下，不要每条都很“有意义”
+
+生成要求：
+1. 生成 5-6 条搜索/浏览记录
+2. 类型可以多样：新闻(news)、购物(shopping)、视频(video)、社交(social)、搜索(search)、文章(article)、音乐(music)、游戏(game)、美食(food)、旅行(travel)、健康(health)、学习(study)
+3. 至少满足这些分布：
+   - 至少 2 条偏“生活需求/日常查找”
+   - 至少 1 条偏“兴趣/娱乐/放松”
+   - 至少 1 条偏“想买/想比较/想下单”
+   - 至少 2 条能明显看出和聊天记录或长期记忆有细节关联
+4. 内容方向可以自然包含：
+   - 吃什么、买什么、去哪、怎么做
+   - 某种情绪下的搜索
+   - 某句在意的话延伸出来的搜索
+   - 某样东西值不值得买
+   - 某种小毛病、小困扰、小习惯
+   - 某个突然想了解的话题
+5. 允许出现一点点尴尬、嘴硬、在意、偷偷查，但不要过火，不要违法，不要露骨
+6. 时间用相对时间：如“刚刚”“10分钟前”“2小时前”“昨天”等
+
+每条记录必须包含：
+- title：搜索关键词或网页标题，要像真实会搜/会点开的内容
+- summary：一句简短描述
+- time：相对时间
+- type：类型
+- content：完整网页正文，约 200-300 字，要像真实网页内容摘要或文章内容，不要写得太空
+
+风格要求：
+1. title 不要都很工整，允许像真实搜索词
+2. summary 要像列表页里会看到的一句话
+3. content 要像真的点开了一篇网页，不是单纯解释“这个人为什么会搜”
+4. 不要把所有记录都写成高强度剧情线索，很多浏览历史本来就只是普通生活碎片
+5. 浏览器历史应该让人感觉“这个人最近脑子里在想什么、在意什么、需要什么”
+
+请严格用以下JSON格式返回，不要有其他内容：
+{
+  "browserHistory": [
+    {
+      "title": "搜索关键词或网页标题",
+      "summary": "简短描述（一句话）",
+      "time": "相对时间",
+      "type": "类型",
+      "content": "完整的网页内容正文"
+    }
+  ]
+}`;
+
+        // 调用API
+        const response = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.9
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('API请求失败');
+        }
+        
+        const result = await response.json();
+        const content = result.choices[0].message.content;
+        
+        // 解析JSON
+        let browserData;
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                browserData = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('无法解析返回内容');
+            }
+        } catch (e) {
+            throw new Error('解析失败：' + e.message);
+        }
+        
+        // 保存数据
+        pcBrowserHistoryData = browserData.browserHistory || [];
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            browserHistory: pcBrowserHistoryData,
+            browserGeneratedAt: new Date().toLocaleString()
+        });
+        
+        // 更新显示
+        loadBrowserHistory();
+        
+    } catch (error) {
+        console.error('生成浏览记录失败:', error);
+        alert('生成失败：' + error.message);
+    } finally {
+        // 隐藏加载状态
+        document.getElementById('pcBrowserLoading').style.display = 'none';
+        document.querySelector('.pc-browser-refresh-btn').classList.remove('loading');
+    }
+}
+
+// ============ 查手机-备忘录功能 ============
+
+let pcMemoNotesData = [];
+let pcMemoCurrentIndex = -1;
+
+// 打开备忘录
+function openPhoneCheckMemo() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcMemoNotesData = phoneData.memoNotes || [];
+
+    // 默认展示列表
+    document.getElementById('pcMemoListView').style.display = 'flex';
+    document.getElementById('pcMemoDetailView').style.display = 'none';
+
+    renderMemoList();
+
+    // 隐藏 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    // 打开时确保左上角关闭按钮可见
+const closeBtn = document.querySelector('#phoneCheckMemoScreen .pc-memo-back-btn');
+if (closeBtn) closeBtn.style.display = 'flex';
+    document.getElementById('phoneCheckMemoScreen').style.display = 'block';
+}
+
+// 关闭备忘录
+function closePhoneCheckMemo() {
+    document.getElementById('phoneCheckMemoScreen').style.display = 'none';
+
+    // 显示 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+// 渲染列表
+function renderMemoList() {
+    const listEl = document.getElementById('pcMemoList');
+    if (!listEl) return;
+
+    if (!pcMemoNotesData || pcMemoNotesData.length === 0) {
+        listEl.innerHTML = '<div class="pc-memo-empty">点击右上角刷新按钮<br>生成 TA 的备忘录~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcMemoNotesData.map((note, idx) => {
+        const title = (note.title || '').trim() || '（无标题）';
+        const body = (note.body || '').trim();
+        const preview = body.replace(/\n+/g, ' ').slice(0, 120);
+        const time = note.time || '';
+        const hasPS = !!(note.ps && String(note.ps).trim());
+
+        return `
+            <div class="pc-memo-item" onclick="openMemoDetail(${idx})">
+                <div class="pc-memo-item-title">${escapeHtml(title)}</div>
+                <div class="pc-memo-item-preview">${escapeHtml(preview)}</div>
+                <div class="pc-memo-item-meta">
+                    <div>${escapeHtml(time)}</div>
+                    ${hasPS ? '<div class="pc-memo-item-ps">PS</div>' : '<div></div>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 打开详情
+function openMemoDetail(index) {
+    const note = pcMemoNotesData[index];
+    if (!note) return;
+
+    pcMemoCurrentIndex = index;
+
+    document.getElementById('pcMemoDetailTitle').textContent = note.title || '备忘录';
+    document.getElementById('pcMemoDetailTime').textContent = note.time || '';
+    document.getElementById('pcMemoDetailBody').textContent = note.body || '';
+
+    const psWrap = document.getElementById('pcMemoDetailPS');
+    const psText = document.getElementById('pcMemoDetailPSText');
+    const ps = (note.ps || '').trim();
+
+    if (ps) {
+        psText.textContent = ps;
+        psWrap.style.display = 'block';
+    } else {
+        psWrap.style.display = 'none';
+    }
+
+    document.getElementById('pcMemoListView').style.display = 'none';
+    document.getElementById('pcMemoDetailView').style.display = 'flex';
+    // 详情页只保留顶部返回（返回列表），隐藏左上角关闭按钮
+const closeBtn = document.querySelector('#phoneCheckMemoScreen .pc-memo-back-btn');
+if (closeBtn) closeBtn.style.display = 'none';
+}
+
+// 详情返回列表
+function backToMemoList() {
+    document.getElementById('pcMemoDetailView').style.display = 'none';
+    document.getElementById('pcMemoListView').style.display = 'flex';
+    // 回到列表页，恢复左上角关闭按钮
+const closeBtn = document.querySelector('#phoneCheckMemoScreen .pc-memo-back-btn');
+if (closeBtn) closeBtn.style.display = 'flex';
+}
+
+// 生成备忘录（约10条）
+async function generateMemoNotes() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcMemoLoading');
+    const refreshBtn = document.getElementById('pcMemoRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) {
+            throw new Error('请先在角色资料里填写“他的人设”');
+        }
+
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+            throw new Error('请先设置API');
+        }
+
+              const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里的“备忘录”，风格必须像真实 iOS 备忘录，而不是文学作品或日记作文。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+生成原则：
+1. 必须同时参考人设、聊天记录、长期记忆，可以但不能只按人设自由发挥
+2. 备忘录要像“怕忘记所以记下来”的真实内容，重点写待办、日程、提醒、要记住的小事，而不是空泛抒情
+3. 可以包含：todolist、购物清单、行程安排、容易忘的事、重要日期、别人提过的事、自己答应过的事、平凡但幸福的小事、突然冒出来的念头，细节小事、生活计划
+4. 如果聊天记录里出现了具体事项、约定、提醒、反复提到的人或事，要自然转化成备忘录内容
+5. 如果长期记忆里有重要的人、习惯、日期、偏好、经历，也要自然体现在备忘录里
+6. 整体风格要像真实活人手机：有的很短，有的很碎，有的像清单，有的像一句提醒，不要每条都写得太完整太工整
+7. 允许少量情绪和碎碎念，但核心仍然是“为了记住事情”
+8. 内容要偏生活化、平凡、具体，带一点幸福感和真实感，比如记生日、记某句在意的话、记想一起做的小事
+9. 不要编造聊天记录和长期记忆里完全没有依据的重大事件
+10. 生成大约10条备忘录，其中至少：
+   - 3条是待办/清单型
+   - 2条是日程或提醒型
+   - 2条和重要的人或日期有关
+   - 2条体现平凡的小幸福或想记住的小事
+
+每条必须包含：
+- title：短标题，像真实备忘录标题
+- body：正文，可多行，可简短，可清单式
+- time：相对时间/日期
+- ps：可选补充吐槽/补充提醒，没有就给空字符串
+
+额外要求：
+1. 标题不要太像文章标题，要像手机里自己写给自己看的
+2. body 可以出现这种真实格式：
+   - 分行短句
+   - “1. 2. 3.” 形式
+   - “记得……” “别忘了……” “顺手……” 这种口吻
+3. 不要把每条都写得很长，长度有短有长
+4. 至少有3条能让人看出来明显参考了聊天记录或长期记忆里的细节
+5. 整体读起来要像这个人真的在生活，不是AI在概括人设
+
+请严格只输出 JSON，不要输出多余文字，格式如下：
+{
+  "notes": [
+    {"title":"", "body":"", "time":"", "ps":""}
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.85
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const notes = Array.isArray(parsed.notes) ? parsed.notes : [];
+
+        pcMemoNotesData = notes.slice(0, 12).map(n => ({
+            title: (n.title || '').toString(),
+            body: (n.body || '').toString(),
+            time: (n.time || '').toString(),
+            ps: (n.ps || '').toString()
+        }));
+
+        // 保存到 phoneCheckData（按角色）
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            memoNotes: pcMemoNotesData,
+            memoGeneratedAt: new Date().toLocaleString()
+        });
+
+        // 回到列表并刷新
+        document.getElementById('pcMemoDetailView').style.display = 'none';
+        document.getElementById('pcMemoListView').style.display = 'flex';
+        renderMemoList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// 简单转义，避免把内容当HTML插入
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ============ 查手机-相册功能 ============
+
+let pcAlbumData = null;               // { albums: [...] }
+let pcAlbumCurrentAlbumId = null;     // 当前相簿id
+let pcAlbumCurrentPhotoId = null;     // 当前照片id
+
+function openPhoneCheckAlbum() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcAlbumData = phoneData.albumData || null;
+
+    // 默认显示相簿首页
+    document.getElementById('pcAlbumAlbumsView').style.display = 'flex';
+    document.getElementById('pcAlbumGridView').style.display = 'none';
+    document.getElementById('pcAlbumViewer').style.display = 'none';
+
+    renderAlbumList();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckAlbumScreen').style.display = 'block';
+    // 相簿首页显示关闭/刷新按钮
+const closeBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-back-btn');
+const refreshBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-refresh-btn');
+if (closeBtn) closeBtn.style.display = 'flex';
+if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function closePhoneCheckAlbum() {
+    document.getElementById('phoneCheckAlbumScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToAlbumsView() {
+    document.getElementById('pcAlbumAlbumsView').style.display = 'flex';
+    document.getElementById('pcAlbumGridView').style.display = 'none';
+    document.getElementById('pcAlbumViewer').style.display = 'none';
+    // 回到相簿首页：恢复“关闭相册/刷新”按钮
+const closeBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-back-btn');
+const refreshBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-refresh-btn');
+if (closeBtn) closeBtn.style.display = 'flex';
+if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function backToGridView() {
+    document.getElementById('pcAlbumAlbumsView').style.display = 'none';
+    document.getElementById('pcAlbumGridView').style.display = 'flex';
+    document.getElementById('pcAlbumViewer').style.display = 'none';
+    // 网格页仍隐藏“关闭相册/刷新”按钮
+const closeBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-back-btn');
+const refreshBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-refresh-btn');
+if (closeBtn) closeBtn.style.display = 'none';
+if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function renderAlbumList() {
+    const listEl = document.getElementById('pcAlbumAlbumList');
+    if (!listEl) return;
+
+    if (!pcAlbumData || !Array.isArray(pcAlbumData.albums) || pcAlbumData.albums.length === 0) {
+        listEl.innerHTML = '<div class="pc-album-empty">点击右上角刷新按钮<br>生成 TA 的相册~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcAlbumData.albums.map(album => {
+        const count = Array.isArray(album.photos) ? album.photos.length : 0;
+        const bg = album.coverGradient || 'linear-gradient(135deg,#667eea,#764ba2)';
+        const desc = album.desc || '（未填写）';
+
+        return `
+            <div class="pc-album-album-item" onclick="openAlbumGrid('${escapeHtmlAttr(album.id)}')">
+                <div class="pc-album-cover" style="background:${bg};">
+                    <div class="pc-album-cover-main">相册</div>
+                    <div class="pc-album-cover-sub">${escapeHtml(album.name || '相簿')}</div>
+                </div>
+                <div class="pc-album-album-info">
+                    <div class="pc-album-album-name">${escapeHtml(album.name || '相簿')}</div>
+                    <div class="pc-album-album-desc">${escapeHtml(desc)}</div>
+                    <div class="pc-album-album-meta">${count} 张 · ${escapeHtml(album.updatedTime || '')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openAlbumGrid(albumId) {
+    if (!pcAlbumData || !Array.isArray(pcAlbumData.albums)) return;
+
+    const album = pcAlbumData.albums.find(a => String(a.id) === String(albumId));
+    if (!album) return;
+
+    pcAlbumCurrentAlbumId = album.id;
+
+    document.getElementById('pcAlbumGridTitle').textContent = album.name || '相簿';
+
+    document.getElementById('pcAlbumAlbumsView').style.display = 'none';
+    document.getElementById('pcAlbumGridView').style.display = 'flex';
+    document.getElementById('pcAlbumViewer').style.display = 'none';
+
+    // 进入网格页：隐藏“关闭相册/刷新”按钮，避免覆盖误触
+const closeBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-back-btn');
+const refreshBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-refresh-btn');
+if (closeBtn) closeBtn.style.display = 'none';
+if (refreshBtn) refreshBtn.style.display = 'none';
+
+    const gridEl = document.getElementById('pcAlbumGrid');
+    if (!gridEl) return;
+
+    const photos = Array.isArray(album.photos) ? album.photos : [];
+    gridEl.innerHTML = photos.map(p => {
+        const bg = p.thumbGradient || 'linear-gradient(135deg,#e0e5ec,#f5f7fa)';
+        const emoji = p.emoji || '📷';
+        const caption = p.caption || '（无标题）';
+        return `
+            <div class="pc-album-photo-thumb" style="background:${bg};" onclick="openAlbumPhoto('${escapeHtmlAttr(p.id)}')">
+                <div class="pc-album-thumb-emoji">${escapeHtml(emoji)}</div>
+                <div class="pc-album-thumb-caption">${escapeHtml(caption)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openAlbumPhoto(photoId) {
+    const album = pcAlbumData?.albums?.find(a => String(a.id) === String(pcAlbumCurrentAlbumId));
+    if (!album) return;
+
+    const photo = (album.photos || []).find(p => String(p.id) === String(photoId));
+    if (!photo) return;
+
+    pcAlbumCurrentPhotoId = photo.id;
+
+    document.getElementById('pcAlbumViewerTitle').textContent = album.name || '照片';
+
+    const card = document.getElementById('pcAlbumPhotoCard');
+    const emojiEl = document.getElementById('pcAlbumPhotoEmoji');
+    const captionEl = document.getElementById('pcAlbumPhotoCaption');
+
+    const bg = photo.viewGradient || photo.thumbGradient || 'linear-gradient(135deg,#e0e5ec,#f5f7fa)';
+    if (card) card.style.background = bg;
+
+    if (emojiEl) emojiEl.textContent = photo.emoji || '📷';
+    if (captionEl) captionEl.textContent = photo.caption || '';
+
+    const meta = [];
+    if (photo.time) meta.push(photo.time);
+    if (photo.location) meta.push(photo.location);
+    document.getElementById('pcAlbumPhotoMeta').textContent = meta.join(' · ') || '';
+
+    const commentWrap = document.getElementById('pcAlbumPhotoCommentWrap');
+    const commentText = document.getElementById('pcAlbumPhotoComment');
+    const comment = (photo.comment || '').trim();
+
+    if (comment) {
+        commentText.textContent = comment;
+        commentWrap.style.display = 'block';
+    } else {
+        commentWrap.style.display = 'none';
+    }
+
+    document.getElementById('pcAlbumAlbumsView').style.display = 'none';
+    document.getElementById('pcAlbumGridView').style.display = 'none';
+    document.getElementById('pcAlbumViewer').style.display = 'flex';
+    // 进入查看页：隐藏“关闭相册/刷新”按钮，避免覆盖误触
+const closeBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-back-btn');
+const refreshBtn = document.querySelector('#phoneCheckAlbumScreen .pc-album-refresh-btn');
+if (closeBtn) closeBtn.style.display = 'none';
+if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+/* 生成相册数据（相簿 4~6个，每个 6~12张） */
+async function generateAlbumData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcAlbumLoading');
+    const refreshBtn = document.getElementById('pcAlbumRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+              // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) {
+            throw new Error('请先在角色资料里填写“他的人设”');
+        }
+    
+
+        // API配置（优先查手机方案）
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+            throw new Error('请先设置API');
+        }
+
+            const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机相册里的内容，要求非常像真实人在用 iOS 相册，而不是为了展示设定专门编出来的相册。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心原则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 相册要有“活人感”与“私密感”，像真的会出现在一个人手机里的照片，而不是样板化分类
+3. 允许出现以下类型，并尽量自然混合：
+   - 抓拍/随手拍
+   - 偷偷存下来的图
+   - 自己的照片或自拍
+   - 风景和生活碎片
+   - 可爱治愈的小图、小动物、小摆件、小甜品
+   - 截图（聊天截图、备忘截图、订单截图、网页截图、歌单截图等）
+   - 和在意的人有关、带一点占有欲或偷偷在意感觉的内容
+4. 如果聊天记录里提到过某些地点、食物、安排、兴趣、情绪、截图内容、在意的人或某句话，这些都可以自然转成相册里的照片来源
+5. 如果长期记忆里有反复在意的人、场景、习惯、特殊日期、曾经发生的小事，也要自然体现在相册内容里
+6. 不能编造聊天记录和长期记忆里完全没有依据的重大事实事件；没有证据的内容只能写成“存图、截图、路过看到、想起、随手拍、脑补氛围”
+7. 整体风格要真实：有些照片很普通，有些照片根本没什么意义，但本人会留着；不要每张都很戏剧化
+
+相簿设计要求：
+1. 生成 4-6 个相簿（albums）
+2. 相簿名必须像真实手机里会出现的名字，不要太文学化
+3. 相簿类型建议从这些方向自然组合，不要求全部都有：
+   - 最近 / 日常
+   - 截图
+   - 可爱东西 / 治愈收集
+   - 自己 / 自拍 / 今日份
+   - 风景 / 路上 / 乱拍
+   - 偷偷存的 / 不给别人看 / 想删没删
+4. 每个相簿 6-12 张照片条目
+
+每张照片要求：
+1. 不需要真实图片，用文字模拟即可
+2. 每张必须包含：
+   - emoji：代表画面的 emoji
+   - caption：一句像本人会写的照片标题，短一点，自然一点
+   - time：相对时间/日期
+   - location：可选
+   - comment：本人看到这张时会想到的备注/碎碎念，必须体现性格，也可以带一点嘴硬、占有欲、偷偷在意、治愈感
+3. comment 不要都写成长段，有长有短
+4. 照片内容必须混合“普通”和“私密”：
+   - 普通：饭、天空、路上、桌面、杯子、猫狗、树影、便利店、地铁口、晚霞、乱拍
+   - 私密：存下来的聊天截图、某句话截图、舍不得删的图、自己某张顺眼的自拍、偷偷留着的和某人有关的小东西
+5. 至少满足下面这些分布：
+   - 至少 1 个相簿明显偏“截图”
+   - 至少 1 个相簿明显偏“生活/随手拍”
+   - 至少 1 个相簿带“可爱治愈”或“偷偷存图”气质
+   - 全部照片里至少 3 张能看出和聊天记录或长期记忆有细节关联
+   - 全部照片里至少 2 张体现“在意某人/一点占有欲/偷偷留存”的感觉，但不要露骨，也不要编成已发生的大事
+6. 不要让所有照片都很精致，允许一些废片感、抓拍感、乱拍感，越像活人越好
+
+视觉字段要求：
+1. 相簿封面用 coverGradient（CSS linear-gradient 字符串）
+2. 照片缩略图用 thumbGradient
+3. 查看页用 viewGradient
+4. 渐变颜色保持柔和、日常、好看，不要太夸张
+
+请严格只输出 JSON，不要输出多余文字，格式如下：
+{
+  "albums": [
+    {
+      "id": "recents",
+      "name": "最近",
+      "desc": "一句描述",
+      "updatedTime": "如：刚刚/今天/昨天",
+      "coverGradient": "linear-gradient(...)",
+      "photos": [
+        {
+          "id": "p1",
+          "emoji": "📷",
+          "caption": "",
+          "time": "",
+          "location": "",
+          "thumbGradient": "linear-gradient(...)",
+          "viewGradient": "linear-gradient(...)",
+          "comment": ""
+        }
+      ]
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.9
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const albums = Array.isArray(parsed.albums) ? parsed.albums : [];
+
+        pcAlbumData = {
+            albums: albums.slice(0, 6).map((a, idx) => ({
+                id: (a.id || `album_${idx}`).toString(),
+                name: (a.name || '相簿').toString(),
+                desc: (a.desc || '').toString(),
+                updatedTime: (a.updatedTime || '').toString(),
+                coverGradient: (a.coverGradient || '').toString(),
+                photos: Array.isArray(a.photos) ? a.photos.slice(0, 14).map((p, j) => ({
+                    id: (p.id || `p_${idx}_${j}`).toString(),
+                    emoji: (p.emoji || '📷').toString(),
+                    caption: (p.caption || '').toString(),
+                    time: (p.time || '').toString(),
+                    location: (p.location || '').toString(),
+                    thumbGradient: (p.thumbGradient || '').toString(),
+                    viewGradient: (p.viewGradient || '').toString(),
+                    comment: (p.comment || '').toString()
+                })) : []
+            }))
+        };
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            albumData: pcAlbumData,
+            albumGeneratedAt: new Date().toLocaleString()
+        });
+
+        // 回到相簿首页刷新
+        backToAlbumsView();
+        renderAlbumList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+/* 简单转义 */
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeHtmlAttr(str) {
+    return escapeHtml(str).replace(/`/g, '&#096;');
+}
+
+// ============ 查手机-记仇本功能 ============
+
+let pcGrudgeData = [];
+let pcGrudgeCurrentIndex = -1;
+
+function openPhoneCheckGrudge() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcGrudgeData = phoneData.grudgeData?.grudges || [];
+
+    // 默认列表
+    document.getElementById('pcGrudgeListView').style.display = 'flex';
+    document.getElementById('pcGrudgeDetailView').style.display = 'none';
+
+    // 确保关闭/刷新按钮可见
+    const closeBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderGrudgeList();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckGrudgeScreen').style.display = 'block';
+}
+
+function closePhoneCheckGrudge() {
+    document.getElementById('phoneCheckGrudgeScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function renderGrudgeList() {
+    const listEl = document.getElementById('pcGrudgeList');
+    if (!listEl) return;
+
+    if (!pcGrudgeData || pcGrudgeData.length === 0) {
+        listEl.innerHTML = '<div class="pc-grudge-empty">点击右上角刷新按钮<br>看看 TA 又记了谁一笔…</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcGrudgeData.map((g, idx) => {
+        const title = (g.title || '').trim() || '（无标题）';
+        const summary = (g.summary || '').trim();
+        const time = (g.time || '').trim();
+        const level = Math.max(1, Math.min(5, parseInt(g.level || 2, 10)));
+
+        return `
+            <div class="pc-grudge-item" onclick="openGrudgeDetail(${idx})">
+                <div class="pc-grudge-item-title">${escapeHtml(title)}</div>
+                <div class="pc-grudge-item-summary">${escapeHtml(summary)}</div>
+                <div class="pc-grudge-item-meta">
+                    <div>${escapeHtml(time)}</div>
+                    <div class="pc-grudge-level" title="记仇等级">
+                        ${new Array(level).fill(0).map(() => '<span class="pc-grudge-dot"></span>').join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openGrudgeDetail(index) {
+    const g = pcGrudgeData[index];
+    if (!g) return;
+
+    pcGrudgeCurrentIndex = index;
+
+    document.getElementById('pcGrudgeDetailTitle').textContent = g.title || '记仇详情';
+    document.getElementById('pcGrudgeDetailTime').textContent = g.time || '';
+
+    document.getElementById('pcGrudgeDetailEvent').textContent = g.event || g.summary || '';
+    document.getElementById('pcGrudgeDetailOS').textContent = g.os || '';
+
+    const plan = (g.plan || '').trim();
+    const planWrap = document.getElementById('pcGrudgePlanWrap');
+    const planEl = document.getElementById('pcGrudgeDetailPlan');
+
+    if (plan) {
+        planEl.textContent = plan;
+        planWrap.style.display = 'block';
+    } else {
+        planWrap.style.display = 'none';
+    }
+
+    // 切换视图
+    document.getElementById('pcGrudgeListView').style.display = 'none';
+    document.getElementById('pcGrudgeDetailView').style.display = 'flex';
+
+    // 详情页隐藏“关闭/刷新”按钮，避免误触直接回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function backToGrudgeList() {
+    document.getElementById('pcGrudgeDetailView').style.display = 'none';
+    document.getElementById('pcGrudgeListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckGrudgeScreen .pc-grudge-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+async function generateGrudgeData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcGrudgeLoading');
+    const refreshBtn = document.getElementById('pcGrudgeRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+          // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+                const prompt = `你就是${chat.name}。现在请你用“你自己私下写记仇本”的口吻，生成手机里的“记仇本”内容。必须根据【人设】【最近100条聊天记录】【全部长期记忆】来写，重点不是分析自己，而是像你本人偷偷记下一笔一笔的小账。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+最重要规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 所有条目都必须写成“第一人称私人记录”，像你自己写给自己看
+3. 禁止用旁白、分析口吻、上帝视角，不要写成“他因为……所以……”“这是一次……”这种总结句
+4. 要像真的会记在手机私密记仇本里：嘴硬、委屈、吃醋、别扭、很气但其实很在意
+5. 允许甜一点、酸一点、幼稚一点，但不要太油，不要恶意，不要阴暗报复
+6. 所有条目尽量从聊天记录和长期记忆里提取依据；如果依据不足，只能写小情绪、小脑补、小委屈，不能编造重大事件
+7. 禁止编造没有依据的见面、送礼、旅行、关系确认、重大冲突等事实
+
+条目方向：
+1. 重点写 user 相关的小破事，可以记这些：
+   - 回消息慢了
+   - 只回几个字
+   - 今天没主动来找我
+   - 夸别人好看
+   - 提到别人让我不爽
+   - 没接住我的情绪
+   - 没记住我说的话
+   - 明明在意却装无所谓
+   - 打情骂俏、互怼、嘴硬里的小委屈
+2. 也可以少量写其他日常不爽，但 user 相关要占大头
+3. 记仇不是纯生气，很多其实是“因为在意所以记得特别清楚”
+
+数量要求：
+1. 生成 8-12 条
+2. 至少 4 条明显和 user 有关
+3. 至少 2 条带吃醋/占有欲/比较心理
+4. 至少 2 条偏委屈，不是发火，而是心里不舒服
+5. 至少 2 条带嘴硬心软、打情骂俏感
+6. 至少 4 条能明显看出参考了聊天记录或长期记忆细节
+
+每条必须包含：
+- title：像我自己随手记的短标题，短一点，别像文章名
+- summary：一句我自己写的简短总结，也必须是第一人称语感，不要像旁白
+- time：相对时间/日期
+- level：1-5 的记仇等级
+- event：把这笔账记清楚，必须像“我在回想这件事”，不是客观报道
+- os：内心OS，必须非常像我本人当下的小声吐槽/嘴硬/委屈/吃醋
+- plan：可选，下次打算怎么办；也要像我自己写的，可以幼稚一点、嘴硬一点，没有就空字符串
+
+写法硬性要求：
+1. title / summary / event / os / plan 全部都要尽量有“我”的语感
+2. 可以直接写：
+   - “又记一笔”
+   - “这也能忘？”
+   - “行，我记住了”
+   - “嘴上说不在意，其实我记得很清楚”
+   - “今天这笔先欠着”
+3. event 要像我在翻旧账，不要像系统摘要
+4. os 要最像真人，允许碎、短、别扭、可爱、酸一点
+5. plan 不一定真要报复，很多时候可以是：
+   - “先不理他五分钟”
+   - “下次也让他等一下”
+   - “算了，还是舍不得”
+   - “先记着，以后再说”
+6. level 不要全高，很多小事只是轻轻记一笔
+
+输出风格提醒：
+- 像我自己写给自己看
+- 不是角色分析
+- 不是事件报告
+- 不是小说旁白
+- 是私密、小心眼、很在意的记账本
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "grudges": [
+    {
+      "title": "",
+      "summary": "",
+      "time": "",
+      "level": 3,
+      "event": "",
+      "os": "",
+      "plan": ""
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.9
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const grudges = Array.isArray(parsed.grudges) ? parsed.grudges : [];
+
+        pcGrudgeData = grudges.slice(0, 12).map(g => ({
+            title: (g.title || '').toString(),
+            summary: (g.summary || '').toString(),
+            time: (g.time || '').toString(),
+            level: parseInt(g.level || 2, 10),
+            event: (g.event || '').toString(),
+            os: (g.os || '').toString(),
+            plan: (g.plan || '').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            grudgeData: {
+                grudges: pcGrudgeData,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        // 生成完回到列表展示
+        backToGrudgeList();
+        renderGrudgeList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-恋爱记功能 ============
+
+let pcLoveDiaryEntries = [];
+let pcLoveCurrentIndex = -1;
+
+function openPhoneCheckLoveDiary() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcLoveDiaryEntries = phoneData.loveDiaryData?.entries || [];
+
+    // 默认列表
+    document.getElementById('pcLoveListView').style.display = 'flex';
+    document.getElementById('pcLoveDetailView').style.display = 'none';
+
+    // 首页按钮可见
+    const closeBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderLoveList();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckLoveDiaryScreen').style.display = 'block';
+}
+
+function closePhoneCheckLoveDiary() {
+    document.getElementById('phoneCheckLoveDiaryScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function renderLoveList() {
+    const listEl = document.getElementById('pcLoveList');
+    if (!listEl) return;
+
+    if (!pcLoveDiaryEntries || pcLoveDiaryEntries.length === 0) {
+        listEl.innerHTML = '<div class="pc-love-empty">点击右上角刷新按钮<br>生成 TA 的恋爱记~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcLoveDiaryEntries.map((e, idx) => {
+        const title = (e.title || '').trim() || '（无标题）';
+        const content = (e.content || '').trim();
+        const preview = content.replace(/\n+/g, ' ').slice(0, 120);
+        const time = (e.time || '').trim();
+
+        return `
+            <div class="pc-love-item" onclick="openLoveDetail(${idx})">
+                <div class="pc-love-item-title">${escapeHtml(title)}</div>
+                <div class="pc-love-item-preview">${escapeHtml(preview)}</div>
+                <div class="pc-love-item-meta">${escapeHtml(time)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openLoveDetail(index) {
+    const entry = pcLoveDiaryEntries[index];
+    if (!entry) return;
+
+    pcLoveCurrentIndex = index;
+
+    document.getElementById('pcLoveDetailTitle').textContent = '恋爱记';
+    document.getElementById('pcLoveDetailTime').textContent = entry.time || '';
+    document.getElementById('pcLovePaperTitle').textContent = entry.title || '';
+    document.getElementById('pcLovePaperBody').textContent = entry.content || '';
+
+    const ps = (entry.ps || '').trim();
+    const psWrap = document.getElementById('pcLovePSWrap');
+    const psText = document.getElementById('pcLovePSText');
+    if (ps) {
+        psText.textContent = ps;
+        psWrap.style.display = 'block';
+    } else {
+        psWrap.style.display = 'none';
+    }
+
+
+
+    // 切换视图
+    document.getElementById('pcLoveListView').style.display = 'none';
+    document.getElementById('pcLoveDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新，避免误触回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function backToLoveList() {
+    document.getElementById('pcLoveDetailView').style.display = 'none';
+    document.getElementById('pcLoveListView').style.display = 'flex';
+
+    const closeBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckLoveDiaryScreen .pc-love-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+async function generateLoveDiary() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcLoveLoading');
+    const refreshBtn = document.getElementById('pcLoveRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+              // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+             const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】写你的“恋爱记”，风格要像真实手机里只给自己看的私密恋爱记录，不要写成文学散文，也不要只做设定发挥。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 内容要有“活人感”和“恋爱中的私密感”，像真的会偷偷记在手机里，带一点可爱碎碎念、黏人、小心动、小吃醋、小期待
+3. 可以写这些方向，并尽量自然混合：
+   - 日常小事
+   - 心动瞬间
+   - 约会记录
+   - 纪念日
+   - 想对你说
+   - 吃醋小情绪
+   - 未来期许
+   - 可爱碎碎恋
+   - 偷偷喜欢你
+   - 专属小甜蜜
+   - 被治愈、被可爱到
+   - 黏人、早安、想念、舍不得睡之类的小心情
+4. 如果聊天记录和长期记忆里有明确依据，可以写成真实发生过的小事、某天的情绪、某句让人心动的话、某种反复出现的互动方式
+5. 如果没有明确证据，就只能写成“想象/如果/想对你说/偷偷希望/未来想一起做”的形式，不能编造成已经发生的重大事实
+6. 严禁无依据地写成已经发生过的见面、送礼、旅行、关系确认、纪念日庆祝、大型约会等重大事件
+7. 整体风格要甜一点、软一点、在意一点，但不要太油、太肉麻、太像言情小说
+8. 不要每条都一个调性，要有甜、酸、黏、委屈、被治愈、偷偷开心等起伏
+
+内容要求：
+1. 生成大约10条 entries
+2. 至少满足下面这些类型分布：
+   - 至少 2 条是“日常小事 / 小甜蜜”
+   - 至少 2 条是“心动瞬间 / 被治愈 / 被可爱到”
+   - 至少 1 条是“想对你说”
+   - 至少 1 条是“吃醋 / 小委屈 / 黏人”
+   - 至少 1 条是“未来期许 / 如果以后 / 想一起做”
+   - 如果聊天记录或长期记忆里有明确依据，可以有 1-2 条写“约会记录 / 纪念日 / 一起做过的小事”；如果没有依据，就不要强写成事实
+3. 至少有 4 条能明显看出参考了聊天记录或长期记忆里的细节
+4. 内容重点放在“小而具体”的恋爱感，不要全写大段抒情
+
+每条必须包含：
+- title：短标题，要像自己起的，不要太像文章名
+- time：相对时间/日期
+- content：正文，可分段，可长可短，要像真实手机里的恋爱记录
+- ps：可选，一句补充的小声嘀咕/嘴硬/害羞/别扭，没有就给空字符串
+- hasFantasy：true/false，表示这条里是否包含幻想、小剧场、未来想象、如果式内容
+
+写法规则：
+1. “已经发生的事实”只能来自聊天记录和长期记忆里有依据的内容
+2. “没证据但很想写”的内容，统一写成：
+   - 我想……
+   - 如果有一天……
+   - 其实有点想……
+   - 下次要是能……
+   - 偷偷记一下……
+3. 允许有一些很可爱的黏人感、早安情绪、舍不得、偷偷开心、看到消息时的心情
+4. 允许有轻微吃醋和占有欲，但不要过火
+5. 不要写成每天都惊天动地，很多条目应该只是很普通的小事，却因为喜欢所以记住了
+6. 整体要像真的喜欢一个人时会留下的私人碎片
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "entries": [
+    {
+      "title": "",
+      "time": "",
+      "content": "",
+      "ps": "",
+      "hasFantasy": false
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.88
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+
+        pcLoveDiaryEntries = entries.slice(0, 12).map(e => ({
+            title: (e.title || '').toString(),
+            time: (e.time || '').toString(),
+            content: (e.content || '').toString(),
+            ps: (e.ps || '').toString(),
+            hasFantasy: !!e.hasFantasy
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            loveDiaryData: {
+                entries: pcLoveDiaryEntries,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        // 回到列表刷新
+        backToLoveList();
+        renderLoveList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-短信功能 ============
+
+let pcSmsThreads = [];
+let pcSmsCurrentThreadId = null;
+
+function openPhoneCheckSms() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcSmsThreads = phoneData.smsData?.threads || [];
+
+    // 默认列表视图
+    document.getElementById('pcSmsListView').style.display = 'flex';
+    document.getElementById('pcSmsDetailView').style.display = 'none';
+
+    // 列表页按钮可见
+    const closeBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderSmsThreadList();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckSmsScreen').style.display = 'block';
+}
+
+function closePhoneCheckSms() {
+    document.getElementById('phoneCheckSmsScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToSmsList() {
+    document.getElementById('pcSmsDetailView').style.display = 'none';
+    document.getElementById('pcSmsListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderSmsThreadList() {
+    const listEl = document.getElementById('pcSmsThreadList');
+    if (!listEl) return;
+
+    if (!pcSmsThreads || pcSmsThreads.length === 0) {
+        listEl.innerHTML = '<div class="pc-sms-empty">点击右上角刷新按钮<br>生成 TA 的短信~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcSmsThreads.map(t => {
+        const name = (t.name || '').trim() || '未知';
+        const avatar = (t.avatar || '💬').trim();
+        const last = (t.last || '').trim();
+        const time = (t.time || '').trim();
+        const unread = !!t.unread;
+
+        return `
+            <div class="pc-sms-thread" onclick="openSmsThread('${escapeAttr(t.id)}')">
+                <div class="pc-sms-avatar">${escapeHtml(avatar)}</div>
+                <div class="pc-sms-thread-main">
+                    <div class="pc-sms-thread-top">
+                        <div class="pc-sms-thread-name">${escapeHtml(name)}</div>
+                        <div class="pc-sms-thread-time">${escapeHtml(time)}</div>
+                    </div>
+                    <div class="pc-sms-thread-preview">${escapeHtml(last)}</div>
+                </div>
+                ${unread ? '<div class="pc-sms-unread-dot"></div>' : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function openSmsThread(threadId) {
+    const thread = pcSmsThreads.find(t => String(t.id) === String(threadId));
+    if (!thread) return;
+
+    pcSmsCurrentThreadId = threadId;
+
+    // 标题
+    document.getElementById('pcSmsDetailName').textContent = thread.name || '短信';
+
+    // 渲染消息 + 时间分隔
+    renderSmsMessages(thread.messages || []);
+
+    // 切换视图
+    document.getElementById('pcSmsListView').style.display = 'none';
+    document.getElementById('pcSmsDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新（避免误触直接回主屏幕）
+    const closeBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckSmsScreen .pc-sms-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+
+    // 进入会话后可认为已读（仅本地显示）
+    thread.unread = false;
+    renderSmsThreadList();
+}
+
+function renderSmsMessages(messages) {
+    const box = document.getElementById('pcSmsMessages');
+    if (!box) return;
+
+    const sorted = (Array.isArray(messages) ? messages : [])
+        .filter(m => m && m.datetime)
+        .slice()
+        .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+    if (sorted.length === 0) {
+        box.innerHTML = '<div class="pc-sms-empty" style="padding:40px 0;">暂无内容</div>';
+        return;
+    }
+
+    let html = '';
+    let lastSep = '';
+
+    sorted.forEach(m => {
+        const sep = formatSmsSeparator(m.datetime);
+        if (sep && sep !== lastSep) {
+            lastSep = sep;
+            html += `<div class="pc-sms-time-sep">${escapeHtml(sep)}</div>`;
+        }
+
+        const from = (m.from === 'char') ? 'char' : 'other';
+        const clsRow = from === 'char' ? 'char' : 'other';
+        const clsBubble = from === 'char' ? 'char' : 'other';
+
+        html += `
+            <div class="pc-sms-bubble-row ${clsRow}">
+                <div class="pc-sms-bubble ${clsBubble}">${escapeHtml(m.text || '')}</div>
+            </div>
+        `;
+    });
+
+    box.innerHTML = html;
+
+    // 滚到底部
+    setTimeout(() => {
+        box.scrollTop = box.scrollHeight;
+    }, 30);
+}
+
+function formatSmsSeparator(datetimeStr) {
+    // datetimeStr: "YYYY-MM-DD HH:mm"
+    const d = new Date(datetimeStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return datetimeStr;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    const diffDays = Math.round((today - thatDay) / 86400000);
+
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+
+    if (diffDays === 0) return `今天 ${hh}:${mm}`;
+    if (diffDays === 1) return `昨天 ${hh}:${mm}`;
+
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const DD = String(d.getDate()).padStart(2, '0');
+    return `${M}-${DD} ${hh}:${mm}`;
+}
+
+function formatNowLocal() {
+    const n = new Date();
+    const Y = n.getFullYear();
+    const M = String(n.getMonth() + 1).padStart(2, '0');
+    const D = String(n.getDate()).padStart(2, '0');
+    const h = String(n.getHours()).padStart(2, '0');
+    const m = String(n.getMinutes()).padStart(2, '0');
+    return `${Y}-${M}-${D} ${h}:${m}`;
+}
+
+function subtractDaysLocal(days) {
+    const n = new Date();
+    n.setDate(n.getDate() - days);
+    const Y = n.getFullYear();
+    const M = String(n.getMonth() + 1).padStart(2, '0');
+    const D = String(n.getDate()).padStart(2, '0');
+    return `${Y}-${M}-${D}`;
+}
+
+async function generateSmsThreads() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcSmsLoading');
+    const refreshBtn = document.getElementById('pcSmsRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+                // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const nowLocal = formatNowLocal();
+        const minDate = subtractDaysLocal(7);
+
+        const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里“短信(Messages)”会出现的会话列表与短信内容。要求像真实手机短信，而不是凭空编联系人。
+
+【本地当前时间】${nowLocal}
+【时间范围要求】所有短信的 datetime 必须在最近7天内（>= ${minDate} 且 <= ${nowLocal}），禁止未来时间，禁止跳到其它月份（除非最近7天确实跨月）。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 短信联系人和内容要像真实手机里的残留记录：平台通知、生活服务、真人联系人混合
+3. 如果聊天记录和长期记忆里出现了生活习惯、兴趣、工作学习、在意的人、常见场景、被提到的事项，要自然映射到短信内容里
+4. 不能编造没有依据的重大事实；没有证据的内容要尽量写成日常、模糊、安全的小短信
+5. 整体要有活人感：有些短信很无聊，有些很短，有些是系统通知，有些只是问一句，不要每条都像剧情推进
+
+硬性规则（关于“你/我(用户)”这条会话）：
+- 允许出现最多 1 个联系人会话指向用户（联系人名可以是：你、我、宝、亲爱的、某个昵称），但该会话必须是【单向短信】：
+  messages 里只能出现 from="char" 的消息，严禁出现 from="other"。
+- 这条会话重点写“很克制但很在意”的感觉，内容只能是安全短信，例如：
+  1) 到家了吗 / 睡了吗 / 忙完没有 / 记得吃饭 / 晚安 / 今天累不累 / 早安
+  2) 想说但又收着的关心短句
+  3) 简单提醒类内容
+- 严禁出现任何具体事实细节（如：你昨天说了什么、我们见过面、你答应过什么、某次具体事件）。
+- 如果无法满足以上约束，则不要生成这条“指向用户”的会话。
+
+生成要求：
+1. 生成 6-10 个会话 threads
+2. 必须包含以下两大类，并自然混合：
+   - 系统/平台通知类：快递、外卖、银行、验证码、会员续费、平台提醒、物流、账单、订阅等
+   - 真人联系人类：家人、朋友、同事、店家、服务联系人等
+3. 至少满足这些分布：
+   - 至少 3 个系统/平台类线程
+   - 至少 2 个真人联系人线程
+   - 如果要生成指向 user 的线程，最多 1 个，而且要很克制
+4. 每个会话 messages 8-14 条，内容以真实短信短句为主，不要太像微信长聊
+5. 每条消息必须带 datetime，格式固定为 "YYYY-MM-DD HH:mm"（24小时制）
+6. threads 的 last 字段必须是该会话最后一条消息预览（简短）
+7. unread 可随机 true/false，不要全是 true
+8. 至少有 3 个线程能让人看出和聊天记录或长期记忆存在细节关联
+9. 不要把所有线程都写得很有戏，很多短信本来就很普通
+
+风格要求：
+1. 系统类要真实，比如：
+   - 快递取件提醒
+   - 外卖配送
+   - 银行入账/扣款
+   - 会员自动续费
+   - 验证码
+   - 日程提醒
+   - 商家服务通知
+2. 真人类要像“短信”不是“即时聊天”：
+   - 句子更短
+   - 往来没那么密
+   - 更容易出现通知、确认、问候、提醒
+3. 如果根据人设与聊天记录能判断这个人会保留一些旧式联系人短信，也可以适当体现
+4. 指向 user 的那条如果出现，要有一点点甜、一点点克制、一点点想念，但不能越界编事实
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "threads": [
+    {
+      "id": "t1",
+      "name": "联系人名",
+      "avatar": "emoji或单字符",
+      "time": "列表显示时间（如 今天/昨天/03-04）",
+      "last": "最后一条预览",
+      "unread": true,
+      "messages": [
+        { "from": "other", "text": "…", "datetime": "YYYY-MM-DD HH:mm" },
+        { "from": "char", "text": "…", "datetime": "YYYY-MM-DD HH:mm" }
+      ]
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.85
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const threads = Array.isArray(parsed.threads) ? parsed.threads : [];
+
+        // 清洗 + 补 time/last
+        pcSmsThreads = threads.slice(0, 12).map((t, idx) => {
+            const msgs = Array.isArray(t.messages) ? t.messages : [];
+            const sorted = msgs.slice().sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+            const lastMsg = sorted[sorted.length - 1] || {};
+            const lastText = (t.last || lastMsg.text || '').toString().slice(0, 40);
+
+            // 列表 time: 用最后一条 datetime 转成 今天/昨天/MM-DD
+            let listTime = '';
+            if (lastMsg.datetime) {
+                const sep = formatSmsSeparator(lastMsg.datetime);
+                // sep: 今天 HH:mm / 昨天 HH:mm / MM-DD HH:mm
+                listTime = sep.startsWith('今天') ? '今天' : (sep.startsWith('昨天') ? '昨天' : sep.slice(0, 5));
+            }
+
+            return {
+                id: (t.id || `t${idx + 1}`).toString(),
+                name: (t.name || '未知').toString(),
+                avatar: (t.avatar || '💬').toString(),
+                time: (t.time || listTime || '').toString(),
+                last: lastText,
+                unread: !!t.unread,
+                messages: sorted.map(m => ({
+                    from: (m.from === 'char') ? 'char' : 'other',
+                    text: (m.text || '').toString(),
+                    datetime: (m.datetime || '').toString()
+                }))
+            };
+        });
+
+// 兜底：如果某个会话疑似指向用户，则强制只保留 char 单向消息
+const userNameHints = ['你', '我', '宝', '亲爱的', '老婆', '老公', '宝宝'];
+pcSmsThreads = pcSmsThreads.map(t => {
+    const name = (t.name || '').trim();
+    const isUserThread = userNameHints.includes(name);
+    if (!isUserThread) return t;
+
+    const safeMessages = (t.messages || []).filter(m => m.from === 'char');
+
+    // 再兜底：如果全被过滤空了，就留一条最安全的
+    if (safeMessages.length === 0) {
+        safeMessages.push({
+            from: 'char',
+            text: '到家了吗？',
+            datetime: formatNowLocal()
+        });
+    }
+
+    // 更新 last/time
+    const lastMsg = safeMessages[safeMessages.length - 1];
+    t.messages = safeMessages;
+    t.last = (lastMsg.text || '').slice(0, 40);
+
+    const sep = formatSmsSeparator(lastMsg.datetime);
+    t.time = sep.startsWith('今天') ? '今天' : (sep.startsWith('昨天') ? '昨天' : sep.slice(0, 5));
+
+    // 用户向会话不要未读红点（可选）
+    t.unread = false;
+
+    return t;
+});
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            smsData: {
+                threads: pcSmsThreads,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderSmsThreadList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// 防止 onclick 注入
+function escapeAttr(str) {
+    return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// ============ 查手机-理财功能 ============
+
+let pcFinanceData = null;
+let pcFinanceTxList = [];
+let pcFinanceCurrentIndex = -1;
+
+function openPhoneCheckFinance() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcFinanceData = phoneData.financeData || null;
+    pcFinanceTxList = pcFinanceData?.transactions || [];
+
+    // 默认列表视图
+    document.getElementById('pcFinanceListView').style.display = 'flex';
+    document.getElementById('pcFinanceDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderFinancePage();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckFinanceScreen').style.display = 'block';
+}
+
+function closePhoneCheckFinance() {
+    document.getElementById('phoneCheckFinanceScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToFinanceList() {
+    document.getElementById('pcFinanceDetailView').style.display = 'none';
+    document.getElementById('pcFinanceListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderFinancePage() {
+    // summary
+    const totalEl = document.getElementById('pcFinanceTotalBalance');
+    const subEl = document.getElementById('pcFinanceBalanceSub');
+
+    if (pcFinanceData?.summary) {
+        const s = pcFinanceData.summary;
+        totalEl.textContent = formatMoney(s.totalBalance);
+        subEl.textContent = `可用余额：${formatMoney(s.availableBalance)}  ·  本月预算剩余：${formatMoney(s.monthBudgetLeft)}`;
+    } else {
+        totalEl.textContent = '--';
+        subEl.textContent = '可用余额：--';
+    }
+
+    // list
+    const listEl = document.getElementById('pcFinanceTxList');
+    if (!listEl) return;
+
+    if (!pcFinanceTxList || pcFinanceTxList.length === 0) {
+        listEl.innerHTML = '<div class="pc-finance-empty">点击右上角刷新按钮<br>生成账单记录~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcFinanceTxList.map((tx, idx) => {
+        const amount = Number(tx.amount || 0);
+        const isExpense = amount < 0;
+        const cls = isExpense ? 'expense' : 'income';
+        const signAmount = (isExpense ? '-' : '+') + formatMoney(Math.abs(amount)).replace('¥', '');
+        const timeText = formatFinanceListTime(tx.datetime);
+
+        return `
+            <div class="pc-finance-tx" onclick="openFinanceDetail(${idx})">
+                <div class="pc-finance-tx-icon">${escapeHtml(getFinanceIcon(tx.type, tx.title))}</div>
+                <div class="pc-finance-tx-main">
+                    <div class="pc-finance-tx-title">${escapeHtml(tx.title || '')}</div>
+                    <div class="pc-finance-tx-desc">${escapeHtml(tx.desc || '')}</div>
+                </div>
+                <div class="pc-finance-tx-right">
+                    <div class="pc-finance-tx-amount ${cls}">${escapeHtml(signAmount)}</div>
+                    <div class="pc-finance-tx-time">${escapeHtml(timeText)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openFinanceDetail(index) {
+    const tx = pcFinanceTxList[index];
+    if (!tx) return;
+
+    pcFinanceCurrentIndex = index;
+
+    const amount = Number(tx.amount || 0);
+    const isExpense = amount < 0;
+    const signAmount = (isExpense ? '-' : '+') + formatMoney(Math.abs(amount)).replace('¥', '');
+
+    document.getElementById('pcFinanceDetailAmount').textContent = signAmount;
+    document.getElementById('pcFinanceDetailMeta').textContent = isExpense ? '支出' : '收入';
+
+    document.getElementById('pcFinanceDetailType').textContent = formatFinanceType(tx.type);
+    document.getElementById('pcFinanceDetailTitle').textContent = tx.title || '';
+    document.getElementById('pcFinanceDetailDesc').textContent = tx.desc || '';
+    document.getElementById('pcFinanceDetailTime').textContent = tx.datetime || '';
+    document.getElementById('pcFinanceDetailNo').textContent = tx.no || genFinanceNo(tx);
+
+    // 切换视图
+    document.getElementById('pcFinanceListView').style.display = 'none';
+    document.getElementById('pcFinanceDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新，避免误触回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFinanceScreen .pc-finance-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function formatMoney(n) {
+    if (n === null || n === undefined || n === '' || isNaN(Number(n))) return '--';
+    return '¥' + Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatFinanceListTime(datetimeStr) {
+    if (!datetimeStr) return '';
+    const d = new Date(datetimeStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return datetimeStr;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((today - thatDay) / 86400000);
+
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+
+    if (diffDays === 0) return `今天 ${hh}:${mm}`;
+    if (diffDays === 1) return `昨天 ${hh}:${mm}`;
+
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const DD = String(d.getDate()).padStart(2, '0');
+    return `${M}-${DD} ${hh}:${mm}`;
+}
+
+function formatFinanceType(type) {
+    const map = {
+        expense: '支出',
+        income: '收入',
+        transfer: '转账',
+        refund: '退款',
+        investment: '理财'
+    };
+    return map[type] || '交易';
+}
+
+function getFinanceIcon(type, title) {
+    const t = (title || '').toLowerCase();
+    if (type === 'income') return '💼';
+    if (type === 'refund') return '↩️';
+    if (type === 'investment') return '📈';
+    if (type === 'transfer') return '🔁';
+    if (t.includes('外卖') || t.includes('餐') || t.includes('奶茶') || t.includes('咖啡')) return '🍔';
+    if (t.includes('打车') || t.includes('滴滴') || t.includes('地铁')) return '🚕';
+    if (t.includes('超市') || t.includes('便利店') || t.includes('菜')) return '🛒';
+    if (t.includes('房租') || t.includes('水电') || t.includes('燃气')) return '🏠';
+    if (t.includes('会员') || t.includes('订阅')) return '🎫';
+    if (t.includes('游戏') || t.includes('充值')) return '🎮';
+    return '💳';
+}
+
+function genFinanceNo(tx) {
+    const base = (tx.datetime || '').replace(/\D/g, '').slice(0, 12) || String(Date.now()).slice(0, 12);
+    const rand = Math.floor(Math.random() * 9000) + 1000;
+    return `TX${base}${rand}`;
+}
+
+async function generateFinanceData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcFinanceLoading');
+    const refreshBtn = document.getElementById('pcFinanceRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+               // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const nowLocal = formatNowLocal();
+        const minDate = subtractDaysLocal(7);
+
+            const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里的“理财/钱包”数据，包括余额与最近7天账单流水。要求像真实活人的消费记录，不要像模板账单。
+
+【本地当前时间】${nowLocal}
+【时间范围要求】transactions 的 datetime 必须在最近7天内（>= ${minDate} 且 <= ${nowLocal}），禁止未来时间。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 消费内容必须像真实生活：吃饭、饮品、便利店、超市、通勤、平台订阅、日用品、零碎购买、偶尔退款或入账
+3. 如果聊天记录和长期记忆里出现了某些习惯、爱吃的东西、常去的地方、兴趣、平台、生活节奏、预算焦虑、收藏癖、养生习惯、冲动消费倾向等，要自然反映到账单里
+4. 不能编造和资料完全不符的夸张收入、奢侈消费、离谱余额
+5. 整体要有活人感：有小额消费、有重复小支出、有普通扣费，不要每一条都很有戏
+6. 可以体现这个人的金钱观，比如节省、随手花、冲动、记账型、无所谓型、精打细算型，但要自然
+
+生成要求：
+1. 生成 summary：totalBalance、availableBalance、monthBudgetLeft、note
+2. 生成 12-20 条 transactions
+3. amount 负数=支出，正数=收入
+4. datetime 格式固定为 "YYYY-MM-DD HH:mm"（24小时制）
+5. JSON 必须可解析
+
+summary 要求：
+1. totalBalance、availableBalance、monthBudgetLeft 必须合理，符合人设，不要离谱
+2. note 是一句很像本人会有的理财/花钱心情，简短自然，比如预算焦虑、嘴硬安慰、无奈吐槽、对自己说的话
+3. note 也要体现人设，不要太像系统文案
+
+transactions 要求：
+1. 类型可用：expense / income / transfer / refund / investment
+2. 内容以真实日常为主，建议自然混合：
+   - 餐饮、奶茶、咖啡、零食
+   - 超市、便利店、日用品
+   - 打车、地铁、通勤
+   - 会员订阅、自动续费、平台扣费
+   - 小额网购、退款
+   - 工资、兼职、转账、报销等少量收入
+3. 至少满足这些分布：
+   - 至少 8 条日常小额支出
+   - 至少 2 条平台/会员/固定类扣费
+   - 至少 1 条收入或退款
+   - 至少 3 条能看出和聊天记录或长期记忆有细节关联
+4. 不要所有金额都很整齐，允许出现 9.90 / 18.50 / 32.8 / 6.00 这种真实数字
+5. title 像账单标题，desc 像账单备注或交易说明，要简短真实
+6. 不要把每一条都写成“剧情道具”，很多消费本来就是普通生活
+
+风格要求：
+1. 账单应该让人看出这个人怎么生活，而不是只看出“他的人设是什么”
+2. 可以有一点心虚、一点嘴硬、一点“怎么又花钱了”，也可以有“这笔花得值”的感觉，但主要体现在 summary.note 和消费结构里
+3. 如果这个人和 user 的聊天里提到某些吃的、想买的、想去的地方，可以自然变成消费记录，但不要硬编成重大共同经历
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "summary": {
+    "currency": "CNY",
+    "totalBalance": 12345.67,
+    "availableBalance": 4567.89,
+    "monthBudgetLeft": 800.00,
+    "note": ""
+  },
+  "transactions": [
+    {
+      "type": "expense|income|transfer|refund|investment",
+      "title": "",
+      "desc": "",
+      "amount": -28.50,
+      "datetime": "YYYY-MM-DD HH:mm"
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.78
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const summary = parsed.summary || {};
+        const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+
+        // 清洗排序
+        pcFinanceData = {
+            summary: {
+                currency: 'CNY',
+                totalBalance: Number(summary.totalBalance || 0),
+                availableBalance: Number(summary.availableBalance || 0),
+                monthBudgetLeft: Number(summary.monthBudgetLeft || 0),
+                note: (summary.note || '').toString()
+            },
+            transactions: txs
+                .slice()
+                .map(tx => ({
+                    type: (tx.type || 'expense').toString(),
+                    title: (tx.title || '').toString(),
+                    desc: (tx.desc || '').toString(),
+                    amount: Number(tx.amount || 0),
+                    datetime: (tx.datetime || '').toString(),
+                    no: genFinanceNo(tx)
+                }))
+                .filter(tx => tx.datetime)
+                .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
+        };
+
+        pcFinanceTxList = pcFinanceData.transactions;
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            financeData: {
+                ...pcFinanceData,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderFinancePage();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-收藏功能 ============
+
+let pcFavItems = [];
+let pcFavCurrentIndex = -1;
+
+function openPhoneCheckFavorite() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcFavItems = phoneData.favoriteData?.items || [];
+
+    // 默认列表
+    document.getElementById('pcFavListView').style.display = 'flex';
+    document.getElementById('pcFavDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderFavList();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckFavoriteScreen').style.display = 'block';
+}
+
+function closePhoneCheckFavorite() {
+    document.getElementById('phoneCheckFavoriteScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToFavList() {
+    document.getElementById('pcFavDetailView').style.display = 'none';
+    document.getElementById('pcFavListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderFavList() {
+    const listEl = document.getElementById('pcFavList');
+    if (!listEl) return;
+
+    if (!pcFavItems || pcFavItems.length === 0) {
+        listEl.innerHTML = '<div class="pc-fav-empty">点击右上角刷新按钮<br>生成 TA 的收藏~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcFavItems.map((it, idx) => {
+        const title = (it.title || '').trim() || '（未命名）';
+        const content = (it.content || '').trim().replace(/\n+/g, ' ');
+        const preview = content.slice(0, 120);
+        const time = (it.time || '').trim();
+        const sourceName = formatFavSourceName(it.sourceType);
+        const sourceDesc = (it.sourceDesc || '').trim();
+
+        return `
+            <div class="pc-fav-item" onclick="openFavDetail(${idx})">
+                <div class="pc-fav-item-top">
+                    <div class="pc-fav-item-title">${escapeHtml(title)}</div>
+                    <div class="pc-fav-item-time">${escapeHtml(time)}</div>
+                </div>
+                <div class="pc-fav-item-preview">${escapeHtml(preview)}</div>
+                <div class="pc-fav-item-source">
+                    <span class="pc-fav-source-pill">${escapeHtml(sourceName)}</span>
+                    <span>${escapeHtml(sourceDesc)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openFavDetail(index) {
+    const it = pcFavItems[index];
+    if (!it) return;
+
+    pcFavCurrentIndex = index;
+
+    document.getElementById('pcFavDetailTime').textContent = it.time || '';
+    document.getElementById('pcFavDetailTitle').textContent = it.title || '';
+    document.getElementById('pcFavDetailContent').textContent = it.content || '';
+
+    const sourceName = formatFavSourceName(it.sourceType);
+    const sourceDesc = it.sourceDesc || '';
+    document.getElementById('pcFavDetailSource').textContent = `${sourceName} · ${sourceDesc}`.trim();
+
+    document.getElementById('pcFavDetailOS').textContent = it.os || '';
+
+    // 切换视图
+    document.getElementById('pcFavListView').style.display = 'none';
+    document.getElementById('pcFavDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新，避免误触回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckFavoriteScreen .pc-fav-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function formatFavSourceName(type) {
+    const map = {
+        note: '备忘录',
+        screenshot: '截图',
+        bookmark: '书签',
+        draft: '草稿',
+        album: '相册',
+        reminder: '提醒',
+        file: '文件'
+    };
+    return map[type] || '收藏';
+}
+
+async function generateFavoriteData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcFavLoading');
+    const refreshBtn = document.getElementById('pcFavRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+             // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const nowLocal = (typeof formatNowLocal === 'function') ? formatNowLocal() : new Date().toLocaleString();
+        const minDate = (typeof subtractDaysLocal === 'function') ? subtractDaysLocal(7) : '';
+
+           const prompt = `你是${chat.name}。你手机里有一个非常私密的“收藏(Private)”功能，用来偷偷保存那些不想给别人看、但自己会反复点开的东西。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成收藏条目，风格要像真实活人的私密收藏夹。
+
+【本地当前时间】${nowLocal}
+【时间范围要求】time 必须在最近7天内（贴近本地时间），不要出现未来日期。
+${minDate ? `时间不要早于：${minDate}` : ''}
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 收藏内容要有“私密感”“舍不得删”“只想自己留着看”的感觉，不是公开收藏夹，也不是普通资料归档
+3. 可以收藏这些类型，并尽量自然混合：
+   - 某句想反复看的话
+   - 一张聊天截图/一句截图文字
+   - 舍不得删的图片描述
+   - 记在备忘里的小句子
+   - 浏览器里存下来的标题/片段
+   - 某个提醒、草稿、未发出去的话
+   - 某个和在意的人有关的小瞬间
+   - 某个让自己偷偷开心、吃醋、心软、在意的细节
+4. 如果聊天记录里有让人反复回想的话、在意的措辞、暧昧瞬间、委屈点、嘴硬点、甜一点的小细节，可以自然转成收藏内容
+5. 如果长期记忆里有重要的人、反复记住的事、习惯、瞬间、印象标签，也要自然进入收藏
+6. 禁止编造聊天记录和长期记忆里完全没有依据的重大事件
+7. 可以有一点占有欲、克制、敏感、偷偷喜欢、舍不得删、想藏起来的感觉，但不要露骨，不要违法，不要阴暗过头
+8. 整体要像“我不会发给别人，但我会自己留着”的东西
+
+内容要求：
+1. 生成 8-12 条收藏 items
+2. 每条都必须有一点私密感，不要太像公开清单
+3. 至少满足这些分布：
+   - 至少 3 条偏“截图/句子/片段留存”
+   - 至少 2 条偏“想说没说出口 / 草稿 / 备忘”
+   - 至少 2 条偏“因为在意某个人所以留下”
+   - 至少 2 条带一点可爱、心软、偷偷开心、或者轻微吃醋的感觉
+   - 至少 4 条能明显看出参考了聊天记录或长期记忆里的细节
+4. 允许有些收藏看起来“没什么大不了”，但本人就是舍不得删，这种感觉很重要
+5. 不要所有条目都很浓烈，轻重有区别，有的只是一个标题、一句短话、一张图的描述
+
+每条必须包含：
+- title：收藏标题，要像自己随手命名的，不要太正式
+- content：收藏的具体内容，可以是句子、截图文字、草稿内容、图片描述、书签片段、提醒内容、文件备注等
+- sourceType：只能取以下之一 note / screenshot / bookmark / draft / album / reminder / file
+- sourceDesc：来源说明，像“聊天截图”“备忘录摘句”“网页标题”“相册里没删的那张”“草稿箱”等，简短自然
+- os：内心OS，要有私密感，可以是嘴硬、占有欲、克制、想藏起来、舍不得删、看了会开心、看了会委屈等，但不要露骨
+- time：相对时间/日期
+
+写法要求：
+1. 不要总写“用户说过/我们聊过”，而是写成“我存下来了 / 我截图了 / 我记着 / 我留着 / 我没删”
+2. content 要像真实会被收藏的东西，不要每条都写成长文
+3. 有些条目可以很短，越短越像本人偷偷留的
+4. 整体要有一种“这不是重要文件，但对我来说很重要”的感觉
+5. 可以甜，可以酸，可以别扭，可以嘴硬，但都要像真实活人
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "items": [
+    {
+      "title": "",
+      "content": "",
+      "sourceType": "note",
+      "sourceDesc": "",
+      "os": "",
+      "time": ""
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.86
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        pcFavItems = items.slice(0, 12).map(it => ({
+            title: (it.title || '').toString(),
+            content: (it.content || '').toString(),
+            sourceType: (it.sourceType || 'note').toString(),
+            sourceDesc: (it.sourceDesc || '').toString(),
+            os: (it.os || '').toString(),
+            time: (it.time || '').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            favoriteData: {
+                items: pcFavItems,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderFavList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-淘宝功能 ============
+
+let pcTaobaoItems = [];
+let pcTaobaoCurrentIndex = -1;
+
+function openPhoneCheckTaobao() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcTaobaoItems = phoneData.taobaoData?.items || [];
+
+    // 默认列表
+    document.getElementById('pcTaobaoListView').style.display = 'flex';
+    document.getElementById('pcTaobaoDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderTaobaoList();
+
+    // 隐藏 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+        document.getElementById('phoneCheckTaobaoScreen').style.display = 'flex';
+}
+
+function closePhoneCheckTaobao() {
+    document.getElementById('phoneCheckTaobaoScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToTaobaoList() {
+    document.getElementById('pcTaobaoDetailView').style.display = 'none';
+    document.getElementById('pcTaobaoListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderTaobaoList() {
+    const listEl = document.getElementById('pcTaobaoList');
+    if (!listEl) return;
+
+    if (!pcTaobaoItems || pcTaobaoItems.length === 0) {
+        listEl.innerHTML = '<div class="pc-taobao-empty">点击右上角刷新按钮<br>生成 TA 的桃宝订单~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcTaobaoItems.map((item, idx) => {
+        const title = (item.title || '').trim() || '（未命名商品）';
+        const desc = (item.desc || '').trim();
+        const preview = desc.replace(/\n+/g, ' ').slice(0, 80);
+        const time = (item.time || '').trim();
+        const price = formatTaobaoPrice(item.price);
+        const status = (item.status || '').trim();
+        const emoji = (item.emoji || '📦').trim();
+
+        return `
+            <div class="pc-taobao-item" onclick="openTaobaoDetail(${idx})">
+                <div class="pc-taobao-item-icon">${escapeHtml(emoji)}</div>
+                <div class="pc-taobao-item-main">
+                    <div class="pc-taobao-item-top">
+                        <div class="pc-taobao-item-title">${escapeHtml(title)}</div>
+                        <div class="pc-taobao-item-price">${escapeHtml(price)}</div>
+                    </div>
+                    <div class="pc-taobao-item-desc">${escapeHtml(preview)}</div>
+                    <div class="pc-taobao-item-meta">
+                        <div>${escapeHtml(time)}</div>
+                        <div>${escapeHtml(status)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openTaobaoDetail(index) {
+    const item = pcTaobaoItems[index];
+    if (!item) return;
+
+    pcTaobaoCurrentIndex = index;
+
+    document.getElementById('pcTaobaoDetailTime').textContent = item.time || '';
+    document.getElementById('pcTaobaoDetailTitle').textContent = item.title || '';
+    document.getElementById('pcTaobaoDetailPrice').textContent = formatTaobaoPrice(item.price);
+    document.getElementById('pcTaobaoDetailShop').textContent = item.shopName || '';
+    document.getElementById('pcTaobaoDetailStatus').textContent = item.status || '';
+    document.getElementById('pcTaobaoDetailDesc').textContent = item.desc || '';
+    document.getElementById('pcTaobaoDetailComment').textContent = item.comment || '';
+    document.getElementById('pcTaobaoDetailReason').textContent = item.reason || '';
+    document.getElementById('pcTaobaoDetailEmoji').textContent = item.emoji || '📦';
+
+    // 切换视图
+    document.getElementById('pcTaobaoListView').style.display = 'none';
+    document.getElementById('pcTaobaoDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新，避免误触回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTaobaoScreen .pc-taobao-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function formatTaobaoPrice(price) {
+    const num = Number(price);
+    if (isNaN(num)) return '¥--';
+    return '¥' + num.toFixed(2);
+}
+
+async function generateTaobaoData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcTaobaoLoading');
+    const refreshBtn = document.getElementById('pcTaobaoRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里“淘宝/网购订单”内容。要求像真实活人的购物记录，不要像种草清单，也不要像纯人设展示。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 购物内容要真实，像这个人真的会买的东西：日用品、吃的、小工具、衣服、小摆件、可爱物、实用物、冲动下单物都可以
+3. 如果聊天记录和长期记忆里提到过某些需求、爱好、想买的东西、生活习惯、审美偏好、在意的小物件，要自然体现在订单里
+4. 不能编造和资料完全不符的奢侈消费或重大共同经历
+5. 整体要有活人感：有些买得很理性，有些买得有点冲动，有些买完觉得一般，有些会真心觉得值
+
+生成要求：
+1. 生成 8-12 条订单 items
+2. 每条都必须包含：
+   - id
+   - title（商品名）
+   - price（数字，单位元，不带¥）
+   - shopName（店铺名）
+   - status（待收货 / 已签收 / 已评价 / 回购过 / 闲置中 等真实状态）
+   - time（相对时间/日期）
+   - desc（商品内容简介）
+   - comment（角色本人的评价，必须像本人语气）
+   - reason（为什么买它）
+   - emoji（代表商品的 emoji）
+3. 至少满足这些分布：
+   - 至少 3 条是日常实用型
+   - 至少 2 条是有点冲动下单/看到就买
+   - 至少 2 条能看出和聊天记录或长期记忆有细节关联
+   - 至少 2 条评价明显带角色自己的口吻和情绪
+4. 价格必须合理，不要离谱
+5. 商品不要全都很精致，也不要全都很废，要像真实购物车历史
+
+风格要求：
+1. title 要像真实淘宝商品名，但可以适度简化，不要长到离谱
+2. desc 像商品简介，简短自然
+3. comment 最重要，要像角色自己评价：
+   - 可以满意
+   - 可以嘴硬
+   - 可以后悔
+   - 可以觉得“就那样”
+   - 可以想回购
+   - 可以觉得可爱但没必要
+4. reason 要写出购买动机，像真实下单理由
+5. 不要把所有订单都写成剧情道具，很多订单本来就只是日常生活
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "items": [
+    {
+      "id": "tb1",
+      "title": "",
+      "price": 0,
+      "shopName": "",
+      "status": "",
+      "time": "",
+      "desc": "",
+      "comment": "",
+      "reason": "",
+      "emoji": "📦"
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.85
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        pcTaobaoItems = items.slice(0, 12).map((item, idx) => ({
+            id: (item.id || `tb${idx + 1}`).toString(),
+            title: (item.title || '').toString(),
+            price: Number(item.price || 0),
+            shopName: (item.shopName || '').toString(),
+            status: (item.status || '').toString(),
+            time: (item.time || '').toString(),
+            desc: (item.desc || '').toString(),
+            comment: (item.comment || '').toString(),
+            reason: (item.reason || '').toString(),
+            emoji: (item.emoji || '📦').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            taobaoData: {
+                items: pcTaobaoItems,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderTaobaoList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-丑团功能 ============
+
+let pcMeituanItems = [];
+let pcMeituanCurrentIndex = -1;
+
+function openPhoneCheckMeituan() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcMeituanItems = phoneData.meituanData?.items || [];
+
+    // 默认列表
+    document.getElementById('pcMeituanListView').style.display = 'flex';
+    document.getElementById('pcMeituanDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderMeituanList();
+
+    // 隐藏 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckMeituanScreen').style.display = 'flex';
+}
+
+function closePhoneCheckMeituan() {
+    document.getElementById('phoneCheckMeituanScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToMeituanList() {
+    document.getElementById('pcMeituanDetailView').style.display = 'none';
+    document.getElementById('pcMeituanListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderMeituanList() {
+    const listEl = document.getElementById('pcMeituanList');
+    if (!listEl) return;
+
+    if (!pcMeituanItems || pcMeituanItems.length === 0) {
+        listEl.innerHTML = '<div class="pc-meituan-empty">点击右上角刷新按钮<br>生成 TA 的丑团订单~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcMeituanItems.map((item, idx) => {
+        const title = (item.title || '').trim() || '（未命名订单）';
+        const desc = (item.desc || '').trim();
+        const preview = desc.replace(/\n+/g, ' ').slice(0, 80);
+        const time = (item.time || '').trim();
+        const price = formatMeituanPrice(item.price);
+        const status = (item.status || '').trim();
+        const emoji = (item.emoji || '🍱').trim();
+        const typeText = formatMeituanType(item.type);
+
+        return `
+            <div class="pc-meituan-item" onclick="openMeituanDetail(${idx})">
+                <div class="pc-meituan-item-icon">${escapeHtml(emoji)}</div>
+                <div class="pc-meituan-item-main">
+                    <div class="pc-meituan-item-top">
+                        <div class="pc-meituan-item-title">${escapeHtml(title)}</div>
+                        <div class="pc-meituan-item-price">${escapeHtml(price)}</div>
+                    </div>
+                    <div class="pc-meituan-item-desc">${escapeHtml(preview)}</div>
+                    <div class="pc-meituan-item-meta">
+                        <div>${escapeHtml(time)}</div>
+                        <div>${escapeHtml(typeText)} · ${escapeHtml(status)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openMeituanDetail(index) {
+    const item = pcMeituanItems[index];
+    if (!item) return;
+
+    pcMeituanCurrentIndex = index;
+
+    document.getElementById('pcMeituanDetailTime').textContent = item.time || '';
+    document.getElementById('pcMeituanDetailTitle').textContent = item.title || '';
+    document.getElementById('pcMeituanDetailPrice').textContent = formatMeituanPrice(item.price);
+    document.getElementById('pcMeituanDetailStore').textContent = item.storeName || '';
+    document.getElementById('pcMeituanDetailType').textContent = formatMeituanType(item.type);
+    document.getElementById('pcMeituanDetailStatus').textContent = item.status || '';
+    document.getElementById('pcMeituanDetailDesc').textContent = item.desc || '';
+    document.getElementById('pcMeituanDetailComment').textContent = item.comment || '';
+    document.getElementById('pcMeituanDetailReason').textContent = item.reason || '';
+    document.getElementById('pcMeituanDetailEmoji').textContent = item.emoji || '🍱';
+
+    // 切换视图
+    document.getElementById('pcMeituanListView').style.display = 'none';
+    document.getElementById('pcMeituanDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新
+    const closeBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckMeituanScreen .pc-meituan-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function formatMeituanPrice(price) {
+    const num = Number(price);
+    if (isNaN(num)) return '¥--';
+    return '¥' + num.toFixed(2);
+}
+
+function formatMeituanType(type) {
+    const map = {
+        takeout: '外卖',
+        errand: '跑腿',
+        medicine: '买药',
+        market: '商超',
+        dessert: '甜品饮品'
+    };
+    return map[type] || '订单';
+}
+
+async function generateMeituanData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcMeituanLoading');
+    const refreshBtn = document.getElementById('pcMeituanRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里“美团/外卖/跑腿”订单内容。要求像真实活人的即时生活订单，不要像模板外卖清单。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 订单要体现真实生活节奏：忙、懒、馋、累、不想出门、临时急用、想喝点什么、需要买药、顺手补货等
+3. 如果聊天记录和长期记忆里提到过饮食偏好、作息、常吃的东西、身体状态、生活习惯、情绪、突然想吃的、嫌麻烦不想出门等，要自然反映在订单里
+4. 不能编造和资料完全不符的重大事件
+5. 整体要有活人感：有些订单很普通，有些是临时起意，有些有点嘴馋，有些纯粹图省事
+
+生成要求：
+1. 生成 8-12 条订单 items
+2. 每条都必须包含：
+   - id
+   - type（只能是 takeout / errand / medicine / market / dessert）
+   - title（订单标题）
+   - storeName（店铺名）
+   - price（数字，单位元，不带¥）
+   - status（已送达 / 已完成 / 已签收 / 回购过 / 再点一次 等真实状态）
+   - time（相对时间/日期）
+   - desc（订单内容简介）
+   - comment（角色本人的评价/吐槽，必须像本人语气）
+   - reason（为什么下单）
+   - emoji（代表订单的 emoji）
+3. 至少满足这些分布：
+   - 至少 3 条是外卖正餐/夜宵/早餐
+   - 至少 2 条是甜品饮品
+   - 至少 1 条是跑腿 / 商超 / 买药
+   - 至少 2 条能看出和聊天记录或长期记忆有细节关联
+   - 至少 2 条评价明显带角色本人的口吻
+4. 价格必须合理，像真实美团订单
+5. 订单不要全都很精致，也不要全都很惨，要像真实人会点的单
+
+风格要求：
+1. title 要像真实订单标题，简短自然
+2. desc 像订单简介，不要太长
+3. comment 最重要，要像角色本人吃完/收到后会说的话
+4. reason 要体现下单时的心情或需求，比如懒得出门、突然馋、加班太晚、胃不舒服、想喝甜的、家里没东西了
+5. 不要把所有订单都写成剧情道具，很多订单本来只是普通生活
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "items": [
+    {
+      "id": "mt1",
+      "type": "takeout",
+      "title": "",
+      "storeName": "",
+      "price": 0,
+      "status": "",
+      "time": "",
+      "desc": "",
+      "comment": "",
+      "reason": "",
+      "emoji": "🍱"
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.85
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        pcMeituanItems = items.slice(0, 12).map((item, idx) => ({
+            id: (item.id || `mt${idx + 1}`).toString(),
+            type: (item.type || 'takeout').toString(),
+            title: (item.title || '').toString(),
+            storeName: (item.storeName || '').toString(),
+            price: Number(item.price || 0),
+            status: (item.status || '').toString(),
+            time: (item.time || '').toString(),
+            desc: (item.desc || '').toString(),
+            comment: (item.comment || '').toString(),
+            reason: (item.reason || '').toString(),
+            emoji: (item.emoji || '🍱').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            meituanData: {
+                items: pcMeituanItems,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderMeituanList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-豆沙包功能 ============
+
+let pcDoubanItems = [];
+
+function openPhoneCheckDouban() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcDoubanItems = phoneData.doubanData?.items || [];
+
+    renderDoubanList();
+
+    // 隐藏 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckDoubanScreen').style.display = 'flex';
+}
+
+function closePhoneCheckDouban() {
+    document.getElementById('phoneCheckDoubanScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function renderDoubanList() {
+    const listEl = document.getElementById('pcDoubanList');
+    if (!listEl) return;
+
+    if (!pcDoubanItems || pcDoubanItems.length === 0) {
+        listEl.innerHTML = '<div class="pc-douban-empty">点击右上角刷新按钮<br>生成 TA 的豆沙包提问记录~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcDoubanItems.map(item => {
+        const time = (item.time || '').trim();
+        const question = (item.question || '').trim();
+        const answer = (item.answer || '').trim();
+        const os = (item.os || '').trim();
+
+        return `
+            <div class="pc-douban-item">
+                <div class="pc-douban-item-head">
+                    <div class="pc-douban-question-title">${escapeHtml(question)}</div>
+                    <div class="pc-douban-item-time">${escapeHtml(time)}</div>
+                </div>
+
+                <div class="pc-douban-answer">${escapeHtml(answer)}</div>
+
+                <div class="pc-douban-os-box">
+                    <div class="pc-douban-os-icon">💬</div>
+                    <div class="pc-douban-os-text">${escapeHtml(os)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function generateDoubanData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcDoubanLoading');
+    const refreshBtn = document.getElementById('pcDoubanRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+             const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里“豆沙包/AI提问记录”内容。
+
+这不是正式问答区，也不是百科词条。
+而是：你本人最近脑子里冒出来、又懒得问别人，或者不太好意思直接问别人，所以顺手丢给 AI 的问题。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+最重要规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 问题必须像“这个角色本人真的会问”的，不要像标准化科普问题
+3. 如果聊天记录和长期记忆里有反复出现的困惑、卡住的点、在意的小事、想不通的话、和某个人有关的小情绪，都要自然转成提问
+4. 不允许直接写出“user”这个英文代称；如果涉及聊天对象，必须自然写成“我”“你”或聊天里真实出现过的称呼/名字
+5. 不能编造完全没有依据的重大事实
+6. 整体要像真实活人：有点随手、有点嘴硬、有点认真、有点傻问题、有点不想承认自己在意
+
+内容方向：
+1. 可以包含这些类型，但要自然混合：
+   - 生活类：吃的、买的、日常习惯、身体状态、懒、累、睡眠、作息
+   - 情绪类：为什么会这样想、为什么会在意、为什么会烦、为什么会忍不住反复想
+   - 关系类：回消息、语气、在意、吃醋、误会、想不明白的互动
+   - 常识类：突然想到就问一下的小问题
+   - 工作/学习类：某个小知识点、小难题、小确认
+2. 不要全都很正经，也不要全都恋爱脑
+3. 至少有几条看得出来是“嘴上不承认，其实挺在意”
+
+生成要求：
+1. 生成 8-12 条 items
+2. 每条都必须包含：
+   - id
+   - question
+   - answer
+   - os
+   - time
+3. 至少满足这些分布：
+   - 至少 3 条生活/日常类
+   - 至少 2 条情绪/关系类
+   - 至少 2 条常识/工作/学习类
+   - 至少 3 条能明显看出参考了聊天记录或长期记忆细节
+   - 至少 4 条 os 明显像角色本人
+4. question 不要写得太书面，像真的会打给 AI 的一句话
+5. answer 不要太官方、太百科，控制在 1-3 句话，像 AI 给出的简洁说明
+6. os 最重要，必须像角色本人看完后的第一反应
+
+写法要求：
+1. question 要短一点、自然一点，允许口语化
+2. answer 要像 AI 回答，但别太“教材味”
+3. os 要像本人，会有这些感觉：
+   - “行吧，知道了。”
+   - “我就说。”
+   - “……有道理，但还是不爽。”
+   - “怪不得。”
+   - “行，先记着。”
+   - “说得轻巧。”
+   - “听起来像那么回事。”
+4. 不要让 question 里出现“请问”“为什么会导致”“通常情况下”这种太官方的措辞
+5. 不要让 answer 变成长篇科普
+6. 不要让 os 写成旁白或总结报告，必须像角色自己心里的话
+
+额外要求：
+1. question / answer / os 这三个字段里都不要自己再写“提问：”“回答：”“内心OS：”前缀
+2. 问题可以有点奇怪、有点钻牛角尖、有点突然，但要像活人
+3. 如果某条和“我”有关，可以体现角色的在意，但不能直接编造重大共同经历
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "items": [
+    {
+      "id": "db1",
+      "question": "",
+      "answer": "",
+      "os": "",
+      "time": ""
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.84
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        pcDoubanItems = items.slice(0, 12).map((item, idx) => ({
+            id: (item.id || `db${idx + 1}`).toString(),
+            question: (item.question || '').toString(),
+            answer: (item.answer || '').toString(),
+            os: (item.os || '').toString(),
+            time: (item.time || '').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            doubanData: {
+                items: pcDoubanItems,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderDoubanList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+
+// ============ 查手机-旅程功能 ============
+
+let pcTripItems = [];
+let pcTripCurrentIndex = -1;
+
+function openPhoneCheckTrip() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcTripItems = phoneData.tripData?.items || [];
+
+    // 默认列表
+    document.getElementById('pcTripListView').style.display = 'flex';
+    document.getElementById('pcTripDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderTripList();
+
+    // 隐藏 Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckTripScreen').style.display = 'flex';
+}
+
+function closePhoneCheckTrip() {
+    document.getElementById('phoneCheckTripScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToTripList() {
+    document.getElementById('pcTripDetailView').style.display = 'none';
+    document.getElementById('pcTripListView').style.display = 'flex';
+
+    const closeBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderTripList() {
+    const listEl = document.getElementById('pcTripList');
+    if (!listEl) return;
+
+    if (!pcTripItems || pcTripItems.length === 0) {
+        listEl.innerHTML = '<div class="pc-trip-empty">点击右上角刷新按钮<br>生成 TA 的旅程记录~</div>';
+        return;
+    }
+
+    listEl.innerHTML = pcTripItems.map((item, idx) => {
+        const title = (item.title || '').trim() || '（未命名行程）';
+        const desc = (item.desc || '').trim();
+        const preview = desc.replace(/\n+/g, ' ').slice(0, 80);
+        const time = (item.time || '').trim();
+        const price = formatTripPrice(item.price);
+        const status = (item.status || '').trim();
+        const emoji = (item.emoji || '🧳').trim();
+        const typeText = formatTripType(item.type);
+
+        return `
+            <div class="pc-trip-item" onclick="openTripDetail(${idx})">
+                <div class="pc-trip-item-icon">${escapeHtml(emoji)}</div>
+                <div class="pc-trip-item-main">
+                    <div class="pc-trip-item-top">
+                        <div class="pc-trip-item-title">${escapeHtml(title)}</div>
+                        <div class="pc-trip-item-price">${escapeHtml(price)}</div>
+                    </div>
+                    <div class="pc-trip-item-desc">${escapeHtml(preview)}</div>
+                    <div class="pc-trip-item-meta">
+                        <div>${escapeHtml(time)}</div>
+                        <div>${escapeHtml(typeText)} · ${escapeHtml(status)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openTripDetail(index) {
+    const item = pcTripItems[index];
+    if (!item) return;
+
+    pcTripCurrentIndex = index;
+
+    document.getElementById('pcTripDetailTime').textContent = item.time || '';
+    document.getElementById('pcTripDetailTitle').textContent = item.title || '';
+    document.getElementById('pcTripDetailPrice').textContent = formatTripPrice(item.price);
+    document.getElementById('pcTripDetailType').textContent = formatTripType(item.type);
+    document.getElementById('pcTripDetailStatus').textContent = item.status || '';
+    document.getElementById('pcTripDetailFrom').textContent = item.fromCity || '-';
+    document.getElementById('pcTripDetailTo').textContent = item.toCity || '-';
+    document.getElementById('pcTripDetailTicket').textContent = item.ticketNo || '-';
+    document.getElementById('pcTripDetailHotel').textContent = item.hotelName || '-';
+    document.getElementById('pcTripDetailDesc').textContent = item.desc || '';
+    document.getElementById('pcTripDetailReason').textContent = item.reason || '';
+    document.getElementById('pcTripDetailComment').textContent = item.comment || '';
+    document.getElementById('pcTripDetailEmoji').textContent = item.emoji || '🧳';
+
+    document.getElementById('pcTripListView').style.display = 'none';
+    document.getElementById('pcTripDetailView').style.display = 'flex';
+
+    const closeBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTripScreen .pc-trip-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function formatTripPrice(price) {
+    const num = Number(price);
+    if (isNaN(num)) return '¥--';
+    return '¥' + num.toFixed(2);
+}
+
+function formatTripType(type) {
+    const map = {
+        train: '火车/高铁',
+        flight: '飞机',
+        hotel: '酒店',
+        trip: '行程',
+        bus: '城际/大巴',
+        change: '改签/补订'
+    };
+    return map[type] || '旅程';
+}
+
+async function generateTripData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcTripLoading');
+    const refreshBtn = document.getElementById('pcTripRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你手机里的“旅程/票务/酒店”记录。要求像真实活人的出行订单，不要像旅游博主行程单。
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 旅程记录要像真实生活中的出行：出差、返程、短途、住酒店、临时赶路、回家、普通移动，而不是每条都很浪漫或很夸张
+3. 如果聊天记录和长期记忆里提到过出差、赶路、住外面、订票、回程、某个城市、工作学习安排、疲惫感、改签等，要自然体现在记录里
+4. 不能编造和资料完全无关的重大旅行，也不能编造和 user 已经共同发生的出行或酒店事实
+5. 整体要有活人感：有的行程很普通，有的很赶，有的只是住一晚，有的只是短途移动
+6. 如果涉及聊天对象，不允许直接写出“user”这个英文代称；必须根据语境自然写成“我”“你”或聊天里真实出现过的称呼/名字
+
+生成要求：
+1. 生成 8-10 条旅程 items
+2. 每条都必须包含：
+   - id
+   - type（只能是 train / flight / hotel / trip / bus / change）
+   - title（标题）
+   - status（待出发 / 已出行 / 已入住 / 已离店 / 已改签 / 已完成 等）
+   - time（相对时间/日期）
+   - price（数字，单位元，不带¥）
+   - fromCity（出发地，没有可空）
+   - toCity（目的地，没有可空）
+   - ticketNo（车次/航班号/订单号，没有可空）
+   - hotelName（酒店名，没有可空）
+   - desc（行程内容简介）
+   - comment（角色自己的评价/感受，必须像本人语气）
+   - reason（为什么会有这条行程/为什么订）
+   - emoji（代表项目的 emoji）
+3. 至少满足这些分布：
+   - 至少 2 条火车/高铁/城际类
+   - 至少 1 条飞机或改签类
+   - 至少 2 条酒店/住宿类
+   - 至少 2 条能看出和聊天记录或长期记忆有细节关联
+   - 至少 2 条 comment 明显带角色本人语气
+4. 价格要合理，像真实票务和住宿价格，飞机票大约1000以上，火车高铁100以上，一定要符合实情！
+5. 不要把每条都写成远途旅游，有些可以只是普通差旅或短住
+
+风格要求：
+1. 整体风格克制、真实、生活化
+2. comment 要像角色本人在看订单时会想的：
+   - 累
+   - 赶
+   - 将就
+   - 还行
+   - 凑合住一晚
+   - 这趟真折腾
+   - 终于能回去
+3. reason 要写出真实动机：工作、出差、临时安排、返程、短住、过渡、赶时间
+4. 不要写成抒情散文，也不要写成旅行种草
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "items": [
+    {
+      "id": "trip1",
+      "type": "train",
+      "title": "",
+      "status": "",
+      "time": "",
+      "price": 0,
+      "fromCity": "",
+      "toCity": "",
+      "ticketNo": "",
+      "hotelName": "",
+      "desc": "",
+      "comment": "",
+      "reason": "",
+      "emoji": "🧳"
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.82
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        pcTripItems = items.slice(0, 12).map((item, idx) => ({
+            id: (item.id || `trip${idx + 1}`).toString(),
+            type: (item.type || 'trip').toString(),
+            title: (item.title || '').toString(),
+            status: (item.status || '').toString(),
+            time: (item.time || '').toString(),
+            price: Number(item.price || 0),
+            fromCity: (item.fromCity || '').toString(),
+            toCity: (item.toCity || '').toString(),
+            ticketNo: (item.ticketNo || '').toString(),
+            hotelName: (item.hotelName || '').toString(),
+            desc: (item.desc || '').toString(),
+            comment: (item.comment || '').toString(),
+            reason: (item.reason || '').toString(),
+            emoji: (item.emoji || '🧳').toString()
+        }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            tripData: {
+                items: pcTripItems,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderTripList();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+// ============ 查手机-行踪功能 ============
+
+let pcTraceDays = [];
+let pcTraceCurrent = null;
+
+function openPhoneCheckTrace() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+    pcTraceDays = phoneData.traceData?.days || [];
+
+    // 默认列表
+    document.getElementById('pcTraceListView').style.display = 'flex';
+    document.getElementById('pcTraceDetailView').style.display = 'none';
+
+    // 列表按钮可见
+    const closeBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+
+    renderTraceTimeline();
+
+    // 隐藏Dock
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'none';
+
+    document.getElementById('phoneCheckTraceScreen').style.display = 'block';
+}
+
+function closePhoneCheckTrace() {
+    document.getElementById('phoneCheckTraceScreen').style.display = 'none';
+
+    const dock = document.querySelector('.pc-dock');
+    if (dock) dock.style.display = 'flex';
+}
+
+function backToTraceList() {
+    document.getElementById('pcTraceDetailView').style.display = 'none';
+    document.getElementById('pcTraceListView').style.display = 'flex';
+
+    // 回到列表恢复按钮
+    const closeBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    if (refreshBtn) refreshBtn.style.display = 'flex';
+}
+
+function renderTraceTimeline() {
+    const wrap = document.getElementById('pcTraceTimeline');
+    if (!wrap) return;
+
+    if (!pcTraceDays || pcTraceDays.length === 0) {
+        wrap.innerHTML = '<div class="pc-trace-empty">点击右上角刷新按钮<br>生成 TA 的七日行踪~</div>';
+        return;
+    }
+
+    wrap.innerHTML = pcTraceDays.map((day, dayIdx) => {
+        const label = day.label || '';
+        const date = day.date || '';
+        const records = Array.isArray(day.records) ? day.records : [];
+
+        const itemsHtml = records.map((r, recIdx) => {
+            const t = `${r.start || ''}${(r.end ? ` - ${r.end}` : '')}`.trim();
+            return `
+                <div class="pc-trace-item" onclick="openTraceDetail(${dayIdx}, ${recIdx})">
+                    <div class="pc-trace-item-dot"></div>
+                    <div class="pc-trace-item-main">
+                        <div class="pc-trace-item-top">
+                            <div class="pc-trace-item-place">${escapeHtml(r.place || '')}</div>
+                            <div class="pc-trace-item-time">${escapeHtml(t)}</div>
+                        </div>
+                        <div class="pc-trace-item-event">${escapeHtml(r.event || '')}</div>
+                    </div>
+                    <div class="pc-trace-item-arrow">›</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="pc-trace-day">
+                <div class="pc-trace-day-header">
+                    <div class="pc-trace-day-label">${escapeHtml(label)}</div>
+                    <div class="pc-trace-day-date">${escapeHtml(date)}</div>
+                </div>
+                ${itemsHtml || ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function openTraceDetail(dayIndex, recIndex) {
+    const day = pcTraceDays[dayIndex];
+    if (!day) return;
+    const rec = (day.records || [])[recIndex];
+    if (!rec) return;
+
+    pcTraceCurrent = { dayIndex, recIndex };
+
+    const dateText = day.date || '';
+    const labelText = day.label || '';
+    document.getElementById('pcTraceDetailDate').textContent = `${labelText} · ${dateText}`.trim();
+    document.getElementById('pcTraceDetailPlace').textContent = rec.place || '';
+    document.getElementById('pcTraceDetailTime').textContent = `${rec.start || ''}${rec.end ? ` - ${rec.end}` : ''}`.trim();
+
+    document.getElementById('pcTraceDetailEvent').textContent = rec.event || '';
+    document.getElementById('pcTraceDetailThought').textContent = rec.thought || '';
+
+    const rel = (rec.relationToUser || '').trim();
+    const relWrap = document.getElementById('pcTraceUserWrap');
+    if (rel) {
+        document.getElementById('pcTraceDetailRelation').textContent = rel;
+        relWrap.style.display = 'block';
+    } else {
+        relWrap.style.display = 'none';
+    }
+
+    // 切换视图
+    document.getElementById('pcTraceListView').style.display = 'none';
+    document.getElementById('pcTraceDetailView').style.display = 'flex';
+
+    // 详情页隐藏关闭/刷新，避免误触回主屏幕
+    const closeBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-back-btn');
+    const refreshBtn = document.querySelector('#phoneCheckTraceScreen .pc-trace-refresh-btn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (refreshBtn) refreshBtn.style.display = 'none';
+}
+
+function getWeekLabelCN(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    const arr = ['周日','周一','周二','周三','周四','周五','周六'];
+    return arr[d.getDay()];
+}
+
+function getLast7Dates() {
+    const arr = [];
+    const now = new Date();
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, '0');
+        const DD = String(d.getDate()).padStart(2, '0');
+        arr.push(`${Y}-${M}-${DD}`);
+    }
+    return arr; // [today, ...]
+}
+
+async function generateTraceData() {
+    if (!phoneCheckCurrentCharId) return;
+
+    const loadingEl = document.getElementById('pcTraceLoading');
+    const refreshBtn = document.getElementById('pcTraceRefreshBtn');
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (refreshBtn) refreshBtn.classList.add('loading');
+
+    try {
+        const chat = chats.find(c => c.id === phoneCheckCurrentCharId);
+        if (!chat) throw new Error('角色不存在');
+
+        // 统一取材：人设 + 最近100条聊天 + 全部长期记忆
+        const sourceData = await getPhoneCheckPromptSources(phoneCheckCurrentCharId);
+        const personality = sourceData.personalityText || '';
+        const recentChatText = sourceData.recentChatText || '（无最近聊天记录）';
+        const memoryText = sourceData.memoryText || '（无长期记忆）';
+
+        if (!personality.trim()) throw new Error('请先在角色资料里填写“他的人设”');
+
+        // API配置：优先查手机方案，其次全局
+        const phoneData = phoneCheckDataCache[phoneCheckCurrentCharId] || {};
+        let apiConfig = null;
+
+        if (phoneData.apiSchemeId) {
+            await new Promise(resolve => {
+                loadFromDB('apiSchemes', (data) => {
+                    const schemes = (data && data.list) ? data.list : (Array.isArray(data) ? data : []);
+                    apiConfig = schemes.find(s => s.id === phoneData.apiSchemeId);
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig) {
+            await new Promise(resolve => {
+                loadFromDB('apiConfig', (data) => {
+                    apiConfig = data;
+                    resolve();
+                });
+            });
+        }
+
+        if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) throw new Error('请先设置API');
+
+        const nowLocal = (typeof formatNowLocal === 'function') ? formatNowLocal() : new Date().toLocaleString();
+        const dates = getLast7Dates(); // today -> past
+        const dateRangeText = `${dates[6]} ~ ${dates[0]}`;
+
+            const prompt = `你是${chat.name}。请根据【人设】【最近100条聊天记录】【全部长期记忆】生成你最近7天的“行踪/足迹”，用于手机里的行踪记录页面。要求像真实活人的生活轨迹，不要像旅游行程单或剧情梗概。
+
+【本地当前时间】${nowLocal}
+【日期范围】必须只覆盖最近7天：${dateRangeText}（不要出现其它日期，不要出现未来）
+
+【人设】：
+${personality}
+
+【最近100条聊天记录】：
+${recentChatText}
+
+【全部长期记忆】：
+${memoryText}
+
+核心规则：
+1. 必须同时参考人设、聊天记录、长期记忆，不能只按人设自由发挥
+2. 行踪重点体现真实生活节奏：起床、出门、通勤、上班/上课、买东西、散步、吃饭、回家、短暂停留、临时绕路、宅着、随手去某地等
+3. 如果聊天记录和长期记忆里提到过常去的地方、生活习惯、兴趣爱好、作息、压力来源、喜欢的店、固定活动、想去但没去成的地方，都要自然体现在行踪里
+4. 不要编造没有依据的重大事件，尤其不能写成已经和 user 见面、约会、旅行、一起出门，除非资料里明确存在
+5. 整体要有活人感：有普通日子、有无聊路线、有重复地点、有短暂停留，不要每天都很丰富精彩
+6. 允许某些日子比较平淡，甚至只是家里、便利店、楼下、通勤路上，这种真实感很重要
+
+生成要求：
+1. 每天 1~3 条记录，允许某天 0 条（宅家、没怎么出门、行程很少）
+2. 地点不要写具体地址或真实门牌，使用泛地点，例如：
+   公司 / 学校 / 咖啡店 / 公园 / 便利店 / 商场 / 地铁站 / 健身房 / 书店 / 医院 / 小区楼下 / 家里 / 路上
+3. 每条记录必须包含：
+   - start（HH:mm）
+   - end（HH:mm）
+   - place
+   - event（简短，写当时在做什么）
+   - thought（详细一点的内心想法，要像当时真的会想的）
+   - relationToUser（可为空）
+4. label 建议用：今天 / 昨天 / 周X（中文）
+5. date 用 YYYY-MM-DD
+6. JSON 必须可解析
+
+内容分布要求：
+1. 至少有 3 天能明显看出“生活习惯/作息/兴趣”痕迹
+2. 至少有 3 条记录能看出和聊天记录或长期记忆有细节关联
+3. 至少有 2 条记录是非常普通但很真实的小行程，比如买水、路过便利店、下楼拿快递、晚饭后乱走一会儿
+4. 至少有 1-2 条记录可以带一点“想起 user / 想发消息 / 看到某样东西联想到你 / 如果你在就好了”的 relationToUser
+5. relationToUser 只能写成不构成既成事实的表达，严禁写成已经见面或共同发生过某件事
+
+风格要求：
+1. thought 不要写成抒情散文，要像真实人在某个时刻脑子里闪过的念头
+2. 可以有疲惫、放空、嘴硬、治愈、烦躁、松一口气、突然想起谁、突然想买什么等真实状态
+3. 有些记录可以很短，有些稍微多一点，不要每条都均匀工整
+4. 行踪应该让人看出这个人“怎么过日子”，而不是只看出“他的人设标签”
+
+请严格只输出 JSON，不要输出多余文字：
+{
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "label": "今天",
+      "records": [
+        {
+          "start": "HH:mm",
+          "end": "HH:mm",
+          "place": "",
+          "event": "",
+          "thought": "",
+          "relationToUser": ""
+        }
+      ]
+    }
+  ]
+}`;
+
+        const res = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: apiConfig.defaultModel || apiConfig.model || 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.82
+            })
+        });
+
+        if (!res.ok) throw new Error('API请求失败');
+
+        const json = await res.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('返回内容不是JSON');
+
+        const parsed = JSON.parse(match[0]);
+        const days = Array.isArray(parsed.days) ? parsed.days : [];
+
+        // 兜底：补齐 label，且只保留最近7天日期
+        const allowed = new Set(getLast7Dates());
+        pcTraceDays = days
+            .filter(d => d && d.date && allowed.has(d.date))
+            .sort((a, b) => (a.date < b.date ? 1 : -1)) // desc
+            .map(d => ({
+                date: d.date,
+                label: d.label || (d.date === getLast7Dates()[0] ? '今天' : (d.date === getLast7Dates()[1] ? '昨天' : getWeekLabelCN(d.date))),
+                records: (Array.isArray(d.records) ? d.records : []).slice(0, 3).map(r => ({
+                    start: (r.start || '').toString(),
+                    end: (r.end || '').toString(),
+                    place: (r.place || '').toString(),
+                    event: (r.event || '').toString(),
+                    thought: (r.thought || '').toString(),
+                    relationToUser: (r.relationToUser || '').toString()
+                }))
+            }));
+
+        savePhoneCheckData(phoneCheckCurrentCharId, {
+            traceData: {
+                days: pcTraceDays,
+                generatedAt: new Date().toLocaleString()
+            }
+        });
+
+        renderTraceTimeline();
+
+    } catch (e) {
+        console.error(e);
+        alert('生成失败：' + e.message);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (refreshBtn) refreshBtn.classList.remove('loading');
+    }
+}
+
+
+//查手机功能结束//
+
+// ====== 音乐功能：歌单管理 START ======
+
+// 加载所有歌曲
+function loadMusicSongs(callback) {
+    loadFromDB('musicSongs', (songs) => {
+        callback(songs || []);
+    });
+}
+
+// 保存单首歌曲
+function saveMusicSong(song, callback) {
+    saveToDB('musicSongs', song, callback);
+}
+
+// 删除歌曲
+function deleteMusicSong(songId, callback) {
+    if (!db) return;
+    const tx = db.transaction(['musicSongs'], 'readwrite');
+    tx.objectStore('musicSongs').delete(songId);
+    tx.oncomplete = () => { if (callback) callback(true); };
+}
+
+// 加载播放器状态
+function loadPlayerState(callback) {
+    loadFromDB('musicPlayer', (data) => {
+        callback(data || {
+            id: 1,
+            currentSongId: null,
+            mode: 'order',
+            isPlaying: false,
+            floatVisible: false,
+            pendingInject: false,
+            pendingSongId: null
+        });
+    });
+}
+
+// 保存播放器状态（支持局部更新）
+let _playerStateCache = null;
+function savePlayerState(patch, callback) {
+    loadPlayerState((current) => {
+        const updated = Object.assign({}, current, patch, { id: 1 });
+        _playerStateCache = updated;
+        saveToDB('musicPlayer', updated, callback);
+    });
+}
+
+// 渲染歌单列表到弹窗
+function renderMusicSongList(songs, currentSongId) {
+    const list = document.getElementById('musicSongList');
+    if (!list) return;
+    if (!songs || songs.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:#ccc;font-size:13px;padding:20px 0;">还没有歌曲，点击下方添加</div>';
+        return;
+    }
+    list.innerHTML = songs.map(song => `
+        <div class="music-song-item ${song.id === currentSongId ? 'playing' : ''}"
+             style="display:flex; align-items:center; justify-content:space-between;">
+            <div onclick="playSongFromList(${song.id})" style="flex:1; display:flex; align-items:center; padding:10px 12px;">
+                <div class="music-song-name">${song.title}</div>
+                <div class="music-song-artist">${song.artist}</div>
+            </div>
+            <button onclick="openEditSongModal(${song.id})" style="background:none; border:none; padding:10px 12px; color:#aaa; font-size:18px; cursor:pointer;">⋯</button>
+        </div>
+    `).join('');
+}
+
+// 打开音乐主弹窗
+function openMusicModal() {
+    const modal = document.getElementById('musicModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    loadMusicSongs((songs) => {
+        loadPlayerState((state) => {
+            const current = songs.find(s => s.id === state.currentSongId) || null;
+            const titleEl = document.getElementById('musicCurrentTitle');
+            const artistEl = document.getElementById('musicCurrentArtist');
+            const lyricsEl = document.getElementById('musicLyricsText');
+            if (titleEl) titleEl.textContent = current ? current.title : '暂无歌曲';
+            if (artistEl) artistEl.textContent = current ? current.artist : '--';
+            if (lyricsEl) lyricsEl.textContent = current ? current.lyrics : '暂无歌词';
+            updateMusicPlayIcon(state.isPlaying);
+            updateMusicModeBtn(state.mode);
+        });
+    });
+}
+
+function openMusicSongListModal() {
+    loadMusicSongs((songs) => {
+        loadPlayerState((state) => {
+            renderMusicSongList(songs, state.currentSongId);
+            document.getElementById('musicSongListModal').style.display = 'flex';
+        });
+    });
+}
+
+function closeMusicSongListModal(event) {
+    if (event && event.target !== document.getElementById('musicSongListModal')) return;
+    document.getElementById('musicSongListModal').style.display = 'none';
+}
+
+function toggleMusicSongPanel() {
+    const panel = document.getElementById('musicSongPanel');
+    if (!panel) return;
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function closeMusicModal(event) {
+    if (event && event.target !== document.getElementById('musicModal')) return;
+    document.getElementById('musicModal').style.display = 'none';
+}
+
+// 歌词展开/收起
+function toggleMusicLyrics() {
+    const wrap = document.getElementById('musicLyricsWrap');
+    const btn = document.getElementById('musicLyricsToggle');
+    const expanded = wrap.classList.toggle('expanded');
+    btn.textContent = expanded ? '收起歌词' : '展开歌词';
+}
+
+// 打开/关闭添加歌曲弹窗
+function openAddSongModal() {
+  document.getElementById('musicSongListModal').style.display = 'none';
+document.getElementById('musicModal').style.display = 'none';
+    const modal = document.getElementById('addSongModal');
+    if (modal) {
+        // 清空表单
+        ['addSongTitle','addSongArtist','addSongUrl','addSongLyrics'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        modal.style.display = 'flex';
+    }
+}
+
+function closeAddSongModal(event) {
+    if (event && event.target !== document.getElementById('addSongModal')) return;
+    document.getElementById('addSongModal').style.display = 'none';
+   openMusicSongListModal();
+}
+
+// 保存新歌曲
+function saveNewSong() {
+    const title = document.getElementById('addSongTitle').value.trim();
+    const artist = document.getElementById('addSongArtist').value.trim();
+    const url = document.getElementById('addSongUrl').value.trim();
+    const lyrics = document.getElementById('addSongLyrics').value.trim();
+
+    if (!title || !artist || !url || !lyrics) {
+        alert('请填写所有必填项（歌名、歌手、链接、歌词）');
+        return;
+    }
+
+    const song = {
+        id: Date.now(),
+        title,
+        artist,
+        url,
+        lyrics
+    };
+
+    saveMusicSong(song, () => {
+        document.getElementById('addSongModal').style.display = 'none';
+        openMusicModal();
+    });
+}
+
+// 更新模式按钮文字
+function updateMusicModeBtn(mode) {
+    const btn = document.getElementById('musicModeBtn');
+    if (!btn) return;
+    const map = { order: '顺序', shuffle: '随机', loop: '单曲循环' };
+    btn.textContent = map[mode] || '顺序';
+}
+
+// ====== 音乐功能：歌单管理 END ======
+
+// ====== 音乐功能：播放控制 START ======
+
+const _musicAudio = () => document.getElementById('chatMusicAudio');
+
+// 播放指定歌曲
+function playSong(songId) {
+    loadMusicSongs((songs) => {
+        const song = songs.find(s => s.id === songId);
+        if (!song) return;
+
+const audio = _musicAudio();
+if (song.url && song.url.startsWith('data:')) {
+    const byteString = atob(song.url.split(',')[1]);
+    const mimeType = song.url.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    const blob = new Blob([ab], { type: mimeType });
+    audio.src = URL.createObjectURL(blob);
+} else {
+    audio.src = song.url;
+}
+        audio.play().catch(e => console.warn('播放失败:', e));
+
+        savePlayerState({
+            currentSongId: songId,
+            isPlaying: true,
+            pendingInject: true,
+            pendingSongId: songId
+        });
+
+        // 同步主弹窗UI
+        const titleEl = document.getElementById('musicCurrentTitle');
+        const artistEl = document.getElementById('musicCurrentArtist');
+        const lyricsEl = document.getElementById('musicLyricsText');
+        if (titleEl) titleEl.textContent = song.title;
+        if (artistEl) artistEl.textContent = song.artist;
+        if (lyricsEl) lyricsEl.textContent = song.lyrics;
+
+        // 同步播放图标
+        updateMusicPlayIcon(true);
+
+        // 同步歌单高亮
+        renderMusicSongList(songs, songId);
+    });
+}
+
+// 播放/暂停切换
+function toggleMusicPlay() {
+    const audio = _musicAudio();
+    loadPlayerState((state) => {
+        if (state.isPlaying) {
+            audio.pause();
+            savePlayerState({ isPlaying: false });
+            updateMusicPlayIcon(false);
+        } else {
+            // 没有歌曲时忽略
+            if (!state.currentSongId) return;
+            audio.play().catch(e => console.warn('播放失败:', e));
+            savePlayerState({ isPlaying: true });
+            updateMusicPlayIcon(true);
+        }
+    });
+}
+
+// 上一首
+function musicPrev() {
+    loadMusicSongs((songs) => {
+        if (!songs || !songs.length) return;
+        loadPlayerState((state) => {
+            let idx = songs.findIndex(s => s.id === state.currentSongId);
+            if (idx === -1) idx = 0;
+            const prevIdx = (idx <= 0) ? songs.length - 1 : idx - 1;
+            playSong(songs[prevIdx].id);
+        });
+    });
+}
+
+// 下一首
+function musicNext() {
+    loadMusicSongs((songs) => {
+        if (!songs || !songs.length) return;
+        loadPlayerState((state) => {
+            let idx = songs.findIndex(s => s.id === state.currentSongId);
+            if (idx === -1) idx = 0;
+            const mode = state.mode;
+            let nextIdx;
+            if (mode === 'shuffle') {
+                nextIdx = idx;
+                if (songs.length > 1) {
+                    while (nextIdx === idx) nextIdx = Math.floor(Math.random() * songs.length);
+                }
+            } else {
+                nextIdx = (idx >= songs.length - 1) ? 0 : idx + 1;
+            }
+            playSong(songs[nextIdx].id);
+        });
+    });
+}
+
+// 播放模式切换：order → shuffle → loop
+function switchMusicMode() {
+    loadPlayerState((state) => {
+        const modes = ['order', 'shuffle', 'loop'];
+        const next = modes[(modes.indexOf(state.mode) + 1) % modes.length];
+        savePlayerState({ mode: next });
+        updateMusicModeBtn(next);
+    });
+}
+
+// 更新播放/暂停图标（弹窗 + 悬浮条同步）
+function updateMusicPlayIcon(isPlaying) {
+    // 弹窗
+    const pi = document.getElementById('musicPlayIcon');
+    const pa = document.getElementById('musicPauseIcon');
+    if (pi) pi.style.display = isPlaying ? 'none' : '';
+    if (pa) pa.style.display = isPlaying ? '' : 'none';
+    // 悬浮条
+    const fpi = document.getElementById('musicFloatPlayIcon');
+    const fpa = document.getElementById('musicFloatPauseIcon');
+    if (fpi) fpi.style.display = isPlaying ? 'none' : '';
+    if (fpa) fpa.style.display = isPlaying ? '' : 'none';
+}
+
+// 显示/隐藏悬浮条（弹窗内按钮）
+function toggleMusicFloat() {
+    loadPlayerState((state) => {
+        const newVisible = !state.floatVisible;
+        savePlayerState({ floatVisible: newVisible });
+        const floatEl = document.getElementById('musicFloat');
+        if (floatEl) floatEl.style.display = newVisible ? 'flex' : 'none';
+        const btn = document.getElementById('musicFloatToggleBtn');
+        if (btn) btn.textContent = newVisible ? '隐藏悬浮条' : '显示悬浮条';
+    });
+}
+
+// 悬浮条 × 按钮：只隐藏浮层，不停播
+function hideMusicFloat() {
+    savePlayerState({ floatVisible: false });
+    const floatEl = document.getElementById('musicFloat');
+    if (floatEl) floatEl.style.display = 'none';
+    const btn = document.getElementById('musicFloatToggleBtn');
+    if (btn) btn.textContent = '显示悬浮条';
+}
+
+// audio 播放结束事件
+document.addEventListener('DOMContentLoaded', () => {
+    const audio = _musicAudio();
+    if (!audio) return;
+
+    audio.addEventListener('ended', () => {
+        loadPlayerState((state) => {
+            if (state.mode === 'loop') {
+                audio.currentTime = 0;
+                audio.play();
+            } else {
+                musicNext();
+            }
+        });
+    });
+
+    // 页面加载时恢复悬浮条显示状态
+    loadPlayerState((state) => {
+        const floatEl = document.getElementById('musicFloat');
+        if (floatEl && state.floatVisible) {
+            floatEl.style.display = 'flex';
+        }
+        // 恢复播放图标状态（页面刷新后 audio 不自动续播，isPlaying 重置为 false）
+        savePlayerState({ isPlaying: false });
+        updateMusicPlayIcon(false);
+    });
+});
+
+// 从列表点击播放（播放后关闭列表弹窗回主弹窗）
+function playSongFromList(songId) {
+    playSong(songId);
+    // 更新主弹窗信息
+    loadMusicSongs((songs) => {
+        const song = songs.find(s => s.id === songId);
+        if (!song) return;
+        document.getElementById('musicCurrentTitle').textContent = song.title;
+        document.getElementById('musicCurrentArtist').textContent = song.artist;
+        document.getElementById('musicLyricsText').textContent = song.lyrics;
+    });
+}
+
+// 打开编辑弹窗
+function openEditSongModal(songId) {
+    loadMusicSongs((songs) => {
+        const song = songs.find(s => s.id === songId);
+        if (!song) return;
+        document.getElementById('editSongId').value = song.id;
+        document.getElementById('editSongTitle').value = song.title;
+        document.getElementById('editSongArtist').value = song.artist;
+        document.getElementById('editSongUrl').value = song.url;
+        document.getElementById('editSongLyrics').value = song.lyrics;
+        document.getElementById('editSongModal').style.display = 'flex';
+    });
+}
+
+function closeEditSongModal(event) {
+    if (event && event.target !== document.getElementById('editSongModal')) return;
+    document.getElementById('editSongModal').style.display = 'none';
+}
+
+// 保存编辑
+function saveEditSong() {
+    const id = parseInt(document.getElementById('editSongId').value);
+    const title = document.getElementById('editSongTitle').value.trim();
+    const artist = document.getElementById('editSongArtist').value.trim();
+    const url = document.getElementById('editSongUrl').value.trim();
+    const lyrics = document.getElementById('editSongLyrics').value.trim();
+
+    if (!title || !artist || !url || !lyrics) {
+        alert('请填写所有必填项');
+        return;
+    }
+
+    saveMusicSong({ id, title, artist, url, lyrics }, () => {
+        document.getElementById('editSongModal').style.display = 'none';
+        openMusicSongListModal();
+    });
+}
+
+// 删除歌曲
+function deleteEditSong() {
+    const id = parseInt(document.getElementById('editSongId').value);
+    if (!confirm('确定删除这首歌曲？')) return;
+    deleteMusicSong(id, () => {
+        // 如果删的是当前播放的歌，重置状态
+        loadPlayerState((state) => {
+            if (state.currentSongId === id) {
+                _musicAudio().pause();
+                _musicAudio().src = '';
+                savePlayerState({ currentSongId: null, isPlaying: false });
+                document.getElementById('musicCurrentTitle').textContent = '暂无歌曲';
+                document.getElementById('musicCurrentArtist').textContent = '--';
+                updateMusicPlayIcon(false);
+            }
+            document.getElementById('editSongModal').style.display = 'none';
+            openMusicSongListModal();
+        });
+    });
+}
+
+// ====== 音乐功能：AI注入 START ======
+
+// store 名称常量
+const MUSIC_PLAYER_STORE = 'musicPlayer';
+const MUSIC_SONGS_STORE = 'musicSongs';
+
+// 构建注入文本
+function buildMusicInjectText(song) {
+    if (!song || !song.title || !song.artist || !song.lyrics) return null;
+    return `【背景信息：当前正在播放的音乐】
+歌曲名：${song.title}
+歌手：${song.artist}
+歌词内容（仅供你知道，禁止直接引用歌词原文作为【引用:】指令格式输出）：
+${song.lyrics}
+【重要：你可以自然地提到这首歌或歌词意境，但严禁使用【引用:歌词内容】的格式输出歌词。】`;
+}
+
+// ====== 音乐功能：AI注入 END ======
+
+function handleSongFileImport(input, mode) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const base64 = e.target.result;
+        if (mode === 'edit') {
+            document.getElementById('editSongUrl').value = base64;
+            document.getElementById('editSongFileInfo').textContent = '✅ ' + file.name;
+        } else {
+            document.getElementById('addSongUrl').value = base64;
+            document.getElementById('addSongFileInfo').textContent = '✅ ' + file.name;
+            const titleInput = document.getElementById('addSongTitle');
+            if (!titleInput.value) {
+                titleInput.value = file.name.replace(/\.[^/.]+$/, '');
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+}
+// ====== 音乐功能：播放控制 END ======
+
+
+
+
+// ========== 【盲盒机】核心功能函数 - 完整版 START ==========
+
+// 【用途】：从数据库加载盲盒机数据
+function loadBlindBoxData() {
+    loadFromDB('blindBox', function(data) {
+        if (data) {
+            blindBoxData = { 
+                dailyDrawCount: 0,
+                dailyDrawDate: null,
+                characterDrawCount: {},
+                characterDrawDate: {},
+                obtainedItems: [],
+                collectionCelebrated: false,
+                seriesList: [{ id: 1, name: '春之猫猫' }],
+                wearMap: {},
+                ...data 
+            };
+            if (data.items && data.items.length > 0) {
+                blindBoxItems['series1'] = data.items;
+            }
+            // 加载其他系列的吧唧
+            if (data.seriesItems) {
+                blindBoxItems = data.seriesItems;
+            }
+        }
+        
+        // 兼容旧数据：给没有 seriesId 的 obtainedItems 补上
+        blindBoxData.obtainedItems = blindBoxData.obtainedItems.map(item => ({
+            ...item,
+            seriesId: item.seriesId || 1
+        }));
+        
+        // 初始化 currentSelectedSeriesId
+        if (!currentSelectedSeriesId && blindBoxData.seriesList.length > 0) {
+            currentSelectedSeriesId = blindBoxData.seriesList[0].id;
+        }
+
+        // 兼容旧佩戴数据结构
+        if (blindBoxData.wearMap) {
+            Object.keys(blindBoxData.wearMap).forEach(chatId => {
+                const wearValue = blindBoxData.wearMap[chatId];
+                if (wearValue && typeof wearValue.seriesId !== 'undefined' && typeof wearValue.itemId !== 'undefined') {
+                    blindBoxData.wearMap[chatId] = {
+                        [wearValue.seriesId]: wearValue.itemId
+                    };
+                }
+            });
+        }
+
+        checkAndResetDailyLimit();
+        renderBlindBoxUI();
+    });
+}
+
+// 【用途】：渲染所有系列列表
+function renderBlindBoxSeriesList() {
+    const listContainer = document.getElementById('blindBoxSeriesList');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = blindBoxData.seriesList.map(series => {
+        const seriesKey = 'series' + series.id;
+        const items = blindBoxItems[seriesKey] || [];
+        const obtainedIds = new Set(blindBoxData.obtainedItems
+            .filter(o => o.seriesId === series.id)
+            .map(o => o.itemId));
+        
+        const progress = obtainedIds.size;
+        const total = items.length || 0;
+        
+        return `
+            <div class="blindbox-series-item" data-series-id="${series.id}">
+                <span class="blindbox-series-name">${series.name}</span>
+                <span class="blindbox-series-progress">(${progress}/${total})</span>
+                <button class="blindbox-series-btn" onclick="selectSeriesAndShow(${series.id})">查看</button>
+                <button class="blindbox-series-btn-delete" onclick="deleteBlindBoxSeries(${series.id})">删除</button>
+            </div>
+        `;
+    }).join('');
+}
+
+// 【用途】：删除系列
+function deleteBlindBoxSeries(seriesId) {
+    // 不能删除最后一个系列
+    if (blindBoxData.seriesList.length <= 1) {
+        alert('必须至少保留一个系列！');
+        return;
+    }
+    
+    const series = blindBoxData.seriesList.find(s => s.id === seriesId);
+    if (!series) return;
+    
+    if (!confirm(`确定要删除系列 "${series.name}" 吗？该系列的所有数据都将被删除。`)) {
+        return;
+    }
+    
+    // 删除该系列
+    blindBoxData.seriesList = blindBoxData.seriesList.filter(s => s.id !== seriesId);
+    
+    // 删除该系列对应的吧唧数据
+    delete blindBoxItems['series' + seriesId];
+    
+    // 删除该系列相关的已获得记录
+    blindBoxData.obtainedItems = blindBoxData.obtainedItems.filter(o => o.seriesId !== seriesId);
+    
+    // 重置当前选中的系列（如果删除的是当前选中的）
+    if (currentSelectedSeriesId === seriesId) {
+        currentSelectedSeriesId = blindBoxData.seriesList[0].id;
+    }
+    
+    // 保存数据
+    saveBlindBoxData();
+    
+    // 刷新系列列表
+    renderBlindBoxSeriesList();
+    
+    // 关闭所有弹窗
+    document.getElementById('blindBoxShowModal').style.display = 'none';
+    document.getElementById('blindBoxSeriesEditorModal').style.display = 'none';
+    document.getElementById('blindBoxItemEditModal').style.display = 'none';
+    
+    alert(`系列 "${series.name}" 已删除！`);
+}
+
+
+// 【用途】：选择系列后打开查看弹窗
+function selectSeriesAndShow(seriesId) {
+    currentSelectedSeriesId = seriesId;
+    openBlindBoxShowModalForSeries(seriesId);
+}
+
+
+// 【用途】：打开添加新系列弹窗
+function openAddSeriesModal() {
+    document.getElementById('newSeriesName').value = '';
+    document.getElementById('blindBoxAddSeriesModal').style.display = 'flex';
+}
+
+// 【用途】：确认添加新系列
+function confirmAddSeries() {
+    const name = document.getElementById('newSeriesName').value.trim();
+    
+    if (!name) {
+        alert('请输入系列名字');
+        return;
+    }
+    
+    // 生成新系列 id
+    const newId = Math.max(...blindBoxData.seriesList.map(s => s.id), 0) + 1;
+    const newSeries = {
+        id: newId,
+        name: name
+    };
+    
+    // 添加到系列列表
+    blindBoxData.seriesList.push(newSeries);
+    
+    // 用初始默认数据初始化新系列（深拷贝）
+    blindBoxItems['series' + newId] = DEFAULT_BLINDBOX_ITEMS.map(item => ({
+        ...item
+    }));
+    
+    // 保存数据
+    saveBlindBoxData();
+    
+    // 关闭弹窗，刷新系列列表
+    document.getElementById('blindBoxAddSeriesModal').style.display = 'none';
+    renderBlindBoxSeriesList();
+    
+    alert(`系列 "${name}" 已添加！`);
+}
+
+
+// 【用途】：检查并重置每日限制
+function checkAndResetDailyLimit() {
+    const today = new Date().toDateString();
+    
+    // 重置自抽次数
+    if (blindBoxData.dailyDrawDate !== today) {
+        blindBoxData.dailyDrawCount = 0;
+        blindBoxData.dailyDrawDate = today;
+    }
+    
+    // 重置每个角色的代抽次数
+    Object.keys(blindBoxData.characterDrawDate).forEach(charName => {
+        if (blindBoxData.characterDrawDate[charName] !== today) {
+            blindBoxData.characterDrawCount[charName] = 0;
+            blindBoxData.characterDrawDate[charName] = today;
+        }
+    });
+}
+
+function saveBlindBoxData() {
+    const saveData = {
+        ...blindBoxData,
+        seriesItems: { ...blindBoxItems }
+    };
+    saveToDB('blindBox', saveData);
+}
+
+
+// 【用途】：打开指定系列的查看弹窗
+function openBlindBoxShowModalForSeries(seriesId) {
+    const modal = document.getElementById('blindBoxShowModal');
+    if (!modal) return;
+    
+    const grid = document.getElementById('blindBoxShowGrid');
+    if (!grid) return;
+    
+    const series = blindBoxData.seriesList.find(s => s.id === seriesId);
+    if (!series) {
+        alert('系列不存在！');
+        return;
+    }
+    
+    const seriesKey = 'series' + seriesId;
+    const items = blindBoxItems[seriesKey];
+    
+    // 检查该系列是否已初始化
+    if (!items || items.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:#999;">该系列还没有吧唧</div>';
+    } else {
+        const obtainedIds = new Set(blindBoxData.obtainedItems
+            .filter(o => o.seriesId === seriesId)
+            .map(o => o.itemId));
+        
+        grid.innerHTML = items.map(item => {
+            const obtained = obtainedIds.has(item.id);
+          let worn = false;
+let wornChatId = null;
+
+if (blindBoxData.wearMap) {
+    Object.keys(blindBoxData.wearMap).forEach(chatId => {
+        if (blindBoxData.wearMap[chatId] && blindBoxData.wearMap[chatId][seriesId] === item.id) {
+            worn = true;
+            wornChatId = chatId;
+        }
+    });
+}
+            
+            // 图片或emoji显示
+            const imgHtml = item.image 
+                ? `<img src="${item.image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+                : `<span style="font-size:22px;">${item.emoji}</span>`;
+            
+  return `
+    <div class="blindbox-show-item-card" style="${obtained ? '' : 'opacity:0.4;'}">
+        ${item.hidden ? '<span class="blind-box-hidden-label">隐藏</span>' : ''}
+        <div class="blindbox-show-item-emoji">${obtained ? imgHtml : '?'}</div>
+        <div class="blindbox-show-item-name">${obtained ? item.name : (item.hidden ? '隐藏款' : '未获得')}</div>
+<button 
+    class="blindbox-series-btn" 
+    style="margin-top:6px; ${obtained ? '' : 'opacity:0.5; cursor:not-allowed;'}"
+    ${obtained
+        ? (worn
+            ? `onclick="removeBlindBoxWearBySeries(${wornChatId}, ${seriesId})"`
+            : `onclick="openBlindBoxWearCharacterModal(${seriesId}, ${item.id})"`)
+        : 'disabled'}
+>
+    ${worn ? '卸下' : '佩戴'}
+</button>
+    </div>
+`;
+        }).join('');
+    }
+    
+    // 更新弹窗标题
+    const modalTitle = document.getElementById('blindBoxShowModalTitle');
+    if (modalTitle) modalTitle.textContent = series.name || '未知系列';
+    
+    modal.style.display = 'flex';
+}
+
+
+// 【用途】：渲染盲盒机主页面UI
+function renderBlindBoxUI() {
+    const screen = document.getElementById('blindBoxMachineScreen');
+    if (!screen) return;
+    
+    // 更新抽取次数显示
+    const remainCount = 3 - blindBoxData.dailyDrawCount;
+    const remainCountEl = document.getElementById('blindBoxRemainCount');
+    const totalCountEl = document.getElementById('blindBoxTotalCount');
+    if (remainCountEl) remainCountEl.textContent = remainCount;
+    if (totalCountEl) totalCountEl.textContent = '3';
+    
+    // 更新系列列表和进度
+    renderBlindBoxSeriesList();
+    updateSeriesTotal();
+    updateSeriesProgress();
+    
+    // 检查是否集齐
+    checkCollection();
+}
+
+// 【用途】：更新系列进度显示
+function updateSeriesProgress() {
+    const progress = document.getElementById('blindBoxSeriesProgress');
+    if (!progress) return;
+    
+    // 只计算当前选中系列的已获得数量
+    const uniqueIds = new Set(blindBoxData.obtainedItems
+        .filter(o => o.seriesId === currentSelectedSeriesId)
+        .map(o => o.itemId));
+    progress.textContent = uniqueIds.size;
+}
+
+// 【用途】：检查是否集齐全部吧唧
+function checkCollection() {
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const items = blindBoxItems[seriesKey] || [];
+    const uniqueIds = new Set(blindBoxData.obtainedItems
+        .filter(o => o.seriesId === currentSelectedSeriesId)
+        .map(o => o.itemId));
+    
+    if (uniqueIds.size >= items.length && items.length > 0 && !blindBoxData.collectionCelebrated) {
+        const series = blindBoxData.seriesList.find(s => s.id === currentSelectedSeriesId);
+        const seriesName = series ? series.name : '该系列';
+        
+        const banner = document.getElementById('blindBoxCollectionBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.textContent = `🎉 恭喜集齐【${seriesName}】系列！`;
+            blindBoxData.collectionCelebrated = true;
+            saveBlindBoxData();
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 3000);
+        }
+    }
+}
+
+// 【用途】：点击【抽取一次】按钮 - 先选择系列
+function openBlindBoxDrawModal() {
+    const remainCount = 3 - blindBoxData.dailyDrawCount;
+    
+    if (remainCount <= 0) {
+        alert('今天的抽取次数已用完，请明天再来！');
+        return;
+    }
+    
+    // 显示系列选择弹窗
+    showSelectSeriesForDraw(remainCount);
+}
+
+
+// 【用途】：显示系列选择弹窗（自抽）
+function showSelectSeriesForDraw(remainCount) {
+    const listContainer = document.getElementById('blindBoxSelectSeriesList');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = blindBoxData.seriesList.map(series => {
+        return `
+            <button onclick="confirmSelectSeriesAndDraw(${series.id}, ${remainCount})" 
+                    style="padding:12px; background:linear-gradient(135deg,#FFB6D9,#FF9EC5); color:white; border:none; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600;">
+                ${series.name}
+            </button>
+        `;
+    }).join('');
+    
+    document.getElementById('blindBoxSelectSeriesModal').style.display = 'flex';
+}
+
+// 【用途】：选择系列后确认抽取
+function confirmSelectSeriesAndDraw(seriesId, remainCount) {
+    currentSelectedSeriesId = seriesId;
+    
+    // 关闭系列选择弹窗
+    document.getElementById('blindBoxSelectSeriesModal').style.display = 'none';
+    
+    // 显示确认抽取弹窗
+    const modal = document.getElementById('blindBoxDrawModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('blindBoxDrawRemainText').textContent = `剩余次数：${remainCount}/3`;
+    }
+}
+
+// 【用途】：确认抽取 - 一次一个
+function confirmBlindBoxDraw() {
+    if (blindBoxData.dailyDrawCount >= 3) {
+        alert('今天的抽取次数已用完！');
+        return;
+    }
+    
+    // 关闭确认弹窗
+    const modal = document.getElementById('blindBoxDrawModal');
+    if (modal) modal.style.display = 'none';
+    
+    // 执行拆盒动画
+    performDrawAnimation(() => {
+        // 动画结束后，生成1个吧唧
+        const newItem = generateBlindBoxItemForSeries(currentSelectedSeriesId);
+        blindBoxData.obtainedItems.push(newItem);
+        
+        blindBoxData.dailyDrawCount++;
+        saveBlindBoxData();
+        renderBlindBoxUI();
+        
+        // 显示获得的吧唧结果弹窗
+        showDrawResultModal([newItem]);
+    });
+}
+
+// 【用途】：显示抽取结果弹窗（9个吧唧）
+function showDrawResultModal(newItems) {
+    const modal = document.getElementById('blindBoxDrawResultModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    const grid = document.getElementById('blindBoxDrawResultGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = newItems.map(item => {
+        const seriesKey = 'series' + item.seriesId;
+        const itemInfo = (blindBoxItems[seriesKey] || []).find(i => i.id === item.itemId);
+        const label = item.isHidden ? '<span class="blind-box-hidden-label">隐藏</span>' : '';
+
+        const imgHtml = itemInfo && itemInfo.image
+            ? `<img src="${itemInfo.image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+            : `<span style="font-size:22px;">${itemInfo ? itemInfo.emoji : '?'}</span>`;
+        
+        return `
+            <div class="blindbox-show-item-card">
+                ${label}
+                <div class="blindbox-show-item-emoji">${imgHtml}</div>
+                <div class="blindbox-show-item-name">${itemInfo ? itemInfo.name : '未知'}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 【用途】：为指定系列生成一个新的吧唧（含隐藏款概率）
+function generateBlindBoxItemForSeries(seriesId) {
+    const seriesKey = 'series' + seriesId;
+    const items = blindBoxItems[seriesKey] || [];
+    
+    if (items.length === 0) {
+        alert('该系列没有吧唧！');
+        return null;
+    }
+    
+    const rand = Math.random();
+    let selectedItem;
+    
+    if (rand < 0.05) {
+        // 5% 概率抽到隐藏款
+        const hiddenItems = items.filter(i => i.hidden);
+        if (hiddenItems.length > 0) {
+            selectedItem = hiddenItems[Math.floor(Math.random() * hiddenItems.length)];
+        } else {
+            selectedItem = items[Math.floor(Math.random() * items.length)];
+        }
+    } else if (rand < 0.75) {
+        // 70% 概率抽到重复（从已获得的里面随机选）
+        const obtainedIds = [...new Set(blindBoxData.obtainedItems
+            .filter(o => o.seriesId === seriesId)
+            .map(o => o.itemId))];
+        
+        if (obtainedIds.length > 0) {
+            const repeatId = obtainedIds[Math.floor(Math.random() * obtainedIds.length)];
+            selectedItem = items.find(i => i.id === repeatId);
+        } else {
+            // 还没有已获得的，就从普通款里随机
+            const normalItems = items.filter(i => !i.hidden);
+            selectedItem = normalItems.length > 0 
+                ? normalItems[Math.floor(Math.random() * normalItems.length)]
+                : items[Math.floor(Math.random() * items.length)];
+        }
+    } else {
+        // 剩余概率抽普通款
+        const normalItems = items.filter(i => !i.hidden);
+        selectedItem = normalItems.length > 0
+            ? normalItems[Math.floor(Math.random() * normalItems.length)]
+            : items[Math.floor(Math.random() * items.length)];
+    }
+    
+    return {
+        seriesId: seriesId,
+        itemId: selectedItem.id,
+        isHidden: selectedItem.hidden,
+        obtainDate: new Date().toLocaleString('zh-CN')
+    };
+}
+
+// 【用途】：执行拆盒动画
+function performDrawAnimation(callback) {
+    const animContainer = document.getElementById('blindBoxAnimContainer');
+    if (!animContainer) {
+        if (callback) callback();
+        return;
+    }
+    
+    animContainer.innerHTML = `
+        <div style="animation: rotateSpin 0.8s linear infinite;">
+            <svg viewBox="0 0 120 120" width="120" height="120">
+                <defs>
+                    <linearGradient id="animBoxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#FF6B9D;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#C44569;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <rect x="20" y="35" width="80" height="65" rx="6" fill="url(#animBoxGrad)" stroke="#fff" stroke-width="2"/>
+                <path d="M 20 35 L 30 15 L 90 15 L 100 35 Z" fill="#FF8FAB" stroke="#fff" stroke-width="2"/>
+                <circle cx="45" cy="20" r="6" fill="#FFD700"/>
+                <circle cx="75" cy="20" r="6" fill="#FFD700"/>
+                <circle cx="60" cy="20" r="8" fill="#FFE135"/>
+                <line x1="30" y1="50" x2="90" y2="50" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+                <ellipse cx="40" cy="45" rx="15" ry="20" fill="#fff" opacity="0.2"/>
+            </svg>
+        </div>
+    `;
+    
+    animContainer.style.display = 'flex';
+    
+    setTimeout(() => {
+        animContainer.style.display = 'none';
+        animContainer.innerHTML = '';
+        // 动画结束后直接执行回调，不做任何页面操作
+        if (typeof callback === 'function') callback();
+    }, 1500);
+}
+
+
+
+
+// 【用途】：点击【让他代抽】按钮
+function openBlindBoxCharacterModal() {
+    // 先让用户选择系列
+    showSelectSeriesForCharacterDraw();
+}
+
+// 【用途】：显示系列选择弹窗（代抽）
+function showSelectSeriesForCharacterDraw() {
+    const listContainer = document.getElementById('blindBoxSelectSeriesList');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = blindBoxData.seriesList.map(series => {
+        return `
+            <button onclick="confirmSelectSeriesAndShowCharacters(${series.id})" 
+                    style="padding:12px; background:linear-gradient(135deg,#FFB6D9,#FF9EC5); color:white; border:none; border-radius:10px; cursor:pointer; font-size:14px; font-weight:600;">
+                ${series.name}
+            </button>
+        `;
+    }).join('');
+    
+    document.getElementById('blindBoxSelectSeriesModal').style.display = 'flex';
+}
+
+// 【用途】：选择系列后显示角色列表
+function confirmSelectSeriesAndShowCharacters(seriesId) {
+    currentSelectedSeriesId = seriesId;
+    document.getElementById('blindBoxSelectSeriesModal').style.display = 'none';
+
+    if (!chats || chats.length === 0) {
+        alert('请先在聊天中添加角色');
+        return;
+    }
+
+    const singleChats = chats.filter(c => c && c.name);
+
+    if (singleChats.length === 0) {
+        alert('请先在聊天中添加角色');
+        return;
+    }
+
+    const listContainer = document.getElementById('blindBoxCharacterList');
+    if (listContainer) {
+        const today = new Date().toDateString();
+
+        listContainer.innerHTML = singleChats.map(chat => {
+            const avatarUrl = chat.avatarImage || chat.avatar;
+            const avatarHtml = (avatarUrl && avatarUrl !== '👤' && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image')))
+                ? `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+                : (chat.avatar || '👤');
+
+            const alreadyDrawn = blindBoxData.characterDrawDate[chat.name] === today &&
+                                 blindBoxData.characterDrawCount[chat.name] >= 1;
+
+            return `
+                <div class="member-item"
+                     data-char-name="${encodeURIComponent(chat.name)}"
+                     data-chat-id="${chat.id}"
+                     style="${alreadyDrawn ? 'opacity:0.4; pointer-events:none;' : 'cursor:pointer;'}">
+                    <div class="member-avatar">${avatarHtml}</div>
+                    <div class="member-name">${chat.name}</div>
+                    ${alreadyDrawn ? '<div style="font-size:11px; color:#999; margin-left:auto;">今日已抽</div>' : ''}
+                </div>
+            `;
+        }).join('');
+
+        listContainer.querySelectorAll('.member-item').forEach(item => {
+            if (item.style.pointerEvents === 'none') return;
+
+            item.addEventListener('click', function() {
+                const charName = decodeURIComponent(this.dataset.charName);
+                const chatId = parseInt(this.dataset.chatId, 10);
+                selectBlindBoxCharacter(charName, chatId);
+            });
+        });
+    }
+
+    document.getElementById('blindBoxCharacterModal').style.display = 'flex';
+}
+
+// 【用途】：选择角色进行代抽
+function selectBlindBoxCharacter(charName, chatId) {
+    // 检查今日是否已代抽过
+    const today = new Date().toDateString();
+    if (blindBoxData.characterDrawDate[charName] === today && 
+        blindBoxData.characterDrawCount[charName] >= 1) {
+        alert(`${charName}今天已代抽过了，请明天再让他/她代抽！`);
+        return;
+    }
+    
+    // 关闭选择弹窗
+    const modal = document.getElementById('blindBoxCharacterModal');
+    if (modal) modal.style.display = 'none';
+    
+    // 显示代抽进行中的弹窗
+    showCharacterDrawingModal(charName, chatId);
+}
+
+
+
+// 【用途】：显示角色代抽中的动画和对话
+function showCharacterDrawingModal(charName, chatId) {
+    const modal = document.getElementById('blindBoxCharacterDrawingModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    const charAvatar = document.getElementById('blindBoxCharacterDrawingAvatar');
+    const charDialog = document.getElementById('blindBoxCharacterDrawingDialog');
+    
+    const chat = chats.find(c => c.id === chatId);
+    if (charAvatar) {
+        if (chat.avatarImage && (chat.avatarImage.startsWith('http') || chat.avatarImage.startsWith('data:'))) {
+            charAvatar.innerHTML = `<img src="${chat.avatarImage}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+        } else {
+            charAvatar.textContent = chat.avatar || '👤';
+        }
+    }
+    if (charDialog) charDialog.textContent = '正在为你抽取中…';
+    
+    // 2秒后完成代抽
+    setTimeout(() => {
+        completeCharacterDraw(charName, chatId);
+    }, 2000);
+}
+
+// 【用途】：判断这次抽到的是否为重复款
+function isBlindBoxDuplicate(seriesId, itemId) {
+    return blindBoxData.obtainedItems.some(item => item.seriesId === seriesId && item.itemId === itemId);
+}
+
+// 【用途】：生成代抽结果的一句话文案
+async function generateBlindBoxCharacterLine(charName, chatId, seriesId, newItem, isDuplicate) {
+    if (!currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        throw new Error('请先在API设置中配置');
+    }
+
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        throw new Error('角色不存在');
+    }
+
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && data[chatId] ? data[chatId] : {});
+        });
+    });
+
+    const series = blindBoxData.seriesList.find(s => s.id === seriesId);
+    const seriesKey = 'series' + seriesId;
+    const itemInfo = (blindBoxItems[seriesKey] || []).find(i => i.id === newItem.itemId);
+
+    const totalCount = (blindBoxItems[seriesKey] || []).length;
+    const uniqueObtainedIds = new Set(
+        blindBoxData.obtainedItems
+            .filter(o => o.seriesId === seriesId)
+            .map(o => o.itemId)
+    );
+
+    const requestUrl = currentApiConfig.baseUrl.endsWith('/')
+        ? currentApiConfig.baseUrl + 'chat/completions'
+        : currentApiConfig.baseUrl + '/chat/completions';
+
+    const modelToUse = currentApiConfig.defaultModel || 'gpt-3.5-turbo';
+
+    const personaText = [
+        characterInfo.personality ? `性格：${characterInfo.personality}` : '',
+        characterInfo.myPersonality ? `你眼中的用户：${characterInfo.myPersonality}` : '',
+        chat.name ? `角色名：${chat.name}` : ''
+    ].filter(Boolean).join('\n');
+
+    const prompt = `
+你现在要扮演角色「${charName}」。
+请严格按照角色人设和说话习惯，只回复一句简短自然的话。
+
+【角色信息】
+${personaText || '按已有角色人设自然发挥'}
+
+【当前情境】
+你正在帮用户抽盲盒。
+盲盒系列：${series ? series.name : '未知系列'}
+这个系列总共有 ${totalCount} 个吧唧。
+用户目前已经收集了 ${uniqueObtainedIds.size} 个不同吧唧。
+你这次抽到的是：${itemInfo ? itemInfo.name : '未知吧唧'}${itemInfo && itemInfo.emoji ? `（${itemInfo.emoji}）` : ''}
+${newItem.isHidden ? '这是隐藏款。' : '这不是隐藏款。'}
+${isDuplicate ? '这次抽到的是重复款。' : '这次抽到的是新吧唧，不是重复款。'}
+
+【回复要求】
+1. 只能回复一句话
+2. 必须像这个角色本人会说的话
+3. 必须体现“是在帮用户抽盲盒”
+4. 可以提到抽到的吧唧名字
+5. 如果是重复款，要自然提到“重复了”
+6. 不要分点
+7. 不要加引号
+8. 不要加角色名冒号
+9. 不要输出多句
+10. 不要输出任何额外解释
+`.trim();
+
+    const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${currentApiConfig.apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: modelToUse,
+            messages: [
+                {
+                    role: 'system',
+                    content: '你要进行角色扮演，只输出一句简短自然的中文口语，不要解释，不要分段，不要使用列表。'
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            temperature: 0.9,
+            stream: false
+        })
+    });
+
+    const rawText = await response.text();
+    let data;
+    try {
+        data = JSON.parse(rawText);
+    } catch (e) {
+        throw new Error('API返回非JSON');
+    }
+
+    if (!response.ok) {
+        const msg = (data && data.error && data.error.message) ? data.error.message : rawText;
+        throw new Error(msg);
+    }
+
+    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        throw new Error('模型返回空回复');
+    }
+
+    const content = data.choices[0] && data.choices[0].message
+        ? String(data.choices[0].message.content || '').trim()
+        : '';
+
+    if (!content) {
+        throw new Error('模型返回空内容');
+    }
+
+    return content
+        .replace(/\[心声更新\][\s\S]*?\[\/心声更新\]/g, '')
+        .replace(/\|\|\|/g, ' ')
+        .replace(/\n/g, ' ')
+        .trim();
+}
+
+// 【用途】：完成角色代抽
+function completeCharacterDraw(charName, chatId) {
+    const today = new Date().toDateString();
+
+    if (!blindBoxData.characterDrawCount[charName]) {
+        blindBoxData.characterDrawCount[charName] = 0;
+    }
+    if (!blindBoxData.characterDrawDate[charName]) {
+        blindBoxData.characterDrawDate[charName] = null;
+    }
+
+    const newItem = generateBlindBoxItemForSeries(currentSelectedSeriesId);
+    if (!newItem) return;
+
+    const duplicate = isBlindBoxDuplicate(currentSelectedSeriesId, newItem.itemId);
+
+    blindBoxData.obtainedItems.push(newItem);
+    blindBoxData.characterDrawCount[charName] = 1;
+    blindBoxData.characterDrawDate[charName] = today;
+
+    saveBlindBoxData();
+
+    const charDialog = document.getElementById('blindBoxCharacterDrawingDialog');
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const itemInfo = blindBoxItems[seriesKey].find(i => i.id === newItem.itemId);
+
+    if (charDialog) {
+        charDialog.textContent = `${charName}正在看着抽到的吧唧……`;
+    }
+
+    generateBlindBoxCharacterLine(charName, chatId, currentSelectedSeriesId, newItem, duplicate)
+        .then(reply => {
+            if (charDialog) {
+                charDialog.textContent = reply;
+            }
+            renderBlindBoxUI();
+        })
+        .catch(error => {
+            console.error('generateBlindBoxCharacterLine error:', error);
+
+            if (charDialog) {
+                if (duplicate) {
+                    charDialog.textContent = `${charName}说：我帮你抽到了${itemInfo ? itemInfo.name : '吧唧'}，不过这次重复了。`;
+                } else {
+                    charDialog.textContent = `${charName}说：我帮你抽到了${itemInfo ? itemInfo.name : '吧唧'}。`;
+                }
+            }
+            renderBlindBoxUI();
+        });
+}
+
+function closeBlindBoxCharacterDrawingModal() {
+    const modal = document.getElementById('blindBoxCharacterDrawingModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// 【用途】：打开查看已获得吧唧的弹窗（默认打开第一个系列）
+function openBlindBoxShowModal() {
+    if (blindBoxData.seriesList && blindBoxData.seriesList.length > 0) {
+        const targetSeriesId = currentSelectedSeriesId || blindBoxData.seriesList[0].id;
+        openBlindBoxShowModalForSeries(targetSeriesId);
+    }
+}
+
+// 【用途】：返回主屏幕
+function backToMainFromBlindBox() {
+    saveBlindBoxData();
+    document.getElementById('blindBoxMachineScreen').style.display = 'none';
+    document.getElementById('mainScreen').style.display = 'flex';
+}
+
+// 打开系列编辑器
+function openBlindBoxSeriesEditor() {
+    // 不关闭查看弹窗，直接在上面叠加系列管理弹窗
+    const series = blindBoxData.seriesList.find(s => s.id === currentSelectedSeriesId);
+    const seriesName = series ? series.name : '未知系列';
+    
+    document.getElementById('editSeriesName').value = seriesName;
+    renderEditorGrid();
+    document.getElementById('blindBoxSeriesEditorModal').style.display = 'flex';
+}
+
+// 渲染编辑网格
+function renderEditorGrid() {
+    const grid = document.getElementById('blindBoxEditorGrid');
+    if (!grid) return;
+    
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const items = blindBoxItems[seriesKey] || [];
+    grid.innerHTML = items.map(item => {
+        const imgHtml = item.image 
+            ? `<img src="${item.image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+            : `<span style="font-size:22px;">${item.emoji}</span>`;
+        
+        return `
+            <div class="blindbox-show-item-card" onclick="openItemEditor(${item.id})" style="cursor:pointer;">
+                ${item.hidden ? '<span class="blind-box-hidden-label">隐藏</span>' : ''}
+                <div class="blindbox-show-item-emoji">${imgHtml}</div>
+                <div class="blindbox-show-item-name">${item.name}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 打开单个吧唧编辑器
+function openItemEditor(itemId) {
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const item = blindBoxItems[seriesKey].find(i => i.id === itemId);
+    if (!item) return;
+    
+    document.getElementById('editingItemId').value = itemId;
+    document.getElementById('editingSeriesId').value = currentSelectedSeriesId;
+    document.getElementById('editItemName').value = item.name;
+    document.getElementById('editItemHidden').checked = item.hidden;
+    
+    // 显示预览
+    const previewContent = document.getElementById('editItemPreviewContent');
+    const preview = document.getElementById('editItemPreview');
+    if (item.image) {
+        preview.innerHTML = `<img src="${item.image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+        <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.3); color:white; font-size:10px; padding:3px; text-align:center;" onclick="document.getElementById('editItemImageInput').click()">点击换图</div>`;
+    } else {
+        preview.innerHTML = `<span id="editItemPreviewContent" style="font-size:36px;">${item.emoji}</span>
+        <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.3); color:white; font-size:10px; padding:3px; text-align:center;" onclick="document.getElementById('editItemImageInput').click()">点击换图</div>`;
+    }
+    
+    document.getElementById('blindBoxItemEditModal').style.display = 'flex';
+}
+
+function deleteCurrentItem() {
+    if (!confirm('确定要删除这个吧唧吗？')) return;
+    
+    const itemId = parseInt(document.getElementById('editingItemId').value);
+    const seriesId = parseInt(document.getElementById('editingSeriesId').value);
+    const seriesKey = 'series' + seriesId;
+    blindBoxItems[seriesKey] = blindBoxItems[seriesKey].filter(item => item.id !== itemId);
+    
+    saveBlindBoxItemsToDB();
+    document.getElementById('blindBoxItemEditModal').style.display = 'none';
+    renderEditorGrid();
+    updateSeriesTotal();
+    openBlindBoxShowModalForSeries(seriesId);  // ← 改成刷新对应系列的查看窗口
+}
+
+// 处理图片上传并压缩
+function handleItemImageUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const file = input.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // 压缩图片
+            const canvas = document.createElement('canvas');
+            const maxSize = 200;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height) {
+                if (width > maxSize) {
+                    height = height * maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width = width * maxSize / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // 显示预览
+            const preview = document.getElementById('editItemPreview');
+            preview.innerHTML = `<img src="${compressed}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+            <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.3); color:white; font-size:10px; padding:3px; text-align:center;" onclick="document.getElementById('editItemImageInput').click()">点击换图</div>`;
+            
+            // 临时存储压缩后的图片
+            preview.dataset.compressedImage = compressed;
+        };
+        img.src = e.target.result;
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 保存吧唧编辑
+function saveItemEdit() {
+    const itemId = parseInt(document.getElementById('editingItemId').value);
+    const seriesId = parseInt(document.getElementById('editingSeriesId').value);
+    const name = document.getElementById('editItemName').value.trim();
+    const hidden = document.getElementById('editItemHidden').checked;
+    const preview = document.getElementById('editItemPreview');
+    const image = preview.dataset.compressedImage || null;
+    
+    if (!name) {
+        alert('请输入吧唧名字');
+        return;
+    }
+    
+    const seriesKey = 'series' + seriesId;
+    const item = blindBoxItems[seriesKey].find(i => i.id === itemId);
+    if (item) {
+        item.name = name;
+        item.hidden = hidden;
+        if (image) item.image = image;
+    }
+    
+    // 保存到数据库
+    saveBlindBoxItemsToDB();
+    
+    // 关闭编辑弹窗，刷新编辑网格
+    document.getElementById('blindBoxItemEditModal').style.display = 'none';
+    renderEditorGrid();
+    
+    // 同时刷新查看弹窗
+    openBlindBoxShowModalForSeries(seriesId);
+}
+
+// 保存系列名字
+function saveSeriesName() {
+    const name = document.getElementById('editSeriesName').value.trim();
+    if (!name) {
+        alert('请输入系列名字');
+        return;
+    }
+    
+    const series = blindBoxData.seriesList.find(s => s.id === currentSelectedSeriesId);
+    if (series) {
+        series.name = name;
+    }
+    
+    // 更新页面显示
+    const modalTitle = document.getElementById('blindBoxShowModalTitle');
+    if (modalTitle) modalTitle.textContent = name;
+    
+    saveBlindBoxData();
+    renderBlindBoxSeriesList();
+    alert('系列名字已保存！');
+}
+
+// 添加新吧唧
+function addNewBlindBoxItem() {
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const items = blindBoxItems[seriesKey];
+    const newId = Math.max(...items.map(i => i.id), 0) + 1;
+    items.push({
+        id: newId,
+        name: '新吧唧' + newId,
+        emoji: '⭐',
+        hidden: false
+    });
+    
+    saveBlindBoxItemsToDB();
+    renderEditorGrid();
+    
+    // 更新系列进度分母
+    updateSeriesTotal();
+}
+
+// 更新系列进度分母
+function updateSeriesTotal() {
+    const seriesKey = 'series' + currentSelectedSeriesId;
+    const total = (blindBoxItems[seriesKey] || []).length;
+
+    const totalCountEl = document.getElementById('blindBoxSeriesTotal');
+    if (!totalCountEl) return;
+
+    totalCountEl.textContent = total;
+}
+function saveBlindBoxItemsToDB() {
+    const saveData = {
+        ...blindBoxData,
+        seriesItems: { ...blindBoxItems }
+    };
+    saveToDB('blindBox', saveData);
+}
+
+
+// ========== 【盲盒机】核心功能函数 - 完整版 END ==========
+
+
+// ========== 【线下模式-约会】开始 ==========
+
+// ========== 【线下模式-约会】开关逻辑 ==========
+
+function openOfflineMode() {
+    // 自动抓取当前线上角色的名字
+    const titleElement = document.getElementById('chatDetailTitle');
+    const characterName = titleElement ? titleElement.innerText : '约会对象';
+    
+    // 把名字替换到线下约会页面的顶部
+    document.getElementById('offlineCharacterName').innerText = characterName;
+    
+    // 弹出约会页面
+    document.getElementById('offlineModeModal').style.display = 'flex'; 
+
+    //初始加载
+    initOfflineWorldbooks();
+    initOfflineBgm();
+    initOfflineStyle();
+    initOfflineSummary();
+}
+
+function closeOfflineMode(actionType) {
+    if(actionType === 'save') {
+        alert('✨ 约会记忆已珍藏至长期记忆');
+    }
+    document.getElementById('offlineModeModal').style.display = 'none';
+}
+
+// 呼出/关闭线下模式设置抽屉
+function toggleOfflineSettings() {
+    const drawer = document.getElementById('offlineSettingsDrawer');
+    const overlay = document.getElementById('offlineSettingsOverlay');
+    
+    if (drawer.classList.contains('open')) {
+        drawer.classList.remove('open');
+        overlay.style.display = 'none';
+    } else {
+        drawer.classList.add('open');
+        overlay.style.display = 'block';
+    }
+}
+
+// ==========================================
+// 🧠 线下约会模式：构建完整的上下文记忆 (长期记忆 + 线上近期纯文本聊天)
+// ==========================================
+async function buildOfflineContext() {
+    // 1. 获取你的长期记忆 (直接白嫖你原本写好的完美函数)
+    let longTermMemory = "";
+    try {
+        if (typeof getMemoryContext === 'function') {
+            longTermMemory = await getMemoryContext();
+        }
+    } catch (e) {
+        console.warn("线下模式获取长期记忆失败：", e);
+    }
+
+    // 2. 获取用户在设置抽屉里拉条的真实数字 (0 - 500)
+    const memoryLengthInput = document.getElementById('memoryLengthVal');
+    const memoryLength = memoryLengthInput ? parseInt(memoryLengthInput.value, 10) : 50;
+
+    let onlineChatContext = "";
+
+    // 如果设置了 0，说明这次约会不想带入前情提要
+    if (memoryLength === 0) {
+        onlineChatContext = "【系统提示：本次约会为独立事件，未带入之前的线上聊天记忆。】";
+    } else {
+        // 3. 精准抓取真实的线上纯文本聊天记录
+        if (typeof allMessages !== 'undefined' && Array.isArray(allMessages)) {
+            
+            // 核心过滤逻辑：只要当前角色、没撤回的、且纯纯的文字消息
+            const pureTextMessages = allMessages.filter(msg => 
+                msg && 
+                msg.chatId === currentChatId && 
+                !msg.isRevoked && 
+                msg.type === 'text' // 👈 这里是关键！只取文字，过滤掉图片、转账、红包、系统提示
+            );
+
+            if (pureTextMessages.length === 0) {
+                onlineChatContext = "【系统提示：你们还没有在线上聊过天。】";
+            } else {
+                // 截取用户设定的条数
+                const recentMessages = pureTextMessages.slice(-memoryLength);
+
+                onlineChatContext = "【以下是我们在来约会前，最近的线上聊天记录，请作为本次线下约会的背景记忆】：\n";
+                recentMessages.forEach(msg => {
+                    // 判断是谁发的消息
+                    const sender = msg.senderId === 'me' ? "我" : "TA";
+                    onlineChatContext += `${sender}：${msg.content}\n`;
+                });
+            }
+        } else {
+            onlineChatContext = "【系统提示：未读取到线上聊天记录。】";
+        }
+    }
+
+    // 4. 终极打包：长期记忆 + 线上近期聊天
+    const finalContextStr = `
+${longTermMemory ? longTermMemory : ''}
+
+${onlineChatContext}
+    `;
+
+    return finalContextStr.trim();
+}
+
+let offlineWbCache = []; 
+
+function initOfflineWorldbooks() {
+    const listDisplay = document.getElementById('wbListDisplay');
+    const tabContainer = document.getElementById('wbCategoryTab');
+    if(!listDisplay || !tabContainer) return;
+
+    // 从数据库读取
+    loadFromDB('worldbooks', (data) => {
+        offlineWbCache = Array.isArray(data) ? data : (data?.list || []);
+    
+        
+        if (offlineWbCache.length === 0) {
+            listDisplay.innerHTML = '<div style="color:#999;font-size:12px;">仓库里还没有书哦</div>';
+            tabContainer.innerHTML = '';
+            return;
+        }
+
+        // 提取分类
+        const categories = ['全部', ...new Set(offlineWbCache.map(b => b.category || '未分类'))];
+
+        // 渲染分类标签
+        tabContainer.innerHTML = categories.map((cat, i) => `
+            <div class="wb-tab-item" onclick="switchWbCategory('${cat}', this)" 
+                 style="cursor:pointer; white-space:nowrap; font-size:13px; color:${i===0?'#333':'#999'}; font-weight:${i===0?'600':'400'}; padding: 0 4px;">
+                ${cat}
+            </div>
+        `).join('');
+
+        // 默认显示全部
+        switchWbCategory('全部', tabContainer.firstElementChild);
+    });
+}
+
+function switchWbCategory(targetCat, element) {
+    // 切换视觉样式
+    document.querySelectorAll('.wb-tab-item').forEach(el => {
+        el.style.color = '#999';
+        el.style.fontWeight = '400';
+    });
+    element.style.color = '#333';
+    element.style.fontWeight = '600';
+
+    // 过滤数据
+    const filteredBooks = targetCat === '全部' 
+        ? offlineWbCache 
+        : offlineWbCache.filter(b => (b.category || '默认分类') === targetCat);
+
+    // 渲染具体的书
+    const displayArea = document.getElementById('wbListDisplay');
+    displayArea.innerHTML = filteredBooks.map(book => {
+        // 👇 核心修复：精准抓取 title 字段
+        const bookTitle = book.title || '无标题设定'; 
+        
+        return `
+            <label style="display: flex; align-items: center; background: #fafafa; padding: 6px 12px; border-radius: 8px; border: 1px solid #eee; cursor: pointer;">
+                <input type="checkbox" value="${book.id}" class="offline-wb-checkbox" style="margin-right:6px; accent-color:#333;">
+                <span style="font-size: 12px; color: #555;">${bookTitle}</span>
+            </label>
+        `;
+    }).join('');
+}
+// ==========================================
+// 🎵 线下约会模式：自定义 BGM 引擎
+// ==========================================
+
+// 官方默认音源
+const officialBgms = [
+    { id: 'cafe', icon: '☕️', name: '咖啡馆', url: 'https://actions.google.com/sounds/v1/crowds/crowd_talking.ogg' },
+    { id: 'rain', icon: '🌧️', name: '雨天', url: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg' },
+    { id: 'camp', icon: '🏕️', name: '营地', url: 'https://actions.google.com/sounds/v1/ambiences/fire.ogg' },
+    { id: 'forest', icon: '🌲', name: '森林', url: 'https://actions.google.com/sounds/v1/ambiences/spring_day_forest.ogg' },
+    { id: 'water', icon: '🌊', name: '湖水', url: 'https://actions.google.com/sounds/v1/water/water_lapping_wind.ogg' },
+    { id: 'market', icon: '🎪', name: '集市', url: 'https://actions.google.com/sounds/v1/ambiences/small_outdoor_marketplace.ogg' }
+];
+
+let customBgmsCache = []; // 存用户自定义的音乐
+
+// 1. 初始化并渲染所有按钮
+function initOfflineBgm() {
+    loadFromDB('custom_bgms', (data) => {
+        customBgmsCache = Array.isArray(data) ? data : [];
+        renderBgmButtons();
+    });
+}
+
+// 2. 渲染按钮大杂烩 (官方 + 自定义 + 上传按钮)
+function renderBgmButtons() {
+    const container = document.getElementById('bgmButtonsContainer');
+    if (!container) return;
+
+    let html = '';
+
+    // 渲染官方音乐
+    officialBgms.forEach(bgm => {
+        html += `<button class="bgm-icon-btn" onclick="playOfflineBgm('${bgm.url}', this)" title="${bgm.name}">${bgm.icon}</button>`;
+    });
+
+    // 渲染自定义音乐 (加入长按删除事件)
+    customBgmsCache.forEach(bgm => {
+        html += `
+            <button class="bgm-icon-btn custom-bgm-btn" 
+                onclick="playOfflineBgm('${bgm.dataUrl}', this)" 
+                onmousedown="startBgmPress('${bgm.id}', '${bgm.name}')" 
+                onmouseup="cancelBgmPress()" 
+                onmouseleave="cancelBgmPress()" 
+                ontouchstart="startBgmPress('${bgm.id}', '${bgm.name}')" 
+                ontouchend="cancelBgmPress()" 
+                title="${bgm.name} (长按删除)">
+                ${bgm.icon}
+            </button>`;
+    });
+
+    // 渲染工具按钮 (添加、静音)
+    html += `
+        <button class="bgm-icon-btn" onclick="openAddBgmModal()" title="添加专属氛围">🎵+</button>
+        <button class="bgm-icon-btn" onclick="playOfflineBgm('stop', this)" title="静音" style="font-size: 12px; font-weight: 500; color: #555;">静音</button>
+    `;
+
+    container.innerHTML = html;
+}
+
+// 3. 播放控制
+function playOfflineBgm(urlOrCommand, btnElement) {
+    const audio = document.getElementById('offlineBgmAudio');
+    
+    // 视觉反馈
+    document.querySelectorAll('.bgm-icon-btn').forEach(btn => {
+        btn.style.borderColor = '#eee';
+        btn.style.background = '#fff';
+    });
+    if (btnElement) {
+        btnElement.style.borderColor = '#333';
+        btnElement.style.background = '#f5f5f5';
+    }
+
+    if (urlOrCommand === 'stop') {
+        audio.pause();
+        return;
+    }
+
+    audio.src = urlOrCommand;
+    audio.play().catch(e => console.log('请先点击页面互动后再播放', e));
+}
+
+// ================= 弹窗与保存逻辑 =================
+
+function openAddBgmModal() {
+    document.getElementById('addCustomBgmModal').style.display = 'flex';
+}
+
+function closeAddBgmModal() {
+    document.getElementById('addCustomBgmModal').style.display = 'none';
+    // 清空输入框
+    document.getElementById('customBgmIcon').value = '';
+    document.getElementById('customBgmName').value = '';
+    document.getElementById('customBgmFile').value = '';
+    document.getElementById('fileNameDisplay').innerText = '点击选择音频文件';
+}
+
+function saveCustomBgm() {
+    const icon = document.getElementById('customBgmIcon').value.trim() || '🎵';
+    const name = document.getElementById('customBgmName').value.trim() || '我的氛围';
+    const fileInput = document.getElementById('customBgmFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('宝宝，你还没选音乐文件哦！');
+        return;
+    }
+
+    // 将音频文件转成 Base64 存入数据库 (这样刷新才不会丢)
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const newBgm = {
+            id: 'bgm_' + Date.now(),
+            icon: icon,
+            name: name,
+            dataUrl: e.target.result // 这是转码后的音频数据
+        };
+
+        customBgmsCache.push(newBgm);
+        saveToDB('custom_bgms', customBgmsCache); // 存入你的数据库
+        
+        renderBgmButtons(); // 刷新按钮列表
+        closeAddBgmModal(); // 关掉弹窗
+    };
+    reader.readAsDataURL(file);
+}
+
+// ================= 长按删除逻辑 =================
+
+let bgmPressTimer;
+function startBgmPress(bgmId, bgmName) {
+    // 按下 800 毫秒后触发删除
+    bgmPressTimer = setTimeout(() => {
+        if (confirm(`要删除专属氛围音 [${bgmName}] 吗？`)) {
+            // 过滤掉要删除的 BGM
+            customBgmsCache = customBgmsCache.filter(bgm => bgm.id !== bgmId);
+            saveToDB('custom_bgms', customBgmsCache); // 更新数据库
+            renderBgmButtons(); // 重新渲染
+            
+            // 如果删掉的刚好是正在播放的，就停掉声音
+            document.getElementById('offlineBgmAudio').pause();
+        }
+    }, 800);
+}
+
+function cancelBgmPress() {
+    // 如果手指松开得快，就取消删除操作（变成普通的点击播放）
+    clearTimeout(bgmPressTimer);
+}
+
+// ==========================================
+// ✍️ 线下约会模式：文风无感记忆引擎
+// ==========================================
+
+// 这是你写的神级默认文风
+const DEFAULT_OFFLINE_STYLE = "请使用细腻、有画面感且略带慵懒的文字风格。多描写对方的眼神、小动作以及周围的光影等环境细节，对话自然生活化。用客观的环境描写和白描手法。";
+
+function initOfflineStyle() {
+    // ⚠️ 注意：请去你的 HTML 里看一眼，把你那个文风输入框的 id 改成 'offlineStyleInput'
+    // 比如：<textarea id="offlineStyleInput" ...></textarea>
+    const styleInput = document.getElementById('offlineStyleInput'); 
+    if (!styleInput) return;
+
+    // 1. 读取上次保存的文风；如果是第一次打开（没保存过），就填入默认文风
+    const savedStyle = localStorage.getItem('offline_custom_style');
+    styleInput.value = savedStyle !== null ? savedStyle : DEFAULT_OFFLINE_STYLE;
+
+    // 2. 监听你的每一次打字，实现“实时秒存”
+    styleInput.addEventListener('input', function() {
+        localStorage.setItem('offline_custom_style', this.value);
+    });
+}
+
+// ==========================================
+// 📝 线下约会模式：约会总结无感记忆引擎
+// ==========================================
+
+// 这是一个默认的总结要求（你可以自己改成你喜欢的默认词）
+const DEFAULT_OFFLINE_SUMMARY = "你是一个极其严谨且细腻的专属记忆记录者。请务必以【第三人称视角】，事无巨细地复盘并记录本次线下约会的全过程，绝对不能有任何遗漏。请特别提取并着重描写：1. 双方说过的重要、动人或值得铭记的话语；2. 发生的所有核心事件及微妙的肢体互动；3. 场景氛围的推移与双方情绪的转折。这份档案将作为高优先级的长期记忆永久保存，请保持客观、全面且颗粒度极高的记录方式。";
+
+function initOfflineSummary() {
+    // ⚠️ 注意：去你的 HTML 里确认一下，总结输入框的 id 是不是叫 'offlineSummaryInput'
+    // 比如：<textarea id="offlineSummaryInput" ...></textarea>
+    const summaryInput = document.getElementById('offlineSummaryInput'); 
+    if (!summaryInput) return;
+
+    // 1. 读取上次保存的总结要求；如果没有，就填入默认词
+    const savedSummary = localStorage.getItem('offline_custom_summary');
+    summaryInput.value = savedSummary !== null ? savedSummary : DEFAULT_OFFLINE_SUMMARY;
+
+    // 2. 监听打字，实现“实时秒存”
+    summaryInput.addEventListener('input', function() {
+        localStorage.setItem('offline_custom_summary', this.value);
+    });
+}

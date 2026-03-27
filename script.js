@@ -4,12 +4,50 @@
         // 日记功能相关变量
 let diaries = [];
 let currentViewingDiaryId = null;
+let currentSelectedSeriesId = 1;  // 当前选中的系列 id
+
+let blindBoxData = {
+    dailyDrawCount: 0,
+    dailyDrawDate: null,
+    characterDrawCount: {},
+    characterDrawDate: {},
+    obtainedItems: [],
+    collectionCelebrated: false
+};
+
+// 【用途】：初始默认吧唧数据（不会被修改）
+const DEFAULT_BLINDBOX_ITEMS = [
+    { id: 1, name: '到！', emoji: '⭐', image: 'https://i.postimg.cc/FHnLx6RZ/QQ-tu-pian20260321232009.jpg', hidden: false },
+    { id: 2, name: '吃饭', emoji: '⭐', image: 'https://i.postimg.cc/BvL17CPW/QQ-tu-pian20260321232012.jpg', hidden: false },
+    { id: 3, name: '喝奶茶', emoji: '⭐', image: 'https://i.postimg.cc/vmg62vgp/QQ-tu-pian20260321232014.jpg', hidden: false },
+    { id: 4, name: '钻钻钻', emoji: '⭐', image: 'https://i.postimg.cc/rwYr9HsT/QQ-tu-pian20260321232017.jpg', hidden: false },
+    { id: 5, name: '噢耶', emoji: '⭐', image: 'https://i.postimg.cc/YCyWxP9P/QQ-tu-pian20260321232019.jpg', hidden: false },
+    { id: 6, name: '扣屁', emoji: '⭐', image: 'https://i.postimg.cc/W4FJY7FC/QQ-tu-pian20260321232021.jpg', hidden: false },
+    { id: 7, name: '走走走', emoji: '⭐', image: 'https://i.postimg.cc/BvL17CPs/QQ-tu-pian20260321232023.jpg', hidden: false },
+    { id: 8, name: '努力中', emoji: '⭐', image: 'https://i.postimg.cc/0NMJXCKQ/QQ-tu-pian20260321232026.jpg', hidden: true },
+    { id: 9, name: '转圈圈', emoji: '⭐', image: 'https://i.postimg.cc/HLc7vt8n/QQ-tu-pian20260321232028.jpg', hidden: true }
+];
+
+let blindBoxItems = {
+    series1: [
+         { id: 1, name: '到！', emoji: '⭐', image: 'https://i.postimg.cc/FHnLx6RZ/QQ-tu-pian20260321232009.jpg', hidden: false },
+    { id: 2, name: '吃饭', emoji: '⭐', image: 'https://i.postimg.cc/BvL17CPW/QQ-tu-pian20260321232012.jpg', hidden: false },
+    { id: 3, name: '喝奶茶', emoji: '⭐', image: 'https://i.postimg.cc/vmg62vgp/QQ-tu-pian20260321232014.jpg', hidden: false },
+    { id: 4, name: '钻钻钻', emoji: '⭐', image: 'https://i.postimg.cc/rwYr9HsT/QQ-tu-pian20260321232017.jpg', hidden: false },
+    { id: 5, name: '噢耶', emoji: '⭐', image: 'https://i.postimg.cc/YCyWxP9P/QQ-tu-pian20260321232019.jpg', hidden: false },
+    { id: 6, name: '扣屁', emoji: '⭐', image: 'https://i.postimg.cc/W4FJY7FC/QQ-tu-pian20260321232021.jpg', hidden: false },
+    { id: 7, name: '走走走', emoji: '⭐', image: 'https://i.postimg.cc/BvL17CPs/QQ-tu-pian20260321232023.jpg', hidden: false },
+    { id: 8, name: '努力中', emoji: '⭐', image: 'https://i.postimg.cc/0NMJXCKQ/QQ-tu-pian20260321232026.jpg', hidden: true },
+    { id: 9, name: '转圈圈', emoji: '⭐', image: 'https://i.postimg.cc/HLc7vt8n/QQ-tu-pian20260321232028.jpg', hidden: true }
+    ]
+};
+
 
 
 // ============ 强制修复版：数据库初始化 (版本号 ) ============
 function initDB() {
-    // ★★★ 重点：版本号改成 34，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 35);
+    // ★★★ 重点：版本号，强制触发更新！ ★★★
+    const request = indexedDB.open('phoneData', 43);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
@@ -22,14 +60,28 @@ function initDB() {
         alert('请关闭其他打开了本网页的标签页，然后刷新本页以完成更新！');
     };
     
-    request.onsuccess = (event) => {
-        db = event.target.result;
-        console.log('数据库连接成功，版本:', db.version);
-        
-        // 数据库连接成功后的初始化逻辑
-        initializeApp();
-       
-    };
+request.onsuccess = (event) => {
+    db = event.target.result;
+    console.log('数据库连接成功，版本:', db.version);
+
+    // 初始化 musicPlayer 默认数据
+    loadFromDB('musicPlayer', (data) => {
+        if (!data) {
+            saveToDB('musicPlayer', {
+                id: 1,
+                currentSongId: null,
+                mode: 'order',
+                isPlaying: false,
+                floatVisible: false,
+                pendingInject: false,
+                pendingSongId: null
+            });
+        }
+    });
+    
+    // 数据库连接成功后的初始化逻辑
+    initializeApp();
+};
     
     // ★★★ 这里是创建新表的核心逻辑 ★★★
     request.onupgradeneeded = (event) => {
@@ -46,7 +98,7 @@ function initDB() {
             'gameConsole', 'widgetSettings', 'voiceConfig', 
             'fontSettings', 'notificationSound', 
           'moments', 'momentsProfile', 'chatGroups', 'momentsSettings',
-           'memories', 'imageApiSettings'
+          'memories', 'imageApiSettings', 'spacepost', 'phoneCheckData', 'phoneCheckBeautifyPresets', 'musicSongs', 'blindBox', 'musicPlayer', 'custom_bgms'
         ];
 
         storeNames.forEach(name => {
@@ -77,7 +129,8 @@ function initializeApp() {
         'chatDetailScreen', 'characterInfoScreen', 'memoryScreen', 
         'diaryScreen', 'diaryDetailScreen', 'callScreen', 'shoppingScreen', 
         'shoppingCartScreen', 'otherSettingsScreen', 'beautifySettingsScreen',
-        'momentsScreen' // 确保隐藏朋友圈页面
+        'momentsScreen' ,// 确保隐藏朋友圈页面
+         'blindBoxMachineScreen'
     ];
     
     screens.forEach(id => {
@@ -98,11 +151,28 @@ function initializeApp() {
     loadWidgetSettings();
     loadFontSettings();
     loadChats(); // 加载聊天列表
+    loadPhoneCheckData();
+        loadPhoneCheckBeautifyPresets();
     // 旧头像迁移：后台压缩超大 base64，避免切换角色卡顿
 setTimeout(() => {
     runAvatarMigrationOnce();
 }, 1200);
     loadMomentsSettings();
+
+// ====== 初始化 music stores (新增) ======
+loadFromDB('musicPlayer', (data) => {
+    if (!data) {
+        saveToDB('musicPlayer', {
+            currentSongId: null,
+            mode: 'order',
+            isPlaying: false,
+            floatVisible: false,
+            pendingInject: false,
+            pendingSongId: null
+        });
+    }
+});
+
     
     if (db.objectStoreNames.contains('memories')) {
         loadMemories();
@@ -117,15 +187,23 @@ setTimeout(() => {
 function saveToDB(storeName, data, onComplete) {
     if (!db) {
         console.warn('数据库未连接，无法保存:', storeName);
-        if (typeof onComplete === 'function') onComplete(false);
+        // ★ 新增：延迟重试而不是直接失败
+        setTimeout(() => saveToDB(storeName, data, onComplete), 500);
         return;
     }
 
     try {
         const transaction = db.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
-        
-        if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments', 'chatGroups'].includes(storeName)) {
+
+        if (storeName === 'musicSongs') {
+            objectStore.put(data);
+            transaction.oncomplete = () => { if (typeof onComplete === 'function') onComplete(true); };
+            transaction.onerror = (e) => { console.error(`保存事务失败 [${storeName}]:`, e); if (typeof onComplete === 'function') onComplete(false); };
+            return;
+        }
+
+      if (['worldbooks', 'categories', 'chats', 'messages', 'products', 'shoppingCart', 'moments', 'chatGroups', 'custom_bgms'].includes(storeName)) {
             objectStore.put({ id: 1, list: data.list || data });
         } else if (storeName === 'characterInfo') {
             const saveData = data.id ? data : { id: 1, ...data };
@@ -147,10 +225,14 @@ function saveToDB(storeName, data, onComplete) {
 
         transaction.onerror = (e) => {
             console.error(`保存事务失败 [${storeName}]:`, e);
+            // ★ 新增：事务失败也重试一次
+            setTimeout(() => saveToDB(storeName, data, onComplete), 1000);
             if (typeof onComplete === 'function') onComplete(false);
         };
     } catch (e) {
         console.error(`保存数据失败 [${storeName}]:`, e);
+        // ★ 新增：异常也重试
+        setTimeout(() => saveToDB(storeName, data, onComplete), 1000);
         if (typeof onComplete === 'function') onComplete(false);
     }
 }
@@ -174,11 +256,19 @@ function loadFromDB(storeName, callback) {
         const transaction = db.transaction([storeName], 'readonly');
         const objectStore = transaction.objectStore(storeName);
         
+if (storeName === 'musicSongs') {
+    const request = objectStore.getAll();
+    request.onsuccess = () => { callback(request.result || []); };
+    request.onerror = (e) => { console.error('读取musicSongs失败:', e); callback([]); };
+    return;
+}
+
+
         // momentsProfile 使用 userId 查询，其他一般查 id:1
         const request = (storeName === 'momentsProfile') ? objectStore.get('me') : objectStore.get(1);
         
         request.onsuccess = () => {
-          if (['worldbooks', 'categories', 'products', 'shoppingCart', 'memories', 'moments', 'chatGroups'].includes(storeName)) {
+        if (['worldbooks', 'categories', 'products', 'shoppingCart', 'memories', 'moments', 'chatGroups', 'custom_bgms'].includes(storeName)) {
                 if (request.result && Array.isArray(request.result.list)) {
                     callback(request.result.list);
                 } else if (request.result && Array.isArray(request.result)) {
@@ -230,10 +320,26 @@ function openApp(appName) {
         document.getElementById('mainScreen').style.display = 'none';
         document.getElementById('otherSettingsScreen').style.display = 'flex';
     }
-    // ▲▲▲ 新增结束 ▲▲▲
-    else {
-        alert(`点击了${appName}应用`);
+  // 时空邮局
+else if (appName === 'spacepost') {
+    document.getElementById('mainScreen').style.display = 'none';
+    document.getElementById('spacePostScreen').style.display = 'flex';
+    loadSpLettersFromDB();
+}
+// ========== 【盲盒机】应用打开 START ==========
+    else if (appName === 'blindBox') {
+        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('blindBoxMachineScreen').style.display = 'flex';
+        loadBlindBoxData();
     }
+    // ========== 【盲盒机】应用打开 END ==========
+
+     else if (appName === 'phoneCheck') {
+        openPhoneCheckSelectModal();
+    }
+else {
+    alert(`点击了${appName}应用`);
+}
 }
 
         
@@ -1161,32 +1267,32 @@ function renderApiSchemes() {
 }
 
 function updateApiForm() {
-    document.getElementById('apiName').value = currentApiConfig.name || '';
     document.getElementById('apiBaseUrl').value = currentApiConfig.baseUrl || '';
     document.getElementById('apiKey').value = currentApiConfig.apiKey || '';
 
-     // ★★★ 新增：加载温度设置 ★★★
+    // 温度设置
     const tempInput = document.getElementById('apiTemperature');
     const tempDisplay = document.getElementById('tempValueDisplay');
     if (tempInput && tempDisplay) {
-        // 如果没有存过，默认 0.7
         const val = currentApiConfig.temperature !== undefined ? currentApiConfig.temperature : 0.7;
         tempInput.value = val;
         tempDisplay.textContent = val;
     }
-    // ★★★ 新增结束 ★★★
     
+    // 模型下拉框
     if (currentApiConfig.models && currentApiConfig.models.length > 0) {
         const modelSelect = document.getElementById('modelSelect');
         modelSelect.innerHTML = currentApiConfig.models.map(model => 
             `<option value="${model}" ${model === currentApiConfig.defaultModel ? 'selected' : ''}>${model}</option>`
         ).join('');
         document.getElementById('modelGroup').style.display = 'block';
+    } else {
+        document.getElementById('modelGroup').style.display = 'none';
     }
 }
 
 function newScheme() {
-    currentApiConfig = { name: '', baseUrl: '', apiKey: '', models: [], defaultModel: '' };
+    currentApiConfig = { name: '', baseUrl: '', apiKey: '', models: [], defaultModel: '', temperature: 0.7 };
     updateApiForm();
     document.getElementById('apiSchemeSelect').value = '';
 }
@@ -1275,88 +1381,109 @@ async function testConnection() {
 }
 
 function saveConfig() {
-    const name = document.getElementById('apiName').value.trim();
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
     const apiKey = document.getElementById('apiKey').value.trim();
     const defaultModel = document.getElementById('modelSelect').value;
+    const temperature = parseFloat(document.getElementById('apiTemperature').value) || 0.7;
+    const selectId = document.getElementById('apiSchemeSelect').value;
     
     if (!baseUrl || !apiKey) {
-        alert('请至少填写反代地址和API密钥');
+        alert('请至少填写接口地址和秘钥');
         return;
     }
     
+    if (!selectId) {
+        alert('请先选择一个方案或新建方案后再保存');
+        return;
+    }
+    
+    // 从选中方案继承名称
+    const schemeName = apiSchemes.find(s => s.id == selectId)?.name || '方案配置';
+    
     currentApiConfig = {
-        name: name || '临时配置',
+        name: schemeName,
         baseUrl,
         apiKey,
         models: currentApiConfig.models,
-        defaultModel
+        defaultModel,
+        temperature: temperature
     };
     
     saveToDB('apiConfig', currentApiConfig);
-     // ★★★ 新增：同时保存绘图配置 ★★★
+    
+    // 同步更新选中的方案
+    const index = apiSchemes.findIndex(s => s.id == selectId);
+    if (index > -1) {
+        apiSchemes[index] = {
+            ...apiSchemes[index],
+            baseUrl,
+            apiKey,
+            models: currentApiConfig.models,
+            defaultModel,
+            temperature: temperature
+        };
+        const transaction = db.transaction(['apiSchemes'], 'readwrite');
+        transaction.objectStore('apiSchemes').put({ id: 1, list: apiSchemes });
+    }
+    
+    // 刷新内存中的方案列表
+    loadApiSchemes();
+    
+    // 同时保存绘图配置
     if (typeof saveImageApiConfig === 'function') {
         saveImageApiConfig();
     }
     alert('配置已保存');
 }
-
 function saveAsScheme() {
-    const name = document.getElementById('apiName').value.trim();
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
     const apiKey = document.getElementById('apiKey').value.trim();
     const defaultModel = document.getElementById('modelSelect').value;
-    
-    // ★★★ 新增：获取温度值 ★★★
     const temperature = parseFloat(document.getElementById('apiTemperature').value) || 0.7;
     
-    if (!name) {
-        alert('请输入方案名称');
-        return;
-    }
-    
     if (!baseUrl || !apiKey) {
-        alert('请填写反代地址和API密钥');
+        alert('请填写接口地址和秘钥');
         return;
     }
     
-    const selectId = document.getElementById('apiSchemeSelect').value;
+    // 弹窗输入方案名称
+    const newId = apiSchemes.length > 0 ? Math.max(...apiSchemes.map(s => s.id)) + 1 : 1;
+    const inputName = prompt('请输入方案名称', '方案' + newId);
+    if (inputName === null) return; // 用户点了取消
     
-    if (selectId) {
-        // 更新现有方案
-        const index = apiSchemes.findIndex(s => s.id == selectId);
-        apiSchemes[index] = {
-            ...apiSchemes[index],
-            name,
-            baseUrl,
-            apiKey,
-            models: currentApiConfig.models,
-            defaultModel,
-            temperature: temperature // ★★★ 这里必须加这行！ ★★★
-        };
-    } else {
-        // 新建方案
-        const newId = apiSchemes.length > 0 ? Math.max(...apiSchemes.map(s => s.id)) + 1 : 1;
-        apiSchemes.push({
-            id: newId,
-            name,
-            baseUrl,
-            apiKey,
-            models: currentApiConfig.models,
-            defaultModel,
-            temperature: temperature // ★★★ 这里也必须加这行！ ★★★
-        });
-    }
+    const schemeName = inputName.trim() || ('方案' + newId);
     
-    // 添加这行代码，确保以数组格式保存
+    apiSchemes.push({
+        id: newId,
+        name: schemeName,
+        baseUrl,
+        apiKey,
+        models: currentApiConfig.models,
+        defaultModel,
+        temperature: temperature
+    });
+    
+    // 保存方案列表
     const transaction = db.transaction(['apiSchemes'], 'readwrite');
-    const objectStore = transaction.objectStore('apiSchemes');
-    objectStore.put({ id: 1, list: apiSchemes });
+    transaction.objectStore('apiSchemes').put({ id: 1, list: apiSchemes });
     
+    // 刷新下拉框并自动选中新方案
     renderApiSchemes();
-    alert('方案已保存');
+    document.getElementById('apiSchemeSelect').value = newId;
+    
+    // 同时作为当前生效配置
+    currentApiConfig = {
+        name: schemeName,
+        baseUrl,
+        apiKey,
+        models: currentApiConfig.models,
+        defaultModel,
+        temperature: temperature
+    };
+    saveToDB('apiConfig', currentApiConfig);
+    
+    alert('已另存为 ' + schemeName);
 }
-
 // 页面加载完成后初始化
 window.addEventListener('DOMContentLoaded', function() {
 
@@ -1371,13 +1498,17 @@ window.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const scheme = apiSchemes.find(s => s.id == schemeId);
+        const scheme = apiSchemes.find(s => s.id == schemeId);
             if (scheme) {
                 currentApiConfig = { ...scheme };
                 updateApiForm();
+                // 同步写入apiConfig表，确保下次打开读到最新数据
+                saveToDB('apiConfig', currentApiConfig);
             }
         });
     }
+
+
       // 颜色选择器实时预览
     const textColorInput = document.getElementById('textColorInput');
     const appTextColorInput = document.getElementById('appTextColorInput');
@@ -1686,8 +1817,6 @@ function switchChatTab(tab) {
     }
 }
 
-
-
 // 渲染聊天列表
 function renderChatList() {
     const container = document.getElementById('chatListContainer');
@@ -1824,7 +1953,6 @@ function updateChatDisplayName(chatId, allCharInfo) {
     }
 }
 
-
 // ====== 新增：更新并保存角色状态（修复列表页不刷新问题）======
 function setChatStatus(chatId, statusText) {
     if (!chatId) return;
@@ -1882,9 +2010,6 @@ if (allCharInfo) apply(allCharInfo);
 else getCharacterInfoAllCached(false, (data) => apply(data));
 }
 
-
-
-
 // 新增：保存状态的函数
 function setChatStatus(chatId, statusText) {
     loadFromDB('characterInfo', (data) => {
@@ -1907,8 +2032,140 @@ function updateDetailPageTitle(chatId, originalName) {
         const charData = data && data[chatId] ? data[chatId] : {};
         const displayName = (charData.remark && charData.remark.trim()) ? charData.remark : originalName;
         document.getElementById('chatDetailTitle').textContent = displayName;
+        renderChatDetailBadgeWear(chatId);
     });
 }
+
+
+function openBlindBoxWearCharacterModal(seriesId, itemId) {
+    if (!chats || chats.length === 0) {
+        alert('请先在聊天中添加角色');
+        return;
+    }
+
+    const listContainer = document.getElementById('blindBoxWearCharacterList');
+    if (!listContainer) return;
+
+    const availableChats = chats.filter(c => c && c.name);
+
+    listContainer.innerHTML = availableChats.map(chat => {
+        const avatarUrl = chat.avatarImage || chat.avatar;
+        const avatarHtml = (avatarUrl && avatarUrl !== '👤' && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image')))
+            ? `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+            : (chat.avatar || '👤');
+
+        return `
+            <div class="member-item" onclick="wearBlindBoxForCharacter(${chat.id}, ${seriesId}, ${itemId})" style="cursor:pointer;">
+                <div class="member-avatar">${avatarHtml}</div>
+                <div class="member-name">${chat.name}</div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('blindBoxWearCharacterModal').style.display = 'flex';
+}
+
+function wearBlindBoxForCharacter(chatId, seriesId, itemId) {
+    if (!blindBoxData.wearMap) {
+        blindBoxData.wearMap = {};
+    }
+
+    if (!blindBoxData.wearMap[chatId]) {
+        blindBoxData.wearMap[chatId] = {};
+    }
+
+    blindBoxData.wearMap[chatId][seriesId] = itemId;
+    saveBlindBoxData();
+    openBlindBoxShowModalForSeries(seriesId);
+
+    document.getElementById('blindBoxWearCharacterModal').style.display = 'none';
+
+    if (typeof currentChatId !== 'undefined' && currentChatId === chatId) {
+        const chat = chats.find(c => c.id === chatId);
+        updateDetailPageTitle(chatId, chat ? chat.name : '');
+    }
+
+    alert('佩戴成功！');
+}
+
+function removeBlindBoxWearBySeries(chatId, seriesId) {
+    if (!blindBoxData.wearMap || !blindBoxData.wearMap[chatId]) return;
+
+    delete blindBoxData.wearMap[chatId][seriesId];
+
+    if (Object.keys(blindBoxData.wearMap[chatId]).length === 0) {
+        delete blindBoxData.wearMap[chatId];
+    }
+
+    saveBlindBoxData();
+
+    if (typeof currentChatId !== 'undefined' && currentChatId === chatId) {
+        const chat = chats.find(c => c.id === chatId);
+        updateDetailPageTitle(chatId, chat ? chat.name : '');
+    }
+
+    openBlindBoxShowModalForSeries(seriesId);
+}
+
+
+function renderChatDetailBadgeWear(chatId) {
+    const badgeEl = document.getElementById('chatDetailBadgeWear');
+    if (!badgeEl) return;
+
+    if (!blindBoxData || !blindBoxData.wearMap || !blindBoxData.wearMap[chatId]) {
+        badgeEl.style.display = 'none';
+        badgeEl.innerHTML = '';
+        return;
+    }
+
+    const wearData = blindBoxData.wearMap[chatId];
+    const entries = Object.entries(wearData);
+
+    if (entries.length === 0) {
+        badgeEl.style.display = 'none';
+        badgeEl.innerHTML = '';
+        return;
+    }
+
+    badgeEl.style.display = 'flex';
+    badgeEl.style.width = 'auto';
+    badgeEl.style.height = '24px';
+    badgeEl.style.borderRadius = '0';
+    badgeEl.style.overflow = 'visible';
+    badgeEl.style.gap = '4px';
+    badgeEl.style.alignItems = 'center';
+
+    badgeEl.innerHTML = entries.map(([seriesId, itemId]) => {
+        const seriesKey = 'series' + seriesId;
+        const item = (blindBoxItems[seriesKey] || []).find(i => i.id === itemId);
+
+        if (!item) return '';
+
+        return `
+            <div style="width:24px; height:24px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#fff;">
+                ${item.image
+                    ? `<img src="${item.image}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+                    : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:18px;">${item.emoji || '⭐'}</div>`
+                }
+            </div>
+        `;
+    }).join('');
+}
+
+function removeBlindBoxWear(chatId) {
+    if (!blindBoxData.wearMap || !blindBoxData.wearMap[chatId]) return;
+
+    delete blindBoxData.wearMap[chatId];
+    saveBlindBoxData();
+
+    if (typeof currentChatId !== 'undefined' && currentChatId === chatId) {
+        const chat = chats.find(c => c.id === chatId);
+        updateDetailPageTitle(chatId, chat ? chat.name : '');
+    }
+
+    alert('已取消佩戴');
+}
+
 // 新增：更新聊天详情页的角色状态（防止 updateDetailPageStatus 未定义报错）
 function updateDetailPageStatus(chatId) {
     if (!chatId) return;
@@ -2732,6 +2989,15 @@ function sendMessage() {
     
     // 保存到数据库
     saveMessages();
+
+    // 更新当前角色的最后交互时间（供时间感知使用）
+loadFromDB('characterInfo', (data) => {
+    const allCharData = data || {};
+    if (allCharData[currentChatId]) {
+        allCharData[currentChatId].lastInteractionAt = new Date().toISOString();
+        saveToDB('characterInfo', allCharData);
+    }
+});
     
     // 更新聊天列表
     updateChatLastMessage(currentChatId, content);
@@ -3219,6 +3485,12 @@ function loadCharacterInfo(chatId) {
             htmlPluginCheckbox.checked = charData.htmlPluginEnabled === true;
         }
 
+// 回填时间感知开关
+
+if (document.getElementById('timeAwarenessCheckbox')) {
+    document.getElementById('timeAwarenessCheckbox').checked = (charData && charData.timeAwarenessEnabled) || false;
+}
+
         // 加载角色发图模式
         const imageModeSelect = document.getElementById('charImageMode');
         if (imageModeSelect) {
@@ -3237,6 +3509,8 @@ function loadCharacterInfo(chatId) {
     updateArchiveCount();
     renderWorldbookCount();
 }
+
+
       // 同步上下文参考的滑动条和输入框
 function syncContextRounds(source) {
     const slider = document.getElementById('contextRoundsSlider');
@@ -3288,10 +3562,13 @@ function saveCharacterInfo() {
            linkedWorldbooks: characterInfoData?.linkedWorldbooks || [],
 
              htmlPluginEnabled: document.getElementById('htmlPluginCheckbox')?.checked === true,
+             
             contextRounds: parseInt(document.getElementById('contextRoundsInput').value) || 30,
              autoSummaryEnabled: document.getElementById('autoSummaryCheckbox')?.checked || false,
     autoSummaryThreshold: parseInt(document.getElementById('autoSummaryThresholdInput')?.value) || 50,
      imageMode: document.getElementById('charImageMode')?.value || 'text',
+     // 时间感知：保存开关状态
+timeAwarenessEnabled: document.getElementById('timeAwarenessCheckbox')?.checked === true,
         };
         
         // 3. 保存回数据库
@@ -6054,7 +6331,7 @@ async function runAutoPublishOnce(opts) {
 
         if (generatedMoments.length === 0) {
             if (opts && opts.manual) {
-                alert('本次未生成成功的动态（接口返回空或解析失败）');
+                //alert('本次未生成成功的动态（接口返回空或解析失败）');
             }
             return;
         }
@@ -6841,6 +7118,8 @@ async function callSubApiGenerateMoment(params) {
 
     console.log('[moments] POST', url, { model, hasKey: !!apiKey, promptLen: String(prompt || '').length });
 
+  
+
     const resp = await fetch(url, {
         method: 'POST',
         headers: {
@@ -6852,11 +7131,11 @@ async function callSubApiGenerateMoment(params) {
 
     console.log('[moments] status:', resp.status);
 
-    if (!resp.ok) {
-        const t = await resp.text().catch(() => '');
-        console.error('SubAPI error:', resp.status, t);
-        return null;
-    }
+if (!resp.ok) {
+    const t = await resp.text().catch(() => '');
+    alert('[调试] API报错\nHTTP: ' + resp.status + '\n返回: ' + (t || '').slice(0, 200));
+    return null;
+}
 
     const data = await resp.json();
 
@@ -6866,7 +7145,10 @@ async function callSubApiGenerateMoment(params) {
 
     console.log('[moments] raw:', raw);
 
-    if (!raw) return null;
+    if (!raw) {
+  
+    return null;
+}
 
     // 预检：如果AI返回的是明显的拒绝文本，直接跳过，不尝试解析
     const rawCheck = String(raw).trim();
@@ -9631,6 +9913,8 @@ function runAvatarMigrationOnce() {
         console.warn('runAvatarMigrationOnce failed:', e);
     }
 }
+
+
 
 // 初始化，
         initDB();
