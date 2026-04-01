@@ -12783,27 +12783,14 @@ async function endOfflineDate() {
     // ✅ 新增：隐藏总结提示
     hideDateSummarizing();
     
-    if (summary) {
-        await saveDateSummaryToMemory(summary);
-       // ★★★ 新增：同时保存到线下约会记忆（供线上聊天时自动提起）★★★
-        loadFromDB('offlineDateMemory', (data) => {
-            const all = data || {};
-            if (!all[currentChatId]) all[currentChatId] = [];
-            all[currentChatId].unshift({
-                time: new Date().toLocaleString('zh-CN'),
-                summary: summary
-            });
-            // 只保留最近 5 次
-            all[currentChatId] = all[currentChatId].slice(0, 1);
-            saveToDB('offlineDateMemory', all);
-        });
-        
-        alert("✨ 约会已圆满结束！TA 已将美好回忆写进日记里~");
-    }else {
-        const manualConfirm = confirm("总结生成失败，是否继续结束约会？");
-        if (!manualConfirm) return;
-        alert("✨ 约会已结束，但未能保存总结到记忆。");
-    }
+if (summary) {
+    await saveDateSummaryToMemory(summary);
+    alert("✨ 约会已圆满结束！TA 已将美好回忆写进日记里~");
+}else {
+    const manualConfirm = confirm("总结生成失败，是否继续结束约会？");
+    if (!manualConfirm) return;
+    alert("✨ 约会已结束，但未能保存总结到记忆。");
+}
     
     // 2. 🌟 核心修复：物理清空屏幕上的聊天记录！
     const chatArea = document.getElementById('offlineChatArea');
@@ -13303,86 +13290,89 @@ function initOfflineCss() {
     if (!cssInput) return;
 
     const defaultInsStyle = `/* ==========================================
-   📱 线下模式：全局视觉规范 (大留白极简版)
+   📱 线下模式：全局视觉规范
    ========================================== */
 
+/* 1. 基础设置：小手机背景与小说字体基调 */
 .offline-chat-container {
-    background-color: #FAFAFA; 
+    background-color: #FAFAFA;
     color: #2C3E50;
-    font-family: 'Palatino Linotype', 'Songti SC', serif; 
-    /* 🌟 核心修改：左右边距拉大到了 8vw (屏幕宽度的8%)，呼吸感拉满 */
-    padding: 40px 8vw; 
-    line-height: 2;    
-    text-align: center; 
+    font-family: 'Palatino Linotype', 'Book Antiqua', 'Songti SC', 'SimSun', serif;
+    padding: 20px;
+    line-height: 1.8;
+    font-size: 16px;
 }
 
-/* 🌟 核心修改：直接隐藏多余的角色名字，保持画面绝对干净 */
-.character-name {
-    display: none; 
-}
-
+/* 2. 旁白与动作描述 */
 .narrative {
-    text-indent: 0; 
+    text-indent: 0;
     color: #5D6D7E;
-    margin: 45px auto; 
+    margin-bottom: 20px;
+    text-align: justify;
     font-style: italic;
-    font-size: 15px;
-    max-width: 95%; /* 配合外部的大边距，这里可以稍微放宽 */
-    text-align: center;
 }
 
-.offline-env-card {
-    text-align: center;
-    color: #999;
-    font-size: 11px;
-    margin: 50px auto; 
-    letter-spacing: 3px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 12px;
-    width: 60%;
+/* 3. 对话容器与人物名称 */
+.dialogue-section {
+    margin-bottom: 24px;
+}
+.character-name {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #888888;
+    margin-bottom: 6px;
+    display: block;
+    margin-left: 2px;
 }
 
-.dialogue-section { 
-    margin: 40px 0; 
-    text-align: center;
-}
-
+/* 4. 正常的实线对话卡片 */
 .dialogue-content {
     background-color: #FFFFFF;
-    border: 1px solid #F0F0F0;
-    padding: 18px 25px; /* 卡片内部的边距也稍微加大一点 */
-    border-radius: 12px; 
-    color: #333;
-    display: inline-block; 
-    max-width: 90%;
-    text-align: left; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    border: 1px solid #EAEAEA; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    padding: 12px 16px;
+    border-radius: 8px; 
+    margin: 0;
+    color: #333333;
 }
 
+/* 5. 云朵OS */
 .thought-cloud {
     background-color: #F7F9FA;
     border-radius: 20px; 
     border: 1px solid #EFEFEF;
-    padding: 15px 25px; 
-    margin: 45px auto; 
-    color: #888; 
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+    padding: 12px 18px; 
+    margin: 15px auto;
+    color: #888888; 
     font-style: italic; 
     font-size: 15px; 
     text-align: center;
     width: fit-content;
-    max-width: 90%;
-    display: block;
+    max-width: 85%;
+}
+
+/* 环境卡片 */
+.offline-env-card {
+    text-align: center;
+    color: #999;
+    font-size: 11px;
+    margin: 20px auto; 
+    letter-spacing: 2px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
 
 /* ⏳ AI 回复中的呼吸等待动画 */
 #offlineTypingIndicator {
     text-align: center;
-    color: #AAB7B8; /* 温柔的高级灰 */
+    color: #AAB7B8;
     font-style: italic;
     font-size: 13px;
     margin: 40px auto;
     letter-spacing: 2px;
-    animation: offline-breathe 1.5s infinite ease-in-out; /* 丝滑的呼吸效果 */
+    animation: offline-breathe 1.5s infinite ease-in-out;
 }
 
 @keyframes offline-breathe {
@@ -13390,14 +13380,12 @@ function initOfflineCss() {
     50% { opacity: 1; }
 }
 
-
 .offline-input-area { 
     background: #FFFFFF; 
     padding: 20px; 
     border-top: 1px solid #f0f0f0; 
 }`;
 
-    // ... 下面的逻辑保持不变 ...
     let savedCss = localStorage.getItem('offline_custom_css');
     if (!savedCss || savedCss.trim() === "") {
         savedCss = defaultInsStyle;
