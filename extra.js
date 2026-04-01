@@ -4872,7 +4872,7 @@ async function receiveAIReply() {
         
         // 2. 并行获取所有数据
         // ★★★ 修复：这里加入了 momentsContext (朋友圈数据) 的获取 ★★★
-       const [characterInfo, memoryContext, emojiList, momentsContext, offlineDateMemory] = await Promise.all([
+const [characterInfo, memoryContext, emojiList, momentsContext, offlineDateMemory] = await Promise.all([
     new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
     getMemoryContext(),
     new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : []))),
@@ -4882,7 +4882,17 @@ async function receiveAIReply() {
     // ★ 新增：读取最近一次线下约会记忆
     new Promise(resolve => loadFromDB('offlineDateMemory', data => {
         const list = data && data[currentChatId] ? data[currentChatId] : [];
-        resolve(list.length > 0 ? list[0] : null);
+        const memory = list.length > 0 ? list[0] : null;
+        
+        // ★★★ 新增：读取完立即清空 ★★★
+        if (memory) {
+            const all = data || {};
+            all[currentChatId] = [];  // 清空这个角色的线下记忆
+            saveToDB('offlineDateMemory', all);
+            console.log('✅ 线下约会记忆已注入并清空');
+        }
+        
+        resolve(memory);
     }))
 ]);
 
@@ -5251,7 +5261,7 @@ let systemPrompt = `
 你的每次回复必须严格遵循以下格式，违反任何一条视为失败：
 1. 使用 ||| 分隔每条气泡
 2. 每条气泡 10-40 字，必须有完整标点
-3. 输出 8-12 条气泡
+3. 输出 5条左右条气泡
 4. **全程禁止换行**，必须是单行文本
 5. 最后附上 [心声更新]...[/心声更新]
 【正确示例】
