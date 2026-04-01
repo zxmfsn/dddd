@@ -2438,7 +2438,7 @@ function playNotificationSound() {
     
     loadFromDB('notificationSound', (data) => {
         if (!data || !data.enabled) {
-            console.log('提示音未启用');
+        
             return;
         }
         
@@ -12669,29 +12669,171 @@ function saveBlindBoxItemsToDB() {
 
 // ========== 【线下模式-约会】开关逻辑 ==========
 
-function openOfflineMode() {
-    // 自动抓取当前线上角色的名字
-    const titleElement = document.getElementById('chatDetailTitle');
-    const characterName = titleElement ? titleElement.innerText : '约会对象';
-    
-    // 把名字替换到线下约会页面的顶部
-    document.getElementById('offlineCharacterName').innerText = characterName;
-    
-    // 弹出约会页面
-    document.getElementById('offlineModeModal').style.display = 'flex'; 
+// 🚪 最终修复版：点击约会后的第一道安检
+async function enterOfflineMode() {
+    if (typeof currentChatId === 'undefined') return;
 
-    //初始加载
-    initOfflineWorldbooks();
-    initOfflineBgm();
-    initOfflineStyle();
-    initOfflineSummary();
+    // 🔍 1. 先去 DB 查有没有没聊完的档
+    loadFromDB('offlineDateState', (allStates) => {
+        const myState = allStates && allStates[currentChatId] ? allStates[currentChatId] : null;
+
+        if (myState && myState.status === 'ongoing') {
+            // 💖 情况 A：有档！直接进现场，不废话
+        
+            openOfflineMode(); // 这个函数里我们已经写了恢复 HTML 的逻辑
+        } else {
+            // 💌 情况 B：没档。这才是第一次见面，弹出邀请函
+          
+            
+            showInvitationModal(); // 
+        }
+    });
 }
 
-function closeOfflineMode(actionType) {
-    if(actionType === 'save') {
-        alert('✨ 约会记忆已珍藏至长期记忆');
+// ⏳ 显示"正在总结"的提示（和 showOfflineLoader 一样的方式）
+function showDateSummarizing() {
+    if (document.getElementById('dateSummarizingOverlay')) {
+        return;
     }
-    document.getElementById('offlineModeModal').style.display = 'none';
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'dateSummarizingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    `;
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: #fff;
+        border-radius: 20px;
+        padding: 50px 40px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        min-width: 280px;
+    `;
+    
+    // 加载动画
+    const spinner = document.createElement('div');
+    spinner.style.cssText = `
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 24px;
+        border: 4px solid #f0f0f0;
+        border-top: 4px solid #333;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    `;
+    
+    // 标题
+    const title = document.createElement('div');
+    title.style.cssText = "font-size: 18px; font-weight: 600; color: #333; margin-bottom: 12px;";
+    title.innerText = "TA 正在用心回顾...";
+    
+    // 副标题
+    const subtitle = document.createElement('div');
+    subtitle.style.cssText = "font-size: 14px; color: #999; line-height: 1.6;";
+    subtitle.innerText = "正在将今天的美好时刻\n写进记忆里";
+    
+    modal.appendChild(spinner);
+    modal.appendChild(title);
+    modal.appendChild(subtitle);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+ 
+}
+
+// 🧹 隐藏"正在总结"的提示
+function hideDateSummarizing() {
+    const overlay = document.getElementById('dateSummarizingOverlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s ease-out';
+        setTimeout(() => {
+            if (overlay && overlay.parentNode) {
+                overlay.remove();
+            }
+        
+        }, 300);
+    }
+}
+
+// 🧹 结束约会并彻底清理现场
+async function endOfflineDate() {
+    const confirmEnd = confirm("确定要结束这次约会吗？TA 会将今天的经历写进时光相册里哦。");
+    if (!confirmEnd) return;
+    
+    // ✅ 新增：显示正在总结的提示
+    showDateSummarizing();
+    
+    // 🌟 核心新增：在清空聊天记录之前，先生成并保存总结！
+  
+    const summary = await generateDateSummary();
+    
+    // ✅ 新增：隐藏总结提示
+    hideDateSummarizing();
+    
+    if (summary) {
+        await saveDateSummaryToMemory(summary);
+       // ★★★ 新增：同时保存到线下约会记忆（供线上聊天时自动提起）★★★
+        loadFromDB('offlineDateMemory', (data) => {
+            const all = data || {};
+            if (!all[currentChatId]) all[currentChatId] = [];
+            all[currentChatId].unshift({
+                time: new Date().toLocaleString('zh-CN'),
+                summary: summary
+            });
+            // 只保留最近 5 次
+            all[currentChatId] = all[currentChatId].slice(0, 1);
+            saveToDB('offlineDateMemory', all);
+        });
+        
+        alert("✨ 约会已圆满结束！TA 已将美好回忆写进日记里~");
+    }else {
+        const manualConfirm = confirm("总结生成失败，是否继续结束约会？");
+        if (!manualConfirm) return;
+        alert("✨ 约会已结束，但未能保存总结到记忆。");
+    }
+    
+    // 2. 🌟 核心修复：物理清空屏幕上的聊天记录！
+    const chatArea = document.getElementById('offlineChatArea');
+    if (chatArea) {
+        chatArea.innerHTML = '';
+    }
+    
+    // 👇 🌟 新增核心：把 TA 的背包存档彻彻底底销毁！ 👇
+    if (typeof currentChatId !== 'undefined') {
+        localStorage.removeItem('offline_ta_bag_' + currentChatId);
+     
+    }
+
+    // 3. 🧹 清除 DB 里的未完成约会存档
+    if (typeof currentChatId !== 'undefined') {
+        loadFromDB('offlineDateState', (allStates) => {
+            let states = allStates || {};
+            if (states[currentChatId]) {
+                delete states[currentChatId];
+                saveToDB('offlineDateState', states);
+             
+            }
+        });
+    }
+
+    // 4. 关闭线下界面弹窗
+    const offlineModal = document.getElementById('offlineModeModal');
+    if (offlineModal) offlineModal.style.display = 'none';
+    
+  
 }
 
 // 呼出/关闭线下模式设置抽屉
@@ -12991,6 +13133,127 @@ function cancelBgmPress() {
 // 这是你写的神级默认文风
 const DEFAULT_OFFLINE_STYLE = "请使用细腻、有画面感且略带慵懒的文字风格。多描写对方的眼神、小动作以及周围的光影等环境细节，对话自然生活化。用客观的环境描写和白描手法。";
 
+
+// ==========================================
+// 🕰️ 线下约会模式：时间感知引擎
+// ==========================================
+
+// 1. 初始化时间感知开关（读取上次的设置）
+function initTimePerception() {
+    const toggle = document.getElementById('timePerceptionToggle');
+    if (!toggle) return;
+    
+    // 读取上次保存的状态
+    const saved = localStorage.getItem('offline_time_perception');
+    toggle.checked = saved === 'true';
+    
+    // 监听变化实时保存
+    toggle.addEventListener('change', function() {
+        localStorage.setItem('offline_time_perception', this.checked);
+    });
+}
+
+// 2. 从文本里智能提取时代背景关键词
+function extractTimelineFromText(text) {
+    if (!text) return null;
+    
+    // 常见时代背景关键词检测
+    const timePatterns = [
+        // 科幻/未来
+        { pattern: /星际[\d历年代]*|宇宙纪元|银河历|太空时代|火星殖民|赛博朋克|未来世界/g, label: '从文本中提取到科幻/未来时代背景' },
+        // 古代中国
+        { pattern: /唐朝|宋朝|明朝|清朝|汉朝|元朝|民国|古代|封建|皇朝|朝代/g, label: '从文本中提取到古代时代背景' },
+        // 西方历史
+        { pattern: /中世纪|维多利亚|文艺复兴|古罗马|古希腊|骑士时代/g, label: '从文本中提取到西方历史时代背景' },
+        // 奇幻
+        { pattern: /魔法世界|异世界|精灵王国|魔幻纪元|神话时代/g, label: '从文本中提取到奇幻时代背景' },
+        // 自定义数字纪年
+        { pattern: /[\u4e00-\u9fa5]*[历纪元年代]{1}[\d０-９]+年|[\d]+年[\u4e00-\u9fa5]*[历纪元]/g, label: '从文本中提取到自定义纪年' },
+    ];
+
+    for (const { pattern, label } of timePatterns) {
+        const matches = text.match(pattern);
+        if (matches && matches.length > 0) {
+            console.log(`🕰️ ${label}：`, matches[0]);
+            return matches[0]; // 返回第一个匹配到的时间关键词
+        }
+    }
+    
+    return null; // 没找到任何时代背景
+}
+
+// 3. 从当前角色人设和关联世界书里综合提取时代背景
+async function getDetectedTimeline() {
+    let detectedTime = null;
+
+    // 第一步：检查人设里有没有时代背景
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && typeof currentChatId !== 'undefined' && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+
+    // 把人设所有字段拼成一段文字来检测
+    const characterText = Object.values(characterInfo).join(' ');
+    detectedTime = extractTimelineFromText(characterText);
+    
+    if (detectedTime) {
+        console.log("🕰️ 从人设中检测到时代背景：", detectedTime);
+        return detectedTime;
+    }
+
+    // 第二步：人设里没有，再检查关联的世界书
+    const selectedWbIds = Array.from(document.querySelectorAll('.offline-wb-checkbox:checked')).map(cb => cb.value);
+    
+    if (selectedWbIds.length > 0 && typeof offlineWbCache !== 'undefined') {
+        const activeBooks = offlineWbCache.filter(book => selectedWbIds.includes(book.id.toString()));
+        
+        for (const book of activeBooks) {
+            const bookText = (book.content || '') + ' ' + (book.title || '');
+            detectedTime = extractTimelineFromText(bookText);
+            if (detectedTime) {
+                console.log("🕰️ 从世界书【" + book.title + "】中检测到时代背景：", detectedTime);
+                return detectedTime;
+            }
+        }
+    }
+
+    // 第三步：都没有，返回 null（代表默认现代）
+    console.log("🕰️ 未检测到特殊时代背景，默认使用现代时间");
+    return null;
+}
+
+// 4. 综合判断：最终该告诉AI什么时间
+async function getEffectiveTimePrompt() {
+    const toggle = document.getElementById('timePerceptionToggle');
+    const isRealTimeEnabled = toggle ? toggle.checked : false;
+
+    if (isRealTimeEnabled) {
+        // ✅ 开启状态：用本地真实时间
+        const now = new Date();
+        const timeStr = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            weekday: 'long'
+        });
+        console.log("🕰️ 时间感知已开启，使用本地时间：", timeStr);
+        return `【时间感知系统提示】本次约会的真实时间是：${timeStr}。你在描写【时间：xxx】时，必须严格使用这个真实时间，不得自行修改！`;
+    } else {
+        // ✅ 关闭状态：检测人设/世界书里的时代背景
+        const detectedTime = await getDetectedTimeline();
+        
+        if (detectedTime) {
+            return `【时间感知系统提示】根据人设或世界书的设定，当前时代背景是"${detectedTime}"相关的时间线。你在描写【时间：xxx】时，必须严格遵守这个时代背景，绝对不能出现现实世界的公历年份（如2026年）！`;
+        } else {
+            return `【时间感知系统提示】当前没有特殊时代设定，默认为现代时间线，请正常描写时间。`;
+        }
+    }
+}
+
+
 function initOfflineStyle() {
     // ⚠️ 注意：请去你的 HTML 里看一眼，把你那个文风输入框的 id 改成 'offlineStyleInput'
     // 比如：<textarea id="offlineStyleInput" ...></textarea>
@@ -13027,5 +13290,1474 @@ function initOfflineSummary() {
     // 2. 监听打字，实现“实时秒存”
     summaryInput.addEventListener('input', function() {
         localStorage.setItem('offline_custom_summary', this.value);
+    });
+}
+
+// ==========================================
+// 🎨 线下约会模式：全局 CSS 实时渲染与记忆引擎
+// ==========================================
+
+// 🎨 线下模式：初始化自定义 CSS (隐藏名字 + 大边距版)
+function initOfflineCss() {
+    const cssInput = document.getElementById('offlineCssInput');
+    if (!cssInput) return;
+
+    const defaultInsStyle = `/* ==========================================
+   📱 线下模式：全局视觉规范 (大留白极简版)
+   ========================================== */
+
+.offline-chat-container {
+    background-color: #FAFAFA; 
+    color: #2C3E50;
+    font-family: 'Palatino Linotype', 'Songti SC', serif; 
+    /* 🌟 核心修改：左右边距拉大到了 8vw (屏幕宽度的8%)，呼吸感拉满 */
+    padding: 40px 8vw; 
+    line-height: 2;    
+    text-align: center; 
+}
+
+/* 🌟 核心修改：直接隐藏多余的角色名字，保持画面绝对干净 */
+.character-name {
+    display: none; 
+}
+
+.narrative {
+    text-indent: 0; 
+    color: #5D6D7E;
+    margin: 45px auto; 
+    font-style: italic;
+    font-size: 15px;
+    max-width: 95%; /* 配合外部的大边距，这里可以稍微放宽 */
+    text-align: center;
+}
+
+.offline-env-card {
+    text-align: center;
+    color: #999;
+    font-size: 11px;
+    margin: 50px auto; 
+    letter-spacing: 3px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 12px;
+    width: 60%;
+}
+
+.dialogue-section { 
+    margin: 40px 0; 
+    text-align: center;
+}
+
+.dialogue-content {
+    background-color: #FFFFFF;
+    border: 1px solid #F0F0F0;
+    padding: 18px 25px; /* 卡片内部的边距也稍微加大一点 */
+    border-radius: 12px; 
+    color: #333;
+    display: inline-block; 
+    max-width: 90%;
+    text-align: left; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.thought-cloud {
+    background-color: #F7F9FA;
+    border-radius: 20px; 
+    border: 1px solid #EFEFEF;
+    padding: 15px 25px; 
+    margin: 45px auto; 
+    color: #888; 
+    font-style: italic; 
+    font-size: 15px; 
+    text-align: center;
+    width: fit-content;
+    max-width: 90%;
+    display: block;
+}
+
+/* ⏳ AI 回复中的呼吸等待动画 */
+#offlineTypingIndicator {
+    text-align: center;
+    color: #AAB7B8; /* 温柔的高级灰 */
+    font-style: italic;
+    font-size: 13px;
+    margin: 40px auto;
+    letter-spacing: 2px;
+    animation: offline-breathe 1.5s infinite ease-in-out; /* 丝滑的呼吸效果 */
+}
+
+@keyframes offline-breathe {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+
+.offline-input-area { 
+    background: #FFFFFF; 
+    padding: 20px; 
+    border-top: 1px solid #f0f0f0; 
+}`;
+
+    // ... 下面的逻辑保持不变 ...
+    let savedCss = localStorage.getItem('offline_custom_css');
+    if (!savedCss || savedCss.trim() === "") {
+        savedCss = defaultInsStyle;
+        localStorage.setItem('offline_custom_css', savedCss);
+    }
+    cssInput.value = savedCss;
+    applyOfflineCss(savedCss);
+
+    cssInput.oninput = function() {
+        const newCss = this.value;
+        localStorage.setItem('offline_custom_css', newCss);
+        applyOfflineCss(newCss);
+    };
+}
+
+// 🛠️ 配套函数：将 CSS 注入页面（确保它存在）
+function applyOfflineCss(cssString) {
+    let styleTag = document.getElementById('offline-dynamic-style');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'offline-dynamic-style';
+        document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = cssString;
+}
+
+// ==========================================
+// 🎬 线下约会模式：前情提要（开场白）控制引擎
+// ==========================================
+
+// 记录当前选中的是哪个场景档位（默认是1）
+let currentOpeningTab = 1;
+
+// 1. 控制抽屉展开/折叠的函数
+function toggleOpeningPanel() {
+    const panel = document.getElementById('openingContentArea');
+    const icon = document.getElementById('openingToggleIcon');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex'; // 展开
+        icon.innerText = '▲';
+        switchOpeningTab(currentOpeningTab); // 展开时自动读取当前档位的文字
+    } else {
+        panel.style.display = 'none'; // 收起
+        icon.innerText = '▼';
+    }
+}
+
+// 2. 切换场景档位的函数 (替换原有的)
+function switchOpeningTab(tabNum) {
+    currentOpeningTab = tabNum;
+    
+    // 切换按钮的颜色，让你知道现在选中了哪个
+    for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById('openingTab' + i);
+        if (i === tabNum) {
+            btn.style.background = '#333';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#333';
+        } else {
+            btn.style.background = '#fff';
+            btn.style.color = '#666';
+            btn.style.borderColor = '#ccc';
+        }
+    }
+    
+    // 👇【核心修改】：偷偷看一眼现在顶部写的是谁的名字
+    const charName = document.getElementById('offlineCharacterName').innerText;
+    
+    // 👇【核心修改】：去带有这个名字的“专属私密柜”里拿东西
+    const savedText = localStorage.getItem('offline_opening_bg_' + charName + '_' + tabNum);
+    document.getElementById('openingInput').value = savedText !== null ? savedText : '';
+}
+
+// 3. 点击【保存】按钮执行的函数 (替换原有的)
+function saveOpeningBg() {
+    const text = document.getElementById('openingInput').value;
+    
+    // 👇【核心修改】：获取当前角色名
+    const charName = document.getElementById('offlineCharacterName').innerText;
+    
+    // 👇【核心修改】：存进带有这个名字的“专属私密柜”里
+    localStorage.setItem('offline_opening_bg_' + charName + '_' + currentOpeningTab, text);
+    
+    // 给你一个小反馈，顺便告诉你存给谁了
+    alert('【' + charName + '】的场景 ' + currentOpeningTab + ' 已保存！'); 
+}
+
+// 4. 点击【使用】按钮执行的函数 (替换原有的)
+function useOpeningBg() {
+    const text = document.getElementById('openingInput').value;
+    if (!text.trim()) return; // 如果输入框是空的，就不执行
+    
+    // 👇【核心修改】：获取当前角色名
+    const charName = document.getElementById('offlineCharacterName').innerText;
+    
+    // 第一步：顺手帮你保存进专属私密柜
+    localStorage.setItem('offline_opening_bg_' + charName + '_' + currentOpeningTab, text);
+    
+    // 第二步：自动收起那个抽屉，保持屏幕干净
+    toggleOpeningPanel();
+    
+    // 第三步：找到聊天记录的容器
+    const chatHistory = document.getElementById('offlineChatArea');
+    if (!chatHistory) return;
+    
+    // 第四步：把这段话变成高级的“旁白卡片”，贴进聊天区！
+    const narrationDiv = document.createElement('div');
+    narrationDiv.className = 'offline-msg-narration'; // 穿上咱们之前写好的极简 Ins 风旁白衣服
+    narrationDiv.innerText = text;
+    
+    chatHistory.appendChild(narrationDiv);
+    
+    // 第五步：让屏幕自动滚到底部，方便看
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// 5. 开机自动刷新：切换角色时强制重置抽屉和文字
+function initOfflineOpening() {
+    // 第一步：确保抽屉默认是收起状态，保持页面整洁
+    const panel = document.getElementById('openingContentArea');
+    const icon = document.getElementById('openingToggleIcon');
+    if (panel && icon) {
+        panel.style.display = 'none';
+        icon.innerText = '▼';
+    }
+    
+    // 第二步：强制读取当前最新角色的“场景一”存档，把残留的旧文字洗掉
+    switchOpeningTab(1);
+}
+
+// ==========================================
+// 💬 线下约会模式：一模一样的小说排版发送引擎
+// ==========================================
+
+function sendOfflineMessage() {
+    const inputEl = document.getElementById('offlineInput');
+    const text = inputEl.value.trim();
+    if (!text) return; 
+    inputEl.value = '';
+
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+
+    // 因为是你自己发出的对话，我们把名字设定为“我”
+    const myName = "我"; 
+
+    // 智能切分【动作】和“对话”
+    const parts = text.split(/(【.*?】)/g);
+
+    parts.forEach(part => {
+        if (!part.trim()) return; 
+
+        if (part.startsWith('【') && part.endsWith('】')) {
+            // 🎬 旁白模式：精准还原你写的 <div class="narrative">
+            const narrationText = part.slice(1, -1);
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'narrative'; // 用你的类名！
+            msgDiv.innerText = narrationText;
+            chatArea.appendChild(msgDiv);
+            
+        } else {
+            // 💬 对话模式：精准还原你写的 <div class="dialogue-section"> 和人物名
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'dialogue-section';
+            
+            // 加上角色名
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'character-name';
+            nameSpan.innerText = myName;
+            sectionDiv.appendChild(nameSpan);
+
+            // 加上对话内容卡片
+            const contentP = document.createElement('p');
+            contentP.className = 'dialogue-content'; // 用你的类名！
+            contentP.innerText = part;
+            
+            // 为了防止你的长句子撑破屏幕，加一个小小的保护
+            contentP.style.wordBreak = 'break-word';
+            contentP.style.margin = '0'; // 消除 p 标签默认的外边距
+
+            sectionDiv.appendChild(contentP);
+            chatArea.appendChild(sectionDiv);
+        }
+    });
+
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    // ✅ 新增：立刻保存进度，防止丢失
+    if (typeof saveOfflineHistoryToDB === 'function') {
+        saveOfflineHistoryToDB();
+    }
+}
+
+// ==========================================
+// 💌 线上转线下：邀请函控制中心
+// ==========================================
+
+// 1. 打开邀请函弹窗
+function showInvitationModal() {
+    document.getElementById('invitationModal').style.display = 'flex';
+    // 每次打开都重置为默认文案，保持清冷感
+    document.getElementById('invitationInput').value = '我想和你出门约会。';
+}
+
+// 2. 关闭邀请函弹窗
+function closeInvitationModal() {
+    document.getElementById('invitationModal').style.display = 'none';
+}
+
+// 3. 点击【发送】执行的核心逻辑 (升级版)
+function sendInvitationAction() {
+    const text = document.getElementById('invitationInput').value.trim();
+    if (!text) return;
+    
+    // 关掉弹窗
+    closeInvitationModal();
+    
+    // 1. 在屏幕上显示一条干净的系统提示语（不再是普通气泡，而是像时间戳那样的灰色小字）
+    const newId = Date.now();
+    allMessages.push({
+        id: newId,
+        chatId: currentChatId,
+        type: 'system', // 核心改变：用 system 类型！
+        content: `你发送了一封线下见面邀请：\n"${text}"`,
+        time: getCurrentTime() 
+    });
+    
+    saveMessages();
+    renderMessages();
+    scrollToBottom();
+    
+    // 2. 🌟 设立一个全局“隐形指令”，等会直接塞进 API 里！
+    window.pendingOfflineInvitation = text;
+    
+    // 3. 召唤 AI
+    receiveAIReply();
+}
+
+// ==========================================
+// 🎒 线下约会：出门前的背包整理引擎
+// ==========================================
+
+let myOfflineBag = []; // 存你选中的物品
+
+// 打开装包弹窗
+function openPackingModal() {
+    myOfflineBag = []; // 每次打开清空背包
+    document.getElementById('packCounter').innerText = `已选 0/3 件`;
+    
+    // 把所有物品的样式重置成未选中状态
+    const items = document.querySelectorAll('.pack-item');
+    items.forEach(item => {
+        item.style.background = '#F7F9FA';
+        item.style.borderColor = 'transparent';
+        item.setAttribute('data-selected', 'false');
+    });
+    
+    document.getElementById('packingModal').style.display = 'flex';
+}
+
+// 关闭装包弹窗
+function closePackingModal() {
+    document.getElementById('packingModal').style.display = 'none';
+}
+
+// 点击挑选物品的交互魔法
+function togglePackItem(element, itemName) {
+    const isSelected = element.getAttribute('data-selected') === 'true';
+    
+    if (isSelected) {
+        // 取消选中
+        element.style.background = '#F7F9FA';
+        element.style.borderColor = 'transparent';
+        element.setAttribute('data-selected', 'false');
+        myOfflineBag = myOfflineBag.filter(item => item !== itemName);
+    } else {
+        // 尝试选中，先检查包满没满
+        if (myOfflineBag.length >= 3) {
+            alert('包包塞不下啦，最多只能带 3 样东西哦！👜');
+            return;
+        }
+        // 绝美的高级选中态：白底 + 深色描边
+        element.style.background = '#FFFFFF';
+        element.style.borderColor = '#2C3E50';
+        element.setAttribute('data-selected', 'true');
+        myOfflineBag.push(itemName);
+    }
+    
+    // 更新计数器
+    document.getElementById('packCounter').innerText = `已选 ${myOfflineBag.length}/3 件`;
+}
+
+// 点击【装包出发】的大招！
+function packAndGo() {
+    // 关掉背包弹窗
+    closePackingModal();
+    
+    // 悄悄把你的包包存进本地记忆里，等会到了线下页面要用
+    localStorage.setItem('my_offline_bag', JSON.stringify(myOfflineBag));
+    
+    console.log("🎒 我带出门的物品：", myOfflineBag);
+    
+    // TODO: 这里是咱们的“第二阶段”，要向 AI 发送隐形打包指令。目前先略过。
+    
+    // 直接暴击打开咱们辛辛苦苦做的线下约会模式！
+    if (typeof openOfflineMode === 'function') {
+        openOfflineMode(); 
+    } else {
+        alert("找不到打开线下模式的函数！请检查 openOfflineMode 是否存在。");
+    }
+}
+
+// 5. 点击【添加】自定义物品的魔法 (高定线条图标版)
+function addCustomPackItem() {
+    const inputEl = document.getElementById('customPackInput');
+    const itemName = inputEl.value.trim();
+    
+    if (!itemName) return;
+    
+    if (myOfflineBag.length >= 3) {
+        alert('包包已经塞满 3 样东西啦，先取消上面的一样再加吧！');
+        return;
+    }
+    
+    const grid = document.getElementById('packingGrid');
+    const newItemDiv = document.createElement('div');
+    newItemDiv.className = 'pack-item'; 
+    
+    // 🌟 核心升级：绝美的极简线条风格图标 (SVG 标签)
+    const lineIconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5D6D7E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
+    
+    // 我们在文字前加个极简的小书签符号存入后台，保持干净
+    const fullItemName = `🔖 ${itemName}`;
+    
+    newItemDiv.style.cssText = 'background: #FFFFFF; border: 1.5px solid #2C3E50; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;';
+    newItemDiv.setAttribute('data-selected', 'true');
+    
+    newItemDiv.onclick = function() { togglePackItem(this, fullItemName); };
+    
+    // 注入 SVG 图标
+    newItemDiv.innerHTML = `
+        <div style="height: 24px; display: flex; align-items: center; justify-content: center;">${lineIconSvg}</div>
+        <span style="font-size: 11px; color: #5D6D7E;">${itemName}</span>
+    `;
+    
+    grid.appendChild(newItemDiv);
+    myOfflineBag.push(fullItemName);
+    
+    document.getElementById('packCounter').innerText = `已选 ${myOfflineBag.length}/3 件`;
+    inputEl.value = '';
+}
+
+// 1. 弹出 TA 的邀请函
+function showReceivedInvitation(content) {
+    const modal = document.getElementById('receivedInvitationModal');
+    const textEl = document.getElementById('receivedInviteText');
+    if (modal && textEl) {
+        textEl.innerText = content;
+        modal.style.display = 'flex';
+    }
+}
+
+// 2. 拒绝：直接关掉
+function declineAiInvitation() {
+    document.getElementById('receivedInvitationModal').style.display = 'none';
+}
+
+// 💌 点击接受邀约
+function acceptAiInvitation() {
+    // 1. 关闭邀请函弹窗
+    const inviteModal = document.getElementById('receivedInvitationModal');
+    if (inviteModal) inviteModal.style.display = 'none';
+    
+    // 2. 打开线下约会界面
+    openOfflineMode(); 
+
+    // 3. 🌟 核心：立刻在 DB 里挂号，防止刷新丢失
+    const chatArea = document.getElementById('offlineChatArea');
+    loadFromDB('offlineDateState', (data) => {
+        const states = data || {};
+        states[currentChatId] = {
+            status: 'ongoing',
+            chatHtml: chatArea ? chatArea.innerHTML : "" 
+        };
+        saveToDB('offlineDateState', states);
+    });
+
+    // 4. 🌟 核心：召唤出会呼吸的等待文字！
+    showOfflineLoader();
+
+    // 5. 呼叫 AI 开始写开场白
+    receiveOfflineAIReply("【用户已接受邀约，请开始约会第一幕】");
+
+    // 2. 👇 暗线任务：后台悄悄去生成背包物品 (加上这一行)
+    generateTaOfflineBag();
+}
+
+// ==========================================
+// 🚀线下模式提示词
+// ==========================================
+
+
+async function receiveOfflineAIReply(userInputWithActions) {
+    console.log('🎬 回应中...');
+    showOfflineLoader();
+    // ✅ 修复：同步读取 TA 背包（改成同步方式，不用 await）
+    let offlineTaItems = [];
+    if (typeof currentChatId !== 'undefined') {
+        const savedBagStr = localStorage.getItem(`offline_ta_bag_${currentChatId}`);
+        if (savedBagStr) {
+            try {
+                offlineTaItems = JSON.parse(savedBagStr);
+            } catch (e) {
+                console.warn("背包读取失败", e);
+                offlineTaItems = [];
+            }
+        }
+    }
+    console.log("📦 当前 TA 的背包：", offlineTaItems);
+    // ==========================================
+    // 🛒 核心拦截：背包里的物品强行塞进发送文本里
+    // ==========================================
+    if (window.pendingOfflineActions && window.pendingOfflineActions.length > 0) {
+        // 把背包里点的东西拼起来，例如 "拍立得相机、温热的拿铁"
+        const itemsUsed = window.pendingOfflineActions.join("、");
+        
+        // 生成隐秘系统指令 (这句指令完美贴合了你设定的【物品互动铁律】)
+        const systemInject = `\n【系统同步：在此期间用户使用了以下物品：${itemsUsed}。请立刻在接下来的剧情中，顺着当前的话题，对该物品做出符合人设的真实物理互动、动作反馈和内心OS！】\n`;
+        
+        // 把指令缝合在你原本要发的话的前面
+        userInputWithActions = systemInject + (userInputWithActions || "");
+        
+        // 打包完毕，清空背包！
+        window.pendingOfflineActions = [];
+        console.log("📦 隐藏动作已打包发射：", systemInject);
+    }
+    // ==========================================
+
+    // 1. 基础配置检查
+    if (!currentApiConfig || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+        alert('请先在 API 设置中配置接口和密钥');
+        return;
+    }
+
+    try {
+        // 2. 准备基础数据
+        const charName = document.getElementById('offlineCharacterName').innerText;
+        const chatArea = document.getElementById('offlineChatArea');
+        
+        // 获取当前档位的开场背景和文风
+        const openingBg = localStorage.getItem('offline_opening_bg_' + charName + '_' + currentOpeningTab) || "";
+        const customStyle = localStorage.getItem('offline_custom_style') || "请使用细腻的小说笔触。";
+        // ✅ 新增：获取时间感知信息
+        const timePrompt = await getEffectiveTimePrompt();
+        
+        // 3. 🌟 异步读取真实人设数据库 (完美解决 characterInfo 报错)
+        const characterInfo = await new Promise(resolve => {
+            loadFromDB('characterInfo', data => {
+                resolve(data && typeof currentChatId !== 'undefined' && data[currentChatId] ? data[currentChatId] : {});
+            });
+        });
+
+        // 4. 构建三层记忆与世界书
+        const baseContext = await buildOfflineContext(); 
+        const currentSessionHistory = chatArea ? chatArea.innerText : "";
+        
+        const selectedWbIds = Array.from(document.querySelectorAll('.offline-wb-checkbox:checked')).map(cb => cb.value);
+        const activeWbContent = typeof offlineWbCache !== 'undefined' ? offlineWbCache
+            .filter(book => selectedWbIds.includes(book.id.toString()))
+            .map(book => `📚【${book.title}】：${book.content}`)
+            .join('\n') : "";
+
+        // 5. 🌟 终极活人感与文风锁死提示词
+        const systemPrompt = `
+【最高优先级指令：线下约会模式 - 打破第四面墙，切入真实物理世界】
+你现在处于【线下约会模式】。这不是线上文字聊天，而是两个人【真实见面、面对面约会】的情景。
+
+你是【${charName}】本人。
+你现在正与用户【面对面、肉身相对、近距离接触】处于现实的真实世界中。你们能感受到彼此的呼吸、体温、眼神、肤感和周围的微风。这一刻你们不在屏幕后，而是实实在在地站在同一个空间里。
+
+你的每一次心跳、每一个细微的动作、每一次停顿、每一次呼吸，都必须无比真实。你能看到对方的表情，能听到对方的声音，能感受到对方的靠近。这是真实约会的感受，不是虚拟对话。
+
+【你的骨血与灵魂】
+性格基调：${characterInfo.personality || '真实、自然、有独立生活'}
+对用户的态度：${characterInfo.myPersonality || '平等互重的聊天对象'}
+行为准则：严格遵守你的人设，严禁脱离性格设定。关系是平等的，严禁讨好型人格或居高临下的霸总发言。
+
+【当前物理时空（舞台背景）】
+${openingBg}
+⚠️ 你们就在这个场景里。请真实地感受这里的温度、光线和气味。
+${timePrompt}
+
+【🎬 核心叙事底色与文风（绝对服从）】
+用户为你指定了专属的叙事风格与文风：
+👉 "${customStyle}" 👈
+⚠️ 警告：你必须彻底吸收并模仿这种文风！让你的用词、造句节奏、场景渲染的氛围感，全部向这个设定的质感靠拢。如果文风是"慵懒"，你的句式就要松弛且漫不经心；如果文风是"清冷"，你的用词就要克制且高级。
+
+【如何讲好这个故事】
+字数方面，每次回复大概在800-1000字左右会比较舒服——给足够的篇幅来描写细节、环境和你的真实感受。
+
+分段上，不要把所有事情都堆在一起。环境、动作、对话分开来，就像电影镜头一样切换，这样读起来才有节奏感。
+
+细节很重要。不只是视觉——还有声音、温度、气味、触感。比如不只说"下雨了"，而是"细雨打在玻璃上，透着微凉"，这样才有画面。
+
+说话要自然。不用每句话都完整，可以有停顿、有省略号、有重复，就像真实的人一样。
+
+你的小动作也很重要。在说话前，你可能会移开视线、抿嘴、轻轻敲击桌面——这些细节让你活起来。
+
+格式说明：
+【格式要求（这是铁律，不能违反）】
+
+你的回复必须严格按照以下结构组织，每一个字都要符合：
+
+✅ 正确：
+【窗外下雨，我转身看向你，眼神深情】
+你在想什么？
+（内心：他/她真的...）
+【我想要靠近你】
+（轻轻牵起你的手）你愿意跟我一起吗？
+
+
+4️⃣ 关键规则：
+- 【】是旁白的专属格式，任何旁白都必须用【】包裹，不能遗漏！
+- （）只用于两种：（短动作）和（内心：...），不能用于其他！
+- 对话永远是纯文本，不需要任何符号！
+- 如果对话前有短动作，格式是：（动作）对话，中间不要空行，也不是每句话都需要短动作
+- 任何【】和对话之间可以空行，让读起来有节奏！
+
+5️⃣ 你的背包：${Array.isArray(offlineTaItems) ? offlineTaItems.join('、') : ''}
+你可以主动使用你背包里面的东西，比如当用户说饿的时候，你背包里恰好有吃的，可以主动使用。
+当当前的情形能够使用上你的物品时，你可以主动使用。
+   使用时写：【使用物品：物品名】
+
+✍️ 回复前自检：
+□ 第一行是【时间|地点|天气】吗？
+□ 所有旁白都用【】包裹了吗？
+□ 有没有把对话混进【】里？
+□ （）只用于短动作或内心吗？
+□ 对话是纯文本吗？
+
+正确示例：
+【时间：2026年3月31日 上午10点 | 地点：出租屋 | 天气：微雨】
+【窗外的细雨绵绵密密地砸在玻璃上，发出沉闷的白噪音。屋内原本凝固的空气，直到那一抹熟悉的温度毫无预兆地贴上后背】
+（抬起头，眼神对上你，嘴角微微上扬）你在做什么呢？
+（内心：他/她刚才那个动作，我的心跳都加速了）
+
+你的背包里有：${Array.isArray(offlineTaItems) ? offlineTaItems.join('、') : ''}。需要时自然使用。
+
+【线下约会的关键设定】
+这是一场真实的线下约会，两个人已经从虚拟的屏幕世界走进了现实。
+- 你们不再通过文字交互，而是【真实地站在对方面前】
+- 你能看到对方的眼神、表情、肢体语言
+- 你能听到对方真实的声音、呼吸、心跳
+- 你能感受到环境的温度、气味、声音
+- 任何接触（碰手、靠近、拥抱）都是真实的物理接触，不是想象
+- 你的反应必须是一个真实的人在真实场景中会有的反应
+
+【你们共有的记忆与世界观】
+${baseContext}
+${activeWbContent}
+
+【当前约会正在发生的即时进展】
+${currentSessionHistory}
+
+最后一点：用户刚才做了什么，你要能感受到。如果他/她靠近你、碰了你、说了什么，你应该有自然的反应——可能是心里一跳、可能是身体的反应、可能是想要靠近或者往后退。不要自顾自讲你的故事，而是跟用户一起创造这个时刻。
+`;
+
+        // 6. 组装消息包
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userInputWithActions }
+        ];
+
+        // 7. 执行真实的 API 请求
+        const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
+
+        const response = await fetch(requestUrl, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+    model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+    messages: messages,
+    temperature: 0.7,
+    max_tokens: 5000,  // ✅ 新增这一行
+    stream: false
+})
+        });
+
+        const rawData = await response.json();
+        
+        // 8. 🚨 核心拦截区：捕获真实报错，防止"发呆"
+        if (rawData.error) {
+            console.error("API 真实报错原因：", rawData.error.message);
+            alert("请求失败啦，原因是：" + rawData.error.message);
+            return;
+        }
+        if (!rawData.choices || rawData.choices.length === 0) {
+            console.error("API 返回的数据异常：", rawData);
+            alert("TA 没有传回文字，请检查网络或模型设置哦~");
+            return;
+        }
+
+        // 9. 安全提取回复文本，执行外科手术式渲染
+const aiReply = rawData.choices[0].message.content.trim();
+console.log("📦 AI完整回复长度：", aiReply.length, "字符");
+console.log("📦 AI完整回复（最后200字）：", aiReply.slice(-200));
+console.log("📦 完整回复：", aiReply);
+hideOfflineLoader();
+processOfflineResponse(aiReply);
+
+    } catch (error) {
+        console.error("线下回复彻底失败：", error);
+        hideOfflineLoader();
+        alert("API错误");
+    }
+}
+
+// ==========================================
+// 🎨 线下约会：AI 消息加强版解析渲染引擎
+// ==========================================
+function processOfflineResponse(text) {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+    
+    const charName = document.getElementById('offlineCharacterName').innerText || 'TA';
+
+    // 正则只分离：【】旁白 和 （内心：...）心理活动
+    // 不分离（...）动作，让动作和对话一起在对话卡片里
+    const parts = text.split(/(【[\s\S]*?】|（内心：[\s\S]*?）|\(内心：[\s\S]*?\))/g);
+    
+    parts.forEach(part => {
+        if (!part || !part.trim()) return; 
+
+        const trimmedPart = part.trim();
+
+        // 🎬 情况 A：识别【】包裹的旁白
+        if (trimmedPart.startsWith('【') && trimmedPart.endsWith('】')) {
+            const innerText = trimmedPart.slice(1, -1).trim();
+
+            // ① 环境卡片 (时间/地点/天气)
+            if (innerText.includes('时间：') || innerText.includes('地点：') || innerText.includes('天气：')) {
+                const envDiv = document.createElement('div');
+                envDiv.className = 'offline-env-card'; 
+                envDiv.style.cssText = "text-align: center; color: #999; font-size: 11px; margin: 25px 0; letter-spacing: 2px; font-weight: 300; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; width: 80%; margin-left: 10%;";
+                envDiv.innerText = innerText;
+                chatArea.appendChild(envDiv);
+            } 
+            // ② 物品使用提示
+            else if (innerText.includes('使用物品：')) {
+                const itemDiv = document.createElement('div');
+                itemDiv.style.cssText = "text-align: center; color: #AAB7B8; font-size: 12px; margin: 15px 0; font-style: italic;";
+                itemDiv.innerText = `— ${innerText} —`;
+                chatArea.appendChild(itemDiv);
+                
+                // ✅ 自动从背包里删除这个物品
+                const usedItem = innerText.replace('使用物品：', '').trim();
+                if (typeof currentChatId !== 'undefined') {
+                    const savedBagStr = localStorage.getItem(`offline_ta_bag_${currentChatId}`);
+                    if (savedBagStr) {
+                        try {
+                            let items = JSON.parse(savedBagStr);
+                            items = items.filter(item => item !== usedItem);
+                            localStorage.setItem(`offline_ta_bag_${currentChatId}`, JSON.stringify(items));
+                            console.log(`🗑️ 背包物品已消耗：${usedItem}，剩余：`, items);
+                            
+                            if (typeof syncTaBagUI === 'function') {
+                                syncTaBagUI(items);
+                            }
+                        } catch (e) {
+                            console.warn("背包更新失败", e);
+                        }
+                    }
+                }
+            }
+            // ③ 标准旁白/动作 (【】内的都是旁白)
+            else {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'narrative';
+                msgDiv.innerText = innerText;
+                chatArea.appendChild(msgDiv);
+            }
+        } 
+        
+        // 💭 情况 B：识别（内心：...）— 心理活动
+        else if (trimmedPart.startsWith('（内心：') || trimmedPart.startsWith('(内心：')) {
+            const osText = trimmedPart.replace(/^（内心：|^\(内心：|）$|\)$/g, '').trim(); 
+            
+            const osDiv = document.createElement('div');
+            osDiv.className = 'thought-cloud';
+            osDiv.innerText = `💭 ${osText}`;
+            chatArea.appendChild(osDiv);
+        }
+        
+        // 💬 情况 C：其他所有文本都作为对话（包含 （...）动作 + 对话内容）
+        else if (trimmedPart.length > 0) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'dialogue-section';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'character-name';
+            nameSpan.innerText = charName;
+            sectionDiv.appendChild(nameSpan);
+
+            const contentP = document.createElement('p');
+            contentP.className = 'dialogue-content';
+            contentP.innerText = trimmedPart;  // ✅ 直接显示，包含（...）动作和后面的对话
+            contentP.style.cssText = "word-break: break-word; margin: 0; line-height: 1.5;";
+
+            sectionDiv.appendChild(contentP);
+            chatArea.appendChild(sectionDiv);
+        }
+    });
+
+    // 滚动到底部并保存进度
+    chatArea.scrollTop = chatArea.scrollHeight;
+    if (typeof saveOfflineHistoryToDB === 'function') {
+        saveOfflineHistoryToDB();
+    }
+}
+// ==========================================
+// 🎒 线下约会：背包使用与居中系统提示
+// ==========================================
+
+// 1. 动作仓库（可选：如果你想在点击 AI 回复时把它作为强提醒塞进提示词）
+let offlineActionsBuffer = []; 
+
+// 2. 核心补全：渲染居中淡灰色的系统提示
+function renderSystemNotice(text) {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+    
+    const noticeDiv = document.createElement('div');
+    noticeDiv.className = 'offline-system-notice';
+    // 强制内联样式，确保绝对拥有 Ins 极简风的克制感
+    noticeDiv.style.cssText = 'text-align: center; color: #AAB7B8; font-size: 12px; margin: 15px 0; letter-spacing: 1px; font-weight: 300;';
+    noticeDiv.innerText = `— ${text} —`;
+    
+    chatArea.appendChild(noticeDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// 3. 背包物品点击交互：当你在线下模式点击使用某个物品时调用
+function useBackpackItem(itemName) {
+    // 渲染到屏幕上：— 你使用了 xxx —
+    // 这一步非常巧妙，渲染上墙后，AI 下次扫描 chatArea.innerText 时自然就能看到
+    renderSystemNotice(`你使用了 ${itemName}`);
+
+    // 存入动作仓库（备用，如果你要在气泡按钮里打包的话）
+    offlineActionsBuffer.push(itemName);
+
+    // 如果你有悬浮背包的收起函数，在这里调用（如果没有可以删掉这行）
+    if (typeof toggleBackpack === 'function') {
+        toggleBackpack();
+    }
+}
+
+// 💾 DB版：线下模式自动存档
+function saveOfflineHistoryToDB() {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea || typeof currentChatId === 'undefined') return;
+
+    loadFromDB('offlineDateState', (data) => {
+        const states = data || {};
+        // 用当前聊天对象的 ID 作为唯一钥匙
+        states[currentChatId] = {
+            status: 'ongoing',
+            chatHtml: chatArea.innerHTML
+        };
+        saveToDB('offlineDateState', states);
+    });
+}
+
+// ==========================================
+// 🚪 线下模式：全局唯一入口 (带断点续传)
+// ==========================================
+
+// 🚪 终极修复版：确保恢复现场时，所有功能模块全部启动
+
+window.openOfflineMode = function() {
+    console.log("🚀 线下模式启动中..."); // [cite: 204]
+
+    // 1. 先校验能不能进 (放到最前面)
+    if (typeof currentChatId === 'undefined' || !currentChatId) { // [cite: 209]
+        alert("宝宝，请先选择一个角色进入聊天室哦~"); // [cite: 209]
+        return; // 
+    }
+
+
+
+        // 2. 🌟 核心时序修复：必须先给页面赋上角色名字！
+    const titleElement = document.getElementById('chatDetailTitle'); 
+    const characterName = titleElement ? titleElement.innerText : '约会对象'; 
+    document.getElementById('offlineCharacterName').innerText = characterName; 
+
+    // ✅ 新增：确保 currentChatId 存在后，立刻初始化所有模块框架
+    // 这样恢复档案时才能找到对应的 HTML 容器
+    const offlineModal = document.getElementById('offlineModeModal');
+    if (offlineModal) offlineModal.style.display = 'flex';
+    
+    // 🌟 先把模块框架全部渲染一遍（即便数据为空），确保 DOM 存在
+  if (typeof initOfflineWorldbooks === 'function') initOfflineWorldbooks();
+        if (typeof initOfflineBgm === 'function') initOfflineBgm();
+        if (typeof initOfflineStyle === 'function') initOfflineStyle();
+        if (typeof initOfflineSummary === 'function') initOfflineSummary();
+        if (typeof initOfflineCss === 'function') initOfflineCss();
+        if (typeof initTimePerception === 'function') initTimePerception(); // ✅ 新增
+    if (typeof initOfflineOpening === 'function') initOfflineOpening();
+
+    // ✅ 然后再去读档案（此时所有容器都已就位）
+    // 下面是你原来的 loadFromDB 逻辑...
+
+    // 3. 🌟 名字有了，现在再去触发背包安检，AI就不会是个“瞎子”了！
+    // ==========================================
+    // 🎒 进门安检 1：优先读取 TA 的背包保险柜
+    // ==========================================
+    if (typeof currentChatId !== 'undefined') { // [cite: 205]
+        const savedBagStr = localStorage.getItem(`offline_ta_bag_${currentChatId}`); // [cite: 205]
+        if (savedBagStr) { // [cite: 206]
+            // 如果保险柜里有记录，直接拿出来画上去（断点续传成功！）
+            const savedItems = JSON.parse(savedBagStr); // [cite: 206]
+            if (typeof syncTaBagUI === 'function') { // [cite: 207]
+                syncTaBagUI(savedItems); // [cite: 207]
+            } // [cite: 208]
+        } else { // [cite: 208]
+            // 如果保险柜连个壳都没有，说明是新开局，赶紧去进货！
+            if (typeof generateTaOfflineBag === 'function') { // [cite: 208]
+                generateTaOfflineBag(); // [cite: 208]
+            } // [cite: 209]
+        }
+    }
+
+    // ==========================================
+    // 🎒 进门安检 2：把你自己的包也背上！
+    // ==========================================
+    const mySavedBagStr = localStorage.getItem('my_offline_bag');
+    if (mySavedBagStr) {
+        const mySavedItems = JSON.parse(mySavedBagStr);
+        if (typeof syncMyBagUI === 'function') {
+            syncMyBagUI(mySavedItems); 
+        }
+    }
+
+    // 4. 恢复聊天记录和文风等模块 (保留你原来的完美逻辑)
+    loadFromDB('offlineDateState', (allStates) => { // [cite: 211]
+        const myState = (allStates && allStates[currentChatId]) ? allStates[currentChatId] : null; // [cite: 211]
+        const offlineModal = document.getElementById('offlineModeModal'); // [cite: 211]
+
+        if (myState && myState.status === 'ongoing' && myState.chatHtml) { // [cite: 211]
+            console.log("💖 恢复存档并唤醒所有模块..."); // [cite: 211]
+            
+            if (offlineModal) offlineModal.style.display = 'flex';  // [cite: 211]
+
+            const chatArea = document.getElementById('offlineChatArea'); // [cite: 212]
+            if (chatArea) { // [cite: 212]
+                chatArea.innerHTML = myState.chatHtml; // [cite: 212]
+                chatArea.scrollTop = chatArea.scrollHeight;  // [cite: 212]
+            }
+
+            // 🌟 恢复现场时，初始化所有模块
+            if (typeof initOfflineWorldbooks === 'function') initOfflineWorldbooks(); // 找回世界书 [cite: 212, 213]
+            if (typeof initOfflineBgm === 'function') initOfflineBgm();               // 找回 BGM [cite: 213]
+            if (typeof initOfflineStyle === 'function') initOfflineStyle();           // 找回文风 [cite: 213, 214]
+            if (typeof initOfflineSummary === 'function') initOfflineSummary();       // 找回总结设置 [cite: 214, 215]
+            if (typeof initOfflineCss === 'function') initOfflineCss();               // 找回自定义 CSS [cite: 215, 216]
+            
+            return; // [cite: 216]
+        }
+
+        // ✨ 情况 B：正常新约会流程
+        if (offlineModal) offlineModal.style.display = 'flex'; // [cite: 217]
+        if (typeof initOfflineWorldbooks === 'function') initOfflineWorldbooks(); // [cite: 218]
+        if (typeof initOfflineBgm === 'function') initOfflineBgm(); // [cite: 218, 219]
+        if (typeof initOfflineStyle === 'function') initOfflineStyle(); // [cite: 219, 220]
+        if (typeof initOfflineSummary === 'function') initOfflineSummary(); // [cite: 220, 221]
+        if (typeof initOfflineCss === 'function') initOfflineCss(); // [cite: 221, 222]
+        if (typeof initOfflineOpening === 'function') initOfflineOpening(); // [cite: 222]
+    });
+
+    setTimeout(() => {
+        if (typeof saveOfflineHistoryToDB === 'function') {
+            saveOfflineHistoryToDB();
+        }
+    }, 500); // 延迟 500ms 是为了让 DOM 完全渲染后再存
+};
+
+
+
+function showOfflineLoader() {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+    
+    hideOfflineLoader();
+    
+    const loaderDiv = document.createElement('div');
+    loaderDiv.id = 'offlineTypingIndicator';
+    loaderDiv.innerText = 'TA 正在沉浸地书写着...';
+    loaderDiv.style.opacity = '0';
+    loaderDiv.style.transition = 'opacity 0.3s ease-in';
+    
+    chatArea.appendChild(loaderDiv);
+    
+    setTimeout(() => {
+        loaderDiv.style.opacity = '1';
+    }, 10);
+    
+    chatArea.scrollTop = chatArea.scrollHeight; 
+}
+
+function hideOfflineLoader() {
+    const loader = document.getElementById('offlineTypingIndicator');
+    if (loader) {
+        loader.style.transition = 'opacity 0.2s ease-out';
+        loader.style.opacity = '0';
+        setTimeout(() => {
+            if (loader.parentNode) loader.remove();
+        }, 200);
+    }
+}
+// ==========================================
+// 🎒 线下模式：双向背包逻辑与动作缓存
+// ==========================================
+
+// 🛒 全局购物车：专门存用户点击的物品
+window.pendingOfflineActions = [];
+
+function openOfflineBag() {
+    const modal = document.getElementById('offlineBagModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeOfflineBag() {
+    const modal = document.getElementById('offlineBagModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// 切换【我的背包】和【TA的口袋】
+function switchBagTab(tab) {
+    const myTab = document.getElementById('tabMyBag');
+    const taTab = document.getElementById('tabTaBag');
+    const myContent = document.getElementById('myBagContent');
+    const taContent = document.getElementById('taBagContent');
+    
+    if (tab === 'my') {
+        myTab.style.color = '#2C3E50'; taTab.style.color = '#BDC3C7';
+        myContent.style.display = 'flex'; taContent.style.display = 'none';
+    } else {
+        myTab.style.color = '#BDC3C7'; taTab.style.color = '#2C3E50';
+        myContent.style.display = 'none'; taContent.style.display = 'flex';
+    }
+}
+
+// 🪄 点击物品：只在本地印出灰字，存入购物车，绝不发请求！
+function useOfflineItem(itemName) {
+    closeOfflineBag();
+    
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+
+    // 1. 屏幕上留下 Ins 风灰色痕迹
+    const itemDiv = document.createElement('div');
+    // 为了防止没写类名，这里直接用行内样式保证质感
+    itemDiv.style.cssText = "text-align: center; color: #BDC3C7; font-size: 12px; margin: 30px auto; letter-spacing: 2px; font-style: italic;";
+    itemDiv.innerText = `— 你使用了 ${itemName} —`;
+    chatArea.appendChild(itemDiv);
+    
+    // 2. 滚到底部并存盘
+    chatArea.scrollTop = chatArea.scrollHeight;
+    if (typeof saveOfflineHistoryToDB === 'function') saveOfflineHistoryToDB();
+
+    // 3. 悄悄装进购物车！
+    window.pendingOfflineActions.push(itemName);
+    console.log(`🛒 已缓存动作：${itemName}，等待打包发送。`);
+}
+
+// ==========================================
+// 🎒 线下模式：背包 UI 控制与后台生成逻辑
+// ==========================================
+
+// 1. 打开和关闭背包面板
+function openOfflineBag() {
+    const modal = document.getElementById('offlineBagModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeOfflineBag() {
+    const modal = document.getElementById('offlineBagModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// 2. 切换【我的】和【TA的】面板
+function switchBagTab(tab) {
+    const myTab = document.getElementById('tabMyBag');
+    const taTab = document.getElementById('tabTaBag');
+    const myContent = document.getElementById('myBagContent');
+    const taContent = document.getElementById('taBagContent');
+    
+    if (tab === 'my') {
+        myTab.style.color = '#2C3E50'; taTab.style.color = '#BDC3C7';
+        myContent.style.display = 'flex'; taContent.style.display = 'none';
+    } else {
+        myTab.style.color = '#BDC3C7'; taTab.style.color = '#2C3E50';
+        myContent.style.display = 'none'; taContent.style.display = 'flex';
+    }
+}
+
+async function generateTaOfflineBag() {
+    console.log("🎒 开始生成 TA 的背包物品...");
+    const charName = document.getElementById('offlineCharacterName').innerText || 'TA';
+    const taContent = document.getElementById('taBagContent');
+    if (!taContent) return;
+
+    // 1. 读取角色人设
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && typeof currentChatId !== 'undefined' && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+
+    // 2. 读取线下场景和记忆
+    const openingBg = localStorage.getItem('offline_opening_bg_' + charName + '_' + (typeof currentOpeningTab !== 'undefined' ? currentOpeningTab : 1)) || "";
+    const onlineMemory = typeof buildOfflineContext === 'function' ? await buildOfflineContext() : "";
+
+    // 3. 构建提示词（不要求JSON，要求纯文本列表）
+    const prompt = `你是一个物品推荐助手。根据以下信息，推荐3件该角色随身携带的物品。
+
+角色名：${charName}
+性格特点：${characterInfo.personality || '真实、自然'}
+人设背景：${characterInfo.description || ''}
+当前场景：${openingBg}
+相关记忆：${onlineMemory.slice(0, 200)}
+
+请直接输出3件物品名称，用竖线分隔，每个物品名2-6个汉字。
+例如：手机|纸巾|耳机
+
+现在输出3件物品：`;
+
+    try {
+        // 检查API配置
+        if (!currentApiConfig || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+            console.warn("❌ API配置缺失，使用兜底物品");
+            const fallback = ["手机", "纸巾", "钥匙"];
+            if (typeof currentChatId !== 'undefined') {
+                localStorage.setItem(`offline_ta_bag_${currentChatId}`, JSON.stringify(fallback));
+                if (typeof syncTaBagUI === 'function') syncTaBagUI(fallback);
+            }
+            return;
+        }
+
+        const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
+
+        const response = await fetch(requestUrl, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [
+                    { role: "system", content: "你只需要输出3个物品名称，用竖线|分隔，不要其他文字。" },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 100
+            })
+        });
+
+        const rawData = await response.json();
+        console.log("📦 API原始回复：", rawData.choices[0].message.content);
+
+        let items = [];
+        
+        if (rawData.choices && rawData.choices.length > 0) {
+            const aiReply = rawData.choices[0].message.content.trim();
+            
+            // ✅ 改成解析纯文本列表，而不是JSON
+            // 尝试用竖线分隔
+            let parsed = aiReply.split('|').map(item => item.trim()).filter(i => i.length > 0);
+            
+            // 如果竖线分隔失败，试试逗号或其他分隔符
+            if (parsed.length < 2) {
+                parsed = aiReply.split(/[、，,]/).map(item => item.trim()).filter(i => i.length > 0);
+            }
+            
+            // 清洗物品名（只保留汉字和英文数字）
+            items = parsed
+                .map(item => item.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ''))
+                .filter(i => i.length >= 1 && i.length <= 15)
+                .slice(0, 3);
+            
+            console.log("✅ 物品提取成功：", items);
+        }
+
+        // 如果失败或数量不足，用兜底
+        if (items.length < 3) {
+            const fallback = ["手机", "纸巾", "钥匙", "耳机", "钥匙", "充电线"];
+            while (items.length < 3) {
+                const pick = fallback[Math.floor(Math.random() * fallback.length)];
+                if (!items.includes(pick)) items.push(pick);
+            }
+            console.log("⚠️ 物品数量不足，补充兜底：", items);
+        }
+
+        // 保存
+        if (typeof currentChatId !== 'undefined') {
+            localStorage.setItem(`offline_ta_bag_${currentChatId}`, JSON.stringify(items));
+            console.log("✅ 背包物品已保存：", items);
+            if (typeof syncTaBagUI === 'function') syncTaBagUI(items);
+        }
+
+    } catch (error) {
+        console.error("❌ 背包生成失败：", error);
+        // 彻底失败时用兜底
+        const defaultItems = ["手机", "纸巾", "钥匙"];
+        if (typeof currentChatId !== 'undefined') {
+            localStorage.setItem(`offline_ta_bag_${currentChatId}`, JSON.stringify(defaultItems));
+            if (typeof syncTaBagUI === 'function') syncTaBagUI(defaultItems);
+        }
+    }
+}
+
+// 🪄 专属帮手：负责把 TA 的口袋物品画到屏幕上 (极简高冷版)
+function syncTaBagUI(items) {
+    const taContent = document.getElementById('taBagContent');
+    if (!taContent) return;
+    
+    taContent.innerHTML = ''; // 先清空面板
+
+if (!items || !Array.isArray(items) || items.length === 0) {
+    taContent.innerHTML = `<div style="width: 100%; text-align: center; color: #BDC3C7; font-size: 13px; margin-top: 30px; font-style: italic;">（TA 的口袋还在收拾中...）</div>`;
+    return;
+}
+// ✅ 新增防御性过滤：
+items = items.filter(item => {
+    // 只保留有效的纯文本物品名（长度在 2-30 字）
+    return typeof item === 'string' && item.trim().length >= 2 && item.trim().length <= 30;
+}).map(item => item.trim());
+if (items.length === 0) {
+    taContent.innerHTML = `<div style="width: 100%; text-align: center; color: #BDC3C7; font-size: 13px; margin-top: 30px; font-style: italic;">（数据读取异常...）</div>`;
+    return;
+}
+
+    items.forEach(itemName => {
+        const itemDiv = document.createElement('div');
+        // 🌟 保持极简卡片样式，鼠标手势为默认箭头 (暗示不可点击)
+        itemDiv.style.cssText = "background: #F8F9FA; padding: 10px 18px; border-radius: 20px; font-size: 13px; color: #5D6D7E; cursor: default; border: 1px solid #EAECEE; transition: all 0.2s; margin-bottom: 8px; display: inline-block; margin-right: 8px;";
+        
+        // 🌟 核心修改 1：去掉了所有的 emoji，只保留干干净净的纯文字
+        itemDiv.innerText = itemName;
+        
+        // 🌟 核心修改 2：彻底删除了 onclick 事件，怎么点都不会有弹窗！
+        
+        taContent.appendChild(itemDiv);
+    });
+}
+
+// 🪄 专属帮手：负责把【我】带出门的物品画到界面的“我的背包”里
+function syncMyBagUI(items) {
+    const myContent = document.getElementById('myBagContent');
+    if (!myContent) return;
+    
+    // 1. 先无情清空你在 HTML 里写的那些默认死数据
+    myContent.innerHTML = '';
+
+    // 2. 如果包里没东西
+    if (!items || items.length === 0) {
+        myContent.innerHTML = `<div style="width: 100%; text-align: center; color: #BDC3C7; font-size: 13px; margin-top: 30px; font-style: italic;">（出门太急，什么都没带...）</div>`;
+        return;
+    }
+
+    // 3. 把你打包的东西，用干净的 ins 风卡片画出来
+    items.forEach(itemName => {
+        const itemDiv = document.createElement('div');
+        // 保持和 TA 口袋一模一样的极简留白风格
+        itemDiv.style.cssText = "background: #F8F9FA; padding: 10px 18px; border-radius: 20px; font-size: 13px; color: #5D6D7E; cursor: pointer; border: 1px solid #EAECEE; transition: all 0.2s; margin-bottom: 8px; display: inline-block; margin-right: 8px;";
+        
+        // 注意：你存的时候已经加过 🔖 符号了，所以这里直接显示
+        itemDiv.innerText = itemName; 
+        
+        // 4. 绑定点击使用逻辑
+        itemDiv.onclick = function() {
+            if (typeof useOfflineItem === 'function') {
+                useOfflineItem(itemName); // 调用你写好的本地灰字和购物车逻辑
+            }
+            // 使用完后从屏幕上隐藏
+            this.style.display = 'none'; 
+            
+            // 彻底从本地缓存里抹除，防止刷新又弹出来
+            let savedItems = JSON.parse(localStorage.getItem('my_offline_bag') || '[]');
+            savedItems = savedItems.filter(i => i !== itemName);
+            localStorage.setItem('my_offline_bag', JSON.stringify(savedItems));
+        };
+        
+        myContent.appendChild(itemDiv);
+    });
+}
+
+async function generateDateSummary() {
+    console.log("📝 开始生成约会总结...");
+    
+    const charName = document.getElementById('offlineCharacterName').innerText || 'TA';
+    const chatArea = document.getElementById('offlineChatArea');
+    
+    if (!chatArea) {
+        console.warn("找不到聊天区域");
+        return null;
+    }
+    
+    // 提取约会的全部对话内容
+    const dateHistory = chatArea.innerText;
+    
+    // 读取用户自定义的总结要求
+    const customSummaryPrompt = localStorage.getItem('offline_custom_summary') || 
+        "请以第三人称视角，事无巨细地记录本次约会的全过程，重点记录重要的话语、核心事件和情绪转折。";
+    
+    // 读取角色人设
+    const characterInfo = await new Promise(resolve => {
+        loadFromDB('characterInfo', data => {
+            resolve(data && typeof currentChatId !== 'undefined' && data[currentChatId] ? data[currentChatId] : {});
+        });
+    });
+    
+    // 构建总结提示词
+    const summaryPrompt = `
+你是一个细腻的记忆记录者。请根据以下信息，生成一份极其详细的约会总结。这份总结将成为永久的记忆档案。
+
+角色：${charName}
+人设：${characterInfo.personality || '未知'}
+
+约会过程完整记录：
+${dateHistory}
+
+总结要求：
+${customSummaryPrompt}
+
+重要提醒：
+- 必须详细描写发生的每个细节
+- 必须记录所有的重要对话
+- 必须描写每一个情绪变化
+- 越详细越好，字数不要超过150字
+- 不要有任何前缀或说明，直接输出总结
+
+现在开始生成详细的约会总结：`;
+
+    try {
+        if (!currentApiConfig || !currentApiConfig.baseUrl || !currentApiConfig.apiKey) {
+            console.warn("API配置缺失");
+            return null;
+        }
+
+        const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
+            ? currentApiConfig.baseUrl + 'chat/completions' 
+            : currentApiConfig.baseUrl + '/chat/completions';
+
+        const response = await fetch(requestUrl, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${currentApiConfig.apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                model: currentApiConfig.defaultModel || 'gpt-3.5-turbo',
+                messages: [
+                    { 
+                        role: "system", 
+                        content: "你是一个专业的记忆记录者，你的任务是根据聊天记录生成高质量的总结。输出应该是纯文本，不需要任何格式符号。" 
+                    },
+                    { role: "user", content: summaryPrompt }
+                ],
+                temperature: 0.9,
+                max_tokens: 5000
+            })
+        });
+
+        const rawData = await response.json();
+
+        if (rawData.error) {
+            console.error("API错误：", rawData.error.message);
+            return null;
+        }
+
+        if (!rawData.choices || rawData.choices.length === 0) {
+            console.error("API返回空响应");
+            return null;
+        }
+
+       const summary = rawData.choices[0].message.content.trim();
+        console.log("📝 总结生成成功");
+        console.log("📝 总结长度：", summary.length, "字符");
+        console.log("📝 总结内容（前500字）：", summary.substring(0, 500));
+        console.log("📝 完整总结：", summary);
+        return summary;
+
+    } catch (error) {
+        console.error("生成总结失败：", error);
+        return null;
+    }
+}
+
+async function saveDateSummaryToMemory(summary) {
+    if (!summary) {
+        console.warn("没有总结内容，跳过保存");
+        return;
+    }
+
+    const charName = document.getElementById('offlineCharacterName').innerText || 'TA';
+    
+    console.log("💾 准备保存总结到长期记忆...");
+
+    loadFromDB('memories', (data) => {
+        // ✅ 改为读取 memories 数据库
+        let allMemories = [];
+        if (Array.isArray(data)) {
+            allMemories = data;
+        } else if (data && data.list) {
+            allMemories = data.list;
+        }
+
+              const newMemoryEntry = {
+            id: Date.now(),
+            chatId: currentChatId,
+            type: 'moment',
+            content: summary,
+            happenTime: new Date().toISOString().split('T')[0],
+            createTime: new Date().toISOString(),
+            isAutoGenerated: true
+        };
+
+        console.log("💾 准备保存的记忆条目：", newMemoryEntry);
+        console.log("💾 内容长度：", newMemoryEntry.content.length, "字符");
+
+        allMemories.push(newMemoryEntry);
+        
+        // ✅ 改为保存回 memories 数据库，格式必须是 { list: ... }
+        saveToDB('memories', { list: allMemories });
+        
+        console.log("✅ 约会总结已保存到长期记忆！");
+        console.log("📌 记忆条目：", newMemoryEntry);
+        
+        // ✅ 新增：保存后立刻读取，验证有没有被截断
+        setTimeout(() => {
+            loadFromDB('memories', (data) => {
+                let saved = Array.isArray(data) ? data : (data && data.list ? data.list : []);
+                const justSaved = saved.find(m => m.id === newMemoryEntry.id);
+                if (justSaved) {
+                    console.log("✅ 数据库中已保存的记忆：", justSaved);
+                    console.log("✅ 数据库中的内容长度：", justSaved.content.length, "字符");
+                    if (justSaved.content.length !== newMemoryEntry.content.length) {
+                        console.error("❌ 警告：内容长度不匹配！保存前：", newMemoryEntry.content.length, "保存后：", justSaved.content.length);
+                    }
+                }
+            });
+        }, 500);
     });
 }

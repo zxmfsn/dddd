@@ -4872,14 +4872,19 @@ async function receiveAIReply() {
         
         // 2. 并行获取所有数据
         // ★★★ 修复：这里加入了 momentsContext (朋友圈数据) 的获取 ★★★
-        const [characterInfo, memoryContext, emojiList, momentsContext] = await Promise.all([
-            new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
-            getMemoryContext(),
-            new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : []))),
-            (typeof getRecentMomentsContext === 'function'
-                ? getRecentMomentsContext(currentChatId)
-                : Promise.resolve("（暂无朋友圈动态）"))
-        ]);
+       const [characterInfo, memoryContext, emojiList, momentsContext, offlineDateMemory] = await Promise.all([
+    new Promise(resolve => loadFromDB('characterInfo', data => resolve(data && data[currentChatId] ? data[currentChatId] : {}))),
+    getMemoryContext(),
+    new Promise(resolve => loadFromDB('emojis', (data) => resolve(data && data.list ? data.list : []))),
+    (typeof getRecentMomentsContext === 'function'
+        ? getRecentMomentsContext(currentChatId)
+        : Promise.resolve("（暂无朋友圈动态）")),
+    // ★ 新增：读取最近一次线下约会记忆
+    new Promise(resolve => loadFromDB('offlineDateMemory', data => {
+        const list = data && data[currentChatId] ? data[currentChatId] : [];
+        resolve(list.length > 0 ? list[0] : null);
+    }))
+]);
 
 
 let emojiKeywordsPrompt = '';
@@ -5267,6 +5272,15 @@ let systemPrompt = `
 ${worldbooksContent}
 - 这是你的时代背景、常识、生活环境与补充设定，你必须遵守。
 
+${offlineDateMemory ? `
+【最近一次线下约会记忆（最高优先级）】
+时间：${offlineDateMemory.time}
+约会内容：${offlineDateMemory.summary}
+- 这是你们刚刚在现实中经历过的事，你一定记得，要非常自然地主动提起，
+  比如："你到家了吗""刚才那里好好玩""今天开心吗"之类的，不要等对方先开口。
+- 这比长期记忆优先级更高，如果刚分开不久，第一句话就应该围绕这次约会展开。
+` : ''}
+
 【长期记忆】
 ${memoryContext ? memoryContext : "（暂无前文）"}
 -  你们曾经一起度过的回忆，你必须要记住，可以适时适当提起。
@@ -5406,6 +5420,13 @@ ${characterInfo.timeAwarenessEnabled ? `
 ${(typeof allowHtmlCard !== 'undefined' && allowHtmlCard) ? `
 【HTML卡片输出协议（当前状态：允许）】
 你必须严格参考以下模板的**结构、类名(class)和样式(style)**，只修改内容，不要修改结构！
+
+10. 线下邀约系统（重要互动机制）：
+- 当用户向你发送【系统提示：发送了线下见面邀请】时，你必须根据你当前的人设、日程以及与用户的关系，在回复中明确表态。
+- 如果你【同意】赴约：必须在气泡中包含【接受邀约】四个字（这会触发系统的出门准备流程）。
+- 如果你【拒绝】赴约：只需用文字正常拒绝即可，不用加特殊标记。
+- 你也可以根据聊天语境（如聊到好天气、好吃的），或者你想要和用户见面时，可以主动向用户发起约会邀请，但不要过于频繁。格式必须是：【发起邀约：你想说的邀请文案】（例如：【发起邀约：周末天气不错，要不要一起去海边走走？】）。
+
 ---------------------------------------------------
 ${htmlWorldbookRef || ''}
 ---------------------------------------------------
@@ -5832,6 +5853,23 @@ if (fortuneEventForThisRequest) {
 }
 
 
+// ============ 👇 替换这里的指令 👇 ============
+if (window.pendingOfflineInvitation) {
+    const inviteText = window.pendingOfflineInvitation;
+    window.pendingOfflineInvitation = null; 
+
+    messages.push({
+        role: 'user',
+        content: `【🔥 紧急系统指令：必须执行】
+用户刚刚向你发出了线下约会邀请：“${inviteText}”。
+
+现在请根据你的人设和心情决定是否赴约，并严格遵守以下回复规则：
+1. 如果你同意赴约：【必须仅】回复“【接受邀约】”（带方括号，绝对不准输出任何其他多余的字！）。
+2. 如果你不同意赴约：请先输出“【拒绝邀约】”，然后紧接着用你平时聊天的语气，说出你婉拒的理由。`
+    });
+}
+// ============ 👇 注入结束 👇 ============
+
 
         const requestUrl = currentApiConfig.baseUrl.endsWith('/') 
             ? currentApiConfig.baseUrl + 'chat/completions' 
@@ -5892,6 +5930,41 @@ if (!aiReply) {
     console.warn('AI empty content:', data);
     throw new Error('模型返回了空内容。请重试一次，或更换模型。');
 }
+
+// ============ 👇 黄金拦截点：邀约静音斩断 👇 ============
+if (/[【\[]\s*接受邀约\s*[】\]]/.test(aiReply)) {
+    console.log("💌 TA 接受了邀约，立刻静音并切入线下模式！");
+    window.pendingOfflineInvitation = null;
+    
+    // 1. 弹出绝美的装包界面
+    if (typeof openPackingModal === 'function') openPackingModal();
+    
+    // 2. 🌟 恢复输入框和按钮的状态（非常重要，因为我们要提前结束函数）
+    const titleElement = document.getElementById('chatDetailTitle');
+    const receiveBtn = document.getElementById('receiveBtn');
+    const chatInput = document.getElementById('chatInput');
+    if (titleElement) titleElement.textContent = '小手机'; // 换回你原本的标题
+    if (receiveBtn) {
+        receiveBtn.disabled = false;
+        receiveBtn.style.opacity = '1';
+    }
+    if (chatInput) chatInput.disabled = false;
+    isReceiving = false;
+    
+    // 3. 💥 绝对核心：直接杀死后面的所有逻辑！不保存、不渲染！
+    return; 
+}
+
+if (/[【\[]\s*拒绝邀约\s*[】\]]/.test(aiReply)) {
+    console.log("💔 TA 婉拒了邀约...");
+    window.pendingOfflineInvitation = null;
+    // 抹掉丑陋的【拒绝邀约】标签，只留下 TA 解释和安慰你的话
+    aiReply = aiReply.replace(/[【\[]\s*拒绝邀约\s*[】\]]/g, '').trim();
+    // 万一 AI 偷懒没写安慰的话，给个保底回复
+    if (!aiReply) aiReply = "抱歉呀，我现在有点脱不开身，下次一定陪你！";
+}
+// ============ 👆 拦截结束 👆 ============
+
 
  // ============ 👇 新增：强制修正 Claude 格式 👇 ============
         const detectedModel = detectModelType(currentApiConfig.apiKey, currentApiConfig.defaultModel);
@@ -6574,6 +6647,9 @@ if (/[【\[]\s*确认代付\s*[】\]]/.test(msgText)) {
     msgText = msgText.replace(/[【\[]\s*确认代付\s*[】\]]/g, '').trim();
     if (!msgText) continue;
 }
+
+
+
 // ============ 👇 在这里插入新代码 👇 ============
 // 领取转账逻辑（兼容【领取转账】和[领取转账]）
 if (/[【\[]\s*领取转账\s*[】\]]/.test(msgText)) {
@@ -6617,6 +6693,23 @@ if (/[【\[]\s*领取转账\s*[】\]]/.test(msgText)) {
     if (!msgText) continue;
 }
 // ============ 👆 插入结束 👆 ============
+
+
+
+// ============ 拦截 AI 主动发起的邀约 ============
+const aiInviteMatch = msgText.match(/[【\[]\s*发起邀约\s*[:：]\s*([^】\]]+)\s*[】\]]/);
+if (aiInviteMatch) {
+    const inviteContent = aiInviteMatch[1].trim();
+    
+    // 🌟 核心改动：不再弹出 alert，而是弹出我们刚做的精美卡片
+    setTimeout(() => {
+        showReceivedInvitation(inviteContent);
+    }, 800);
+    
+    // 静音处理：把指令从气泡里蒸发掉，保持屏幕干净 
+    msgText = msgText.replace(/[【\[]\s*发起邀约\s*[:：]\s*[^】\]]+\s*[】\]]/g, '').trim();
+}
+// ============ 👆 拦截结束 👆 ============
 
 // 构建消息对象
 const newId = Date.now() + i;

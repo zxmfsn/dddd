@@ -47,7 +47,7 @@ let blindBoxItems = {
 // ============ 强制修复版：数据库初始化 (版本号 ) ============
 function initDB() {
     // ★★★ 重点：版本号，强制触发更新！ ★★★
-    const request = indexedDB.open('phoneData', 43);
+    const request = indexedDB.open('phoneData', 44);
     
     request.onerror = (event) => {
         console.error('数据库打开失败', event);
@@ -98,7 +98,7 @@ request.onsuccess = (event) => {
             'gameConsole', 'widgetSettings', 'voiceConfig', 
             'fontSettings', 'notificationSound', 
           'moments', 'momentsProfile', 'chatGroups', 'momentsSettings',
-          'memories', 'imageApiSettings', 'spacepost', 'phoneCheckData', 'phoneCheckBeautifyPresets', 'musicSongs', 'blindBox', 'musicPlayer', 'custom_bgms'
+          'memories', 'imageApiSettings', 'spacepost', 'phoneCheckData', 'phoneCheckBeautifyPresets', 'musicSongs', 'blindBox', 'musicPlayer', 'custom_bgms','offlineDateState'
         ];
 
         storeNames.forEach(name => {

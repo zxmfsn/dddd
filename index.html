@@ -1778,7 +1778,7 @@
     </svg>
 </button>
 
-<button class="emoji-btn" onclick="openOfflineMode()" title="线下约会">
+<button class="emoji-btn" onclick="enterOfflineMode()" title="线下约会">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
         <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
@@ -1791,43 +1791,179 @@
 
 </div>
 
+
+
+
+<div id="invitationModal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
+        <div style="background: #ffffff; width: 75%; max-width: 320px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; font-family: -apple-system, sans-serif;">
+            
+            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #333333; font-weight: 600; letter-spacing: 1px;">✉️ 发送见面邀请</h3>
+            
+            <textarea id="invitationInput" style="width: 100%; box-sizing: border-box; background: #F7F9FA; border: 1px solid #EFEFEF; border-radius: 12px; padding: 14px; font-size: 14px; color: #5D6D7E; outline: none; resize: none; text-align: center; line-height: 1.6; font-style: italic;" rows="3">我想和你出门约会。</textarea>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button onclick="closeInvitationModal()" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: #F2F2F2; color: #888888; font-size: 14px; cursor: pointer; font-weight: 500;">取消</button>
+                <button onclick="sendInvitationAction()" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: #2C3E50; color: #ffffff; font-size: 14px; cursor: pointer; font-weight: 500;">发送</button>
+            </div>
+        </div>
+    </div>
+
+<div id="packingModal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 3001; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
+        <div style="background: #ffffff; width: 80%; max-width: 340px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; font-family: -apple-system, sans-serif;">
+            
+            <h3 style="margin: 0 0 8px 0; font-size: 17px; color: #333333; font-weight: 600;">👜 整理随身小包</h3>
+            <p style="margin: 0 0 20px 0; font-size: 12px; color: #888888;">挑几样放进包里吧（最多带 3 样）</p>
+            
+            <div id="packingGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                <div class="pack-item" onclick="togglePackItem(this, '📸 拍立得')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">📸</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">拍立得</span>
+                </div>
+                <div class="pack-item" onclick="togglePackItem(this, '💄 口红')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">💄</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">口红</span>
+                </div>
+                <div class="pack-item" onclick="togglePackItem(this, '🍬 薄荷糖')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">🍬</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">薄荷糖</span>
+                </div>
+                <div class="pack-item" onclick="togglePackItem(this, '🧻 纸巾')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">🧻</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">纸巾</span>
+                </div>
+                <div class="pack-item" onclick="togglePackItem(this, '🎬 电影票')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">🎬</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">电影票</span>
+                </div>
+                <div class="pack-item" onclick="togglePackItem(this, '🎧 耳机')" style="background: #F7F9FA; border: 1.5px solid transparent; border-radius: 12px; padding: 16px 8px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <span style="font-size: 24px;">🎧</span>
+                    <span style="font-size: 11px; color: #5D6D7E;">耳机</span>
+                </div>
+            </div>
+            
+<div style="display: flex; gap: 8px; margin-bottom: 20px; width: 100%; box-sizing: border-box;">
+                <input type="text" id="customPackInput" placeholder="自定义想带的物品..." style="flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid #EFEFEF; border-radius: 10px; font-size: 13px; outline: none; background: #F7F9FA; color: #333; box-sizing: border-box;" onkeydown="if(event.key === 'Enter') addCustomPackItem()">
+                <button onclick="addCustomPackItem()" style="padding: 10px 16px; border: none; background: #EFEFEF; color: #5D6D7E; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 500; white-space: nowrap; transition: background 0.2s;" onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#EFEFEF'">添加</button>
+            </div>
+
+            <div style="font-size: 12px; color: #888; margin-bottom: 12px; text-align: left; padding-left: 4px;" id="packCounter">已选 0/3 件</div>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closePackingModal()" style="flex: 1; padding: 12px; border-radius: 10px; border: none; background: #F2F2F2; color: #888888; font-size: 14px; cursor: pointer; font-weight: 500;">先不去了</button>
+                <button onclick="packAndGo()" style="flex: 2; padding: 12px; border-radius: 10px; border: none; background: #2C3E50; color: #ffffff; font-size: 14px; cursor: pointer; font-weight: 500;">装包出发！</button>
+            </div>
+        </div>
+    </div>
+
+<div id="receivedInvitationModal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 3002; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
+        <div style="background: #ffffff; width: 75%; max-width: 320px; border-radius: 20px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; font-family: -apple-system, sans-serif;">
+            
+            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #333333; font-weight: 600; letter-spacing: 1px;">💌 收到一封约会邀请</h3>
+            
+            <p id="receivedInviteText" style="margin: 0 0 24px 0; font-size: 14px; color: #5D6D7E; line-height: 1.6; font-style: italic; background: #F7F9FA; padding: 16px; border-radius: 12px; border: 1px solid #EFEFEF; word-break: break-word;"></p>
+            
+            <div style="display: flex; gap: 12px;">
+                <button onclick="declineAiInvitation()" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: #F2F2F2; color: #888888; font-size: 14px; cursor: pointer; font-weight: 500;">下次一定</button>
+                <button onclick="acceptAiInvitation()" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: #2C3E50; color: #ffffff; font-size: 14px; cursor: pointer; font-weight: 500;">欣然赴约</button>
+            </div>
+        </div>
+    </div>
+
 <div class="modal-overlay" id="offlineModeModal" style="display: none; z-index: 99999; background: #FAFAFA;">
     <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
         
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(255, 255, 255, 0.9); border-bottom: 1px solid rgba(0,0,0,0.05);">
-            <button onclick="closeOfflineMode()" style="border: none; background: none; cursor: pointer; display: flex; align-items: center;">
-                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #333; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+   <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(255, 255, 255, 0.9); border-bottom: 1px solid rgba(0,0,0,0.05);">
+            
+            <button onclick="endOfflineDate()" style="border: none; background: none; cursor: pointer; display: flex; align-items: center; color: #5D6D7E; font-size: 15px; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: currentColor; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; margin-right: 4px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                结束约会
             </button>
             
             <div id="offlineCharacterName" style="font-size: 16px; font-weight: 500; color: #333; letter-spacing: 1px;">角色名</div>
             
             <div style="display: flex; gap: 15px; align-items: center;">
-                <button style="border: none; background: none; color: #555; font-size: 14px; cursor: pointer;" onclick="closeOfflineMode('save')">结束约会</button>
-                <button style="border: none; background: none; font-size: 18px; cursor: pointer;"onclick="toggleOfflineSettings()">⚙️</button>
+                <button style="border: none; background: none; font-size: 18px; cursor: pointer;" onclick="toggleOfflineSettings()">⚙️</button>
             </div>
         </div>
 
-        <div id="offlineChatArea" style="flex: 1; overflow-y: auto; padding: 20px;"></div>
-
-        <div style="padding: 10px 15px 30px 15px; background: transparent;">
-            <div style="display: flex; align-items: center; background: #fff; border-radius: 30px; padding: 6px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03);">
-                <textarea id="offlineInput" placeholder="写下动作或想说的话..." style="flex: 1; border: none; outline: none; resize: none; background: transparent; padding: 10px 0; font-size: 15px; max-height: 80px; color: #333;" rows="1"></textarea>
+<div id="offlineOpeningPanel" style="background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+            <div onclick="toggleOpeningPanel()" style="padding: 10px 15px; font-size: 13px; color: #666; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fafafa;">
+                <span>🎬 设定开场背景</span>
+                <span id="openingToggleIcon">▼</span>
+            </div>
+            
+            <div id="openingContentArea" style="display: none; padding: 15px; flex-direction: column; gap: 10px; box-sizing: border-box;">
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <button id="openingTab1" onclick="switchOpeningTab(1)" style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid #333; background: #333; color: #fff; border-radius: 4px; cursor: pointer; box-sizing: border-box;">场景一</button>
+                    <button id="openingTab2" onclick="switchOpeningTab(2)" style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid #ccc; background: #fff; color: #666; border-radius: 4px; cursor: pointer; box-sizing: border-box;">场景二</button>
+                    <button id="openingTab3" onclick="switchOpeningTab(3)" style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid #ccc; background: #fff; color: #666; border-radius: 4px; cursor: pointer; box-sizing: border-box;">场景三</button>
+                </div>
                 
-                <div style="display: flex; gap: 12px; margin-left: 10px; align-items: center;">
-                    <button onclick="alert('准备接收线下消息')" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                        </svg>
-                    </button>
-                    <button onclick="alert('准备发送线下消息')" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                    </button>
+                <textarea id="openingInput" rows="3" style="width: 100%; box-sizing: border-box; padding: 8px; font-size: 13px; border: 1px solid #eee; border-radius: 6px; outline: none; resize: none;" placeholder="例如：我们并肩走在海边，海风吹拂着头发..."></textarea>
+                
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button onclick="saveOpeningBg()" style="flex: 1; padding: 8px; font-size: 13px; background: #f5f5f5; color: #333; border: none; border-radius: 6px; cursor: pointer; box-sizing: border-box;">保存</button>
+                    <button onclick="useOpeningBg()" style="flex: 1; padding: 8px; font-size: 13px; background: #333; color: #fff; border: none; border-radius: 6px; cursor: pointer; box-sizing: border-box;">使用</button>
                 </div>
             </div>
         </div>
+
+
+        <div id="offlineChatArea" style="flex: 1; overflow-y: auto; padding: 20px;"></div>
+
+<div style="padding: 10px 15px 30px 15px; background: transparent;">
+    <div style="display: flex; align-items: center; background: #fff; border-radius: 30px; padding: 6px 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03);">
+        
+
+<button onclick="openOfflineBag()" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0; margin-right: 12px; transition: opacity 0.2s;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5D6D7E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+        </button>
+
+        <textarea id="offlineInput" placeholder="写下动作或想说的话..." style="flex: 1; border: none; outline: none; resize: none; background: transparent; padding: 10px 0; font-size: 15px; max-height: 80px; color: #333;" rows="1"
+        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendOfflineMessage(); }"></textarea>
+        
+        <div style="display: flex; gap: 12px; margin-left: 10px; align-items: center;">
+            <button onclick="receiveOfflineAIReply('【用户示意：请你主动开启话题或进行下一步动作】')" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+            </button>
+            <button onclick="sendOfflineMessage()" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="offlineBagModal" style="display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; justify-content: flex-end; backdrop-filter: blur(2px);">
+    
+    <div style="background: rgba(255,255,255,0.92); backdrop-filter: blur(15px); width: 100%; height: 45vh; border-radius: 24px 24px 0 0; display: flex; flex-direction: column; padding: 20px 25px; box-sizing: border-box; box-shadow: 0 -10px 40px rgba(0,0,0,0.08);">
+        
+        <div style="width: 40px; height: 4px; background: #E0E0E0; border-radius: 2px; margin: 0 auto 20px auto;"></div>
+        
+        <div style="display: flex; gap: 25px; border-bottom: 1px solid #F0F0F0; padding-bottom: 12px; margin-bottom: 20px;">
+            <span id="tabMyBag" onclick="switchBagTab('my')" style="font-size: 16px; font-weight: 600; color: #2C3E50; cursor: pointer; transition: color 0.3s;">我的背包</span>
+            <span id="tabTaBag" onclick="switchBagTab('ta')" style="font-size: 16px; font-weight: 600; color: #BDC3C7; cursor: pointer; transition: color 0.3s;">TA的口袋</span>
+            <span onclick="closeOfflineBag()" style="margin-left: auto; color: #999; cursor: pointer; font-size: 18px;">✕</span>
+        </div>
+
+        <div id="myBagContent" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 12px; align-content: flex-start;">
+            <div onclick="useOfflineItem('拍立得相机')" style="background: #F4F6F7; padding: 10px 18px; border-radius: 20px; font-size: 13px; color: #5D6D7E; cursor: pointer; border: 1px solid #EAECEE;">📷 拍立得相机</div>
+            <div onclick="useOfflineItem('温热的拿铁')" style="background: #F4F6F7; padding: 10px 18px; border-radius: 20px; font-size: 13px; color: #5D6D7E; cursor: pointer; border: 1px solid #EAECEE;">☕️ 温热的拿铁</div>
+            <div onclick="useOfflineItem('你的外套')" style="background: #F4F6F7; padding: 10px 18px; border-radius: 20px; font-size: 13px; color: #5D6D7E; cursor: pointer; border: 1px solid #EAECEE;">🧥 你的外套</div>
+        </div>
+        
+        <div id="taBagContent" style="flex: 1; overflow-y: auto; display: none; flex-wrap: wrap; gap: 12px; align-content: flex-start;">
+            <div style="width: 100%; text-align: center; color: #BDC3C7; font-size: 13px; margin-top: 30px; font-style: italic; letter-spacing: 1px;">（TA 的口袋里似乎藏着些什么...）</div>
+        </div>
+    </div>
+</div>
 
     </div>
 
@@ -1848,6 +1984,15 @@
                         <input type="number" id="memoryLengthVal" value="50" style="width: 50px; border: 1px solid #eee; border-radius: 6px; padding: 4px; text-align: center; outline: none;">
                     </div>
                     <div class="setting-tips">💡 提示：每一个气泡算作一条消息</div>
+
+                    <div class="setting-group" style="margin-top: 15px;">
+    <div class="setting-title">时间感知</div>
+    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="timePerceptionToggle" style="accent-color: #333; width: 15px; height: 15px;">
+        <span style="font-size: 13px; color: #555;">同步本地真实时间</span>
+    </label>
+    <div class="setting-tips">💡 关闭时AI将自动识别人设或世界书里的时代背景</div>
+</div>
                     
            <div class="setting-group">
     <div class="setting-title" style="margin-top: 15px;">世界书关联</div>
@@ -1878,41 +2023,93 @@
     <audio id="offlineBgmAudio" loop></audio>
 </div>
 
-<div id="addCustomBgmModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100005; align-items: center; justify-content: center;">
-    <div style="background: #fff; width: 80%; max-width: 320px; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 16px;">
+<div id="addCustomBgmModal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100005; align-items: center; justify-content: center;">
+    
+    <div style="background: #fff; width: 85%; max-width: 280px; box-sizing: border-box; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 16px;">
         <div style="font-size: 16px; font-weight: 600; color: #333; text-align: center;">添加专属氛围</div>
         
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="customBgmIcon" placeholder="图标(如🎵)" maxlength="2" style="width: 60px; text-align: center; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
-            <input type="text" id="customBgmName" placeholder="名称(如 卧室)" maxlength="10" style="flex: 1; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <input type="text" id="customBgmIcon" placeholder="图标" maxlength="2" style="width: 50px; flex-shrink: 0; box-sizing: border-box; text-align: center; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
+            <input type="text" id="customBgmName" placeholder="名称(如 卧室)" maxlength="10" style="flex: 1; width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #eee; border-radius: 8px; outline: none; font-size: 14px;">
         </div>
         
-        <label style="display: flex; align-items: center; justify-content: center; padding: 12px; border: 1px dashed #ccc; border-radius: 8px; cursor: pointer; color: #666; font-size: 13px;">
+        <label style="display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; width: 100%; border: 1px dashed #ccc; border-radius: 8px; cursor: pointer; color: #666; font-size: 13px; overflow: hidden;">
             <input type="file" id="customBgmFile" accept="audio/*" style="display: none;" onchange="document.getElementById('fileNameDisplay').innerText = this.files[0]?.name || '点击选择音频文件'">
-            <span id="fileNameDisplay">点击选择音频文件</span>
+            <span id="fileNameDisplay" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">点击选择音频文件</span>
         </label>
         
-        <div style="display: flex; gap: 10px; margin-top: 8px;">
-            <button onclick="closeAddBgmModal()" style="flex: 1; padding: 10px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">取消</button>
-            <button onclick="saveCustomBgm()" style="flex: 1; padding: 10px; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">保存</button>
+        <div style="display: flex; gap: 10px; margin-top: 8px; width: 100%;">
+            <button onclick="closeAddBgmModal()" style="flex: 1; padding: 10px; box-sizing: border-box; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">取消</button>
+            <button onclick="saveCustomBgm()" style="flex: 1; padding: 10px; box-sizing: border-box; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">保存</button>
         </div>
     </div>
 </div>
 
-                <div class="setting-group">
-                    <div class="setting-title">全局 CSS 自定义</div>
-                 <textarea class="setting-textarea" style="font-family: monospace; font-size: 12px; background: #ffffff; color: #333; border: 1px solid #eee;" rows="5">
-/* 修改约会页面背景色 */
-.offline-mode-container {
-    background-color: #FAFAFA; 
+<div class="setting-group">
+    <div class="setting-title">全局 CSS 自定义</div>
+<textarea id="offlineCssInput" class="setting-textarea" style="font-family: monospace; font-size: 12px; background: #ffffff; color: #333; border: 1px solid #eee;" rows="10">
+/* 1. 基础设置：小手机背景与小说字体基调 */
+.offline-chat-container {
+    background-color: #FAFAFA;
+    color: #2C3E50;
+    font-family: 'Palatino Linotype', 'Book Antiqua', 'Songti SC', 'SimSun', serif;
+    padding: 20px;
+    line-height: 1.8;
+    font-size: 16px;
 }
-/* 对方对话气泡 */
-.bubble-npc {
-    background: rgba(255,255,255,0.9);
-}</textarea>
 
-    
-</div></div> </div> </div></div>
+/* 2. 旁白与动作描述 */
+.narrative {
+    text-indent: 2em;
+    color: #5D6D7E;
+    margin-bottom: 20px;
+    text-align: justify;
+    font-style: italic;
+}
+
+/* 3. 对话容器与人物名称 */
+.dialogue-section {
+    margin-bottom: 24px;
+}
+.character-name {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #888888;
+    margin-bottom: 6px;
+    display: block;
+    margin-left: 2px;
+}
+
+/* 4. 正常的实线对话卡片 */
+.dialogue-content {
+    background-color: #FFFFFF;
+    border: 1px solid #EAEAEA; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    padding: 12px 16px;
+    border-radius: 8px; 
+    margin: 0;
+    color: #333333;
+}
+
+/* 5. 无标签云朵OS */
+.thought-cloud {
+    background-color: #F7F9FA;
+    border-radius: 20px; 
+    border: 1px solid #EFEFEF; 
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+    padding: 12px 18px; 
+    margin: 0 10px; 
+    color: #888888; 
+    font-style: italic; 
+    font-size: 15px; 
+    text-align: center;
+}
+</textarea>
+</div>
+
+
+</div> </div> </div></div>
 
 
 <!-- 表情包面板 -->
