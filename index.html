@@ -61,6 +61,8 @@
 </head>
 <body>
 
+
+    
     <svg width="0" height="0" style="position: absolute;">
     <defs>
         <!-- 爱心渐变 -->
@@ -6262,9 +6264,103 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js');
   }
+
 </script>
 
+<script>
+// 🔐 版权保护：每日启动公告
+function showDailyCopyrightNotice() {
+    const today = new Date().toDateString();
+    const lastNoticeDate = localStorage.getItem('lastCopyrightNoticeDate');
+    
+    if (lastNoticeDate === today) {
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px 20px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        max-width: 92%;
+        width: 340px;
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    `;
+    
+    const title = document.createElement('div');
+    title.style.cssText = "font-size: 20px; font-weight: 700; color: #2C3E50; margin-bottom: 16px;";
+    title.innerText = "⚠️ 版权声明";
+    
+      const text = document.createElement('div');
+    text.style.cssText = "font-size: 13px; color: #555; margin-bottom: 24px; line-height: 1.9; text-align: left;";
+    text.innerHTML = `
+   
+        <p style="margin: 0 0 10px 0;">这里是<b>帽子小猫chat小手机</b>，创作者为<b>帽子小猫Kitty</b>，小红书主页：<a href="https://xhslink.com/m/13BdV2yEydv" target="_blank" style="color: #e84393;">点击直达</a></p>
+        <p style="margin: 0 0 10px 0;">该小手机售价为<b>《9.9》</b>包售后与更新，请不要二转链接、二卖、倒卖，请尊重原创作者的心血与劳动成果。</p>
+        <p style="margin: 0 0 10px 0; background: #fff3cd; padding: 8px 10px; border-radius: 8px; color: #856404;">我没有授权任何人二转二卖倒卖这个网页，除开<b>【小红书】</b>其他一切都为<b>【盗版】【倒卖】【二卖】</b></p>
+        <p style="margin: 0 0 10px 0;">小手机蹲蹲群：<b>1083623172</b></p>
+        <p style="margin: 0 0 10px 0; background: #ffe0e0; padding: 8px 10px; border-radius: 8px; color: #c0392b;">⚠️ 避雷二卖贩子，QQ：<b>1421179336</b>，咸鱼ID：林稚织子/会员名玛***7，倒卖售价25元，请勿上当。</p>
+        <p style="margin: 0; background: #e8f4fd; padding: 8px 10px; border-radius: 8px; color: #1a5276;">购买倒卖产品没有售后保障、答疑、反馈途径，请支持正版！</p>
+    `;
 
+    // 倒计时8秒才能关闭
+    let countdown = 8;
+    const button = document.createElement('button');
+    button.style.cssText = `width: 100%; padding: 14px; background: #999; border: none; border-radius: 8px; font-size: 14px; color: #fff; font-weight: 600; cursor: not-allowed; transition: all 0.2s; margin-top: 8px;`;
+    button.innerText = `请阅读完毕（${countdown}s）`;
+    button.disabled = true;
+
+    const timer = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+            button.innerText = `请阅读完毕（${countdown}s）`;
+        } else {
+            clearInterval(timer);
+            button.innerText = "我已阅读并同意";
+            button.disabled = false;
+            button.style.background = '#2C3E50';
+            button.style.cursor = 'pointer';
+            button.onmouseover = () => { button.style.background = '#1a2534'; };
+            button.onmouseout = () => { button.style.background = '#2C3E50'; };
+        }
+    }, 1000);
+
+    button.onclick = () => {
+        if (!button.disabled) {
+            localStorage.setItem('lastCopyrightNoticeDate', today);
+            modal.remove();
+        }
+    };
+    
+    content.appendChild(title);
+    content.appendChild(text);
+    content.appendChild(button);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+window.addEventListener('load', () => {
+    showDailyCopyrightNotice();
+});
+</script>
 
 </body>
 </html>

@@ -12769,28 +12769,29 @@ function hideDateSummarizing() {
 }
 
 // 🧹 结束约会并彻底清理现场
+// 🧹 结束约会并彻底清理现场
 async function endOfflineDate() {
-    const confirmEnd = confirm("确定要结束这次约会吗？TA 会将今天的经历写进时光相册里哦。");
-    if (!confirmEnd) return;
+    // ★★★ 直接问要不要生成总结 ★★★
+    const shouldGenerateSummary = confirm("要生成约会总结保存记忆吗？\n\n【确定】生成总结\n【取消】直接结束");
     
-    // ✅ 新增：显示正在总结的提示
-    showDateSummarizing();
-    
-    // 🌟 核心新增：在清空聊天记录之前，先生成并保存总结！
-  
-    const summary = await generateDateSummary();
-    
-    // ✅ 新增：隐藏总结提示
-    hideDateSummarizing();
-    
-if (summary) {
-    await saveDateSummaryToMemory(summary);
-    alert("✨ 约会已圆满结束！TA 已将美好回忆写进日记里~");
-}else {
-    const manualConfirm = confirm("总结生成失败，是否继续结束约会？");
-    if (!manualConfirm) return;
-    alert("✨ 约会已结束，但未能保存总结到记忆。");
-}
+    if (shouldGenerateSummary) {
+        // 用户选择生成总结
+        showDateSummarizing();
+        
+        const summary = await generateDateSummary();
+        
+        hideDateSummarizing();
+        
+        if (summary) {
+            await saveDateSummaryToMemory(summary);
+          
+        } else {
+          
+        }
+    } else {
+        // 用户选择不生成，直接结束
+     
+    }
     
     // 2. 🌟 核心修复：物理清空屏幕上的聊天记录！
     const chatArea = document.getElementById('offlineChatArea');
@@ -12801,7 +12802,6 @@ if (summary) {
     // 👇 🌟 新增核心：把 TA 的背包存档彻彻底底销毁！ 👇
     if (typeof currentChatId !== 'undefined') {
         localStorage.removeItem('offline_ta_bag_' + currentChatId);
-     
     }
 
     // 3. 🧹 清除 DB 里的未完成约会存档
@@ -12811,7 +12811,6 @@ if (summary) {
             if (states[currentChatId]) {
                 delete states[currentChatId];
                 saveToDB('offlineDateState', states);
-             
             }
         });
     }
@@ -12819,8 +12818,6 @@ if (summary) {
     // 4. 关闭线下界面弹窗
     const offlineModal = document.getElementById('offlineModeModal');
     if (offlineModal) offlineModal.style.display = 'none';
-    
-  
 }
 
 // 呼出/关闭线下模式设置抽屉
