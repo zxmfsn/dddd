@@ -4539,20 +4539,38 @@ function renderMemoryTimeline(moments) {
 
 
 // 3. 添加/编辑/删除逻辑
+// 3. 添加/编辑/删除逻辑 (全面防崩溃修复版)
 function openAddMemoryModal() {
     editingMemoryId = null;
-    document.getElementById('memoryModalTitle').textContent = '添加记忆';
-    document.getElementById('memoryContentInput').value = '';
-    document.getElementById('memoryPinCheckbox').checked = false;
-    document.getElementById('memoryDateInput').value = new Date().toISOString().split('T')[0];
-    document.getElementById('btnDeleteMemory').style.display = 'none'; // 隐藏删除按钮
+
+    // 分别获取元素并安全赋值，找不到就静默跳过，绝不报错
+    const titleEl = document.getElementById('memoryModalTitle');
+    if (titleEl) titleEl.textContent = '添加记忆';
+
+    const contentInput = document.getElementById('memoryContentInput');
+    if (contentInput) contentInput.value = '';
+
+    // 👇 抓住元凶了！现在给它加上了保护罩
+    const pinCheckbox = document.getElementById('memoryPinCheckbox');
+    if (pinCheckbox) pinCheckbox.checked = false;
+
+    const dateInput = document.getElementById('memoryDateInput');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+    const btnDelete = document.getElementById('btnDeleteMemory');
+    if (btnDelete) btnDelete.style.display = 'none'; // 隐藏删除按钮
     
     // 默认选中当前Tab对应的类型
-    switchMemEditType(currentMemoryTab === 'tags' ? 'tag' : 'moment');
+    // 【温馨提示】检查一下你上面代码里的变量名：
+    // 如果你用的 Tab 变量名是 currentArchiveTab，请把这里的 currentMemoryTab 改成 currentArchiveTab
+    if (typeof switchMemEditType === 'function') {
+        const targetType = (typeof currentMemoryTab !== 'undefined' && currentMemoryTab === 'tags') ? 'tag' : 'moment';
+        switchMemEditType(targetType);
+    }
     
-    document.getElementById('memoryEditModal').style.display = 'flex';
+    const editModal = document.getElementById('memoryEditModal');
+    if (editModal) editModal.style.display = 'flex';
 }
-
 function openEditMemoryModal(id) {
     // ★ 修复：尝试把 ID 转为数字（以防传过来的是字符串）
     const targetId = Number(id);
@@ -4619,65 +4637,99 @@ function switchMemEditType(type) {
 }
 
 
-function closeMemoryEditModal(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('memoryEditModal').style.display = 'none';
+// 1. 点击“+”按钮：打开你的编辑弹窗并清空/初始化数据
+function handleMemoryFloatClick() {
+    // 呼出你 HTML 里现成的弹窗
+    const modal = document.getElementById('memoryEditModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+
+    // 清空上次填写的记忆内容
+    const contentInput = document.getElementById('memoryContentInput');
+    if (contentInput) {
+        contentInput.value = '';
+    }
+
+    // 自动把日期选择框填成今天
+    const dateInput = document.getElementById('memoryDateInput');
+    if (dateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
 }
+
+// 2. 点击“取消”或背景：关闭弹窗
+function closeMemoryEditModal(event) {
+    const modal = document.getElementById('memoryEditModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 3. 点击“保存”：存入数据库并刷新时光相册
 function saveMemory() {
-    const content = document.getElementById('memoryContentInput').value.trim();
+    const contentInput = document.getElementById('memoryContentInput');
+    const dateInput = document.getElementById('memoryDateInput');
+    
+    const content = contentInput ? contentInput.value.trim() : '';
     if (!content) {
-        alert('请填写内容');
+        alert('请填写记忆内容！');
         return;
     }
-    
+
+    // 获取你选的日期，如果没选就默认用今天
+    let happenTime = new Date().toISOString().split('T')[0];
+    if (dateInput && dateInput.value) {
+        happenTime = dateInput.value;
+    }
+
+    // 打开数据库存数据
     loadFromDB('memories', (data) => {
         let allMemories = [];
         if (Array.isArray(data)) allMemories = data;
         else if (data && data.list) allMemories = data.list;
-        
+
+        // ★★★ 最关键的一步：强制将这条数据打包为 'moment'（时光相册专属类型） ★★★
         const newMemory = {
             id: Date.now(),
             chatId: currentChatId,
-            type: currentMemEditType,
+            type: 'moment', 
             content: content,
+            happenTime: happenTime,
             createTime: new Date().toISOString()
         };
-        
-        if (currentMemEditType === 'tag') {
-            newMemory.isPinned = document.getElementById('memoryPinCheckbox').checked;
-        } else {
-            newMemory.happenTime = document.getElementById('memoryDateInput').value || new Date().toISOString().split('T')[0];
-        }
-        
-        if (editingMemoryId) {
-            // 编辑模式
-            const index = allMemories.findIndex(m => m.id === editingMemoryId);
-            if (index > -1) {
-                allMemories[index] = { ...allMemories[index], ...newMemory, id: editingMemoryId };
-            }
-        } else {
-            // 新增模式
-            allMemories.push(newMemory);
-        }
-        
+
+        allMemories.push(newMemory);
         saveToDB('memories', { list: allMemories });
-        
-        // 刷新记忆列表
-        loadMemories();
-         updateArchiveCount(); 
-        
-        // 更新角色信息页的档案数字
-        const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
-        const momentCount = chatMemories.filter(m => m.type === 'moment').length;
-        const archiveCountEl = document.getElementById('charFollowing');
-        if (archiveCountEl) {
-            archiveCountEl.textContent = momentCount;
+
+        // 刷新时光相册列表（把新存的数据读出来）
+        if (typeof loadMemories === 'function') {
+            loadMemories();
         }
         
+        // 刷新顶部的档案统计数字
+        if (typeof updateArchiveCount === 'function') {
+            updateArchiveCount();
+        } else {
+            const chatMemories = allMemories.filter(m => m.chatId === currentChatId);
+            const momentCount = chatMemories.filter(m => m.type === 'moment').length;
+            const archiveCountEl = document.getElementById('charFollowing');
+            if (archiveCountEl) archiveCountEl.textContent = momentCount;
+        }
+
+        // 保存完毕后，自动帮你切回【时光相册】这一栏让你能立刻看到
+        if (typeof switchMemoryTab === 'function') {
+            switchMemoryTab('timeline');
+        }
+
+        // 关闭弹窗
         closeMemoryEditModal();
     });
 }
-
 
 function deleteCurrentMemory() {
     if (!editingMemoryId) return;
@@ -4884,18 +4936,17 @@ const [characterInfo, memoryContext, emojiList, momentsContext, latestOfflineSum
         loadFromDB('memories', data => {
             let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
             // 找最新的自动生成的约会总结
-            const latestOffline = allMemories
-                .filter(m => m.chatId === currentChatId && m.isAutoGenerated === true)
-                .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
-            
-            if (latestOffline) {
-                console.log('✅ 找到最新线下约会总结');
-                // 找到后立即删除，保证只用一次
-                allMemories = allMemories.filter(m => m.id !== latestOffline.id);
-                saveToDB('memories', { list: allMemories });
-            }
-            
-            resolve(latestOffline || null);
+          const latestOffline = allMemories
+    .filter(m => m.chatId === currentChatId && m.isOfflineTemp === true)  // ★ 只找临时记忆
+    .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
+
+if (latestOffline) {
+    console.log('✅ 找到线下临时记忆，注入后删除');
+    allMemories = allMemories.filter(m => m.id !== latestOffline.id);  // ★ 只删临时的
+    saveToDB('memories', { list: allMemories });
+}
+
+resolve(latestOffline || null);
         });
     })
 ]);
@@ -5440,7 +5491,7 @@ ${(typeof allowHtmlCard !== 'undefined' && allowHtmlCard) ? `
 - 如果你【同意】赴约：必须在气泡中包含【接受邀约】四个字（这会触发系统的出门准备流程）。
 - 如果你【拒绝】赴约：只需用文字正常拒绝即可，不用加特殊标记。
 - 你也可以根据聊天语境（如聊到好天气、好吃的），或者你想要和用户见面时，可以主动向用户发起约会邀请，但不要过于频繁。格式必须是：【发起邀约：你想说的邀请文案】（例如：【发起邀约：周末天气不错，要不要一起去海边走走？】）。
-
+⚠️ 重要：【发起邀约：xxx】必须独立成一条气泡，用 ||| 分隔，绝对不能和其他文字混在一起！
 ---------------------------------------------------
 ${htmlWorldbookRef || ''}
 ---------------------------------------------------
@@ -8076,14 +8127,6 @@ if (analyzeBtn) analyzeBtn.style.display = 'block';
     }
 }
 
-// 3. 悬浮按钮点击处理
-function handleMemoryFloatClick() {
-    if (currentArchiveTab === 'profile') {
-        openEditArchiveModal(); // 编辑档案
-    } else {
-        openAddMemoryModal(); // 添加标签或回忆 (复用旧逻辑)
-    }
-}
 
 
 

@@ -3943,7 +3943,8 @@ let currentImageApiConfig = {
     enabled: false,
     baseUrl: "https://api.openai.com/v1",
     apiKey: "",
-    model: "dall-e-3"
+    model: "dall-e-3",
+    apiType: "openai"
 };
 
 // 1. 加载绘图配置 (页面加载时调用)
@@ -3986,39 +3987,11 @@ function toggleImageConfigArea(show) {
     }
 }
 
-// 4. 保存绘图配置 (供外部调用)
-function saveImageApiConfig() {
-    const checkbox = document.getElementById('imageApiEnabled');
-    // 如果页面上没有这个元素，说明可能没加载出来，不保存空值
-    if (!checkbox) return;
-
-    const enabled = checkbox.checked;
-    const baseUrl = document.getElementById('imageApiBaseUrl').value.trim();
-    const apiKey = document.getElementById('imageApiKey').value.trim();
-    const model = document.getElementById('imageApiModel').value.trim();
-
-    // 自动修正 URL
-    let finalUrl = baseUrl;
-    if (finalUrl && finalUrl.endsWith('/')) finalUrl = finalUrl.slice(0, -1);
-
-    const newConfig = {
-        enabled: enabled,
-        baseUrl: finalUrl,
-        apiKey: apiKey,
-        model: model
-    };
-
-    currentImageApiConfig = newConfig;
-    saveToDB('imageApiSettings', newConfig);
-    console.log('🎨 绘图配置已保存:', newConfig);
-}
 
 // ============ 🎨 AI 生图核心逻辑 (异步处理) ============
 
 async function triggerAiImageGeneration(messageId, prompt) {
     console.log(`🎨 开始为消息 ${messageId} 生成图片，提示词: ${prompt}`);
-
-  // 👇 新增：如果没有传入 prompt，从最新消息中提取
     if (!prompt || prompt.trim() === '') {
         const lastUserMsg = allMessages.slice().reverse().find(m => m.role === 'user');
         if (lastUserMsg && lastUserMsg.content) {
@@ -4030,49 +4003,22 @@ async function triggerAiImageGeneration(messageId, prompt) {
         }
     }
 
-    // 1. 检查 Key
     if (!currentImageApiConfig.apiKey) {
         updateMessageToError(messageId, '❌ 绘图失败: 未配置 API Key');
         return;
     }
 
     try {
-        // 2. AI生图提示词 Prompt 
         const enhancedPrompt = prompt;
+        let imageUrl = null;
 
-        // 3. 构建 URL
-        let url = currentImageApiConfig.baseUrl;
-        if (!url.endsWith('/images/generations')) {
-            url = url + '/images/generations';
-        }
+        // 直接调用 OpenAI 风格生图接口
+        imageUrl = await generateImageWithOpenAI(enhancedPrompt);
 
-        // 4. 请求
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentImageApiConfig.apiKey}`
-            },
-            body: JSON.stringify({
-                model: currentImageApiConfig.model,
-                prompt: enhancedPrompt,
-                n: 1,
-                size: "1024x1024"
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            const errMsg = data.error ? data.error.message : '未知错误';
-            updateMessageToError(messageId, `❌ 绘图失败: ${errMsg}`);
-            return;
-        }
-
-        if (data.data && data.data.length > 0 && data.data[0].url) {
-            updateMessageToImage(messageId, data.data[0].url);
+        if (imageUrl) {
+            updateMessageToImage(messageId, imageUrl);
         } else {
-            updateMessageToError(messageId, '❌ 绘图失败: API 返回数据异常');
+            updateMessageToError(messageId, '❌ 绘图失败: 无法获取图片URL');
         }
 
     } catch (error) {
@@ -4080,12 +4026,45 @@ async function triggerAiImageGeneration(messageId, prompt) {
     }
 }
 
+// OpenAI 风格生图
+async function generateImageWithOpenAI(prompt) {
+    let url = currentImageApiConfig.baseUrl;
+    if (!url.endsWith('/images/generations')) {
+        url = url + '/images/generations';
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentImageApiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+            model: currentImageApiConfig.model,
+            prompt: prompt,
+            n: 1,
+        })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+        const errMsg = data.error ? data.error.message : '未知错误';
+        throw new Error(errMsg);
+    }
+
+    if (data.data && data.data.length > 0 && data.data[0].url) {
+        return data.data[0].url;
+    }
+    
+    throw new Error('API 返回数据异常');
+}
+
 // 辅助：更新为图片
 function updateMessageToImage(msgId, url) {
     const msg = allMessages.find(m => m.id === msgId);
     if (msg) {
         // 👇 保存原始提示词，方便后续回溯
-        const originalPrompt = msg.content; // 保存loading时的提示词
+        const originalPrompt = msg.content;
         
         msg.type = 'image';
         msg.content = url;
@@ -4098,7 +4077,7 @@ function updateMessageToImage(msgId, url) {
     }
 }
 
-// 辅助：更新为错误 (方案 A)
+// 辅助：更新为错误
 function updateMessageToError(msgId, errorText) {
     const msg = allMessages.find(m => m.id === msgId);
     if (msg) {
@@ -4128,6 +4107,8 @@ async function getImageModels() {
         let url = baseUrl;
         if (url.endsWith('/')) url = url.slice(0, -1);
         if (!url.endsWith('/models')) url += '/models';
+
+        // 统一使用 OpenAI 风格鉴权
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -4145,6 +4126,7 @@ async function getImageModels() {
             alert('未获取到模型数据');
             return;
         }
+        
         // 渲染下拉框
         const select = document.getElementById('imageModelSelect');
         const group = document.getElementById('imageModelSelectGroup');
@@ -4157,9 +4139,9 @@ async function getImageModels() {
             const scoreB = (keyB.includes('image') || keyB.includes('dall') || keyB.includes('flux')) ? 1 : 0;
             return scoreB - scoreA;
         });
+        
         select.innerHTML = '<option value="">▼ 请选择模型填入上方</option>' + 
             models.map(m => `<option value="${m.id}">${m.id}</option>`).join('');
-        
         group.style.display = 'block';
         alert(`成功获取 ${models.length} 个模型，请在下方列表选择`);
     } catch (error) {
@@ -12665,7 +12647,7 @@ function saveBlindBoxItemsToDB() {
 // ========== 【盲盒机】核心功能函数 - 完整版 END ==========
 
 
-// ========== 【线下模式-约会】开始 ==========
+// ========== 【线下模式开始-约会】开始 ==========
 
 // ========== 【线下模式-约会】开关逻辑 ==========
 
@@ -12959,6 +12941,8 @@ function switchWbCategory(targetCat, element) {
         `;
     }).join('');
 }
+
+
 // ==========================================
 // 🎵 线下约会模式：自定义 BGM 引擎
 // ==========================================
@@ -13038,8 +13022,12 @@ function playOfflineBgm(urlOrCommand, btnElement) {
         return;
     }
 
+      audio.pause();
     audio.src = urlOrCommand;
-    audio.play().catch(e => console.log('请先点击页面互动后再播放', e));
+    audio.load();
+    audio.play().catch(e => {
+        // 切换过快或浏览器限制，正常忽略
+    });
 }
 
 // ================= 弹窗与保存逻辑 =================
@@ -13522,6 +13510,8 @@ function sendOfflineMessage() {
     const inputEl = document.getElementById('offlineInput');
     const text = inputEl.value.trim();
     if (!text) return; 
+    // 👇 新增：悄悄把你的最后一次输入存起来，用于“重回”
+    window.lastMyOfflineInput = text;
     inputEl.value = '';
 
     const chatArea = document.getElementById('offlineChatArea');
@@ -13541,6 +13531,8 @@ function sendOfflineMessage() {
             const narrationText = part.slice(1, -1);
             const msgDiv = document.createElement('div');
             msgDiv.className = 'narrative'; // 用你的类名！
+            // 👇 新增：打上防删标签，告诉系统这是“我”发的
+            msgDiv.setAttribute('data-sender', 'me');
             msgDiv.innerText = narrationText;
             chatArea.appendChild(msgDiv);
             
@@ -13548,6 +13540,8 @@ function sendOfflineMessage() {
             // 💬 对话模式：精准还原你写的 <div class="dialogue-section"> 和人物名
             const sectionDiv = document.createElement('div');
             sectionDiv.className = 'dialogue-section';
+            // 👇 新增：打上防删标签，告诉系统这是“我”发的
+            sectionDiv.setAttribute('data-sender', 'me');
             
             // 加上角色名
             const nameSpan = document.createElement('span');
@@ -14022,6 +14016,8 @@ ${currentSessionHistory}
 
         // 9. 安全提取回复文本，执行外科手术式渲染
 const aiReply = rawData.choices[0].message.content.trim();
+// 👇 新增：拦截并保存 AI 的最新原始文本，用于“编辑”
+        window.lastAiRawText = aiReply;
 console.log("📦 AI完整回复长度：", aiReply.length, "字符");
 console.log("📦 AI完整回复（最后200字）：", aiReply.slice(-200));
 console.log("📦 完整回复：", aiReply);
@@ -14738,15 +14734,16 @@ async function saveDateSummaryToMemory(summary) {
             allMemories = data.list;
         }
 
-              const newMemoryEntry = {
-            id: Date.now(),
-            chatId: currentChatId,
-            type: 'moment',
-            content: summary,
-            happenTime: new Date().toISOString().split('T')[0],
-            createTime: new Date().toISOString(),
-            isAutoGenerated: true
-        };
+  const newMemoryEntry = {
+    id: Date.now(),
+    chatId: currentChatId,
+    type: 'moment',
+    content: summary,
+    happenTime: new Date().toISOString().split('T')[0],
+    createTime: new Date().toISOString(),
+    isAutoGenerated: true,
+    isOfflineTemp: true  // ★★★ 新增：标记为线下临时记忆 ★★★
+};
 
         console.log("💾 准备保存的记忆条目：", newMemoryEntry);
         console.log("💾 内容长度：", newMemoryEntry.content.length, "字符");
@@ -14775,3 +14772,265 @@ async function saveDateSummaryToMemory(summary) {
         }, 500);
     });
 }
+
+// ==========================================
+// 🛠️ 线下模式：长按呼出重回/编辑/删除菜单 (终极完全体)
+// ==========================================
+
+let aiMessagePressTimer;
+
+// 1. 全局事件代理：稳稳挂载
+document.addEventListener('mousedown', handleOfflinePressStart);
+document.addEventListener('touchstart', handleOfflinePressStart, { passive: true });
+document.addEventListener('mouseup', handleOfflinePressCancel);
+document.addEventListener('touchend', handleOfflinePressCancel);
+document.addEventListener('touchmove', handleOfflinePressCancel, { passive: true });
+
+function handleOfflinePressStart(e) {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea || !chatArea.contains(e.target)) return;
+
+    let target = e.target;
+    
+    // 防止点到纯文本节点报错
+    if (target.nodeType === 3) target = target.parentNode; 
+    if (target.nodeType !== 1) return;
+
+    // 寻找最近的聊天气泡
+    const bubble = target.closest('.narrative, .dialogue-section, .thought-cloud, .offline-env-card');
+    if (!bubble) return;
+
+    // 判断是谁发的消息
+    const isMe = bubble.getAttribute('data-sender') === 'me';
+
+    // 锁定坐标快照
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+
+    // 开始计时，长按 800ms 触发
+    aiMessagePressTimer = setTimeout(() => {
+        showOfflineActionMenu(clientX, clientY, bubble, isMe);
+    }, 800);
+}
+
+function handleOfflinePressCancel() {
+    clearTimeout(aiMessagePressTimer);
+}
+
+// ✨ 显示极简高冷 Ins 风操作菜单 (包含单点删除功能)
+function showOfflineActionMenu(x, y, bubble, isMe) {
+    // 销毁旧菜单
+    const oldMenu = document.getElementById('offlineActionMenu');
+    if (oldMenu) oldMenu.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'offlineActionMenu';
+    menu.style.cssText = `
+        position: fixed;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid #EAEAEA;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 6px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        left: ${x}px;
+        top: ${y}px;
+    `;
+
+    const btnStyle = "padding: 12px 20px; font-size: 13px; color: #2C3E50; background: transparent; border: none; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s; letter-spacing: 1px;";
+
+    if (!isMe) {
+        // 🤖 如果是 AI 的气泡，显示【重回】和【编辑剧本】
+        const regenBtn = document.createElement('button');
+        regenBtn.innerText = '↺ 重新生成 (重回)';
+        regenBtn.style.cssText = btnStyle;
+        regenBtn.onmouseover = () => regenBtn.style.background = '#F8F9FA';
+        regenBtn.onmouseout = () => regenBtn.style.background = 'transparent';
+        regenBtn.onclick = () => {
+            menu.remove();
+            regenerateLastAiReply();
+        };
+
+        const editBtn = document.createElement('button');
+        editBtn.innerText = '✎ 剧本微调 (编辑)';
+        editBtn.style.cssText = btnStyle;
+        editBtn.onmouseover = () => editBtn.style.background = '#F8F9FA';
+        editBtn.onmouseout = () => editBtn.style.background = 'transparent';
+        editBtn.onclick = () => {
+            menu.remove();
+            openOfflineEditModal();
+        };
+
+        menu.appendChild(regenBtn);
+        menu.appendChild(editBtn);
+    } else {
+        // 🙋‍♂️ 如果是“我”的气泡，只显示【修改我的发言】
+        const editMeBtn = document.createElement('button');
+        editMeBtn.innerText = '✎ 修改我的发言';
+        editMeBtn.style.cssText = btnStyle;
+        editMeBtn.onmouseover = () => editMeBtn.style.background = '#F8F9FA';
+        editMeBtn.onmouseout = () => editMeBtn.style.background = 'transparent';
+        editMeBtn.onclick = () => {
+            menu.remove();
+            openOfflineUserEditModal(bubble);
+        };
+        menu.appendChild(editMeBtn);
+    }
+
+    // 🗑️ 🌟 所有人通用的单点物理消除按钮
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerText = '🗑️ 物理消除 (删除)';
+    deleteBtn.style.cssText = btnStyle + "color: #E74C3C;"; 
+    deleteBtn.onmouseover = () => deleteBtn.style.background = '#FDEDEC';
+    deleteBtn.onmouseout = () => deleteBtn.style.background = 'transparent';
+    deleteBtn.onclick = () => {
+        // 1. 关掉菜单
+        menu.remove();
+        // 2. 直接从屏幕上抹除这个气泡
+        bubble.remove();
+        // 3. 立刻触发秒存，确保刷新也不会再出现
+        if (typeof saveOfflineHistoryToDB === 'function') {
+            saveOfflineHistoryToDB();
+        }
+    };
+    
+    // 把删除按钮挂在菜单的最下面
+    menu.appendChild(deleteBtn);
+
+    document.body.appendChild(menu);
+
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(evt) {
+            if (!menu.contains(evt.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 10);
+}
+
+// 🧹 清理 AI 最新回复
+function clearLastAiMessagesFromDOM() {
+    const chatArea = document.getElementById('offlineChatArea');
+    if (!chatArea) return;
+
+    while (chatArea.lastElementChild) {
+        const lastNode = chatArea.lastElementChild;
+        if (lastNode.getAttribute('data-sender') === 'me') break;
+        chatArea.removeChild(lastNode);
+    }
+}
+
+// ↺ 重回
+function regenerateLastAiReply() {
+    if (!window.lastMyOfflineInput) {
+        alert("没有找到你上一次发送的内容，无法重回哦。");
+        return;
+    }
+    clearLastAiMessagesFromDOM();
+    const warningInject = "\\n【系统最高指令警告：你上一次的回复格式有误！本次重新生成，请务必严格遵守格式：第一句必须是【时间：xxx | 地点：xxx | 天气：xxx】开头，后面必须按照“【旁白】在最前”的格式循环排版！】\\n";
+    receiveOfflineAIReply(warningInject + window.lastMyOfflineInput);
+}
+
+// ✎ 编辑 AI 剧本
+function openOfflineEditModal() {
+    if (!window.lastAiRawText) {
+        alert("没有找到 AI 上一次生成的原始剧本哦。");
+        return;
+    }
+    createAndShowModal('修 改 剧 本', window.lastAiRawText, (newText) => {
+        window.lastAiRawText = newText;
+        clearLastAiMessagesFromDOM();
+        processOfflineResponse(newText);
+    });
+}
+
+// 🙋‍♂️ ✎ 编辑“我”的发言
+function openOfflineUserEditModal(bubble) {
+    // 智能提取你要修改的纯文本
+    let textNode = bubble;
+    if (bubble.classList.contains('dialogue-section')) {
+        textNode = bubble.querySelector('.dialogue-content');
+    }
+    const currentText = textNode.innerText;
+
+    // 呼出弹窗
+    createAndShowModal('修改我的发言', currentText, (newText) => {
+        // 直接原地替换文字
+        textNode.innerText = newText;
+        // 替换后立刻保存记忆到数据库，防止刷新丢失
+        if (typeof saveOfflineHistoryToDB === 'function') {
+            saveOfflineHistoryToDB();
+        }
+    });
+}
+
+// 🎨 抽离出来的通用高级弹窗生成器
+function createAndShowModal(titleText, defaultText, onSaveCallback) {
+    const overlay = document.createElement('div');
+    overlay.id = 'offlineEditOverlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px);
+        display: flex; align-items: center; justify-content: center; z-index: 100000;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: #FFFFFF; width: 85%; max-width: 400px; border-radius: 16px;
+        padding: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        display: flex; flex-direction: column; gap: 16px; border: 1px solid #EAEAEA;
+    `;
+
+    const title = document.createElement('div');
+    title.innerText = titleText;
+    title.style.cssText = 'font-size: 14px; font-weight: 600; color: #2C3E50; text-align: center; letter-spacing: 4px;';
+
+    const textarea = document.createElement('textarea');
+    textarea.value = defaultText;
+    textarea.style.cssText = `
+        width: 100%; height: 280px; padding: 16px; border-radius: 12px;
+        border: 1px solid #EAECEE; background: #FAFAFA; color: #5D6D7E; font-size: 14px;
+        line-height: 1.8; resize: none; outline: none; font-family: inherit;
+        box-sizing: border-box; transition: all 0.3s;
+    `;
+    textarea.onfocus = () => textarea.style.borderColor = '#2C3E50';
+    textarea.onblur = () => textarea.style.borderColor = '#EAECEE';
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = '放弃';
+    cancelBtn.style.cssText = 'padding: 10px 24px; border-radius: 24px; border: 1px solid #EAEAEA; background: transparent; color: #999; cursor: pointer; font-size: 13px; transition: all 0.2s;';
+    cancelBtn.onmouseover = () => cancelBtn.style.background = '#FAFAFA';
+    cancelBtn.onmouseout = () => cancelBtn.style.background = 'transparent';
+    cancelBtn.onclick = () => overlay.remove();
+
+    const saveBtn = document.createElement('button');
+    saveBtn.innerText = '确认修改';
+    saveBtn.style.cssText = 'padding: 10px 24px; border-radius: 24px; border: none; background: #2C3E50; color: #fff; cursor: pointer; font-weight: 500; font-size: 13px; box-shadow: 0 4px 10px rgba(44,62,80,0.2); transition: all 0.2s;';
+    saveBtn.onmouseover = () => saveBtn.style.transform = 'translateY(-1px)';
+    saveBtn.onmouseout = () => saveBtn.style.transform = 'translateY(0)';
+    saveBtn.onclick = () => {
+        const newText = textarea.value.trim();
+        if(!newText) return;
+        overlay.remove();
+        onSaveCallback(newText);
+    };
+
+    btnGroup.appendChild(cancelBtn);
+    btnGroup.appendChild(saveBtn);
+    modal.appendChild(title);
+    modal.appendChild(textarea);
+    modal.appendChild(btnGroup);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// ========== 【线下模式结束】 ==========

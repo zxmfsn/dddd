@@ -1434,7 +1434,37 @@ function saveConfig() {
         saveImageApiConfig();
     }
     alert('配置已保存');
+
+
 }
+
+// 保存绘图API配置
+// 保存绘图API配置
+function saveImageApiConfig() {
+    const enabled = document.getElementById('imageApiEnabled').checked;
+    const baseUrl = document.getElementById('imageApiBaseUrl').value.trim();
+    const apiKey = document.getElementById('imageApiKey').value.trim();
+    const model = document.getElementById('imageApiModel').value.trim();
+
+    if (enabled && (!baseUrl || !apiKey || !model)) {
+        alert('绘图API已启用，请填写完整的地址、Key和模型');
+        return;
+    }
+    
+    currentImageApiConfig = {
+        enabled: enabled,
+        baseUrl: baseUrl,
+        apiKey: apiKey,
+        model: model,
+       
+    };
+    console.log('💾 保存的配置:', currentImageApiConfig);
+    saveToDB('apiConfig', currentImageApiConfig);
+}
+
+
+
+
 function saveAsScheme() {
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
     const apiKey = document.getElementById('apiKey').value.trim();
@@ -1484,6 +1514,8 @@ function saveAsScheme() {
     
     alert('已另存为 ' + schemeName);
 }
+
+
 // 页面加载完成后初始化
 window.addEventListener('DOMContentLoaded', function() {
 

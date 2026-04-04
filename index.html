@@ -407,6 +407,8 @@
                     <input type="text" id="imageApiModel" class="ins-input" placeholder="dall-e-3 或 flux-schnell">
                 </div>
 
+
+
                 <!-- 拉取按钮 -->
                 <button class="ins-line-btn ins-btn-blue-line" onclick="getImageModels()" style="width: 100%; margin-top: 5px; margin-bottom: 10px;">
                     📡 点击获取AI生图模型列表
@@ -1569,7 +1571,7 @@
             </div>
     </div>
 
-    <button class="add-btn" id="memoryFloatingBtn" onclick="handleMemoryFloatClick()">+</button>
+   <button id="memoryFloatingBtn" class="floating-action-btn" onclick="handleMemoryFloatClick()">+</button>
 </div>
 
 <div class="modal-overlay" id="editArchiveModal" onclick="closeEditArchiveModal(event)">
@@ -6321,8 +6323,8 @@ function showDailyCopyrightNotice() {
         <p style="margin: 0; background: #e8f4fd; padding: 8px 10px; border-radius: 8px; color: #1a5276;">购买倒卖产品没有售后保障、答疑、反馈途径，请支持正版！</p>
     `;
 
-    // 倒计时8秒才能关闭
-    let countdown = 8;
+    // 倒计时5秒才能关闭
+    let countdown = 5;
     const button = document.createElement('button');
     button.style.cssText = `width: 100%; padding: 14px; background: #999; border: none; border-radius: 8px; font-size: 14px; color: #fff; font-weight: 600; cursor: not-allowed; transition: all 0.2s; margin-top: 8px;`;
     button.innerText = `请阅读完毕（${countdown}s）`;
