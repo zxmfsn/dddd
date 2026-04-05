@@ -4347,21 +4347,39 @@ function closeWidgetSettings(type) {
     noteTempImage = null;
 }
 
-// 4) 处理组件图片上传预览（音乐用）
+// 4) 处理组件图片上传预览（音乐用 - 加入压缩优化）
 function handleWidgetImage(input, previewId) {
     if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            if (input.id === 'musicBgInput') tempWidgetImages.musicBg = e.target.result;
-            if (input.id === 'musicCoverInput') tempWidgetImages.musicCover = e.target.result;
+        const file = input.files[0];
+        // 音乐封面很小，200px够了；背景大一点，400px够了
+        const maxWidth = input.id === 'musicCoverInput' ? 200 : 400;
 
-            const preview = document.getElementById(previewId);
-            if (preview) {
-                preview.style.backgroundImage = `url(${e.target.result})`;
-                preview.style.display = 'block';
-            }
-        };
-        reader.readAsDataURL(input.files[0]);
+        if (typeof compressImageFile === 'function') {
+            compressImageFile(file, maxWidth, 0.8, function(compressed) {
+                if (input.id === 'musicBgInput') tempWidgetImages.musicBg = compressed;
+                if (input.id === 'musicCoverInput') tempWidgetImages.musicCover = compressed;
+
+                const preview = document.getElementById(previewId);
+                if (preview) {
+                    preview.style.backgroundImage = `url(${compressed})`;
+                    preview.style.display = 'block';
+                }
+            });
+        } else {
+            // 保底逻辑
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (input.id === 'musicBgInput') tempWidgetImages.musicBg = e.target.result;
+                if (input.id === 'musicCoverInput') tempWidgetImages.musicCover = e.target.result;
+
+                const preview = document.getElementById(previewId);
+                if (preview) {
+                    preview.style.backgroundImage = `url(${e.target.result})`;
+                    preview.style.display = 'block';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     }
 }
 
@@ -4406,7 +4424,7 @@ function saveMusicSettings() {
     });
 }
 
-// 7) 绑定便签图片 input（只本地上传）
+// 7) 绑定便签图片 input（加入压缩机制）
 window.addEventListener('DOMContentLoaded', function() {
     const noteImageInput = document.getElementById('noteImageInput');
     if (!noteImageInput) return;
@@ -4415,19 +4433,30 @@ window.addEventListener('DOMContentLoaded', function() {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            noteTempImage = ev.target.result;
-
-            const preview = document.getElementById('noteImagePreview');
-            if (preview) {
-                preview.style.display = 'block';
-                preview.style.backgroundImage = `url(${noteTempImage})`;
-            }
-        };
-        reader.readAsDataURL(file);
-
-        noteImageInput.value = '';
+        if (typeof compressImageFile === 'function') {
+            compressImageFile(file, 400, 0.8, function(compressed) {
+                noteTempImage = compressed;
+                const preview = document.getElementById('noteImagePreview');
+                if (preview) {
+                    preview.style.display = 'block';
+                    preview.style.backgroundImage = `url(${noteTempImage})`;
+                }
+                noteImageInput.value = ''; // 清空 input
+            });
+        } else {
+            // 保底逻辑
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                noteTempImage = ev.target.result;
+                const preview = document.getElementById('noteImagePreview');
+                if (preview) {
+                    preview.style.display = 'block';
+                    preview.style.backgroundImage = `url(${noteTempImage})`;
+                }
+            };
+            reader.readAsDataURL(file);
+            noteImageInput.value = ''; // 清空 input
+        }
     });
 });
 
@@ -4693,17 +4722,29 @@ function saveMemory() {
         if (Array.isArray(data)) allMemories = data;
         else if (data && data.list) allMemories = data.list;
 
-        // ★★★ 最关键的一步：强制将这条数据打包为 'moment'（时光相册专属类型） ★★★
-        const newMemory = {
-            id: Date.now(),
-            chatId: currentChatId,
-            type: 'moment', 
-            content: content,
-            happenTime: happenTime,
-            createTime: new Date().toISOString()
-        };
+        // ★★★ 核心修复：在这里判断是编辑还是新增 ★★★
+        if (typeof editingMemoryId !== 'undefined' && editingMemoryId) {
+            // 【编辑模式】：找到旧的那条数据，只更新内容和日期
+            const index = allMemories.findIndex(m => m.id === editingMemoryId);
+            if (index > -1) {
+                allMemories[index].content = content;
+                allMemories[index].happenTime = happenTime;
+                // type, id, createTime 都不动，完美保留
+            }
+        } else {
+            // 【新增模式】：创建一条全新的数据
+            const newMemory = {
+                id: Date.now(),
+                chatId: currentChatId,
+                type: 'moment', // 强制打包为 'moment'（时光相册专属类型）
+                content: content,
+                happenTime: happenTime,
+                createTime: new Date().toISOString()
+            };
+            allMemories.push(newMemory);
+        }
 
-        allMemories.push(newMemory);
+        // 保存回数据库
         saveToDB('memories', { list: allMemories });
 
         // 刷新时光相册列表（把新存的数据读出来）
@@ -4724,6 +4765,11 @@ function saveMemory() {
         // 保存完毕后，自动帮你切回【时光相册】这一栏让你能立刻看到
         if (typeof switchMemoryTab === 'function') {
             switchMemoryTab('timeline');
+        }
+
+        // ★ 关键收尾：清空编辑ID，防止下次点“+”号时误判成编辑
+        if (typeof editingMemoryId !== 'undefined') {
+            editingMemoryId = null;
         }
 
         // 关闭弹窗

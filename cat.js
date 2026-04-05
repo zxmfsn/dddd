@@ -4646,9 +4646,9 @@ function loadSpLettersFromDB() {
 // 关闭时空邮局
 function closeSpacePost() {
     document.getElementById('spacePostScreen').style.display = 'none';
-    document.getElementById('mainScreen').style.display = 'flex';
+    document.getElementById('screenSlider').style.display = 'flex';
+    document.getElementById('screenDots').style.display = 'flex';
 }
-
 // 按钮总入口
 function handleSpacePostAction(type) {
     if (type === 'receive') openSpLetter();
@@ -12426,7 +12426,8 @@ function openBlindBoxShowModal() {
 function backToMainFromBlindBox() {
     saveBlindBoxData();
     document.getElementById('blindBoxMachineScreen').style.display = 'none';
-    document.getElementById('mainScreen').style.display = 'flex';
+    document.getElementById('screenSlider').style.display = 'flex';
+    document.getElementById('screenDots').style.display = 'flex';
 }
 
 // 打开系列编辑器
@@ -14774,7 +14775,7 @@ async function saveDateSummaryToMemory(summary) {
 }
 
 // ==========================================
-// 🛠️ 线下模式：长按呼出重回/编辑/删除菜单 (终极完全体)
+// 🛠️ 线下模式：长按呼出重回/编辑/删除菜单 (内存同步完美版)
 // ==========================================
 
 let aiMessagePressTimer;
@@ -14792,22 +14793,17 @@ function handleOfflinePressStart(e) {
 
     let target = e.target;
     
-    // 防止点到纯文本节点报错
     if (target.nodeType === 3) target = target.parentNode; 
     if (target.nodeType !== 1) return;
 
-    // 寻找最近的聊天气泡
     const bubble = target.closest('.narrative, .dialogue-section, .thought-cloud, .offline-env-card');
     if (!bubble) return;
 
-    // 判断是谁发的消息
     const isMe = bubble.getAttribute('data-sender') === 'me';
 
-    // 锁定坐标快照
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
 
-    // 开始计时，长按 800ms 触发
     aiMessagePressTimer = setTimeout(() => {
         showOfflineActionMenu(clientX, clientY, bubble, isMe);
     }, 800);
@@ -14817,9 +14813,8 @@ function handleOfflinePressCancel() {
     clearTimeout(aiMessagePressTimer);
 }
 
-// ✨ 显示极简高冷 Ins 风操作菜单 (包含单点删除功能)
+// ✨ 显示极简高冷 Ins 风操作菜单
 function showOfflineActionMenu(x, y, bubble, isMe) {
-    // 销毁旧菜单
     const oldMenu = document.getElementById('offlineActionMenu');
     if (oldMenu) oldMenu.remove();
 
@@ -14845,7 +14840,6 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
     const btnStyle = "padding: 12px 20px; font-size: 13px; color: #2C3E50; background: transparent; border: none; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s; letter-spacing: 1px;";
 
     if (!isMe) {
-        // 🤖 如果是 AI 的气泡，显示【重回】和【编辑剧本】
         const regenBtn = document.createElement('button');
         regenBtn.innerText = '↺ 重新生成 (重回)';
         regenBtn.style.cssText = btnStyle;
@@ -14869,7 +14863,6 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
         menu.appendChild(regenBtn);
         menu.appendChild(editBtn);
     } else {
-        // 🙋‍♂️ 如果是“我”的气泡，只显示【修改我的发言】
         const editMeBtn = document.createElement('button');
         editMeBtn.innerText = '✎ 修改我的发言';
         editMeBtn.style.cssText = btnStyle;
@@ -14882,26 +14875,28 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
         menu.appendChild(editMeBtn);
     }
 
-    // 🗑️ 🌟 所有人通用的单点物理消除按钮
+    // 🗑️ 所有人通用的单点物理消除按钮
     const deleteBtn = document.createElement('button');
     deleteBtn.innerText = '🗑️ 物理消除 (删除)';
     deleteBtn.style.cssText = btnStyle + "color: #E74C3C;"; 
     deleteBtn.onmouseover = () => deleteBtn.style.background = '#FDEDEC';
     deleteBtn.onmouseout = () => deleteBtn.style.background = 'transparent';
     deleteBtn.onclick = () => {
-        // 1. 关掉菜单
         menu.remove();
-        // 2. 直接从屏幕上抹除这个气泡
+        
+        // 🌟 核心修复：同步清理内存中的原始剧本
+        if (!isMe) {
+            syncRawTextOnDelete(bubble);
+        }
+
         bubble.remove();
-        // 3. 立刻触发秒存，确保刷新也不会再出现
+        
         if (typeof saveOfflineHistoryToDB === 'function') {
             saveOfflineHistoryToDB();
         }
     };
     
-    // 把删除按钮挂在菜单的最下面
     menu.appendChild(deleteBtn);
-
     document.body.appendChild(menu);
 
     setTimeout(() => {
@@ -14912,6 +14907,50 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
             }
         });
     }, 10);
+}
+
+// 🌟 核心修复引擎：不仅删屏幕，还精准抠掉内存里的文字
+function syncRawTextOnDelete(bubble) {
+    if (!window.lastAiRawText) return;
+
+    // 检查这个气泡是否属于"最新一次回复" (它后面不能有我的发言)
+    let next = bubble.nextElementSibling;
+    while (next) {
+        if (next.getAttribute('data-sender') === 'me') return; 
+        next = next.nextElementSibling;
+    }
+
+    let textToRemove = "";
+    let isNarrative = false;
+    let isThought = false;
+
+    if (bubble.classList.contains('narrative') || bubble.classList.contains('offline-env-card')) {
+        textToRemove = bubble.innerText.trim();
+        isNarrative = true;
+    } else if (bubble.classList.contains('thought-cloud')) {
+        textToRemove = bubble.innerText.replace('💭', '').trim();
+        isThought = true;
+    } else if (bubble.classList.contains('dialogue-section')) {
+        let contentP = bubble.querySelector('.dialogue-content');
+        if (contentP) textToRemove = contentP.innerText.trim();
+    }
+
+    if (!textToRemove) return;
+
+    // 高级正则：忽略多余空格，精准匹配原剧本里的符号
+    let escaped = textToRemove.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let flexibleRegexStr = escaped.replace(/\s+/g, '\\s*');
+
+    if (isNarrative) {
+        let regex = new RegExp(`【\\s*${flexibleRegexStr}\\s*】`, 'g');
+        window.lastAiRawText = window.lastAiRawText.replace(regex, '');
+    } else if (isThought) {
+        let regex = new RegExp(`[（\\(]内心：\\s*${flexibleRegexStr}\\s*[）\\)]`, 'g');
+        window.lastAiRawText = window.lastAiRawText.replace(regex, '');
+    } else {
+        let regex = new RegExp(flexibleRegexStr, 'g');
+        window.lastAiRawText = window.lastAiRawText.replace(regex, '');
+    }
 }
 
 // 🧹 清理 AI 最新回复
@@ -14952,18 +14991,27 @@ function openOfflineEditModal() {
 
 // 🙋‍♂️ ✎ 编辑“我”的发言
 function openOfflineUserEditModal(bubble) {
-    // 智能提取你要修改的纯文本
     let textNode = bubble;
     if (bubble.classList.contains('dialogue-section')) {
         textNode = bubble.querySelector('.dialogue-content');
     }
     const currentText = textNode.innerText;
 
-    // 呼出弹窗
     createAndShowModal('修改我的发言', currentText, (newText) => {
-        // 直接原地替换文字
         textNode.innerText = newText;
-        // 替换后立刻保存记忆到数据库，防止刷新丢失
+        
+        // 🌟 顺手同步：如果改的是最新一条我的发言，把记忆也同步改掉
+        let next = bubble.nextElementSibling;
+        let isLatestMyMsg = true;
+        while (next) {
+            if (next.getAttribute('data-sender') === 'me') {
+                isLatestMyMsg = false;
+                break;
+            }
+            next = next.nextElementSibling;
+        }
+        if (isLatestMyMsg) window.lastMyOfflineInput = newText;
+
         if (typeof saveOfflineHistoryToDB === 'function') {
             saveOfflineHistoryToDB();
         }
@@ -15034,3 +15082,533 @@ function createAndShowModal(titleText, defaultText, onSaveCallback) {
 }
 
 // ========== 【线下模式结束】 ==========
+
+/* ========== 第二屏幕滑动系统 ========== */
+
+(function() {
+    let currentScreen = 0; // 0=主屏, 1=第二屏
+    const slider = document.getElementById('screenSlider');
+    const dots = document.querySelectorAll('.screen-dot');
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+
+    // 切换到指定屏幕
+    function goToScreen(index) {
+        currentScreen = index;
+        slider.style.transform = `translateX(-${index * 50}%)`;
+        dots.forEach((d, i) => d.classList.toggle('active', i === index));
+    }
+
+    // 触摸事件监听（挂在slider上）
+    if (slider) {
+        slider.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
+        }, { passive: true });
+
+        slider.addEventListener('touchend', function(e) {
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            // 水平滑动距离 > 50px 且大于垂直滑动距离才触发
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX < 0 && currentScreen === 0) {
+                    goToScreen(1);
+                } else if (deltaX > 0 && currentScreen === 1) {
+                    goToScreen(0);
+                }
+            }
+        }, { passive: true });
+    }
+
+    // 小圆点点击切换
+    dots.forEach(dot => {
+        dot.addEventListener('click', function() {
+            goToScreen(parseInt(this.dataset.index));
+        });
+    });
+
+    // 暴露给全局（其他函数需要用）
+    window.goToScreen = goToScreen;
+    window.getCurrentScreen = () => currentScreen;
+})();
+
+
+/* ========== 图片压缩工具 ========== */
+
+function compressImageFile(file, maxWidth, quality, callback) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var w = img.width;
+            var h = img.height;
+            if (w > maxWidth) {
+                h = Math.round(h * maxWidth / w);
+                w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            callback(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+/* ========== 拍立得组件编辑 ========== */
+
+let currentPolaroidSide = '';
+let _polaroidLocalImg = '';
+
+function openPolaroidEditor(side) {
+    currentPolaroidSide = side;
+    _polaroidLocalImg = '';
+    const data = JSON.parse(localStorage.getItem('s2Polaroid_' + side) || '{}');
+
+    // 图床链接（base64不填入）
+    document.getElementById('polaroidUrl').value = data.url && !data.url.startsWith('data:') ? data.url : '';
+    document.getElementById('polaroidLabelInput').value = data.label !== undefined ? data.label : 'Top Widgets⁺';
+    document.getElementById('polaroidEditorTitle').textContent = side === 'left' ? '编辑左拍立得' : '编辑右拍立得';
+
+    // 左拍立得显示标题和描述，右拍立得隐藏
+    var textFields = document.getElementById('polaroidTextFields');
+    if (side === 'left') {
+        textFields.style.display = 'block';
+        document.getElementById('polaroidTextInput').value = data.text !== undefined ? data.text : '';
+        document.getElementById('polaroidSubInput').value = data.sub !== undefined ? data.sub : '';
+    } else {
+        textFields.style.display = 'none';
+    }
+
+    // 预览
+    var previewImg = document.getElementById('polaroidPreviewImg');
+    var placeholder = document.getElementById('polaroidPreviewPlaceholder');
+    if (data.url) {
+        previewImg.src = data.url;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
+
+    // 清除之前的file选择
+    document.getElementById('polaroidFile').value = '';
+    document.getElementById('polaroidEditorModal').style.display = 'flex';
+}
+
+function closePolaroidEditor() {
+    document.getElementById('polaroidEditorModal').style.display = 'none';
+    _polaroidLocalImg = '';
+}
+
+function handlePolaroidImage(input) {
+    if (input.files && input.files[0]) {
+        compressImageFile(input.files[0], 400, 0.6, function(dataUrl) {
+            _polaroidLocalImg = dataUrl;
+            // 清空图床链接（本地和链接互斥）
+            document.getElementById('polaroidUrl').value = '';
+            var previewImg = document.getElementById('polaroidPreviewImg');
+            var placeholder = document.getElementById('polaroidPreviewPlaceholder');
+            previewImg.src = dataUrl;
+            previewImg.style.display = 'block';
+            placeholder.style.display = 'none';
+        });
+    }
+}
+
+function previewPolaroidUrl() {
+    var url = document.getElementById('polaroidUrl').value.trim();
+    // 输入链接时清除本地图
+    _polaroidLocalImg = '';
+    var previewImg = document.getElementById('polaroidPreviewImg');
+    var placeholder = document.getElementById('polaroidPreviewPlaceholder');
+    if (url) {
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
+}
+
+function savePolaroidEdit() {
+    var side = currentPolaroidSide;
+    var urlImg = document.getElementById('polaroidUrl').value.trim();
+    var url = _polaroidLocalImg || urlImg;
+    var label = document.getElementById('polaroidLabelInput').value;
+
+    var data = { url: url, label: label };
+
+    // 左拍立得才有标题和描述
+    if (side === 'left') {
+        data.text = document.getElementById('polaroidTextInput').value;
+        data.sub = document.getElementById('polaroidSubInput').value;
+    }
+
+    try {
+        localStorage.setItem('s2Polaroid_' + side, JSON.stringify(data));
+    } catch (e) {
+        alert('图片太大，请使用图床链接代替本地上传');
+        return;
+    }
+
+    applyPolaroidData(side, data);
+    closePolaroidEditor();
+}
+
+function applyPolaroidData(side, data) {
+    var capSide = side === 'left' ? 'Left' : 'Right';
+    var img = document.getElementById('polaroid' + capSide + 'Img');
+    var placeholder = document.getElementById('polaroid' + capSide + 'Placeholder');
+    var labelEl = document.getElementById('polaroid' + capSide + 'Label');
+
+    if (data.url) {
+        img.src = data.url;
+        img.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+    }
+
+    // 左拍立得才更新标题和描述
+    if (side === 'left') {
+        var textEl = document.getElementById('polaroidLeftText');
+        var subEl = document.getElementById('polaroidLeftSub');
+        if (textEl) textEl.textContent = data.text || '';
+        if (subEl) subEl.textContent = data.sub || '';
+    }
+
+    // 底部标签
+    if (labelEl) labelEl.textContent = data.label || '';
+}
+
+
+/* ========== 三连拍立得编辑 ========== */
+
+var _tripleLocalImgs = { left: '', center: '', right: '' };
+
+function openTriplePolaroidEditor() {
+    _tripleLocalImgs = { left: '', center: '', right: '' };
+    var data = JSON.parse(localStorage.getItem('s2Triple') || '{}');
+
+    ['left', 'center', 'right'].forEach(function(pos) {
+        var capPos = pos.charAt(0).toUpperCase() + pos.slice(1);
+        var urlInput = document.getElementById('triple' + capPos + 'Url');
+        var previewImg = document.getElementById('triple' + capPos + 'PreviewImg');
+        var ph = previewImg ? previewImg.parentElement.querySelector('.triple-ph') : null;
+
+        // 图床链接（base64不填入链接框）
+        if (urlInput) urlInput.value = data[pos] && !data[pos].startsWith('data:') ? data[pos] : '';
+
+        // 预览显示
+        if (previewImg && data[pos]) {
+            previewImg.src = data[pos];
+            previewImg.style.display = 'block';
+            if (ph) ph.style.display = 'none';
+        } else if (previewImg) {
+            previewImg.style.display = 'none';
+            if (ph) ph.style.display = 'block';
+        }
+
+        // 清除file选择
+        var fileInput = document.getElementById('triple' + capPos + 'File');
+        if (fileInput) fileInput.value = '';
+    });
+
+    document.getElementById('tripleEditorModal').style.display = 'flex';
+}
+
+function closeTripleEditor() {
+    document.getElementById('tripleEditorModal').style.display = 'none';
+    _tripleLocalImgs = { left: '', center: '', right: '' };
+}
+
+function handleTripleImage(input, pos) {
+    if (input.files && input.files[0]) {
+        compressImageFile(input.files[0], 400, 0.6, function(dataUrl) {
+            _tripleLocalImgs[pos] = dataUrl;
+            var capPos = pos.charAt(0).toUpperCase() + pos.slice(1);
+            // 清空对应的图床链接（互斥）
+            document.getElementById('triple' + capPos + 'Url').value = '';
+            // 更新预览
+            var previewImg = document.getElementById('triple' + capPos + 'PreviewImg');
+            var ph = previewImg ? previewImg.parentElement.querySelector('.triple-ph') : null;
+            previewImg.src = dataUrl;
+            previewImg.style.display = 'block';
+            if (ph) ph.style.display = 'none';
+        });
+    }
+}
+
+function previewTripleUrl(pos) {
+    var capPos = pos.charAt(0).toUpperCase() + pos.slice(1);
+    var url = document.getElementById('triple' + capPos + 'Url').value.trim();
+    // 输入链接时清除本地图
+    _tripleLocalImgs[pos] = '';
+    var previewImg = document.getElementById('triple' + capPos + 'PreviewImg');
+    var ph = previewImg ? previewImg.parentElement.querySelector('.triple-ph') : null;
+    if (url) {
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        if (ph) ph.style.display = 'none';
+    } else {
+        previewImg.style.display = 'none';
+        if (ph) ph.style.display = 'block';
+    }
+}
+
+function saveTripleEdit() {
+    var data = {
+        left: _tripleLocalImgs.left || document.getElementById('tripleLeftUrl').value.trim(),
+        center: _tripleLocalImgs.center || document.getElementById('tripleCenterUrl').value.trim(),
+        right: _tripleLocalImgs.right || document.getElementById('tripleRightUrl').value.trim()
+    };
+
+    try {
+        localStorage.setItem('s2Triple', JSON.stringify(data));
+    } catch (e) {
+        alert('图片太大，请使用图床链接代替本地上传');
+        return;
+    }
+
+    applyTripleData(data);
+    closeTripleEditor();
+}
+
+function applyTripleData(data) {
+    ['left', 'center', 'right'].forEach(function(pos) {
+        var capPos = pos.charAt(0).toUpperCase() + pos.slice(1);
+        var img = document.getElementById('triple' + capPos + 'Img');
+        var placeholder = document.getElementById('triple' + capPos + 'Placeholder');
+        if (data[pos]) {
+            img.src = data[pos];
+            img.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        }
+    });
+}
+
+/* ========== 占位App编辑 ========== */
+
+/* ========== 第二屏幕默认图标数据 ========== */
+
+const s2AppDefaults = [
+    { name: 'DOSS不聘', emoji: '🎵' },
+    { name: '监控', emoji: '🎬' },
+    { name: '恋爱手册', emoji: '📞' },
+    { name: '论坛', emoji: '📝' },
+    { name: '番茄钟', emoji: '⏰' },
+    { name: '小游戏', emoji: '🔍' },
+    { name: '口口文学城', emoji: '✉️' },
+    { name: '剧场', emoji: '🛡️' }
+];
+
+/* ========== 嵌入式：加载第二屏幕图标预览 ========== */
+
+function loadS2IconsSettingsInline() {
+    for (let i = 0; i < 8; i++) {
+        const data = JSON.parse(localStorage.getItem('s2App_' + i) || '{}');
+        const previewBox = document.getElementById('s2PreviewInline' + i);
+        const nameBox = document.getElementById('s2NameInline' + i);
+        
+        if (previewBox) {
+            previewBox.innerHTML = data.iconUrl 
+                ? `<img src="${data.iconUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` 
+                : s2AppDefaults[i].emoji;
+        }
+        if (nameBox) {
+            nameBox.textContent = data.name || s2AppDefaults[i].name;
+        }
+    }
+}
+
+/* ========== 更新第二屏图标 (合并版) ========== */
+function applyS2AppData(index, data) {
+    // 1. 更新第二屏幕桌面的真实图标
+    var iconBox = document.getElementById('s2AppIcon' + index);
+    var nameEl = document.getElementById('s2AppName' + index);
+
+    if (iconBox && data.iconUrl) {
+        // 如果有自定义图片，替换为图片
+        iconBox.innerHTML = '<img src="' + data.iconUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+    }
+    if (nameEl && data.name) {
+        nameEl.textContent = data.name;
+    }
+
+    // 2. 更新壁纸设置页面里的预览图标
+    var previewBox = document.getElementById('s2PreviewInline' + index);
+    var previewNameBox = document.getElementById('s2NameInline' + index);
+    
+    if (previewBox) {
+        previewBox.innerHTML = data.iconUrl 
+            ? '<img src="' + data.iconUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">' 
+            : s2AppDefaults[index].emoji;
+    }
+    if (previewNameBox) {
+        previewNameBox.textContent = data.name || s2AppDefaults[index].name;
+    }
+}
+
+/* ========== 嵌入式：第二屏幕壁纸逻辑 (同步主屏格式) ========== */
+
+var _s2LocalBgImgInline = '';
+
+function switchS2Tab(tab) {
+    document.getElementById('s2TabBtnLocal').classList.remove('active');
+    document.getElementById('s2TabBtnUrl').classList.remove('active');
+    document.getElementById('s2LocalTab').classList.remove('active');
+    document.getElementById('s2UrlTab').classList.remove('active');
+
+    if (tab === 'local') {
+        document.getElementById('s2TabBtnLocal').classList.add('active');
+        document.getElementById('s2LocalTab').classList.add('active');
+    } else {
+        document.getElementById('s2TabBtnUrl').classList.add('active');
+        document.getElementById('s2UrlTab').classList.add('active');
+    }
+}
+
+function handleS2WallpaperFile(input) {
+    if (input.files && input.files[0]) {
+        compressImageFile(input.files[0], 800, 0.7, function(dataUrl) {
+            _s2LocalBgImgInline = dataUrl;
+            document.getElementById('s2WallpaperUrl').value = ''; // 清空链接
+            updateS2WallpaperPreviewInline();
+        });
+    }
+}
+
+function updateS2WallpaperPreviewInline() {
+    const preview = document.getElementById('s2WallpaperPreviewInline');
+    const urlInput = document.getElementById('s2WallpaperUrl').value.trim();
+    const url = urlInput || _s2LocalBgImgInline;
+
+    if (url) {
+        preview.style.backgroundImage = `url(${url})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+        preview.style.backgroundColor = '';
+    } else {
+        // 恢复默认的米菲格点背景
+        preview.style.backgroundImage = 'radial-gradient(#d1d1d1 1px, transparent 1px)';
+        preview.style.backgroundSize = '16px 16px';
+        preview.style.backgroundColor = '#f7f9fa';
+    }
+}
+
+function saveS2WallpaperInline() {
+    // 只有相册和链接两种可能，直接读取 s2WallpaperUrl
+    var urlInput = document.getElementById('s2WallpaperUrl');
+    var imageUrl = (urlInput ? urlInput.value.trim() : '') || _s2LocalBgImgInline;
+    var settings = { imageUrl: imageUrl };
+
+    try {
+        localStorage.setItem('s2Wallpaper', JSON.stringify(settings));
+        applyS2Wallpaper(settings);
+        
+        // 1. 关闭壁纸设置页面，回到桌面
+        backToMain(); 
+        
+        // 2. 自动滑动到第二屏幕，让你直接看到效果！
+        if (window.goToScreen) {
+            window.goToScreen(1);
+        }
+        
+    } catch (e) {
+        alert('图片太大，请使用图床链接代替本地上传');
+    }
+}
+
+function applyS2Wallpaper(settings) {
+    const screen = document.getElementById('secondScreen');
+    if (!screen) return;
+
+    if (settings.imageUrl) {
+        screen.style.backgroundImage = `url(${settings.imageUrl})`;
+        screen.style.backgroundSize = 'cover';
+        screen.style.backgroundPosition = 'center';
+        screen.style.backgroundColor = '';
+    } else {
+        screen.style.backgroundImage = 'radial-gradient(#d1d1d1 1px, transparent 1px)';
+        screen.style.backgroundSize = '16px 16px';
+        screen.style.backgroundColor = '#f7f9fa';
+    }
+}
+
+function loadS2WallpaperSettingsInline() {
+    const data = JSON.parse(localStorage.getItem('s2Wallpaper') || '{}');
+    _s2LocalBgImgInline = '';
+
+    if (data.imageUrl && !data.imageUrl.startsWith('data:')) {
+        switchS2Tab('url');
+        document.getElementById('s2WallpaperUrl').value = data.imageUrl;
+    } else if (data.imageUrl) {
+        switchS2Tab('local');
+        _s2LocalBgImgInline = data.imageUrl;
+        document.getElementById('s2WallpaperUrl').value = '';
+    } else {
+        switchS2Tab('local');
+        document.getElementById('s2WallpaperUrl').value = '';
+    }
+    updateS2WallpaperPreviewInline();
+}
+
+/* ========== 页面加载时恢复所有第二屏数据 ========== */
+
+function loadSecondScreenData() {
+    // 恢复拍立得
+    ['left', 'right'].forEach(side => {
+        const data = JSON.parse(localStorage.getItem('s2Polaroid_' + side) || '{}');
+        if (data.url || data.text) applyPolaroidData(side, data);
+    });
+
+    // 恢复三连拍立得
+    const tripleData = JSON.parse(localStorage.getItem('s2Triple') || '{}');
+    if (tripleData.left || tripleData.center || tripleData.right) applyTripleData(tripleData);
+
+    // 恢复占位App
+    for (let i = 0; i < 8; i++) {
+        const data = JSON.parse(localStorage.getItem('s2App_' + i) || '{}');
+        if (data.iconUrl || data.name) applyS2AppData(i, data);
+    }
+
+    // 恢复壁纸
+    const wallpaperData = JSON.parse(localStorage.getItem('s2Wallpaper') || '{}');
+    if (wallpaperData.type) applyS2Wallpaper(wallpaperData);
+}
+
+// 页面加载时调用
+document.addEventListener('DOMContentLoaded', function() {
+    loadSecondScreenData();
+});
+
+/* ========== 第二屏图标编辑弹窗逻辑 ========== */
+
+var currentS2AppIndex = -1;
+
+
+
+function closeS2AppEditModal() {
+    document.getElementById('s2AppEditModal').style.display = 'none';
+}
+
+function handleS2AppIconImage(input) {
+    if (input.files && input.files[0]) {
+        // 图标比较小，压缩到200px足够了
+        compressImageFile(input.files[0], 200, 0.8, function(dataUrl) {
+            document.getElementById('s2AppIconUrl').value = dataUrl;
+        });
+    }
+}
+

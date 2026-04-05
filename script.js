@@ -293,55 +293,60 @@ if (storeName === 'musicSongs') {
 
 
 
-        
-        // 页面切换
+// 页面切换
 function openApp(appName) {
+
     if (appName === 'wallpaper') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('wallpaperScreen').style.display = 'flex';
         updateWallpaperPreview();
         updateAllIcons(); 
+          loadS2WallpaperSettingsInline();
+        loadS2IconsSettingsInline();
     } else if (appName === 'world') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('worldbookScreen').style.display = 'flex';
         loadWorldbooks();
     } else if (appName === 'api') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('apiScreen').style.display = 'flex';
         loadApiConfig();
         renderApiSchemes();
     } else if (appName === 'chat') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('chatScreen').style.display = 'flex';
         loadChats();
     } 
-    // ▼▼▼ 新增：其他设置页面的跳转逻辑 ▼▼▼
     else if (appName === 'otherSettings') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('otherSettingsScreen').style.display = 'flex';
     }
-  // 时空邮局
-else if (appName === 'spacepost') {
-    document.getElementById('mainScreen').style.display = 'none';
-    document.getElementById('spacePostScreen').style.display = 'flex';
-    loadSpLettersFromDB();
-}
+    else if (appName === 'spacepost') {
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
+        document.getElementById('spacePostScreen').style.display = 'flex';
+        loadSpLettersFromDB();
+    }
 // ========== 【盲盒机】应用打开 START ==========
     else if (appName === 'blindBox') {
-        document.getElementById('mainScreen').style.display = 'none';
+        document.getElementById('screenSlider').style.display = 'none';
+        document.getElementById('screenDots').style.display = 'none';
         document.getElementById('blindBoxMachineScreen').style.display = 'flex';
         loadBlindBoxData();
     }
-    // ========== 【盲盒机】应用打开 END ==========
-
-     else if (appName === 'phoneCheck') {
+// ========== 【盲盒机】应用打开 END ==========
+    else if (appName === 'phoneCheck') {
         openPhoneCheckSelectModal();
     }
-else {
-    alert(`点击了${appName}应用`);
+    else {
+        alert(`点击了${appName}应用`);
+    }
 }
-}
-
         
 function backToMain() {
     // 隐藏所有页面
@@ -350,13 +355,17 @@ function backToMain() {
     document.getElementById('apiScreen').style.display = 'none';
     document.getElementById('chatScreen').style.display = 'none';
     
-    // ▼▼▼ 新增：隐藏其他设置页面 ▼▼▼
     const otherScreen = document.getElementById('otherSettingsScreen');
     if (otherScreen) otherScreen.style.display = 'none';
-    // ▲▲▲ 新增结束 ▲▲▲
 
-    // 显示主屏幕
-    document.getElementById('mainScreen').style.display = 'flex';
+    const s2WpScreen = document.getElementById('s2WallpaperEditorScreen');
+    if (s2WpScreen) s2WpScreen.style.display = 'none';
+    const s2AppScreen = document.getElementById('s2AppIconEditorScreen');
+    if (s2AppScreen) s2AppScreen.style.display = 'none';
+
+    // 显示滑动容器和指示器
+    document.getElementById('screenSlider').style.display = 'flex';
+    document.getElementById('screenDots').style.display = 'flex';
 }
   
         // 壁纸功能
@@ -391,55 +400,58 @@ function switchIconTab(tab) {
         document.getElementById('iconUrlTab').classList.add('active');
     }
 }
-        function updateWallpaperPreview() {
-            const preview = document.getElementById('wallpaperPreview');
-            if (currentWallpaper) {
-                preview.innerHTML = `<img src="${currentWallpaper}" alt="壁纸预览">`;
-            } else {
-                preview.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            }
-        }
-        
-        function saveWallpaper() {
-            const fileInput = document.getElementById('wallpaperFile');
-            const urlInput = document.getElementById('wallpaperUrl');
-            
-            if (fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // ★★★ 核心优化：壁纸压缩 ★★★
-                    // 假设 compressImageToDataUrl 在 extra.js 中定义，这里需要确保 extra.js 已加载
-                    // 如果 compressImageToDataUrl 未定义，使用原图
-                    if (typeof compressImageToDataUrl === 'function') {
-                        compressImageToDataUrl(e.target.result, 1920, 0.8).then(compressed => {
-                            currentWallpaper = compressed;
-                            applyWallpaper(currentWallpaper);
-                            saveToDB('wallpaper', { data: currentWallpaper, type: 'local' });
-                            backToMain();
-                        });
-                    } else {
-                        // 降级处理
-                        currentWallpaper = e.target.result;
-                        applyWallpaper(currentWallpaper);
-                        saveToDB('wallpaper', { data: currentWallpaper, type: 'local' });
-                        backToMain();
-                    }
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else if (urlInput.value) {
-                currentWallpaper = urlInput.value;
+
+/* ========== 主屏壁纸功能优化版 ========== */
+
+function updateWallpaperPreview() {
+    const preview = document.getElementById('wallpaperPreview');
+    // 清空里面可能残留的 img 标签
+    preview.innerHTML = ''; 
+    
+    if (currentWallpaper) {
+        preview.style.backgroundImage = `url(${currentWallpaper})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+    } else {
+        preview.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+}
+
+function saveWallpaper() {
+    const fileInput = document.getElementById('wallpaperFile');
+    const urlInput = document.getElementById('wallpaperUrl');
+    
+    if (fileInput.files[0]) {
+        // ★★★ 使用我们写好的压缩工具，限制最大宽度 1080，画质 0.8 ★★★
+        if (typeof compressImageFile === 'function') {
+          compressImageFile(fileInput.files[0], 600, 0.6, function(compressed) {
+                currentWallpaper = compressed;
                 applyWallpaper(currentWallpaper);
-                saveToDB('wallpaper', { data: currentWallpaper, type: 'url' });
+                saveToDB('wallpaper', { data: currentWallpaper, type: 'local' });
                 backToMain();
-            } else {
-                alert('请选择图片或输入网址');
-            }
+            });
+        } else {
+            // 万一没找到压缩函数，走保底逻辑
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentWallpaper = e.target.result;
+                applyWallpaper(currentWallpaper);
+                saveToDB('wallpaper', { data: currentWallpaper, type: 'local' });
+                backToMain();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
         }
-        
+    } else if (urlInput.value) {
+        currentWallpaper = urlInput.value;
+        applyWallpaper(currentWallpaper);
+        saveToDB('wallpaper', { data: currentWallpaper, type: 'url' });
+        backToMain();
+    } else {
+        alert('请选择图片或输入网址');
+    }
+}
 
-
-
-      const DEFAULT_WALLPAPER_URL = 'https://free-img.400040.xyz/4/2026/01/31/697d396f788b8.png';
+const DEFAULT_WALLPAPER_URL = 'https://free-img.400040.xyz/4/2026/01/31/697d396f788b8.png';
 
 function loadWallpaper() {
     loadFromDB('wallpaper', (data) => {
@@ -461,25 +473,46 @@ function applyWallpaper(wallpaperData) {
     screen.style.background = `url(${finalWallpaper}) center/cover no-repeat`;
 }
 
-        
-        // 文件预览
-        document.getElementById('wallpaperFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('wallpaperPreview').innerHTML = `<img src="${e.target.result}" alt="预览">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        
-        document.getElementById('wallpaperUrl').addEventListener('input', function(e) {
-            const url = e.target.value;
-            if (url) {
-                document.getElementById('wallpaperPreview').innerHTML = `<img src="${url}" alt="预览" onerror="this.style.display='none'">`;
-            }
-        });
+// 文件预览 (也加上压缩和背景图模式)
+document.getElementById('wallpaperFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (typeof compressImageFile === 'function') {
+            compressImageFile(file, 800, 0.7, function(dataUrl) {
+                const preview = document.getElementById('wallpaperPreview');
+                preview.innerHTML = '';
+                preview.style.backgroundImage = `url(${dataUrl})`;
+                preview.style.backgroundSize = 'cover';
+                preview.style.backgroundPosition = 'center';
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('wallpaperPreview');
+                preview.innerHTML = '';
+                preview.style.backgroundImage = `url(${e.target.result})`;
+                preview.style.backgroundSize = 'cover';
+                preview.style.backgroundPosition = 'center';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+});
+
+// 链接预览
+document.getElementById('wallpaperUrl').addEventListener('input', function(e) {
+    const url = e.target.value;
+    const preview = document.getElementById('wallpaperPreview');
+    if (url) {
+        preview.innerHTML = '';
+        preview.style.backgroundImage = `url(${url})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+    } else {
+        updateWallpaperPreview(); // 清空时恢复当前壁纸预览
+    }
+});
+
         
         // 用户信息功能
         function openEditModal() {
@@ -3936,7 +3969,7 @@ function resetToDefaultIcon() {
     closeIconEditor();
 }
 
-// 保存图标
+// 保存图标 (加入终极压缩优化)
 function saveAppIcon() {
     if (!currentEditingIcon) return;
     
@@ -3944,14 +3977,25 @@ function saveAppIcon() {
     const urlInput = document.getElementById('iconUrl');
     
     if (fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            appIcons[currentEditingIcon] = e.target.result;
-            saveToDB('appIcons', { id: 1, icons: appIcons });
-              updateAllIcons(); 
-            closeIconEditor();
-        };
-        reader.readAsDataURL(fileInput.files[0]);
+        // ★★★ 核心优化：图标压缩 (限制最大宽度 200px，画质 0.8) ★★★
+        if (typeof compressImageFile === 'function') {
+            compressImageFile(fileInput.files[0], 200, 0.8, function(compressed) {
+                appIcons[currentEditingIcon] = compressed;
+                saveToDB('appIcons', { id: 1, icons: appIcons });
+                updateAllIcons();
+                closeIconEditor();
+            });
+        } else {
+            // 万一没找到压缩函数，走保底逻辑
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                appIcons[currentEditingIcon] = e.target.result;
+                saveToDB('appIcons', { id: 1, icons: appIcons });
+                updateAllIcons(); 
+                closeIconEditor();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
     } else if (urlInput.value) {
         appIcons[currentEditingIcon] = urlInput.value;
         saveToDB('appIcons', { id: 1, icons: appIcons });
@@ -3961,6 +4005,26 @@ function saveAppIcon() {
         alert('请选择图片或输入网址');
     }
 }
+
+// ★★★ 新增：选择文件时立即在弹窗内显示预览 ★★★
+document.getElementById('iconFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (typeof compressImageFile === 'function') {
+            compressImageFile(file, 200, 0.8, function(dataUrl) {
+                const preview = document.getElementById('currentIconPreview');
+                preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('currentIconPreview');
+                preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+});
 
 // 图标文件预览
 document.addEventListener('DOMContentLoaded', function() {
