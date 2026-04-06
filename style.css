@@ -8,7 +8,14 @@
     font-style: normal;
 }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+      * { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    /* ▼▼▼ 消除手机浏览器点击时出现的绿色/灰色高亮方块 ▼▼▼ */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
         
         /* 2. 浏览器窗口样式 (背景台) */
         body {
