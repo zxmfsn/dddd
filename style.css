@@ -16337,14 +16337,15 @@ body.transparent-nav-mode .chat-input:focus {
 }
 
 .s2-stack-left {
-    transform: translateX(-65px) rotate(-12deg);
+    /* 原来是 -65px，现在改成 -90px 往左移，角度稍微倾斜一点点更自然 */
+    transform: translateX(-100px) rotate(-8deg);
     z-index: 1;
 }
 
-.s2-stack-left,
 .s2-stack-right {
-    width: 97px;
-    height: 97px;
+    /* 原来是 65px，现在改成 90px 往右移 */
+    transform: translateX(100px) rotate(8deg);
+    z-index: 1;
 }
 
 .s2-stack-left img,
@@ -16377,10 +16378,6 @@ body.transparent-nav-mode .chat-input:focus {
     height: 100px;
 }
 
-.s2-stack-right {
-    transform: translateX(65px) rotate(12deg);
-    z-index: 1;
-}
 
 .s2-triple-polaroid .s2-polaroid-label {
     position: absolute;

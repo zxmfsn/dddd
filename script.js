@@ -634,7 +634,7 @@ function updateUI(userId, signature, avatar, textColor, appTextColor, appTextSiz
     }
     
   // 应用App图标字体颜色和大小
-    document.querySelectorAll('.app-name').forEach(el => {
+    document.querySelectorAll('.app-name, .s2-app-name').forEach(el => {
         if (appTextColor) el.style.color = appTextColor;
         
         // ★★★ 修复：只要 appTextSize 不是 undefined 或 null 就应用 ★★★

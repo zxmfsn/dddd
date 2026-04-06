@@ -877,6 +877,14 @@
                 <label class="ins-label">底部标签</label>
                 <input type="text" id="polaroidLabelInput" class="ins-input" placeholder="留空则不显示">
             </div>
+
+            <!-- 新增：背景透明开关 -->
+            <div class="ins-input-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                <label class="ins-label" style="margin: 0;">卡片背景透明</label>
+                <input type="checkbox" id="polaroidTransparentBg" style="accent-color: #333; transform: scale(1.2); cursor: pointer;">
+            </div>
+
+
             <button class="ins-line-btn ins-btn-black" onclick="savePolaroidEdit()" style="width:100%; margin-top:12px; padding:14px;">
                 <span>保存</span>
             </button>
@@ -3112,7 +3120,7 @@
     style="flex: 1; padding: 0; margin: 0; accent-color: #667eea;" 
     oninput="
         document.getElementById('appTextSizeDisplay').textContent = this.value + 'px'; 
-        document.querySelectorAll('.app-name').forEach(el => el.style.fontSize = this.value + 'px');
+        document.querySelectorAll('.app-name, .s2-app-name').forEach(el => el.style.fontSize = this.value + 'px');
     ">
         <span style="font-size: 10px; color: #999;">大</span>
     </div>

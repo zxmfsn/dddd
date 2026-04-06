@@ -15168,12 +15168,15 @@ function openPolaroidEditor(side) {
     currentPolaroidSide = side;
     _polaroidLocalImg = '';
     const data = JSON.parse(localStorage.getItem('s2Polaroid_' + side) || '{}');
-
     // 图床链接（base64不填入）
     document.getElementById('polaroidUrl').value = data.url && !data.url.startsWith('data:') ? data.url : '';
     document.getElementById('polaroidLabelInput').value = data.label !== undefined ? data.label : 'Top Widgets⁺';
     document.getElementById('polaroidEditorTitle').textContent = side === 'left' ? '编辑左拍立得' : '编辑右拍立得';
-
+    // ▼▼▼ 新增：读取透明开关状态 ▼▼▼
+    const transparentCheckbox = document.getElementById('polaroidTransparentBg');
+    if (transparentCheckbox) {
+        transparentCheckbox.checked = data.isTransparent || false;
+    }
     // 左拍立得显示标题和描述，右拍立得隐藏
     var textFields = document.getElementById('polaroidTextFields');
     if (side === 'left') {
@@ -15183,7 +15186,6 @@ function openPolaroidEditor(side) {
     } else {
         textFields.style.display = 'none';
     }
-
     // 预览
     var previewImg = document.getElementById('polaroidPreviewImg');
     var placeholder = document.getElementById('polaroidPreviewPlaceholder');
@@ -15195,7 +15197,6 @@ function openPolaroidEditor(side) {
         previewImg.style.display = 'none';
         placeholder.style.display = 'block';
     }
-
     // 清除之前的file选择
     document.getElementById('polaroidFile').value = '';
     document.getElementById('polaroidEditorModal').style.display = 'flex';
@@ -15237,29 +15238,68 @@ function previewPolaroidUrl() {
     }
 }
 
+/* 修复：拍立得保存逻辑 */
 function savePolaroidEdit() {
     var side = currentPolaroidSide;
+    
+    // 核心修复：直接从预览框里获取当前正在显示的图片
+    var previewImg = document.getElementById('polaroidPreviewImg');
+    var currentImg = (previewImg.style.display !== 'none') ? previewImg.src : '';
+    
     var urlImg = document.getElementById('polaroidUrl').value.trim();
-    var url = _polaroidLocalImg || urlImg;
+    // 优先级：新选的本地图 > 新填的链接 > 预览框里原本就有的图
+    var url = _polaroidLocalImg || urlImg || currentImg;
+    
     var label = document.getElementById('polaroidLabelInput').value;
-
-    var data = { url: url, label: label };
-
-    // 左拍立得才有标题和描述
+    
+    // ▼▼▼ 新增：获取透明开关状态 ▼▼▼
+    var isTransparent = false;
+    var transparentCheckbox = document.getElementById('polaroidTransparentBg');
+    if (transparentCheckbox) {
+        isTransparent = transparentCheckbox.checked;
+    }
+    // 将 isTransparent 存入数据中
+    var data = { url: url, label: label, isTransparent: isTransparent };
     if (side === 'left') {
         data.text = document.getElementById('polaroidTextInput').value;
         data.sub = document.getElementById('polaroidSubInput').value;
     }
-
     try {
         localStorage.setItem('s2Polaroid_' + side, JSON.stringify(data));
     } catch (e) {
         alert('图片太大，请使用图床链接代替本地上传');
         return;
     }
-
     applyPolaroidData(side, data);
     closePolaroidEditor();
+}
+
+/* 修复：三连拍立得保存逻辑 */
+function saveTripleEdit() {
+    var data = {};
+    
+    ['left', 'center', 'right'].forEach(function(pos) {
+        var capPos = pos.charAt(0).toUpperCase() + pos.slice(1);
+        
+        // 核心修复：直接从预览框里获取当前正在显示的图片
+        var previewImg = document.getElementById('triple' + capPos + 'PreviewImg');
+        var currentImg = (previewImg.style.display !== 'none') ? previewImg.src : '';
+        
+        var urlInput = document.getElementById('triple' + capPos + 'Url').value.trim();
+        
+        // 优先级：新选的本地图 > 新填的链接 > 预览框里原本就有的图
+        data[pos] = _tripleLocalImgs[pos] || urlInput || currentImg;
+    });
+
+    try {
+        localStorage.setItem('s2Triple', JSON.stringify(data));
+    } catch (e) {
+        alert('图片太大，请使用图床链接代替本地上传');
+        return;
+    }
+
+    applyTripleData(data);
+    closeTripleEditor();
 }
 
 function applyPolaroidData(side, data) {
@@ -15267,7 +15307,17 @@ function applyPolaroidData(side, data) {
     var img = document.getElementById('polaroid' + capSide + 'Img');
     var placeholder = document.getElementById('polaroid' + capSide + 'Placeholder');
     var labelEl = document.getElementById('polaroid' + capSide + 'Label');
-
+    // ▼▼▼ 新增：控制整个拍立得组件的背景和阴影 ▼▼▼
+    var widgetBox = document.getElementById('polaroid' + capSide);
+    if (widgetBox) {
+        if (data.isTransparent) {
+            widgetBox.style.background = 'transparent';
+            widgetBox.style.boxShadow = 'none'; // 透明时去掉阴影
+        } else {
+            widgetBox.style.background = 'white';
+            widgetBox.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.05)'; // 恢复默认白底和阴影
+        }
+    }
     if (data.url) {
         img.src = data.url;
         img.style.display = 'block';
@@ -15276,7 +15326,6 @@ function applyPolaroidData(side, data) {
         img.style.display = 'none';
         if (placeholder) placeholder.style.display = 'flex';
     }
-
     // 左拍立得才更新标题和描述
     if (side === 'left') {
         var textEl = document.getElementById('polaroidLeftText');
@@ -15284,11 +15333,9 @@ function applyPolaroidData(side, data) {
         if (textEl) textEl.textContent = data.text || '';
         if (subEl) subEl.textContent = data.sub || '';
     }
-
     // 底部标签
     if (labelEl) labelEl.textContent = data.label || '';
 }
-
 
 /* ========== 三连拍立得编辑 ========== */
 
@@ -15588,9 +15635,24 @@ function loadSecondScreenData() {
     if (wallpaperData.type) applyS2Wallpaper(wallpaperData);
 }
 
-// 页面加载时调用
+/* ========== 页面加载时：初始化第二屏幕所有数据 ========== */
+
 document.addEventListener('DOMContentLoaded', function() {
-    loadSecondScreenData();
+    // 1. 恢复第二屏壁纸
+    var s2Wp = JSON.parse(localStorage.getItem('s2Wallpaper') || '{}');
+    if (s2Wp.imageUrl || s2Wp.type) {
+        applyS2Wallpaper(s2Wp);
+    }
+
+    // 2. 恢复左右拍立得
+    ['left', 'right'].forEach(function(side) {
+        var pData = JSON.parse(localStorage.getItem('s2Polaroid_' + side) || '{}');
+        applyPolaroidData(side, pData);
+    });
+
+    // 3. 恢复三连拍立得
+    var tData = JSON.parse(localStorage.getItem('s2Triple') || '{}');
+    applyTripleData(tData);
 });
 
 /* ========== 第二屏图标编辑弹窗逻辑 ========== */
