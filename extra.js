@@ -4977,22 +4977,28 @@ const [characterInfo, memoryContext, emojiList, momentsContext, latestOfflineSum
     (typeof getRecentMomentsContext === 'function'
         ? getRecentMomentsContext(currentChatId)
         : Promise.resolve("（暂无朋友圈动态）")),
-    // ★ 新增：从 memories 里提取最新的线下约会总结
+
+        
+       // ★ 新增：从 memories 里提取最新的线下约会总结
     new Promise(resolve => {
         loadFromDB('memories', data => {
             let allMemories = Array.isArray(data) ? data : (data && data.list ? data.list : []);
             // 找最新的自动生成的约会总结
-          const latestOffline = allMemories
-    .filter(m => m.chatId === currentChatId && m.isOfflineTemp === true)  // ★ 只找临时记忆
-    .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
+            const latestOffline = allMemories
+                .filter(m => m.chatId === currentChatId && m.isOfflineTemp === true)  // ★ 只找临时记忆
+                .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))[0];
 
-if (latestOffline) {
-    console.log('✅ 找到线下临时记忆，注入后删除');
-    allMemories = allMemories.filter(m => m.id !== latestOffline.id);  // ★ 只删临时的
-    saveToDB('memories', { list: allMemories });
-}
+            if (latestOffline) {
+                console.log('✅ 找到线下临时记忆，注入后转为永久记忆');
+                // ★ 核心修复：不删除它！而是把它的临时标记去掉，让它变成普通的时光记忆
+                const targetMemory = allMemories.find(m => m.id === latestOffline.id);
+                if (targetMemory) {
+                    targetMemory.isOfflineTemp = false; 
+                }
+                saveToDB('memories', { list: allMemories });
+            }
 
-resolve(latestOffline || null);
+            resolve(latestOffline || null);
         });
     })
 ]);

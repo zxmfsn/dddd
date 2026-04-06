@@ -13929,16 +13929,25 @@ ${timePrompt}
 4. （）只用于短动作或内心，不能用于其他
 5. 对话永远是纯文本，不需要任何符号
 
-4️⃣ 你的背包：${Array.isArray(offlineTaItems) ? offlineTaItems.join('、') : ''}
-你可以主动使用你背包里面的东西，比如当用户说饿的时候，你背包里恰好有吃的，可以主动使用。
-当当前的情形能够使用上你的物品时，你可以主动使用。
-使用时写：【使用物品：物品名】
+【🎒 关于你的背包与物品使用（绝对铁律）】
+你的背包里有：${Array.isArray(offlineTaItems) ? offlineTaItems.join('、') : '空'}。
+你可以主动使用背包里的东西（例如用户说饿了，你包里有吃的就可以拿出来）。
+⚠️⚠️⚠️ 说明：使用物品时，必须严格遵守以下格式铁律，否则系统会崩溃！
+1. 必须单独占一行！
+2. 绝对不允许把【使用物品：xxx】写在旁白描写里！
+3. 必须在旁白描写完、换行之后，再单独写出。
+
+正确示例（必须这样写！）：
+【我看着你，从包里拿出了水】
+【使用物品：矿泉水】
+（递给你）喝点水吧。
 
 ✍️ 回复前自检：
 □ 第一段是【旁白】开头吗？
 □ 每个循环都是【旁白】在最前面吗？
 □ 有没有漏掉任何【】符号？
 □ （）只用于短动作或内心吗？
+□ 如果使用了物品，【使用物品：xxx】是否单独占了一行，且没有和旁白混在一起？
 
 正确示例：
 【时间：2026年3月31日 上午10点 | 地点：出租屋 | 天气：微雨】
@@ -14841,7 +14850,7 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
 
     if (!isMe) {
         const regenBtn = document.createElement('button');
-        regenBtn.innerText = '↺ 重新生成 (重回)';
+        regenBtn.innerText = '↺ 重回';
         regenBtn.style.cssText = btnStyle;
         regenBtn.onmouseover = () => regenBtn.style.background = '#F8F9FA';
         regenBtn.onmouseout = () => regenBtn.style.background = 'transparent';
@@ -14851,7 +14860,7 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
         };
 
         const editBtn = document.createElement('button');
-        editBtn.innerText = '✎ 剧本微调 (编辑)';
+        editBtn.innerText = '✎ 编辑';
         editBtn.style.cssText = btnStyle;
         editBtn.onmouseover = () => editBtn.style.background = '#F8F9FA';
         editBtn.onmouseout = () => editBtn.style.background = 'transparent';
@@ -14877,7 +14886,7 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
 
     // 🗑️ 所有人通用的单点物理消除按钮
     const deleteBtn = document.createElement('button');
-    deleteBtn.innerText = '🗑️ 物理消除 (删除)';
+    deleteBtn.innerText = '🗑️ 删除';
     deleteBtn.style.cssText = btnStyle + "color: #E74C3C;"; 
     deleteBtn.onmouseover = () => deleteBtn.style.background = '#FDEDEC';
     deleteBtn.onmouseout = () => deleteBtn.style.background = 'transparent';
