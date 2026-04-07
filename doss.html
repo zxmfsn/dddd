@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DOSS不聘</title>
+    <style>
+        /* ================= 基础重置 ================= */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #f8f8f8; color: #333; overflow-x: hidden; }
+        .hidden { display: none !important; }
+        :root { --primary-color: #5dd5c8; }
+
+        /* ================= 1. 开屏与基础表单 ================= */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--primary-color); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 9999; transition: opacity 0.5s ease; }
+        #splash-screen h1 { font-size: 28px; text-align: center; line-height: 1.5; font-weight: bold; letter-spacing: 2px;}
+        .screen-container { padding: 30px 20px; min-height: 100vh; background: #fff; }
+        .setup-title { font-size: 24px; font-weight: bold; margin-bottom: 30px; color: #333; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; color: #666; margin-bottom: 8px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; outline: none; background: #f9f9f9; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary-color); background: #fff; }
+        .save-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 20px; }
+
+        /* ================= 2. 主页面通用 ================= */
+        #main-screen { padding-bottom: 70px; height: 100vh; overflow-y: auto;}
+        .main-header { background: var(--primary-color); color: white; padding: 15px 20px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; }
+        .main-header .job-title { font-size: 20px; font-weight: bold; flex-grow: 1; }
+
+        /* --- 推荐页 & 沟通页 --- */
+        .candidate-list { padding: 15px; }
+        .candidate-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .candidate-name { font-size: 18px; font-weight: bold; }
+        .candidate-salary { color: var(--primary-color); font-weight: bold; font-size: 16px; }
+        .candidate-info { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .candidate-tags span { background: #f5f5f5; color: #666; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-right: 5px; }
+        .msg-list { background: #fff; }
+        .msg-item { display: flex; padding: 15px; border-bottom: 1px solid #f5f5f5; align-items: center; }
+        .msg-avatar { width: 50px; height: 50px; border-radius: 50%; background: #e0e0e0; margin-right: 15px; flex-shrink: 0; display: flex; justify-content: center; align-items: center; font-size: 20px; color: #fff; }
+        .msg-content { flex-grow: 1; overflow: hidden; }
+        .msg-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .msg-name { font-size: 16px; font-weight: bold; }
+        .msg-time { font-size: 12px; color: #999; }
+        .msg-desc { font-size: 13px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- 我页 (Tab 3) --- */
+        .profile-header { background: var(--primary-color); padding: 30px 20px 20px; color: white; }
+        .profile-info { display: flex; align-items: center; margin-bottom: 20px; }
+        .profile-avatar { width: 60px; height: 60px; border-radius: 50%; background-color: rgba(255,255,255,0.3); background-size: cover; background-position: center; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 24px; overflow: hidden;}
+        .profile-name { font-size: 22px; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center;}
+        .profile-company { font-size: 14px; opacity: 0.9; }
+        .profile-stats { display: flex; justify-content: space-around; background: #fff; margin: -20px 15px 15px; padding: 15px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: relative; }
+        .stat-item { text-align: center; }
+        .stat-num { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .stat-label { font-size: 12px; color: #666; }
+        .profile-menu { background: #fff; margin-top: 10px; }
+        .menu-item { padding: 15px 20px; border-bottom: 1px solid #f5f5f5; display: flex; justify-content: space-between; font-size: 15px; color: #333; }
+
+        /* ================= 3. 底部导航栏 ================= */
+        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+        .tab-item { display: flex; flex-direction: column; align-items: center; color: #999; font-size: 12px; cursor: pointer; width: 33%; }
+        .tab-item.active { color: var(--primary-color); }
+        .tab-icon { font-size: 22px; margin-bottom: 2px; }
+
+        /* ================= 4. 子页面 (全屏弹层) ================= */
+        .sub-page { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 999; overflow-y: auto; }
+        .sub-header { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; background: #fff; position: sticky; top: 0; z-index: 10; }
+        .sub-header .back-btn { font-size: 20px; color: #333; margin-right: 15px; cursor: pointer; }
+        .sub-header .sub-title { font-size: 18px; font-weight: bold; }
+        
+        /* 头像上传美化 */
+        .avatar-upload-box { text-align: center; margin: 30px 0; }
+        .avatar-preview { width: 80px; height: 80px; border-radius: 50%; background-color: #eee; background-size: cover; background-position: center; margin: 0 auto 10px; display: flex; justify-content: center; align-items: center; font-size: 30px; color: #999; border: 2px solid var(--primary-color);}
+    
+            /* 职位管理与切换样式 */
+        .job-manage-card { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .job-manage-info .j-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .job-manage-info .j-salary { font-size: 14px; color: var(--primary-color); }
+        .job-switch-item { padding: 15px 0; border-bottom: 1px solid #f0f0f0; font-size: 16px; text-align: center; }
+        .job-switch-item.active { color: var(--primary-color); font-weight: bold; }
+    
+    
+    </style>
+</head>
+<body>
+
+
+
+    
+    <!-- 1. 开屏动画 -->
+    <div id="splash-screen">
+        <h1>今天也要上班吗。<br>来招人吧！</h1>
+    </div>
+
+    <!-- 2. 初始设置信息页面 -->
+    <div id="setup-screen" class="screen-container hidden">
+        <div style="margin-bottom: 20px;"><a href="index.html" style="text-decoration: none; color: #999; font-size: 16px;">&lt; 返回桌面</a></div>
+        <div class="setup-title">完善公司信息</div>
+        <div class="form-group"><label>公司名字</label><input type="text" id="init-comp-name" placeholder="例如：宇宙字节科技有限公司"></div>
+        <div class="form-group"><label>HR名字 (您的称呼)</label><input type="text" id="init-hr-name" placeholder="例如：张先生"></div>
+        <div class="form-group"><label>公司现在人数</label><select id="init-comp-size"><option>0-20人</option><option>20-99人</option><option>100-499人</option><option>500人以上</option></select></div>
+        <div class="form-group"><label>公司地址</label><input type="text" id="init-comp-address" placeholder="例如：科技园南路88号"></div>
+        <div class="form-group"><label>公司简介</label><textarea id="init-comp-desc" rows="3" placeholder="简单介绍一下公司吧..."></textarea></div>
+        <button class="save-btn" onclick="saveInitData()">保存并进入</button>
+    </div>
+
+
+    <!-- ================= 子页面：修改个人资料 ================= -->
+    <div id="edit-profile-page" class="sub-page hidden">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('edit-profile-page')">&lt;</div>
+            <div class="sub-title">修改个人资料</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px;">
+            <div class="avatar-upload-box">
+                <div class="avatar-preview" id="edit-avatar-preview">👤</div>
+                <label style="color: var(--primary-color); font-size: 14px; cursor: pointer;">
+                    点击更换头像
+                    <!-- 隐藏的真实文件上传框 -->
+                    <input type="file" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+                </label>
+            </div>
+            <div class="form-group"><label>我的名字</label><input type="text" id="edit-hr-name"></div>
+            <button class="save-btn" onclick="saveProfile()">保存修改</button>
+        </div>
+    </div>
+
+    <!-- ================= 子页面：修改公司资料 ================= -->
+    <div id="edit-comp-page" class="sub-page hidden">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('edit-comp-page')">&lt;</div>
+            <div class="sub-title">修改公司资料</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 20px;">
+            <div class="form-group"><label>公司名字</label><input type="text" id="edit-comp-name"></div>
+            <div class="form-group"><label>公司规模</label><select id="edit-comp-size"><option>0-20人</option><option>20-99人</option><option>100-499人</option><option>500人以上</option></select></div>
+            <div class="form-group"><label>公司地址</label><input type="text" id="edit-comp-address"></div>
+            <div class="form-group"><label>公司简介</label><textarea id="edit-comp-desc" rows="4"></textarea></div>
+            <button class="save-btn" onclick="saveCompany()">保存修改</button>
+        </div>
+    </div>
+
+    <!-- ================= 子页面：职位管理 ================= -->
+    <div id="job-manage-page" class="sub-page hidden">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('job-manage-page')">&lt;</div>
+            <div class="sub-title">职位管理</div>
+            <div style="margin-left:auto; color:var(--primary-color); font-weight:bold; cursor:pointer;" onclick="openEditJob()">+ 新增</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px; background:#f8f8f8;" id="job-list-container">
+            <!-- 职位列表动态渲染到这里 -->
+        </div>
+    </div>
+
+    <!-- ================= 子页面：新增/编辑职位 ================= -->
+    <div id="edit-job-page" class="sub-page hidden" style="z-index: 1000;">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('edit-job-page')">&lt;</div>
+            <div class="sub-title" id="edit-job-title">新增职位</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 20px;">
+            <input type="hidden" id="edit-job-id">
+            <div class="form-group"><label>职位名称</label><input type="text" id="edit-job-name" placeholder="例如：前端开发工程师"></div>
+            <div class="form-group"><label>招聘内容</label><textarea id="edit-job-desc" rows="3" placeholder="例如：负责日常页面开发与维护..."></textarea></div>
+            <div class="form-group"><label>薪资范围</label><input type="text" id="edit-job-salary" placeholder="例如：15-20K"></div>
+            <button class="save-btn" onclick="saveJob()">保存职位</button>
+            <button class="save-btn hidden" id="delete-job-btn" style="background:#ff4d4f; margin-top:15px;" onclick="deleteJob()">删除该职位</button>
+        </div>
+    </div>
+
+    <!-- ================= 底部弹窗：切换职位 ================= -->
+    <div id="job-switch-sheet" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index: 1001; display:flex; flex-direction:column; justify-content:flex-end;">
+        <div style="background:#fff; border-radius:16px 16px 0 0; padding:20px; max-height:60vh; overflow-y:auto;">
+            <div style="font-size:18px; font-weight:bold; margin-bottom:15px; text-align:center;">切换岗位</div>
+            <div id="switch-job-list">
+                <!-- 切换列表动态渲染 -->
+            </div>
+            <button style="width:100%; padding:15px; background:#f5f5f5; border:none; border-radius:8px; margin-top:15px; font-size:16px; font-weight:bold; color:#666;" onclick="closeJobSwitcher()">取消</button>
+        </div>
+    </div>
+
+
+    <!-- ================= 子页面：设置 ================= -->
+    <div id="settings-page" class="sub-page hidden">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('settings-page')">&lt;</div>
+            <div class="sub-title">设置</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px; background:#f8f8f8;">
+            <div class="profile-menu" style="margin-top: 0;">
+                <div class="menu-item" onclick="openGreetings()"><span>常用打招呼语</span><span>></span></div>
+                <div class="menu-item" onclick="openAddresses()"><span>面试地址管理</span><span>></span></div>
+            </div>
+            <div style="margin-top: 30px; padding: 0 20px;">
+                <button onclick="clearData()" style="width: 100%; padding: 15px; background: #ff4d4f; color: white; border: none; border-radius: 8px; font-size: 16px;">退出登录 (清除数据)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 子页面：打招呼语管理 ================= -->
+    <div id="greetings-page" class="sub-page hidden" style="z-index: 1000;">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('greetings-page')">&lt;</div>
+            <div class="sub-title">常用打招呼语</div>
+            <div style="margin-left:auto; color:var(--primary-color); font-weight:bold; cursor:pointer;" onclick="addGreeting()">+ 添加</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px; background:#f8f8f8;" id="greetings-list"></div>
+    </div>
+
+    <!-- ================= 子页面：面试地址管理 ================= -->
+    <div id="addresses-page" class="sub-page hidden" style="z-index: 1000;">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('addresses-page')">&lt;</div>
+            <div class="sub-title">面试地址管理</div>
+            <div style="margin-left:auto; color:var(--primary-color); font-weight:bold; cursor:pointer;" onclick="addAddress()">+ 添加</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px; background:#f8f8f8;" id="addresses-list"></div>
+    </div>
+
+
+    <!-- ================= 子页面：世界观设置 ================= -->
+    <div id="worldviews-page" class="sub-page hidden" style="z-index: 1000;">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('worldviews-page')">&lt;</div>
+            <div class="sub-title">世界观设置</div>
+            <div style="margin-left:auto; color:var(--primary-color); font-weight:bold; cursor:pointer;" onclick="addWorldview()">+ 新增</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 10px; background:#f8f8f8;" id="worldviews-list"></div>
+    </div>
+
+    <!-- ================= 子页面：新增/编辑世界观 ================= -->
+    <div id="edit-worldview-page" class="sub-page hidden" style="z-index: 1001;">
+        <div class="sub-header">
+            <div class="back-btn" onclick="closeSubPage('edit-worldview-page')">&lt;</div>
+            <div class="sub-title" id="edit-worldview-title">新增世界观</div>
+        </div>
+        <div class="screen-container" style="min-height: auto; padding-top: 20px;">
+            <input type="hidden" id="edit-worldview-id">
+            <div class="form-group"><label>世界观名称</label><input type="text" id="edit-worldview-name" placeholder="例如：猫咪世界"></div>
+            <div class="form-group"><label>世界观描述</label><textarea id="edit-worldview-desc" rows="3" placeholder="例如：小猫咪们在寻找工作..."></textarea></div>
+            <div class="form-group"><label>主题色</label><input type="color" id="edit-worldview-color" value="#5dd5c8"></div>
+            <button class="save-btn" onclick="saveWorldview()">保存世界观</button>
+            <button class="save-btn hidden" id="delete-worldview-btn" style="background:#ff4d4f; margin-top:15px;" onclick="deleteWorldview()">删除该世界观</button>
+        </div>
+    </div>
+
+    <!-- ================= 自定义输入弹窗 ================= -->
+    <div id="custom-prompt-modal" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index: 2000; display:flex; justify-content:center; align-items:center;">
+        <div style="background:#fff; width:80%; max-width:320px; border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+            <div id="custom-prompt-title" style="font-size:18px; font-weight:bold; margin-bottom:15px; text-align:center;">提示</div>
+            <textarea id="custom-prompt-input" rows="3" style="width:100%; padding:10px; border:1px solid #eee; border-radius:8px; font-size:14px; outline:none; resize:none; background:#f9f9f9;" placeholder="请输入..."></textarea>
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button onclick="closeCustomPrompt()" style="width:45%; padding:10px; border:1px solid #ddd; background:#fff; border-radius:8px; color:#666; font-size:15px;">取消</button>
+                <button onclick="confirmCustomPrompt()" style="width:45%; padding:10px; border:none; background:var(--primary-color); border-radius:8px; color:#fff; font-size:15px;">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 方案选择弹窗 ================= -->
+    <div id="scheme-select-sheet" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index: 1002; display:flex; flex-direction:column; justify-content:flex-end;">
+        <div style="background:#fff; border-radius:16px 16px 0 0; padding:20px; max-height:60vh; overflow-y:auto;">
+            <div style="font-size:18px; font-weight:bold; margin-bottom:15px; text-align:center;">选择 API 方案</div>
+            <div id="scheme-select-list">
+                <!-- 动态渲染方案列表 -->
+            </div>
+            <button style="width:100%; padding:15px; background:#f5f5f5; border:none; border-radius:8px; margin-top:15px; font-size:16px; font-weight:bold; color:#666;" onclick="closeSchemeSelector()">取消</button>
+        </div>
+    </div>
+
+
+       <!-- 核心逻辑 JS -->
+    <script>
+        var userData = { id: 1 }; 
+        var dossDb;
+
+        var request = indexedDB.open("DossDatabase", 2);
+        request.onupgradeneeded = function(event) {
+            dossDb = event.target.result;
+            if (!dossDb.objectStoreNames.contains("users")) { 
+                dossDb.createObjectStore("users", { keyPath: "id" }); 
+            }
+            if (!dossDb.objectStoreNames.contains("doss_candidates")) { 
+                dossDb.createObjectStore("doss_candidates", { keyPath: "id" }); 
+            }
+        };
+        request.onsuccess = function(event) {
+            dossDb = event.target.result;
+            loadDataFromDB(); 
+        };
+
+        function loadDataFromDB() {
+            var transaction = dossDb.transaction(["users"], "readonly");
+            var store = transaction.objectStore("users");
+            var getReq = store.get(1);
+
+            getReq.onsuccess = function(event) {
+                if (getReq.result) {
+                    userData = getReq.result;
+                    if (!userData.hrName) userData.hrName = '未设置';
+                    if (!userData.compName) userData.compName = '未设置公司';
+                    if (!userData.compSize) userData.compSize = '0-20人';
+                    if (!userData.compAddress) userData.compAddress = '未设置地址';
+                    if (!userData.compDesc) userData.compDesc = '';
+                    if (!userData.avatar) userData.avatar = '';
+                    
+                    if (!userData.jobs) {
+                        userData.jobs = [{id: Date.now(), name: '前端开发工程师', salary: '15-20K'}];
+                        userData.currentJobId = userData.jobs[0].id;
+                        saveDataToDB();
+                    }
+                    if (!userData.greetings) {
+                        userData.greetings = ['你好，看过你的简历，觉得你很合适，方便聊聊吗？', '我们公司正在招人，薪资福利优厚，期待你的加入！'];
+                        saveDataToDB();
+                    }
+                    if (!userData.addresses) {
+                        userData.addresses = [userData.compAddress || '未设置地址'];
+                        saveDataToDB();
+                    }
+                    if (!userData.worldviews) {
+                        userData.worldviews = [{id: 1, name: '现代世界观', desc: '标准的HR招聘世界', color: '#5dd5c8'}];
+                        userData.currentWorldviewId = 1;
+                        saveDataToDB();
+                    }
+                    startApp(true); 
+                } else {
+                    startApp(false); 
+                }
+            };
+        }
+
+        function startApp(hasData) {
+            setTimeout(function() {
+                var splash = document.getElementById('splash-screen');
+                splash.style.opacity = '0';
+                setTimeout(function() {
+                    splash.classList.add('hidden');
+                    if (hasData) { 
+                        renderUI(); 
+                        document.getElementById('main-screen').classList.remove('hidden'); 
+                    } else { 
+                        document.getElementById('setup-screen').classList.remove('hidden'); 
+                    }
+                }, 500);
+            }, 2500);
+        }
+
+        function saveDataToDB(callback) {
+            var transaction = dossDb.transaction(["users"], "readwrite");
+            var store = transaction.objectStore("users");
+            store.put(userData); 
+            transaction.oncomplete = function() { if(callback) callback(); };
+        }
+
+        function saveInitData() {
+            userData.compName = document.getElementById('init-comp-name').value || '未命名公司';
+            userData.hrName = document.getElementById('init-hr-name').value || '未命名HR';
+            userData.compSize = document.getElementById('init-comp-size').value;
+            userData.compAddress = document.getElementById('init-comp-address').value;
+            userData.compDesc = document.getElementById('init-comp-desc').value;
+            userData.avatar = ''; 
+            userData.jobs = [{id: Date.now(), name: '前端开发工程师', salary: '15-20K'}];
+            userData.greetings = ['你好，看过你的简历，觉得你很合适，方便聊聊吗？', '我们公司正在招人，薪资福利优厚，期待你的加入！'];
+            userData.addresses = [userData.compAddress];
+            userData.worldviews = [{id: 1, name: '现代世界观', desc: '标准的HR招聘世界', color: '#5dd5c8'}];
+            userData.currentWorldviewId = 1;
+            userData.currentJobId = userData.jobs[0].id;
+
+            saveDataToDB(function() {
+                renderUI();
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('main-screen').classList.remove('hidden');
+            });
+        }
+
+        function renderUI() {
+            if (!userData || !userData.hrName) {
+                console.warn('⚠️ userData 未完全加载');
+                return;
+            }
+            var hrNameEl = document.getElementById('display-hr-name');
+            var compNameEl = document.getElementById('display-comp-name');
+            if (hrNameEl) hrNameEl.innerText = userData.hrName;
+            if (compNameEl) compNameEl.innerText = userData.compName + ' · ' + userData.compSize;
+            
+            var avatarEl = document.getElementById('display-avatar');
+            var previewEl = document.getElementById('edit-avatar-preview');
+            if(userData.avatar) {
+                if(avatarEl) { avatarEl.style.backgroundImage = 'url(' + userData.avatar + ')'; avatarEl.innerText = ''; }
+                if(previewEl) { previewEl.style.backgroundImage = 'url(' + userData.avatar + ')'; previewEl.innerText = ''; }
+            } else {
+                if(avatarEl) { avatarEl.style.backgroundImage = 'none'; avatarEl.innerText = '👤'; }
+                if(previewEl) { previewEl.style.backgroundImage = 'none'; previewEl.innerText = '👤'; }
+            }
+
+            if (userData.jobs && userData.jobs.length > 0) {
+                var currJob = userData.jobs.find(function(j) { return j.id == userData.currentJobId; });
+                if (!currJob) currJob = userData.jobs[0];
+                var jobEl = document.getElementById('display-current-job');
+                if (jobEl) jobEl.innerText = currJob.name;
+                
+                // ★★★ 新增：每次刷新UI或切换岗位时，自动读取已保存的求职者 ★★★
+                loadCachedCandidates(userData.currentWorldviewId, currJob.id, function(cached) {
+                    if (cached && cached.length > 0) {
+                        renderCandidateList(cached); // 如果有保存的，就显示出来
+                    } else {
+                        renderCandidateList([]);     // 如果没有，就显示“点击刷新”提示
+                    }
+                });
+                // ★★★ 新增结束 ★★★
+            }
+        }
+        function closeSubPage(pageId) { 
+            var el = document.getElementById(pageId);
+            if (el) el.classList.add('hidden'); 
+        }
+
+        function openEditProfile() { 
+            var el = document.getElementById('edit-hr-name');
+            if (el) el.value = userData.hrName; 
+            var page = document.getElementById('edit-profile-page');
+            if (page) page.classList.remove('hidden'); 
+        }
+        function handleAvatarUpload(event) {
+            var file = event.target.files[0]; 
+            if(!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var base64Img = e.target.result; 
+                userData.avatar = base64Img; 
+                var previewEl = document.getElementById('edit-avatar-preview');
+                if (previewEl) {
+                    previewEl.style.backgroundImage = 'url(' + base64Img + ')'; 
+                    previewEl.innerText = '';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        function saveProfile() { 
+            var nameEl = document.getElementById('edit-hr-name');
+            if (nameEl) userData.hrName = nameEl.value; 
+            saveDataToDB(function() { renderUI(); closeSubPage('edit-profile-page'); }); 
+        }
+
+        function openEditCompany() {
+            var nameEl = document.getElementById('edit-comp-name');
+            var sizeEl = document.getElementById('edit-comp-size');
+            var addrEl = document.getElementById('edit-comp-address');
+            var descEl = document.getElementById('edit-comp-desc');
+            if (nameEl) nameEl.value = userData.compName;
+            if (sizeEl) sizeEl.value = userData.compSize;
+            if (addrEl) addrEl.value = userData.compAddress || '';
+            if (descEl) descEl.value = userData.compDesc || '';
+            var page = document.getElementById('edit-comp-page');
+            if (page) page.classList.remove('hidden');
+        }
+        function saveCompany() {
+            var nameEl = document.getElementById('edit-comp-name');
+            var sizeEl = document.getElementById('edit-comp-size');
+            var addrEl = document.getElementById('edit-comp-address');
+            var descEl = document.getElementById('edit-comp-desc');
+            if (nameEl) userData.compName = nameEl.value;
+            if (sizeEl) userData.compSize = sizeEl.value;
+            if (addrEl) userData.compAddress = addrEl.value;
+            if (descEl) userData.compDesc = descEl.value;
+            saveDataToDB(function() { renderUI(); closeSubPage('edit-comp-page'); });
+        }
+
+        function openJobManage() {
+            renderJobManageList();
+            var page = document.getElementById('job-manage-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        function renderJobManageList() {
+            var container = document.getElementById('job-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+            userData.jobs.forEach(function(job) {
+                var card = document.createElement('div');
+                card.className = 'job-manage-card';
+                card.innerHTML = '<div class="job-manage-info"><div class="j-name">' + job.name + '</div><div class="j-salary">' + job.salary + '</div></div>' +
+                                 '<div style="color:#999; font-size:14px; padding:10px; cursor:pointer;" onclick="openEditJob(' + job.id + ')">编辑 ></div>';
+                container.appendChild(card);
+            });
+        }
+
+        function openEditJob(jobId) {
+            if (jobId) {
+                var titleEl = document.getElementById('edit-job-title');
+                if (titleEl) titleEl.innerText = '编辑职位';
+                var job = userData.jobs.find(function(j) { return j.id == jobId; });
+                var idEl = document.getElementById('edit-job-id');
+                var nameEl = document.getElementById('edit-job-name');
+                var descEl = document.getElementById('edit-job-desc');
+                var salEl = document.getElementById('edit-job-salary');
+                var delBtn = document.getElementById('delete-job-btn');
+                if (idEl) idEl.value = job.id;
+                if (nameEl) nameEl.value = job.name;
+                if (descEl) descEl.value = job.desc || '';
+                if (salEl) salEl.value = job.salary;
+                if (delBtn) delBtn.classList.remove('hidden');
+            } else {
+                var titleEl = document.getElementById('edit-job-title');
+                if (titleEl) titleEl.innerText = '新增职位';
+                var idEl = document.getElementById('edit-job-id');
+                var nameEl = document.getElementById('edit-job-name');
+                var descEl = document.getElementById('edit-job-desc');
+                var salEl = document.getElementById('edit-job-salary');
+                var delBtn = document.getElementById('delete-job-btn');
+                if (idEl) idEl.value = '';
+                if (nameEl) nameEl.value = '';
+                if (descEl) descEl.value = '';
+                if (salEl) salEl.value = '';
+                if (delBtn) delBtn.classList.add('hidden');
+            }
+            var page = document.getElementById('edit-job-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        function saveJob() {
+            var idEl = document.getElementById('edit-job-id');
+            var nameEl = document.getElementById('edit-job-name');
+            var descEl = document.getElementById('edit-job-desc');
+            var salEl = document.getElementById('edit-job-salary');
+            var id = idEl ? idEl.value : '';
+            var name = nameEl ? nameEl.value : '';
+            var desc = descEl ? descEl.value : '';
+            var salary = salEl ? salEl.value : '';
+            if (!name) { alert('职位名称不能为空'); return; }
+
+            if (id) {
+                var job = userData.jobs.find(function(j) { return j.id == id; });
+                if (job) { job.name = name; job.desc = desc; job.salary = salary; }
+            } else {
+                var newJob = { id: Date.now(), name: name, desc: desc, salary: salary };
+                userData.jobs.push(newJob);
+                userData.currentJobId = newJob.id;
+            }
+
+            saveDataToDB(function() {
+                renderUI(); renderJobManageList(); closeSubPage('edit-job-page');
+            });
+        }
+
+        function deleteJob() {
+            if (userData.jobs.length <= 1) { alert('至少需要保留一个职位哦！'); return; }
+            if (confirm('确定要删除这个职位吗？')) {
+                var idEl = document.getElementById('edit-job-id');
+                var id = idEl ? idEl.value : '';
+                userData.jobs = userData.jobs.filter(function(j) { return j.id != id; });
+                if (userData.currentJobId == id) { userData.currentJobId = userData.jobs[0].id; }
+                saveDataToDB(function() { renderUI(); renderJobManageList(); closeSubPage('edit-job-page'); });
+            }
+        }
+
+        function openJobSwitcher() {
+            var listContainer = document.getElementById('switch-job-list');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            userData.jobs.forEach(function(job) {
+                var item = document.createElement('div');
+                item.className = 'job-switch-item' + (job.id == userData.currentJobId ? ' active' : '');
+                item.innerText = job.name + ' (' + job.salary + ')';
+                item.onclick = function() { switchJob(job.id); };
+                listContainer.appendChild(item);
+            });
+            var sheet = document.getElementById('job-switch-sheet');
+            if (sheet) sheet.classList.remove('hidden');
+        }
+
+        function switchJob(jobId) {
+            userData.currentJobId = jobId;
+            saveDataToDB(function() { renderUI(); closeJobSwitcher(); });
+        }
+        function closeJobSwitcher() { 
+            var sheet = document.getElementById('job-switch-sheet');
+            if (sheet) sheet.classList.add('hidden'); 
+        }
+
+        function switchTab(tabName, element) {
+            var contents = document.getElementsByClassName('tab-content');
+            for (var i = 0; i < contents.length; i++) { contents[i].classList.add('hidden'); }
+            var viewEl = document.getElementById('view-' + tabName);
+            if (viewEl) viewEl.classList.remove('hidden');
+            var tabs = document.getElementsByClassName('tab-item');
+            for (var j = 0; j < tabs.length; j++) { tabs[j].classList.remove('active'); }
+            if (element) element.classList.add('active');
+        }
+
+        function clearData() {
+            if(confirm('确定要清除数据并退出吗？')) {
+                var transaction = dossDb.transaction(["users"], "readwrite");
+                var store = transaction.objectStore("users");
+                store.delete(1); 
+                transaction.oncomplete = function() { location.reload(); };
+            }
+        }
+
+        function openSettings() {
+            var page = document.getElementById('settings-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        var promptCallback = null;
+        function openCustomPrompt(title, placeholder, callback) {
+            var titleEl = document.getElementById('custom-prompt-title');
+            var inputEl = document.getElementById('custom-prompt-input');
+            if (titleEl) titleEl.innerText = title;
+            if (inputEl) { inputEl.placeholder = placeholder; inputEl.value = ''; }
+            promptCallback = callback;
+            var modal = document.getElementById('custom-prompt-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeCustomPrompt() {
+            var modal = document.getElementById('custom-prompt-modal');
+            if (modal) modal.classList.add('hidden');
+            promptCallback = null;
+        }
+
+        function confirmCustomPrompt() {
+            var inputEl = document.getElementById('custom-prompt-input');
+            var text = inputEl ? inputEl.value : '';
+            if (promptCallback) { promptCallback(text); }
+            closeCustomPrompt();
+        }
+
+        function openGreetings() {
+            renderGreetings();
+            var page = document.getElementById('greetings-page');
+            if (page) page.classList.remove('hidden');
+        }
+        
+        function renderGreetings() {
+            var container = document.getElementById('greetings-list');
+            if (!container) return;
+            container.innerHTML = '';
+            userData.greetings.forEach(function(text, index) {
+                var item = document.createElement('div');
+                item.className = 'job-manage-card'; 
+                item.innerHTML = '<div style="flex-grow:1; font-size:14px; margin-right:15px; line-height:1.5;">' + text + '</div>' +
+                                 '<div style="color:#ff4d4f; font-size:14px; cursor:pointer; white-space:nowrap;" onclick="deleteGreeting(' + index + ')">删除</div>';
+                container.appendChild(item);
+            });
+        }
+        
+        function addGreeting() {
+            openCustomPrompt('添加打招呼语', '请输入新的打招呼语...', function(text) {
+                if (text && text.trim() !== '') {
+                    userData.greetings.push(text.trim());
+                    saveDataToDB(function() { renderGreetings(); });
+                }
+            });
+        }
+        
+        function deleteGreeting(index) {
+            if (confirm('确定删除这条打招呼语吗？')) {
+                userData.greetings.splice(index, 1);
+                saveDataToDB(function() { renderGreetings(); });
+            }
+        }
+
+        function openAddresses() {
+            renderAddresses();
+            var page = document.getElementById('addresses-page');
+            if (page) page.classList.remove('hidden');
+        }
+        
+        function renderAddresses() {
+            var container = document.getElementById('addresses-list');
+            if (!container) return;
+            container.innerHTML = '';
+            userData.addresses.forEach(function(text, index) {
+                var item = document.createElement('div');
+                item.className = 'job-manage-card'; 
+                item.innerHTML = '<div style="flex-grow:1; font-size:14px; margin-right:15px; line-height:1.5;">' + text + '</div>' +
+                                 '<div style="color:#ff4d4f; font-size:14px; cursor:pointer; white-space:nowrap;" onclick="deleteAddress(' + index + ')">删除</div>';
+                container.appendChild(item);
+            });
+        }
+        
+        function addAddress() {
+            openCustomPrompt('添加面试地址', '请输入新的面试地址...', function(text) {
+                if (text && text.trim() !== '') {
+                    userData.addresses.push(text.trim());
+                    saveDataToDB(function() { renderAddresses(); });
+                }
+            });
+        }
+        
+        function deleteAddress(index) {
+            if (userData.addresses.length <= 1) { alert('至少需要保留一个地址哦！'); return; }
+            if (confirm('确定删除这个地址吗？')) {
+                userData.addresses.splice(index, 1);
+                saveDataToDB(function() { renderAddresses(); });
+            }
+        }
+
+        function openWorldviews() {
+            renderWorldviewsList();
+            var page = document.getElementById('worldviews-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        function renderWorldviewsList() {
+            var container = document.getElementById('worldviews-list');
+            if (!container) return;
+            container.innerHTML = '';
+            userData.worldviews.forEach(function(wv) {
+                var card = document.createElement('div');
+                card.className = 'job-manage-card';
+                var isActive = (wv.id == userData.currentWorldviewId);
+                card.innerHTML = '<div class="job-manage-info" style="flex-grow:1;">' +
+                                 '<div class="j-name" style="color:' + wv.color + ';">■ ' + wv.name + '</div>' +
+                                 '<div class="j-salary">' + wv.desc + '</div>' +
+                                 (isActive ? '<div style="color:var(--primary-color); font-size:12px; margin-top:5px;">✓ 已使用</div>' : '') +
+                                 '</div>' +
+                                 '<div style="color:#999; font-size:14px; padding:10px; cursor:pointer;" onclick="openEditWorldview(' + wv.id + ')">编辑 ></div>';
+                container.appendChild(card);
+                
+                card.style.cursor = 'pointer';
+                card.onclick = function(e) {
+                    if (e.target.innerText.indexOf('编辑') === -1) {
+                        switchWorldview(wv.id);
+                    }
+                };
+            });
+        }
+
+        function addWorldview() {
+            var titleEl = document.getElementById('edit-worldview-title');
+            if (titleEl) titleEl.innerText = '新增世界观';
+            var idEl = document.getElementById('edit-worldview-id');
+            var nameEl = document.getElementById('edit-worldview-name');
+            var descEl = document.getElementById('edit-worldview-desc');
+            var colorEl = document.getElementById('edit-worldview-color');
+            var delBtn = document.getElementById('delete-worldview-btn');
+            if (idEl) idEl.value = '';
+            if (nameEl) nameEl.value = '';
+            if (descEl) descEl.value = '';
+            if (colorEl) colorEl.value = '#5dd5c8';
+            if (delBtn) delBtn.classList.add('hidden');
+            var page = document.getElementById('edit-worldview-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        function openEditWorldview(wvId) {
+            var wv = userData.worldviews.find(function(w) { return w.id == wvId; });
+            var titleEl = document.getElementById('edit-worldview-title');
+            if (titleEl) titleEl.innerText = '编辑世界观';
+            var idEl = document.getElementById('edit-worldview-id');
+            var nameEl = document.getElementById('edit-worldview-name');
+            var descEl = document.getElementById('edit-worldview-desc');
+            var colorEl = document.getElementById('edit-worldview-color');
+            var delBtn = document.getElementById('delete-worldview-btn');
+            if (idEl) idEl.value = wv.id;
+            if (nameEl) nameEl.value = wv.name;
+            if (descEl) descEl.value = wv.desc || '';
+            if (colorEl) colorEl.value = wv.color;
+            if (delBtn) delBtn.classList.remove('hidden');
+            var page = document.getElementById('edit-worldview-page');
+            if (page) page.classList.remove('hidden');
+        }
+
+        function saveWorldview() {
+            var idEl = document.getElementById('edit-worldview-id');
+            var nameEl = document.getElementById('edit-worldview-name');
+            var descEl = document.getElementById('edit-worldview-desc');
+            var colorEl = document.getElementById('edit-worldview-color');
+            var id = idEl ? idEl.value : '';
+            var name = nameEl ? nameEl.value : '';
+            var desc = descEl ? descEl.value : '';
+            var color = colorEl ? colorEl.value : '#5dd5c8';
+            if (!name) { alert('世界观名称不能为空'); return; }
+
+            if (id) {
+                var wv = userData.worldviews.find(function(w) { return w.id == id; });
+                if (wv) { wv.name = name; wv.desc = desc; wv.color = color; }
+            } else {
+                var newWv = { id: Date.now(), name: name, desc: desc, color: color };
+                userData.worldviews.push(newWv);
+            }
+
+            saveDataToDB(function() {
+                renderWorldviewsList();
+                closeSubPage('edit-worldview-page');
+            });
+        }
+
+        function deleteWorldview() {
+            if (userData.worldviews.length <= 1) { alert('至少需要保留一个世界观哦！'); return; }
+            if (confirm('确定要删除这个世界观吗？')) {
+                var idEl = document.getElementById('edit-worldview-id');
+                var id = idEl ? idEl.value : '';
+                userData.worldviews = userData.worldviews.filter(function(w) { return w.id != id; });
+                if (userData.currentWorldviewId == id) { userData.currentWorldviewId = userData.worldviews[0].id; }
+                saveDataToDB(function() {
+                    renderWorldviewsList();
+                    closeSubPage('edit-worldview-page');
+                });
+            }
+        }
+
+        function switchWorldview(wvId) {
+            userData.currentWorldviewId = wvId;
+            saveDataToDB(function() {
+                renderWorldviewsList();
+            });
+        }
+
+        // ================= API 方案选择 =================
+        var selectedSchemeId = null;
+        var allSchemes = [];
+        
+        function loadAllSchemes() {
+            const schemesData = sessionStorage.getItem('apiSchemes');
+            if (schemesData) {
+                try {
+                    let parsed = JSON.parse(schemesData);
+                    if (parsed.list && Array.isArray(parsed.list)) {
+                        allSchemes = parsed.list;
+                    } else if (Array.isArray(parsed)) {
+                        allSchemes = parsed;
+                    } else {
+                        allSchemes = [parsed];
+                    }
+                    console.log('✅ 加载预存方案:', allSchemes);
+                } catch (e) {
+                    console.warn('❌ 方案加载失败:', e);
+                    allSchemes = [];
+                }
+            }
+        }
+        
+        function openSchemeSelector() {
+            loadAllSchemes();
+            console.log('📌 加载的方案列表:', allSchemes);
+            
+            if (allSchemes.length === 0) {
+                alert('暂无可用的 API 方案，请先在主页面创建');
+                return;
+            }
+            
+            const container = document.getElementById('scheme-select-list');
+            if (!container) {
+                console.error('❌ scheme-select-list 容器不存在');
+                return;
+            }
+            container.innerHTML = '';
+            
+            allSchemes.forEach(scheme => {
+                if (!scheme) return;
+                
+                const item = document.createElement('div');
+                item.className = 'job-switch-item' + (scheme.id == selectedSchemeId ? ' active' : '');
+                item.innerText = (scheme.name || '未命名方案');
+                item.style.cursor = 'pointer';
+                item.style.padding = '15px';
+                item.style.borderBottom = '1px solid #f0f0f0';
+                item.style.fontSize = '16px';
+                item.style.textAlign = 'left';
+                item.onclick = function() {
+                    selectScheme(scheme);
+                };
+                container.appendChild(item);
+            });
+            
+            var sheet = document.getElementById('scheme-select-sheet');
+            if (sheet) sheet.classList.remove('hidden');
+        }
+        
+        function selectScheme(scheme) {
+            selectedSchemeId = scheme.id;
+            console.log('✅ 已选择方案:', scheme.name);
+            closeSchemeSelector();
+        }
+        
+        function closeSchemeSelector() {
+            var sheet = document.getElementById('scheme-select-sheet');
+            if (sheet) sheet.classList.add('hidden');
+        }
+
+        // ================= 求职者 API 生成系统 =================
+        const CANDIDATES_STORE = 'doss_candidates';
+        
+        function getCandidatesCacheKey(worldviewId, jobId) {
+            return `wv_${worldviewId}_job_${jobId}`;
+        }
+        
+        function loadCachedCandidates(worldviewId, jobId, callback) {
+            if (!dossDb || !dossDb.objectStoreNames.contains(CANDIDATES_STORE)) {
+                console.warn('CANDIDATES_STORE 不存在，返回 null');
+                callback(null);
+                return;
+            }
+            
+            var transaction = dossDb.transaction([CANDIDATES_STORE], "readonly");
+            var store = transaction.objectStore(CANDIDATES_STORE);
+            var getReq = store.get(getCandidatesCacheKey(worldviewId, jobId));
+            
+            getReq.onsuccess = function() {
+                callback(getReq.result ? getReq.result.candidates : null);
+            };
+            getReq.onerror = function() {
+                callback(null);
+            };
+        }
+        
+        function saveCandidatesToDB(worldviewId, jobId, candidates, callback) {
+            const key = getCandidatesCacheKey(worldviewId, jobId);
+            
+            if (!dossDb || !dossDb.objectStoreNames.contains(CANDIDATES_STORE)) {
+                console.warn('求职者存储不存在');
+                if (callback) callback();
+                return;
+            }
+            
+            var transaction = dossDb.transaction([CANDIDATES_STORE], "readwrite");
+            var store = transaction.objectStore(CANDIDATES_STORE);
+            
+            store.put({
+                id: key,
+                candidates: candidates,
+                createdTime: new Date().toISOString()
+            });
+            
+            transaction.oncomplete = function() {
+                console.log('✅ 求职者已保存');
+                if (callback) callback();
+            };
+        }
+        
+         async function generateCandidatesViaAPI(worldviewName, jobInfo, companyInfo, worldviewId, jobId) {
+            console.log('🔄 开始生成求职者...');
+            
+            let apiConfig = null;
+            
+            if (selectedSchemeId && allSchemes.length > 0) {
+                const selectedScheme = allSchemes.find(s => s.id == selectedSchemeId);
+                if (selectedScheme) {
+                    apiConfig = {
+                        baseUrl: selectedScheme.baseUrl,
+                        apiKey: selectedScheme.apiKey,
+                        defaultModel: selectedScheme.defaultModel
+                    };
+                    console.log('📌 使用方案:', selectedScheme.name);
+                }
+            }
+            
+            if (!apiConfig) {
+                apiConfig = getApiConfig();
+                console.log('📌 使用默认 API');
+            }
+            
+            if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+                alert('请先选择 API 方案或在主页面设置！');
+                return null;
+            }
+            
+            const systemPrompt = `你是一个HR招聘专家。根据以下信息生成逼真的求职者数据。
+            
+【世界观背景】
+${worldviewName}
+【招聘岗位信息】
+- 职位名称：${jobInfo.name}
+- 招聘内容：${jobInfo.desc || '寻找优秀人才'}
+- 薪资范围：${jobInfo.salary}
+【公司信息】
+- 公司名称：${companyInfo.compName}
+- 公司规模：${companyInfo.compSize}
+- 公司地址：${companyInfo.compAddress}
+- 公司简介：${companyInfo.compDesc}
+【生成要求】
+请生成 5 个符合这个世界观的求职者信息。每个求职者必须：
+1. 名字符合世界观风格
+2. 有真实的工作经验描述
+3. 学历信息完整
+4. 期望薪资合理
+5. 有 3-5 个相关技能标签
+6. 有简短的个人介绍
+【返回格式】
+{
+  "candidates": [
+    {
+      "name": "求职者名字",
+      "experience": "X年经验",
+      "education": "学历·专业",
+      "salary": "期望薪资",
+      "skills": ["技能1", "技能2"],
+      "bio": "一句话介绍",
+      "workStatus": "在职/离职/应届生",
+      "city": "工作城市"
+    }
+  ]
+}`;
+            const userMessage = `请根据上面的要求生成求职者数据，返回纯 JSON。`;
+            
+            try {
+                const response = await fetch(apiConfig.baseUrl.endsWith('/') 
+                    ? apiConfig.baseUrl + 'chat/completions' 
+                    : apiConfig.baseUrl + '/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiConfig.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: apiConfig.defaultModel || 'gpt-3.5-turbo',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userMessage }
+                        ],
+                        temperature: 0.8
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || '生成失败');
+                }
+                
+                const data = await response.json();
+                let content = data.choices[0]?.message?.content || '';
+                
+                content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                
+                let parsed = JSON.parse(content);
+                
+                if (!Array.isArray(parsed.candidates)) {
+                    throw new Error('API 返回格式错误');
+                }
+                
+                parsed.candidates = parsed.candidates.map((c, idx) => ({
+                    ...c,
+                    id: `${worldviewId}_${jobId}_${Date.now()}_${idx}`
+                }));
+                
+                console.log('✅ 成功生成求职者:', parsed.candidates.length, '个');
+                
+                return parsed.candidates;
+                
+            } catch (error) {
+                console.error('❌ API 调用失败:', error.message);
+                alert('生成求职者失败：' + error.message);
+                return null;
+            }
+        }
+        
+        async function refreshCandidatesManual() {
+            const refreshBtn = document.getElementById('refresh-candidates-btn');
+            if (!refreshBtn) return;
+            
+            refreshBtn.style.opacity = '0.5';
+            refreshBtn.style.cursor = 'not-allowed';
+            
+            if (!userData.jobs || !userData.worldviews) {
+                alert('数据未加载，请稍候');
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+                return;
+            }
+            
+            const currentJob = userData.jobs.find(j => j.id == userData.currentJobId);
+            const currentWorldview = userData.worldviews.find(w => w.id == userData.currentWorldviewId);
+            
+            if (!currentJob || !currentWorldview) {
+                alert('岗位或世界观不存在');
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+                return;
+            }
+            
+            const candidates = await generateCandidatesViaAPI(
+                currentWorldview.name,
+                {
+                    name: currentJob.name,
+                    desc: currentJob.desc || '',
+                    salary: currentJob.salary
+                },
+                {
+                    compName: userData.compName,
+                    compSize: userData.compSize,
+                    compAddress: userData.compAddress,
+                    compDesc: userData.compDesc
+                },
+                currentWorldview.id,
+                currentJob.id
+            );
+            
+            if (candidates && candidates.length > 0) {
+                saveCandidatesToDB(currentWorldview.id, currentJob.id, candidates, function() {
+                    renderCandidateList(candidates);
+                });
+            }
+            
+            refreshBtn.style.opacity = '1';
+            refreshBtn.style.cursor = 'pointer';
+        }
+        
+        function renderCandidateList(candidates) {
+            const container = document.querySelector('.candidate-list');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (!candidates || candidates.length === 0) {
+                container.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">点击右上角刷新按钮生成求职者</div>';
+                return;
+            }
+            
+            candidates.forEach(candidate => {
+                const card = document.createElement('div');
+                card.className = 'candidate-card';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <div class="candidate-name">${candidate.name} <span style="font-size:14px;color:#999;">${candidate.experience}</span></div>
+                        <div class="candidate-salary">${candidate.salary}</div>
+                    </div>
+                    <div class="candidate-info">${candidate.education || '学历未知'}</div>
+                    <div class="candidate-tags">
+                        ${candidate.skills.map(skill => `<span>${skill}</span>`).join('')}
+                    </div>
+                    <div style="font-size:13px; color:#666; margin-top:8px;">${candidate.bio || ''}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        // ================= 从 sessionStorage 读取 API 配置 =================
+        function getApiConfig() {
+            const cached = sessionStorage.getItem('currentApiConfig');
+            if (cached) {
+                try {
+                    return JSON.parse(cached);
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+    </script>
+    <!-- 3. 主页面（必须在所有 JS 之后）-->
+    <div id="main-screen" class="hidden">
+        <!-- Tab 1: 推荐内容 -->
+        <div id="view-recommend" class="tab-content">
+            <div class="main-header">
+                <a href="index.html" style="color: white; text-decoration: none; font-size: 20px; margin-right: 15px;">&lt;</a>
+                <div class="job-title" id="display-current-job" onclick="openJobSwitcher()">前端开发工程师</div>
+                <!-- 新增：API 方案选择按钮 -->
+                <svg id="scheme-select-btn" onclick="openSchemeSelector()" style="width: 20px; height: 20px; margin-right: 15px; cursor: pointer; color: white;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="19" cy="12" r="1"></circle>
+                    <circle cx="5" cy="12" r="1"></circle>
+                </svg>
+                <!-- 新增：刷新按钮 -->
+                <svg id="refresh-candidates-btn" onclick="refreshCandidatesManual()" style="width: 24px; height: 24px; margin-right: 15px; cursor: pointer; color: white;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M1 20v-6h6"></path>
+                    <path d="M3.51 9a9 9 0 0114.85-3.36M20.49 15a9 9 0 01-14.85 3.36"></path>
+                </svg>
+                <div style="font-size: 14px;" onclick="openJobSwitcher()">切换岗位</div>
+            </div>
+            <div class="candidate-list">
+                <div style="padding:20px; text-align:center; color:#999;">点击右上角刷新按钮生成求职者</div>
+            </div>
+        </div>
+        <!-- Tab 2: 沟通内容 -->
+        <div id="view-messages" class="tab-content hidden">
+            <div class="main-header" style="justify-content: center;"><div class="job-title" style="text-align:center;">沟通</div></div>
+            <div class="msg-list">
+                <div class="msg-item"><div class="msg-avatar" style="background: #ffb74d;">李</div><div class="msg-content"><div class="msg-top"><span class="msg-name">李雷</span><span class="msg-time">刚刚</span></div><div class="msg-desc">您好，我对贵公司的岗位很感兴趣，能聊聊吗？</div></div></div>
+            </div>
+        </div>
+        <!-- Tab 3: 我内容 -->
+        <div id="view-profile" class="tab-content hidden">
+            <div class="profile-header">
+                <div class="profile-info" onclick="openEditProfile()">
+                    <div class="profile-avatar" id="display-avatar">👤</div>
+                    <div>
+                        <div class="profile-name" id="display-hr-name">HR名字</div>
+                        <div class="profile-company" id="display-comp-name">公司名称 · 招聘者</div>
+                    </div>
+                </div>
+            </div>
+          <div class="profile-stats">
+    <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">沟通过</div></div>
+    <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">面试</div></div>
+    <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">拉黑我</div></div>
+</div>
+            <div class="profile-menu">
+                <div class="menu-item" onclick="openEditCompany()"><span>我的公司</span><span style="color:#999;">修改资料 ></span></div>
+                <div class="menu-item" onclick="openJobManage()"><span>职位管理</span><span style="color:#999;">管理 ></span></div>
+                <div class="menu-item" onclick="openWorldviews()"><span>招聘背景</span><span>></span></div>
+                <div class="menu-item" onclick="openSettings()"><span>设置</span><span>></span></div>
+            </div>
+        </div>
+        <!-- 底部导航 -->
+        <div class="tab-bar">
+            <div class="tab-item active" onclick="switchTab('recommend', this)"><div class="tab-icon">📄</div><div>推荐</div></div>
+            <div class="tab-item" onclick="switchTab('messages', this)"><div class="tab-icon">💬</div><div>沟通</div></div>
+            <div class="tab-item" onclick="switchTab('profile', this)"><div class="tab-icon">👤</div><div>我</div></div>
+        </div>
+    </div>
+
+</body>
+</html>

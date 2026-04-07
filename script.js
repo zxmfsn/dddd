@@ -1288,6 +1288,7 @@ function loadApiSchemes() {
             apiSchemes = [];
         }
         renderApiSchemes();
+         saveApiSchemes();
     });
 }
 
@@ -1466,9 +1467,21 @@ function saveConfig() {
     if (typeof saveImageApiConfig === 'function') {
         saveImageApiConfig();
     }
+
+  // ★★★ 新增：把 API 配置保存到 sessionStorage，供 doss.html 使用 ★★★
+    sessionStorage.setItem('currentApiConfig', JSON.stringify(currentApiConfig));
+    // ★★★ 新增结束 ★★★
+
+
     alert('配置已保存');
 
 
+}
+
+function saveApiSchemes() {
+    // 把所有预存方案保存到 sessionStorage
+    sessionStorage.setItem('apiSchemes', JSON.stringify(apiSchemes));
+    console.log('✅ API 方案已保存到 sessionStorage');
 }
 
 // 保存绘图API配置

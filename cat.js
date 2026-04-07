@@ -14884,7 +14884,7 @@ function showOfflineActionMenu(x, y, bubble, isMe) {
         menu.appendChild(editMeBtn);
     }
 
-    // 🗑️ 所有人通用的单点物理消除按钮
+    // 🗑️ 所有人通用的单点按钮
     const deleteBtn = document.createElement('button');
     deleteBtn.innerText = '🗑️ 删除';
     deleteBtn.style.cssText = btnStyle + "color: #E74C3C;"; 
@@ -15146,6 +15146,8 @@ function createAndShowModal(titleText, defaultText, onSaveCallback) {
 
 /* ========== 图片压缩工具 ========== */
 
+/* ========== 图片压缩工具 (支持PNG透明背景) ========== */
+
 function compressImageFile(file, maxWidth, quality, callback) {
     var reader = new FileReader();
     reader.onload = function(e) {
@@ -15160,8 +15162,27 @@ function compressImageFile(file, maxWidth, quality, callback) {
             }
             canvas.width = w;
             canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            callback(canvas.toDataURL('image/jpeg', quality));
+            
+            var ctx = canvas.getContext('2d');
+            
+            // 智能判断输出格式
+            var outputFormat = 'image/jpeg';
+            if (file.type === 'image/png') {
+                outputFormat = 'image/png'; // 如果是PNG，保留PNG格式以支持透明
+            } else if (file.type === 'image/webp') {
+                outputFormat = 'image/webp';
+            }
+            
+            // 如果最终要输出为 JPEG，先铺一层纯白底色，防止透明变黑
+            if (outputFormat === 'image/jpeg') {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+            }
+            
+            ctx.drawImage(img, 0, 0, w, h);
+            
+            // PNG 忽略 quality 参数，JPEG/WebP 会使用 quality 压缩
+            callback(canvas.toDataURL(outputFormat, quality));
         };
         img.src = e.target.result;
     };
